@@ -40,35 +40,37 @@ export default function SalesClientsPage() {
       <h1 className="page-title">Clients</h1>
 
       <div className="table-shell">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-[var(--table-header-bg)] text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
-              <th className="py-3 px-4">Client ID</th>
-              <th className="py-3 px-4">Name</th>
-              <th className="py-3 px-4">Company</th>
-              <th className="py-3 px-4">Email</th>
-              <th className="py-3 px-4">Phone</th>
-              <th className="py-3 px-4">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((c) => (
-              <tr
-                key={c.id}
-                className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
-              >
-                <td className="py-3 px-4 text-[var(--text-muted)]">{c.id}</td>
-                <td className="py-3 px-4 font-medium text-[var(--text-primary)]">{c.name}</td>
-                <td className="py-3 px-4 text-[var(--text-primary)]">{c.company}</td>
-                <td className="py-3 px-4 text-[var(--text-primary)]">{c.email}</td>
-                <td className="py-3 px-4 text-[var(--text-primary)]">{c.phone}</td>
-                <td className="py-3 px-4 font-semibold">
-                  <span className={statusColor(c.status)}>{c.status}</span>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[var(--table-header-bg)] text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                <th className="py-3 px-4">Client ID</th>
+                <th className="py-3 px-4">Name</th>
+                <th className="py-3 px-4">Company</th>
+                <th className="py-3 px-4">Email</th>
+                <th className="py-3 px-4">Phone</th>
+                <th className="py-3 px-4">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {clients.map((c) => (
+                <tr
+                  key={c.id}
+                  className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
+                >
+                  <td className="py-3 px-4 text-[var(--text-muted)]">{c.id}</td>
+                  <td className="py-3 px-4 font-medium text-[var(--text-primary)]">{c.name}</td>
+                  <td className="py-3 px-4 text-[var(--text-primary)]">{c.company}</td>
+                  <td className="py-3 px-4 text-[var(--text-primary)]">{c.email}</td>
+                  <td className="py-3 px-4 text-[var(--text-primary)]">{c.phone}</td>
+                  <td className="py-3 px-4 font-semibold">
+                    <span className={statusColor(c.status)}>{c.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="helper-text px-4 py-3">
           These are demo clients. Once Firebase is connected, this page will automatically load all
           client records assigned to the logged-in sales user (or all clients for admins / sales

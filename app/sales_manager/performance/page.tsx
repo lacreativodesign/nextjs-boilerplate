@@ -215,63 +215,65 @@ export default function SalesManagerPerformancePage() {
           <div className="card p-6 animate-pulse h-40" />
         ) : (
           <div className="card p-4 overflow-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[var(--text-muted)]">
-                  <th>Team Member</th>
-                  <th>Leads</th>
-                  <th>Deals</th>
-                  <th>Revenue</th>
-                  <th>Overall %</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {teamRows.map((row) => (
-                  <tr
-                    key={row.user.uid}
-                    className="border-t border-[var(--border-subtle)] align-top"
-                  >
-                    <td className="py-3">
-                      {row.user.displayName || row.user.name || row.user.uid}
-                    </td>
-                    <td className="py-3 min-w-44">
-                      <ProgressBar
-                        label="Leads"
-                        actual={Number(row.actuals.leadsCreated || 0)}
-                        target={Number(row.metrics.leadsCreated?.target || 0)}
-                        unit="count"
-                        size="sm"
-                      />
-                    </td>
-                    <td className="py-3 min-w-44">
-                      <ProgressBar
-                        label="Deals"
-                        actual={Number(row.actuals.dealsClosed || 0)}
-                        target={Number(row.metrics.dealsClosed?.target || 0)}
-                        unit="count"
-                        size="sm"
-                      />
-                    </td>
-                    <td className="py-3 min-w-44">
-                      <ProgressBar
-                        label="Revenue"
-                        actual={Number(row.actuals.revenueGenerated || 0)}
-                        target={Number(row.metrics.revenueGenerated?.target || 0)}
-                        unit="USD"
-                        size="sm"
-                      />
-                    </td>
-                    <td className="py-3">{Number(row.overall || 0).toFixed(1)}%</td>
-                    <td className="py-3">
-                      <button className="btn ghost" onClick={() => setEditingUser(row.user.uid)}>
-                        Set Targets
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[var(--text-muted)]">
+                    <th>Team Member</th>
+                    <th>Leads</th>
+                    <th>Deals</th>
+                    <th>Revenue</th>
+                    <th>Overall %</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {teamRows.map((row) => (
+                    <tr
+                      key={row.user.uid}
+                      className="border-t border-[var(--border-subtle)] align-top"
+                    >
+                      <td className="py-3">
+                        {row.user.displayName || row.user.name || row.user.uid}
+                      </td>
+                      <td className="py-3 min-w-44">
+                        <ProgressBar
+                          label="Leads"
+                          actual={Number(row.actuals.leadsCreated || 0)}
+                          target={Number(row.metrics.leadsCreated?.target || 0)}
+                          unit="count"
+                          size="sm"
+                        />
+                      </td>
+                      <td className="py-3 min-w-44">
+                        <ProgressBar
+                          label="Deals"
+                          actual={Number(row.actuals.dealsClosed || 0)}
+                          target={Number(row.metrics.dealsClosed?.target || 0)}
+                          unit="count"
+                          size="sm"
+                        />
+                      </td>
+                      <td className="py-3 min-w-44">
+                        <ProgressBar
+                          label="Revenue"
+                          actual={Number(row.actuals.revenueGenerated || 0)}
+                          target={Number(row.metrics.revenueGenerated?.target || 0)}
+                          unit="USD"
+                          size="sm"
+                        />
+                      </td>
+                      <td className="py-3">{Number(row.overall || 0).toFixed(1)}%</td>
+                      <td className="py-3">
+                        <button className="btn ghost" onClick={() => setEditingUser(row.user.uid)}>
+                          Set Targets
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>

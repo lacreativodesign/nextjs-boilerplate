@@ -230,74 +230,78 @@ export default function SuperAdminTaxPage() {
 
           <div className="table-shell">
             <div>
-              <table>
-                <thead>
-                  <tr>
-                    <th className="text-left">Month</th>
-                    <th className="text-right">Tax Collected</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.keys(data.monthlyTotals).length === 0 ? (
+              <div className="overflow-x-auto">
+                <table>
+                  <thead>
                     <tr>
-                      <td colSpan={2} className="table-empty">
-                        No tax collected in {data.year} yet
-                      </td>
+                      <th className="text-left">Month</th>
+                      <th className="text-right">Tax Collected</th>
                     </tr>
-                  ) : (
-                    Object.entries(data.monthlyTotals).map(([month, amount]) => (
-                      <tr key={month}>
-                        <td>
-                          {new Date(`${month}-01`).toLocaleDateString('en-US', {
-                            month: 'long',
-                            year: 'numeric',
-                          })}
+                  </thead>
+                  <tbody>
+                    {Object.keys(data.monthlyTotals).length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="table-empty">
+                          No tax collected in {data.year} yet
                         </td>
-                        <td className="text-right font-semibold">{fmt(amount)}</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      Object.entries(data.monthlyTotals).map(([month, amount]) => (
+                        <tr key={month}>
+                          <td>
+                            {new Date(`${month}-01`).toLocaleDateString('en-US', {
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </td>
+                          <td className="text-right font-semibold">{fmt(amount)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           <div className="table-shell">
             <div>
-              <table>
-                <thead>
-                  <tr>
-                    <th className="text-left">Tenant</th>
-                    <th className="text-left">Plan</th>
-                    <th className="text-right">Tax Paid</th>
-                    <th className="text-right">Last Tax Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.tenantBreakdown.length === 0 ? (
+              <div className="overflow-x-auto">
+                <table>
+                  <thead>
                     <tr>
-                      <td colSpan={4} className="table-empty">
-                        No tenant tax data yet
-                      </td>
+                      <th className="text-left">Tenant</th>
+                      <th className="text-left">Plan</th>
+                      <th className="text-right">Tax Paid</th>
+                      <th className="text-right">Last Tax Date</th>
                     </tr>
-                  ) : (
-                    data.tenantBreakdown.map((t) => (
-                      <tr key={t.tenantId}>
-                        <td className="font-semibold">{t.tenantName}</td>
-                        <td>
-                          <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]">
-                            {t.plan}
-                          </span>
-                        </td>
-                        <td className="text-right font-semibold">{fmt(t.taxPaid)}</td>
-                        <td className="text-right text-[var(--text-muted)]">
-                          {fmtDate(t.lastTaxAt)}
+                  </thead>
+                  <tbody>
+                    {data.tenantBreakdown.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="table-empty">
+                          No tenant tax data yet
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      data.tenantBreakdown.map((t) => (
+                        <tr key={t.tenantId}>
+                          <td className="font-semibold">{t.tenantName}</td>
+                          <td>
+                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--surface-muted)] text-[var(--text-muted)]">
+                              {t.plan}
+                            </span>
+                          </td>
+                          <td className="text-right font-semibold">{fmt(t.taxPaid)}</td>
+                          <td className="text-right text-[var(--text-muted)]">
+                            {fmtDate(t.lastTaxAt)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

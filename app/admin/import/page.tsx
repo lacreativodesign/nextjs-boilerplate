@@ -368,24 +368,26 @@ function ValidateStep({
 
       {errors.length > 0 ? (
         <div className="max-h-72 overflow-auto rounded border">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-100">
-              <tr>
-                <th className="px-3 py-2">Row</th>
-                <th className="px-3 py-2">Field</th>
-                <th className="px-3 py-2">Error</th>
-              </tr>
-            </thead>
-            <tbody>
-              {errors.map((error, index) => (
-                <tr key={`${error.row}-${error.field}-${index}`} className="border-t">
-                  <td className="px-3 py-2">{error.row}</td>
-                  <td className="px-3 py-2">{error.field}</td>
-                  <td className="px-3 py-2">{error.error}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-neutral-100">
+                <tr>
+                  <th className="px-3 py-2">Row</th>
+                  <th className="px-3 py-2">Field</th>
+                  <th className="px-3 py-2">Error</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {errors.map((error, index) => (
+                  <tr key={`${error.row}-${error.field}-${index}`} className="border-t">
+                    <td className="px-3 py-2">{error.row}</td>
+                    <td className="px-3 py-2">{error.field}</td>
+                    <td className="px-3 py-2">{error.error}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 

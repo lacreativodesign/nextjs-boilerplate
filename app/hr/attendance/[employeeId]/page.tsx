@@ -224,73 +224,75 @@ export default function EmployeeAttendanceDetail() {
           overflow: 'hidden',
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'var(--surface-muted)' }}>
-            <tr>
-              <th style={th}>Date</th>
-              <th style={th}>Day</th>
-              <th style={th}>Status</th>
-              <th style={th}>First Login</th>
-              <th style={th}>Last Logout</th>
-              <th style={th}>Hours</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: daysInMonth }).map((_, index) => {
-              const day = index + 1;
-              const dateObj = month.date(day);
-              const info = computeDayInfo(day);
+        <div className="overflow-x-auto">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ background: 'var(--surface-muted)' }}>
+              <tr>
+                <th style={th}>Date</th>
+                <th style={th}>Day</th>
+                <th style={th}>Status</th>
+                <th style={th}>First Login</th>
+                <th style={th}>Last Logout</th>
+                <th style={th}>Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: daysInMonth }).map((_, index) => {
+                const day = index + 1;
+                const dateObj = month.date(day);
+                const info = computeDayInfo(day);
 
-              const isWeekend = dateObj.day() === 0 || dateObj.day() === 6; // Sun / Sat
+                const isWeekend = dateObj.day() === 0 || dateObj.day() === 6; // Sun / Sat
 
-              let status = 'Absent';
-              let badgeBg = 'rgba(239,68,68,0.12)';
-              let badgeColor = 'var(--danger, #dc2626)';
+                let status = 'Absent';
+                let badgeBg = 'rgba(239,68,68,0.12)';
+                let badgeColor = 'var(--danger, #dc2626)';
 
-              if (isWeekend) {
-                status = 'Weekend';
-                badgeBg = 'var(--surface-muted)';
-                badgeColor = 'var(--text-muted)';
-              }
+                if (isWeekend) {
+                  status = 'Weekend';
+                  badgeBg = 'var(--surface-muted)';
+                  badgeColor = 'var(--text-muted)';
+                }
 
-              if (info && info.hours) {
-                status = 'Present';
-                badgeBg = 'rgba(34,197,94,0.12)';
-                badgeColor = 'var(--success)';
-              }
+                if (info && info.hours) {
+                  status = 'Present';
+                  badgeBg = 'rgba(34,197,94,0.12)';
+                  badgeColor = 'var(--success)';
+                }
 
-              const rowBg = index % 2 === 0 ? 'var(--surface-card)' : 'var(--surface-muted)';
+                const rowBg = index % 2 === 0 ? 'var(--surface-card)' : 'var(--surface-muted)';
 
-              return (
-                <tr key={day} style={{ background: rowBg }}>
-                  <td style={td}>{dateObj.format('YYYY-MM-DD')}</td>
-                  <td style={td}>{dateObj.format('ddd')}</td>
-                  <td style={td}>
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: 999,
-                        fontSize: 12,
-                        background: badgeBg,
-                        color: badgeColor,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {status}
-                    </span>
-                  </td>
-                  <td style={td}>
-                    {info?.firstLogin ? dayjs(info.firstLogin.timestamp).format('HH:mm') : '-'}
-                  </td>
-                  <td style={td}>
-                    {info?.lastLogout ? dayjs(info.lastLogout.timestamp).format('HH:mm') : '-'}
-                  </td>
-                  <td style={td}>{info?.hours || '-'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                return (
+                  <tr key={day} style={{ background: rowBg }}>
+                    <td style={td}>{dateObj.format('YYYY-MM-DD')}</td>
+                    <td style={td}>{dateObj.format('ddd')}</td>
+                    <td style={td}>
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          fontSize: 12,
+                          background: badgeBg,
+                          color: badgeColor,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {status}
+                      </span>
+                    </td>
+                    <td style={td}>
+                      {info?.firstLogin ? dayjs(info.firstLogin.timestamp).format('HH:mm') : '-'}
+                    </td>
+                    <td style={td}>
+                      {info?.lastLogout ? dayjs(info.lastLogout.timestamp).format('HH:mm') : '-'}
+                    </td>
+                    <td style={td}>{info?.hours || '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

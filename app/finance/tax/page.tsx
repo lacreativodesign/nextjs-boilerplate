@@ -193,43 +193,45 @@ export default function FinanceTaxPage() {
             </button>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Rate</th>
-                <th>Region</th>
-                <th>Type</th>
-                <th>Default</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {taxRates.map((rate) => (
-                <tr key={rate.id}>
-                  <td>{rate.name}</td>
-                  <td>{formatTaxRate(rate.rate)}</td>
-                  <td>{rate.state ? `${rate.country} — ${rate.state}` : rate.country}</td>
-                  <td>{rate.inclusive ? 'Inclusive' : 'Exclusive'}</td>
-                  <td>{rate.isDefault ? <span style={{ color: 'green' }}>Default</span> : ''}</td>
-                  <td>
-                    <button className="btn ghost" onClick={() => toggleStatus(rate)}>
-                      {rate.isActive ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                  <td className="space-x-2">
-                    <button className="btn ghost" onClick={() => openEdit(rate)}>
-                      ✏️
-                    </button>
-                    <button className="btn ghost" onClick={() => removeRate(rate.id)}>
-                      🗑️
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Rate</th>
+                  <th>Region</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {taxRates.map((rate) => (
+                  <tr key={rate.id}>
+                    <td>{rate.name}</td>
+                    <td>{formatTaxRate(rate.rate)}</td>
+                    <td>{rate.state ? `${rate.country} — ${rate.state}` : rate.country}</td>
+                    <td>{rate.inclusive ? 'Inclusive' : 'Exclusive'}</td>
+                    <td>{rate.isDefault ? <span style={{ color: 'green' }}>Default</span> : ''}</td>
+                    <td>
+                      <button className="btn ghost" onClick={() => toggleStatus(rate)}>
+                        {rate.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td className="space-x-2">
+                      <button className="btn ghost" onClick={() => openEdit(rate)}>
+                        ✏️
+                      </button>
+                      <button className="btn ghost" onClick={() => removeRate(rate.id)}>
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
       <div className="card space-y-3">
@@ -281,41 +283,43 @@ export default function FinanceTaxPage() {
             Generate Report
           </button>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr>
-              <th>Period</th>
-              <th>Total Taxable Amount</th>
-              <th>Total Tax Collected</th>
-              <th>Invoice Count</th>
-              <th>Rate Breakdown</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report) => (
-              <tr key={report.id}>
-                <td>{report.period}</td>
-                <td>{report.totalTaxableAmount.toFixed(2)}</td>
-                <td>{report.totalTaxCollected.toFixed(2)}</td>
-                <td>{report.invoiceCount}</td>
-                <td>
-                  {(report.taxBreakdown || [])
-                    .map(
-                      (entry) =>
-                        `${entry.rateName} (${entry.rate}%): ${entry.taxCollected.toFixed(2)}`,
-                    )
-                    .join(', ')}
-                </td>
-                <td>
-                  <a className="btn ghost" href={`/api/finance/tax-reports/${report.id}/export`}>
-                    Export CSV
-                  </a>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Total Taxable Amount</th>
+                <th>Total Tax Collected</th>
+                <th>Invoice Count</th>
+                <th>Rate Breakdown</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {reports.map((report) => (
+                <tr key={report.id}>
+                  <td>{report.period}</td>
+                  <td>{report.totalTaxableAmount.toFixed(2)}</td>
+                  <td>{report.totalTaxCollected.toFixed(2)}</td>
+                  <td>{report.invoiceCount}</td>
+                  <td>
+                    {(report.taxBreakdown || [])
+                      .map(
+                        (entry) =>
+                          `${entry.rateName} (${entry.rate}%): ${entry.taxCollected.toFixed(2)}`,
+                      )
+                      .join(', ')}
+                  </td>
+                  <td>
+                    <a className="btn ghost" href={`/api/finance/tax-reports/${report.id}/export`}>
+                      Export CSV
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       {open && (
         <div
