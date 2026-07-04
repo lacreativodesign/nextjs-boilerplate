@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { sendPaymentConfirmationEmail } from '@/lib/email/onboarding-emails';
 import { sendEmail } from '@/lib/email/email-service';
+import { resolvePlanModules, type PlanTier } from '@/lib/tenant/plan-access';
 
 export const runtime = 'nodejs';
 
@@ -105,6 +106,12 @@ export async function POST(req: Request) {
         if (!tenantId) break;
 
         const updatedPlan = String(subscription.metadata?.bizosto_plan || '').trim();
+        // Keep module access in lockstep with the plan on every change. Only resolve a
+        // module map for a recognized tier — never grant modules for an unknown plan
+        // string (fail closed, matching the checkout webhook's plan resolution).
+        const isKnownPlan =
+          updatedPlan === 'starter' || updatedPlan === 'pro' || updatedPlan === 'enterprise';
+        const planModules = isKnownPlan ? resolvePlanModules(updatedPlan as PlanTier) : null;
         await adminDb
           .collection('tenants')
           .doc(tenantId)
@@ -117,7 +124,11 @@ export async function POST(req: Request) {
                 : null,
               cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
               stripeSubscriptionId: subscription.id,
-              ...(updatedPlan ? { plan: updatedPlan } : {}),
+              ...(isKnownPlan
+                ? { plan: updatedPlan, modules: planModules, modulesEnabled: planModules }
+                : updatedPlan
+                  ? { plan: updatedPlan }
+                  : {}),
               updatedAt: new Date().toISOString(),
             },
             { merge: true },
