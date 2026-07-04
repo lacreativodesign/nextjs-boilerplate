@@ -153,7 +153,8 @@ export async function POST(request: Request) {
       password: payload.password,
       displayName: payload.fullName,
       disabled: false,
-      emailVerified: false,
+      // The email was proven via the verified OTP gate above — mark it verified at creation.
+      emailVerified: true,
     });
     createdUid = authUser.uid;
 
@@ -236,6 +237,15 @@ export async function POST(request: Request) {
     } as SignupVerificationRecord;
 
     await adminDb.collection('signup_verifications').doc(signupToken).set(verificationDoc);
+
+    // Consume the OTP: a verified code is single-use. Deleting the record prevents the same
+    // verified email_otps doc from gating another provisioning attempt within its 24h window.
+    // Best-effort — the signup has already fully succeeded at this point.
+    try {
+      await adminDb.collection('email_otps').doc(email).delete();
+    } catch (otpConsumeError) {
+      console.error('signup POST: OTP consume failed', otpConsumeError);
+    }
 
     return NextResponse.json({
       ok: true,

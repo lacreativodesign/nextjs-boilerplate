@@ -261,3 +261,40 @@ export async function sendPaymentConfirmationEmail(
     console.error('[EMAIL] Failed to send payment confirmation email', err);
   }
 }
+
+export async function sendAbandonedSignupReminderEmail(
+  to: string,
+  name: string,
+  tenantId: string,
+  variant: 'first' | 'final',
+  deleteAt: string,
+) {
+  try {
+    const resend = getResendClient();
+    const deletionDate = formatTrialDate(deleteAt);
+    const isFinal = variant === 'final';
+
+    await resend.emails.send({
+      from: onboardingFrom,
+      to,
+      subject: isFinal
+        ? 'Final notice: your Bizosto workspace will be deleted soon'
+        : 'Your Bizosto workspace is still waiting for you',
+      html: getEmailShell(`
+        <p style="margin:0 0 16px">Hi ${name},</p>
+        ${
+          isFinal
+            ? `<p style="margin:0 0 16px">This is the final reminder about your Bizosto workspace. Because no subscription was started, the workspace and all of its data are scheduled for permanent deletion on <strong>${deletionDate}</strong>.</p>
+        <p style="margin:0 0 16px">To keep your workspace, simply choose a plan before that date — everything is exactly as you left it.</p>`
+            : `<p style="margin:0 0 16px">You verified your email and created a Bizosto workspace, but never started a subscription. Your workspace is still here, exactly as you left it.</p>
+        <p style="margin:0 0 16px">If no subscription is started, the workspace and its data will be permanently deleted on <strong>${deletionDate}</strong>.</p>`
+        }
+        <p style="margin:0 0 24px">${ctaButton('Choose a plan', `${appUrl}/billing`)}</p>
+        ${emailFooter('If you no longer want this workspace, no action is needed — it will be removed automatically.')}
+      `),
+    });
+  } catch (error) {
+    console.error('[EMAIL] Failed to send abandoned signup reminder', { tenantId, variant, error });
+    throw error;
+  }
+}

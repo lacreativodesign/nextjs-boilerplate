@@ -1,0 +1,101 @@
+import fs from 'fs';
+import path from 'path';
+import { classifyAbandonedTenant, deletionDateIso } from '@/lib/tenant/abandoned-signups';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const NOW = Date.parse('2026-07-05T00:00:00.000Z');
+const daysAgo = (n: number) => new Date(NOW - n * DAY_MS).toISOString();
+
+const base = (over: Record<string, unknown> = {}) => ({
+  tenantId: 'tenant_x',
+  createdAt: daysAgo(5),
+  subscriptionState: 'trial',
+  ...over,
+});
+
+describe('abandoned-signup lifecycle (P0-2)', () => {
+  it('never touches protected platform tenants', () => {
+    expect(
+      classifyAbandonedTenant(base({ tenantId: 'bizosto', createdAt: daysAgo(90) }), NOW),
+    ).toBe('skip');
+    expect(
+      classifyAbandonedTenant(base({ tenantId: 'bizosto-demo', createdAt: daysAgo(90) }), NOW),
+    ).toBe('skip');
+  });
+
+  it('never touches tenants with any Stripe linkage or active billing', () => {
+    expect(
+      classifyAbandonedTenant(base({ createdAt: daysAgo(90), stripeSubscriptionId: 'sub_1' }), NOW),
+    ).toBe('skip');
+    expect(
+      classifyAbandonedTenant(base({ createdAt: daysAgo(90), stripeCustomerId: 'cus_1' }), NOW),
+    ).toBe('skip');
+    expect(
+      classifyAbandonedTenant(base({ createdAt: daysAgo(90), billingStatus: 'active' }), NOW),
+    ).toBe('skip');
+    expect(
+      classifyAbandonedTenant(base({ createdAt: daysAgo(90), subscriptionState: 'active' }), NOW),
+    ).toBe('skip');
+  });
+
+  it('skips tenants with missing or invalid createdAt instead of deleting them', () => {
+    expect(classifyAbandonedTenant(base({ createdAt: undefined }), NOW)).toBe('skip');
+    expect(classifyAbandonedTenant(base({ createdAt: 'not-a-date' }), NOW)).toBe('skip');
+  });
+
+  it('does nothing before day 18', () => {
+    expect(classifyAbandonedTenant(base({ createdAt: daysAgo(10) }), NOW)).toBe('none');
+    expect(classifyAbandonedTenant(base({ createdAt: daysAgo(17) }), NOW)).toBe('none');
+  });
+
+  it('sends first reminder at day 18, once', () => {
+    expect(classifyAbandonedTenant(base({ createdAt: daysAgo(18) }), NOW)).toBe('remind_first');
+    expect(
+      classifyAbandonedTenant(
+        base({ createdAt: daysAgo(19), firstReminderSentAt: daysAgo(1) }),
+        NOW,
+      ),
+    ).toBe('none');
+  });
+
+  it('sends final reminder at day 25, once', () => {
+    expect(classifyAbandonedTenant(base({ createdAt: daysAgo(25) }), NOW)).toBe('remind_final');
+    expect(
+      classifyAbandonedTenant(
+        base({ createdAt: daysAgo(26), finalReminderSentAt: daysAgo(1) }),
+        NOW,
+      ),
+    ).toBe('none');
+  });
+
+  it('deletes at day 30', () => {
+    expect(classifyAbandonedTenant(base({ createdAt: daysAgo(30) }), NOW)).toBe('delete');
+    expect(classifyAbandonedTenant(base({ createdAt: daysAgo(45) }), NOW)).toBe('delete');
+  });
+
+  it('computes the deletion date 30 days after signup', () => {
+    const createdAt = daysAgo(20);
+    expect(deletionDateIso(createdAt)).toBe(new Date(NOW + 10 * DAY_MS).toISOString());
+  });
+});
+
+describe('signup OTP hardening — static gates (P0-2)', () => {
+  const signupSrc = fs.readFileSync(
+    path.join(process.cwd(), 'app', 'api', 'signup', 'route.ts'),
+    'utf8',
+  );
+
+  it('creates the Firebase user with emailVerified true (email proven via OTP)', () => {
+    expect(signupSrc).toContain('emailVerified: true');
+    expect(signupSrc).not.toContain('emailVerified: false');
+  });
+
+  it('consumes the OTP after successful provisioning', () => {
+    expect(signupSrc).toContain("collection('email_otps').doc(email).delete()");
+  });
+
+  it('cron is registered in vercel.json', () => {
+    const vercel = fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8');
+    expect(vercel).toContain('/api/cron/abandoned-signups');
+  });
+});
