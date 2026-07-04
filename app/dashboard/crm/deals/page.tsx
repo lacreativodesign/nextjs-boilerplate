@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { DealPipeline } from '@/components/crm/DealPipeline';
+import EmptyState from '@/components/ui/EmptyState';
 
 type Deal = {
   id: string;
@@ -21,15 +22,27 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [activePipeline, setActivePipeline] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchPipelines();
-    void fetchDeals();
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        await Promise.all([fetchPipelines(), fetchDeals()]);
+      } catch {
+        setError('Unable to load your pipeline. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    void load();
   }, []);
 
   const fetchPipelines = async () => {
     const response = await fetch('/api/crm/pipelines', { cache: 'no-store' });
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     setPipelines(data.pipelines || []);
     if (data.pipelines?.length > 0) {
       setActivePipeline(data.pipelines[0].id);
@@ -38,7 +51,7 @@ export default function DealsPage() {
 
   const fetchDeals = async () => {
     const response = await fetch('/api/crm/deals', { cache: 'no-store' });
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     setDeals(data.deals || []);
   };
 
@@ -60,7 +73,16 @@ export default function DealsPage() {
         </div>
       )}
 
-      {activePipeline && (
+      {loading ? (
+        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+      ) : error ? (
+        <EmptyState title="Something went wrong" description={error} />
+      ) : !activePipeline ? (
+        <EmptyState
+          title="No pipeline yet"
+          description="Create a pipeline in settings to start tracking deals."
+        />
+      ) : (
         <DealPipeline pipelineId={activePipeline} deals={deals} onUpdate={fetchDeals} />
       )}
     </div>
