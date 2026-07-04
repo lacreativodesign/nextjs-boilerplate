@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { hashOtp } from '@/lib/auth/otp';
 
 export const runtime = 'nodejs';
 
@@ -89,14 +90,18 @@ export async function POST(req: Request) {
     const expiresAt = now + 10 * 60 * 1000; // 10 minutes
 
     // Store OTP in Firestore
-    await adminDb.collection('email_otps').doc(email).set({
-      otp,
-      email,
-      expiresAt,
-      createdAt: now,
-      verified: false,
-      attempts: 0,
-    });
+    // Store only an HMAC of the OTP, never the plaintext code.
+    await adminDb
+      .collection('email_otps')
+      .doc(email)
+      .set({
+        otpHash: hashOtp(otp),
+        email,
+        expiresAt,
+        createdAt: now,
+        verified: false,
+        attempts: 0,
+      });
 
     const resend = new Resend(apiKey);
     await resend.emails.send({

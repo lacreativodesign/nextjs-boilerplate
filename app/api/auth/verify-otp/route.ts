@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { verifyOtp } from '@/lib/auth/otp';
 
 export const runtime = 'nodejs';
 
@@ -50,8 +51,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check code
-    if (data.otp !== otp) {
+    // Check code — constant-time HMAC comparison; the OTP is never stored in plaintext.
+    if (!verifyOtp(otp, data.otpHash)) {
       await ref.set({ attempts: attempts + 1 }, { merge: true });
       const remaining = 5 - (attempts + 1);
       return NextResponse.json(
