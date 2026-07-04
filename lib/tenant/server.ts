@@ -135,7 +135,7 @@ export async function getCurrentUserOrThrow(req?: RequestLike): Promise<CurrentU
     const sessionStatus = await validateSession(sessionCookie);
 
     const decoded = await trackDbQuery('auth.verify', 'verifySessionCookie', async () =>
-      adminAuth.verifySessionCookie(sessionCookie, false),
+      adminAuth.verifySessionCookie(sessionCookie, true),
     );
     const uid = decoded.uid;
 

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
     }
 
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
 
     // 14 days if remember me checked, 5 days otherwise, 1 day if not logged in
     const expiresIn = extendedSession
