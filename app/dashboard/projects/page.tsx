@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import EmptyState from '@/components/ui/EmptyState';
 
 type Project = {
   id: string;
@@ -18,18 +19,29 @@ type Project = {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filter, setFilter] = useState('active');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = async () => {
-    const params = new URLSearchParams();
-    if (filter !== 'all') params.append('status', filter);
+    try {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams();
+      if (filter !== 'all') params.append('status', filter);
 
-    const response = await fetch(`/api/projects?${params.toString()}`);
-    const data = await response.json();
-    setProjects(data.projects || []);
+      const response = await fetch(`/api/projects?${params.toString()}`);
+      const data = await response.json().catch(() => ({}));
+      setProjects(data.projects || []);
+    } catch {
+      setError('Unable to load projects. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     void fetchProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   return (
@@ -51,11 +63,22 @@ export default function ProjectsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
+      {loading ? (
+        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+      ) : error ? (
+        <EmptyState title="Something went wrong" description={error} />
+      ) : projects.length === 0 ? (
+        <EmptyState
+          title="No projects yet"
+          description="Create your first project to start tracking delivery."
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
