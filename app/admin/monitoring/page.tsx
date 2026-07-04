@@ -177,26 +177,28 @@ export default function AdminMonitoringPage() {
             Endpoint Metrics
           </h2>
           <div className="max-h-80 overflow-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-[var(--text-muted)]">
-                <tr>
-                  <th className="py-2">Endpoint</th>
-                  <th className="py-2">P95 (ms)</th>
-                  <th className="py-2">Error %</th>
-                  <th className="py-2">Requests</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.endpointMetrics.map((metric) => (
-                  <tr key={metric.endpoint} className="border-t border-[var(--border-subtle)]">
-                    <td className="py-2 font-mono text-xs">{metric.endpoint}</td>
-                    <td className="py-2">{metric.p95ResponseMs}</td>
-                    <td className="py-2">{metric.errorRate}</td>
-                    <td className="py-2">{metric.requests}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-[var(--text-muted)]">
+                  <tr>
+                    <th className="py-2">Endpoint</th>
+                    <th className="py-2">P95 (ms)</th>
+                    <th className="py-2">Error %</th>
+                    <th className="py-2">Requests</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.endpointMetrics.map((metric) => (
+                    <tr key={metric.endpoint} className="border-t border-[var(--border-subtle)]">
+                      <td className="py-2 font-mono text-xs">{metric.endpoint}</td>
+                      <td className="py-2">{metric.p95ResponseMs}</td>
+                      <td className="py-2">{metric.errorRate}</td>
+                      <td className="py-2">{metric.requests}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

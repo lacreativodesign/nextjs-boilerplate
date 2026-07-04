@@ -71,26 +71,28 @@ export default function AdminCrmPage() {
             description="Leads created in Sales will appear here."
           />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left">
-                <th>Name</th>
-                <th>Company</th>
-                <th>Email</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr key={lead.id} className="border-t">
-                  <td>{lead.name}</td>
-                  <td>{lead.company}</td>
-                  <td>{lead.email}</td>
-                  <td>{lead.status}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th>Name</th>
+                  <th>Company</th>
+                  <th>Email</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {leads.map((lead) => (
+                  <tr key={lead.id} className="border-t">
+                    <td>{lead.name}</td>
+                    <td>{lead.company}</td>
+                    <td>{lead.email}</td>
+                    <td>{lead.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -103,26 +105,28 @@ export default function AdminCrmPage() {
             description="Deals created in Sales will appear here."
           />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left">
-                <th>Title</th>
-                <th>Stage</th>
-                <th>Value</th>
-                <th>Sales Rep</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deals.map((deal) => (
-                <tr key={deal.id} className="border-t">
-                  <td>{deal.title}</td>
-                  <td>{deal.stage}</td>
-                  <td>${(deal.valueUSD ?? 0).toLocaleString()}</td>
-                  <td>{deal.assignedSalesId}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th>Title</th>
+                  <th>Stage</th>
+                  <th>Value</th>
+                  <th>Sales Rep</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {deals.map((deal) => (
+                  <tr key={deal.id} className="border-t">
+                    <td>{deal.title}</td>
+                    <td>{deal.stage}</td>
+                    <td>${(deal.valueUSD ?? 0).toLocaleString()}</td>
+                    <td>{deal.assignedSalesId}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

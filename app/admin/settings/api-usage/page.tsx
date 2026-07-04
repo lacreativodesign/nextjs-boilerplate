@@ -126,24 +126,26 @@ export default function ApiUsageSettingsPage() {
       <section className="card p-5 rounded-xl settings-section">
         <h3 className="font-semibold mb-3">Top API Consumers</h3>
         <div className="overflow-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr>
-                <th className="text-left p-2">Tenant</th>
-                <th className="text-left p-2">User</th>
-                <th className="text-right p-2">Requests</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.topConsumers.map((row) => (
-                <tr key={`${row.tenantId}:${row.userId}`}>
-                  <td className="p-2">{row.tenantId}</td>
-                  <td className="p-2">{row.userId}</td>
-                  <td className="p-2 text-right">{row.count.toLocaleString()}</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="text-left p-2">Tenant</th>
+                  <th className="text-left p-2">User</th>
+                  <th className="text-right p-2">Requests</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stats.topConsumers.map((row) => (
+                  <tr key={`${row.tenantId}:${row.userId}`}>
+                    <td className="p-2">{row.tenantId}</td>
+                    <td className="p-2">{row.userId}</td>
+                    <td className="p-2 text-right">{row.count.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -221,30 +223,32 @@ export default function ApiUsageSettingsPage() {
       <section className="card p-5 rounded-xl settings-section">
         <h3 className="font-semibold mb-3">Recent API Logs</h3>
         <div className="overflow-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr>
-                <th className="text-left p-2">Endpoint</th>
-                <th className="text-left p-2">Tenant</th>
-                <th className="text-left p-2">User</th>
-                <th className="text-right p-2">Status</th>
-                <th className="text-right p-2">Response (ms)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id}>
-                  <td className="p-2">
-                    {log.method} {log.endpoint}
-                  </td>
-                  <td className="p-2">{log.tenantId}</td>
-                  <td className="p-2">{log.userId}</td>
-                  <td className="p-2 text-right">{log.status}</td>
-                  <td className="p-2 text-right">{log.responseTimeMs}</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="text-left p-2">Endpoint</th>
+                  <th className="text-left p-2">Tenant</th>
+                  <th className="text-left p-2">User</th>
+                  <th className="text-right p-2">Status</th>
+                  <th className="text-right p-2">Response (ms)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="p-2">
+                      {log.method} {log.endpoint}
+                    </td>
+                    <td className="p-2">{log.tenantId}</td>
+                    <td className="p-2">{log.userId}</td>
+                    <td className="p-2 text-right">{log.status}</td>
+                    <td className="p-2 text-right">{log.responseTimeMs}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>

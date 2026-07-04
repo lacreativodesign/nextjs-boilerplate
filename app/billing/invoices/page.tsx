@@ -95,77 +95,79 @@ export default function InvoicesPage() {
 
       {!loading && !error && invoices.length > 0 && (
         <div className="table-shell">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Date
-                </th>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Period
-                </th>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Amount
-                </th>
-                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Status
-                </th>
-                <th className="p-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Download
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="border-t border-[var(--border-subtle)]">
-                  <td className="p-3 text-[var(--text-primary)]">{fmt(inv.createdAt)}</td>
-                  <td className="p-3 text-[var(--text-muted)]">
-                    {inv.periodStart && inv.periodEnd
-                      ? `${fmt(inv.periodStart)} – ${fmt(inv.periodEnd)}`
-                      : '—'}
-                  </td>
-                  <td className="p-3 font-semibold text-[var(--text-primary)]">
-                    {money(inv.amount, inv.currency)}
-                  </td>
-                  <td className="p-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
-                        STATUS_CLASS[inv.status] ??
-                        'bg-[var(--surface-muted)] text-[var(--text-muted)]'
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    {inv.pdfUrl ? (
-                      <a
-                        href={inv.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn ghost"
-                        style={{ fontSize: 12, padding: '4px 12px' }}
-                      >
-                        PDF ↓
-                      </a>
-                    ) : inv.hostedInvoiceUrl ? (
-                      <a
-                        href={inv.hostedInvoiceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn ghost"
-                        style={{ fontSize: 12, padding: '4px 12px' }}
-                      >
-                        View ↗
-                      </a>
-                    ) : (
-                      <span className="text-xs text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Date
+                  </th>
+                  <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Period
+                  </th>
+                  <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Amount
+                  </th>
+                  <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Status
+                  </th>
+                  <th className="p-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Download
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={inv.id} className="border-t border-[var(--border-subtle)]">
+                    <td className="p-3 text-[var(--text-primary)]">{fmt(inv.createdAt)}</td>
+                    <td className="p-3 text-[var(--text-muted)]">
+                      {inv.periodStart && inv.periodEnd
+                        ? `${fmt(inv.periodStart)} – ${fmt(inv.periodEnd)}`
+                        : '—'}
+                    </td>
+                    <td className="p-3 font-semibold text-[var(--text-primary)]">
+                      {money(inv.amount, inv.currency)}
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
+                          STATUS_CLASS[inv.status] ??
+                          'bg-[var(--surface-muted)] text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right">
+                      {inv.pdfUrl ? (
+                        <a
+                          href={inv.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn ghost"
+                          style={{ fontSize: 12, padding: '4px 12px' }}
+                        >
+                          PDF ↓
+                        </a>
+                      ) : inv.hostedInvoiceUrl ? (
+                        <a
+                          href={inv.hostedInvoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn ghost"
+                          style={{ fontSize: 12, padding: '4px 12px' }}
+                        >
+                          View ↗
+                        </a>
+                      ) : (
+                        <span className="text-xs text-[var(--text-muted)]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </main>

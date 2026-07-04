@@ -103,41 +103,45 @@ export default function SalesReportsPage() {
       </div>
 
       <div className="table-shell">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-[var(--table-header-bg)]">
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                ID
-              </th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Client
-              </th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Amount
-              </th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Type
-              </th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Date
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDeals.map((deal) => (
-              <tr
-                key={deal.id}
-                className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
-              >
-                <td className="p-3 text-[var(--text-primary)]">{deal.id}</td>
-                <td className="p-3 text-[var(--text-primary)]">{deal.client}</td>
-                <td className="p-3 text-[var(--text-primary)]">${deal.amount.toLocaleString()}</td>
-                <td className="p-3 capitalize text-[var(--text-primary)]">{deal.type}</td>
-                <td className="p-3 text-[var(--text-primary)]">{deal.date}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-[var(--table-header-bg)]">
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  ID
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Client
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Amount
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Type
+                </th>
+                <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Date
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredDeals.map((deal) => (
+                <tr
+                  key={deal.id}
+                  className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
+                >
+                  <td className="p-3 text-[var(--text-primary)]">{deal.id}</td>
+                  <td className="p-3 text-[var(--text-primary)]">{deal.client}</td>
+                  <td className="p-3 text-[var(--text-primary)]">
+                    ${deal.amount.toLocaleString()}
+                  </td>
+                  <td className="p-3 capitalize text-[var(--text-primary)]">{deal.type}</td>
+                  <td className="p-3 text-[var(--text-primary)]">{deal.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {filteredDeals.length === 0 && (
           <p className="p-8 text-center text-[var(--text-muted)]">
             No deals found for this filter.

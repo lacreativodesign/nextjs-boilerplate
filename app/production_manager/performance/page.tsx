@@ -91,44 +91,46 @@ export default function ProductionManagerPerformancePage() {
       />
       <section className="card p-4">
         <h2 className="font-semibold mb-3">Team performance</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr>
-              <th className="text-left">Team Member</th>
-              <th>Jobs Completed</th>
-              <th>Jobs In Progress</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.user.uid} className="border-t">
-                <td className="py-3">{row.user.displayName || row.user.name || row.user.uid}</td>
-                <td>
-                  <ProgressBar
-                    label="Jobs Completed"
-                    actual={Number(row.actuals.jobsCompleted || 0)}
-                    target={Number(row.metrics.jobsCompleted?.target || 0)}
-                    unit="count"
-                    size="sm"
-                  />
-                </td>
-                <td>
-                  <ProgressBar
-                    label="Jobs In Progress"
-                    actual={Number(row.actuals.jobsInProgress || 0)}
-                    target={Number(row.metrics.jobsInProgress?.target || 0)}
-                    unit="count"
-                    size="sm"
-                  />
-                </td>
-                <td>
-                  <button className="btn ghost">Set Targets</button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left">Team Member</th>
+                <th>Jobs Completed</th>
+                <th>Jobs In Progress</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.user.uid} className="border-t">
+                  <td className="py-3">{row.user.displayName || row.user.name || row.user.uid}</td>
+                  <td>
+                    <ProgressBar
+                      label="Jobs Completed"
+                      actual={Number(row.actuals.jobsCompleted || 0)}
+                      target={Number(row.metrics.jobsCompleted?.target || 0)}
+                      unit="count"
+                      size="sm"
+                    />
+                  </td>
+                  <td>
+                    <ProgressBar
+                      label="Jobs In Progress"
+                      actual={Number(row.actuals.jobsInProgress || 0)}
+                      target={Number(row.metrics.jobsInProgress?.target || 0)}
+                      unit="count"
+                      size="sm"
+                    />
+                  </td>
+                  <td>
+                    <button className="btn ghost">Set Targets</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-400">
