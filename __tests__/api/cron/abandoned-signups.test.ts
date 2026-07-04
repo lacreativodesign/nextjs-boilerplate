@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { classifyAbandonedTenant, deletionDateIso } from '@/app/api/cron/abandoned-signups/route';
+import { classifyAbandonedTenant, deletionDateIso } from '@/lib/tenant/abandoned-signups';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.parse('2026-07-05T00:00:00.000Z');
