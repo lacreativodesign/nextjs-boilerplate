@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 
 type FileRecord = {
   id: string;
@@ -74,25 +75,33 @@ export function FileBrowser({
         </div>
       </div>
 
-      <div className={view === 'grid' ? 'grid grid-cols-1 gap-3 md:grid-cols-2' : 'space-y-2'}>
-        {filtered.map((file) => (
-          <div key={file.id} className="rounded border p-3">
-            <div className="font-semibold">{file.name}</div>
-            <div className="text-xs text-gray-500">
-              v{file.latestVersion} • {(file.size / (1024 * 1024)).toFixed(2)} MB
+      {filtered.length === 0 ? (
+        <EmptyState
+          compact
+          title="No files here yet"
+          description="Upload a file or create a folder to get started."
+        />
+      ) : (
+        <div className={view === 'grid' ? 'grid grid-cols-1 gap-3 md:grid-cols-2' : 'space-y-2'}>
+          {filtered.map((file) => (
+            <div key={file.id} className="rounded border p-3">
+              <div className="font-semibold">{file.name}</div>
+              <div className="text-xs text-gray-500">
+                v{file.latestVersion} • {(file.size / (1024 * 1024)).toFixed(2)} MB
+              </div>
+              <div className="mt-1 text-xs">{file.tags.join(', ')}</div>
+              <div className="mt-2 flex gap-2">
+                <button className="btn ghost" onClick={() => onOpenPreview(file)}>
+                  Preview
+                </button>
+                <button className="btn ghost" onClick={() => onOpenVersions(file.id)}>
+                  Versions
+                </button>
+              </div>
             </div>
-            <div className="mt-1 text-xs">{file.tags.join(', ')}</div>
-            <div className="mt-2 flex gap-2">
-              <button className="btn ghost" onClick={() => onOpenPreview(file)}>
-                Preview
-              </button>
-              <button className="btn ghost" onClick={() => onOpenVersions(file.id)}>
-                Versions
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
