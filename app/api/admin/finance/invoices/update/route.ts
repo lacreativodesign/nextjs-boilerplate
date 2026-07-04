@@ -21,6 +21,7 @@ import {
 import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
 import { normalizeRole } from '../../../_utils';
 import { dispatchWebhookEvent } from '@/lib/webhooks/webhook-delivery';
+import { writeInvoiceVoidLedgerEntry } from '@/lib/finance/ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -345,9 +346,9 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      if (requested === 'void' && normalizeInvoiceStatus(invoice.status) === 'paid') {
+      if (requested === 'void') {
         return NextResponse.json(
-          { ok: false, error: 'Paid invoices cannot be voided.' },
+          { ok: false, error: 'Use the void action to void an invoice (a reason is required).' },
           { status: 400 },
         );
       }
@@ -397,6 +398,105 @@ export async function POST(req: Request) {
         console.error('invoice.updated webhook dispatch error:', webhookError);
       }
       return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'void') {
+      try {
+        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+      } catch {
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+      }
+
+      const reason = parseString(body?.reason).trim();
+      if (!reason) {
+        return NextResponse.json(
+          { ok: false, error: 'A void reason is required.' },
+          { status: 400 },
+        );
+      }
+
+      const currentStatus = normalizeInvoiceStatus(invoice.status);
+      if (currentStatus === 'void') {
+        return NextResponse.json({ ok: false, error: 'Invoice is already void.' }, { status: 400 });
+      }
+
+      // Append the immutable reversing ledger entry FIRST. If this write fails we abort
+      // and never flip the invoice, so a void can never exist without its audit trail.
+      const ledgerEntryId = await writeInvoiceVoidLedgerEntry({
+        tenantId,
+        invoice,
+        invoiceId: id,
+        reason,
+        actor: {
+          uid: auth.user.uid,
+          name: auth.user.name || auth.user.fullName || auth.user.displayName || '',
+        },
+      });
+
+      // Preserve all amounts for auditability; only the status and void metadata change.
+      await ref.update({
+        status: 'void',
+        voidedAt: serverTimestamp(),
+        voidedBy: auth.user.uid,
+        voidReason: reason,
+        voidLedgerEntryId: ledgerEntryId,
+        updatedAt: serverTimestamp(),
+      });
+
+      try {
+        await logEvent({
+          type: 'finance.invoice_voided',
+          title: 'Invoice voided',
+          description: `Invoice ${orderId || id} voided. Reason: ${reason}`,
+          entityType: 'invoice',
+          entityId: id,
+          actor: {
+            uid: auth.user.uid,
+            name: auth.user.name || auth.user.fullName || auth.user.displayName || '',
+          },
+          metadata: {
+            ip: getClientIp(req),
+            userAgent: req.headers.get('user-agent') || '',
+          },
+          audit: {
+            action: 'update',
+            resource: 'invoice',
+            resourceId: id,
+            changes: [
+              { field: 'status', oldValue: invoice.status || null, newValue: 'void' },
+              { field: 'voidReason', oldValue: null, newValue: reason },
+            ],
+          },
+        });
+      } catch (auditError) {
+        console.error('audit log error:', auditError);
+      }
+
+      try {
+        await dispatchWebhookEvent({
+          tenantId,
+          event: 'invoice.updated',
+          entityType: 'invoice',
+          entityId: id,
+          payload: {
+            invoiceId: id,
+            orderId,
+            status: 'void',
+            action: 'void',
+            reason,
+            ledgerEntryId,
+          },
+          actor: {
+            uid: auth.user.uid,
+            email: auth.user.email || null,
+            role: auth.user.role || null,
+          },
+        });
+      } catch (webhookError) {
+        console.error('invoice.voided webhook dispatch error:', webhookError);
+      }
+
+      return NextResponse.json({ ok: true, ledgerEntryId });
     }
 
     return NextResponse.json({ ok: false, error: 'Invalid action.' }, { status: 400 });
