@@ -21,7 +21,7 @@ import {
 import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
 import { normalizeRole } from '../../../_utils';
 import { dispatchWebhookEvent } from '@/lib/webhooks/webhook-delivery';
-import { writeInvoiceVoidLedgerEntry } from '@/lib/finance/ledger';
+import { writeFinanceLedgerEntry, writeInvoiceVoidLedgerEntry } from '@/lib/finance/ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +175,22 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+      if (currentStatus === 'paid') {
+        return NextResponse.json({ ok: false, error: 'Invoice is already paid.' }, { status: 400 });
+      }
+
+      // Manual mark-paid requires a payment method and reason (locked finance rule).
+      const method = parseString(body?.method).trim();
+      const reason = parseString(body?.reason).trim();
+      if (!method || !reason) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'A payment method and reason are required to mark an invoice paid.',
+          },
+          { status: 400 },
+        );
+      }
 
       const amountTotal = Number(invoice.amountTotalUsd || 0);
       const nextPaid = amountTotal;
@@ -184,6 +200,21 @@ export async function POST(req: Request) {
         totalAmount: amountTotal,
       });
       const balanceDue = computeBalanceDue(amountTotal, nextPaid);
+
+      // Ledger first: the paid state must never exist without its audit trail.
+      await writeFinanceLedgerEntry({
+        tenantId: String(invoice.tenantId || tenantId || ''),
+        type: 'invoice.mark_paid',
+        invoiceId: id,
+        orderId,
+        clientId,
+        amountUsd: amountTotal,
+        previousStatus: currentStatus,
+        newStatus: nextStatus,
+        reason,
+        method,
+        actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+      });
 
       await ref.update({
         status: nextStatus,
@@ -343,6 +374,15 @@ export async function POST(req: Request) {
       if (requested === 'paid') {
         return NextResponse.json(
           { ok: false, error: 'Use mark_paid to record payments.' },
+          { status: 400 },
+        );
+      }
+      if (normalizeInvoiceStatus(invoice.status) === 'paid') {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Paid invoices cannot be edited. Use a credit note or void for corrections.',
+          },
           { status: 400 },
         );
       }

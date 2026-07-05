@@ -23,6 +23,7 @@ import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions'
 import { normalizeRole } from '../../../admin/_utils';
 import { sendBizostoEventNotification } from '@/lib/integrations/slack';
 import { writeAuditLog } from '@/lib/tenant/audit';
+import { writeFinanceLedgerEntry, writeInvoiceVoidLedgerEntry } from '@/lib/finance/ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,22 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+      if (currentStatus === 'paid') {
+        return NextResponse.json({ ok: false, error: 'Invoice is already paid.' }, { status: 400 });
+      }
+
+      // Manual mark-paid requires a payment method and reason (locked finance rule).
+      const method = parseString(body?.method).trim();
+      const reason = parseString(body?.reason).trim();
+      if (!method || !reason) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'A payment method and reason are required to mark an invoice paid.',
+          },
+          { status: 400 },
+        );
+      }
 
       const amountTotal = Number(invoice.amountTotalUsd || 0);
       const nextPaid = amountTotal;
@@ -81,6 +98,21 @@ export async function POST(req: Request) {
         totalAmount: amountTotal,
       });
       const balanceDue = computeBalanceDue(amountTotal, nextPaid);
+
+      // Ledger first: the paid state must never exist without its audit trail.
+      await writeFinanceLedgerEntry({
+        tenantId: String(invoice.tenantId || tenantId || ''),
+        type: 'invoice.mark_paid',
+        invoiceId: id,
+        orderId,
+        clientId,
+        amountUsd: amountTotal,
+        previousStatus: currentStatus,
+        newStatus: nextStatus,
+        reason,
+        method,
+        actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+      });
 
       await ref.update({
         status: nextStatus,
@@ -274,9 +306,18 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      if (requested === 'void' && normalizeInvoiceStatus(invoice.status) === 'paid') {
+      if (normalizeInvoiceStatus(invoice.status) === 'paid') {
         return NextResponse.json(
-          { ok: false, error: 'Paid invoices cannot be voided.' },
+          {
+            ok: false,
+            error: 'Paid invoices cannot be edited. Use a credit note or void for corrections.',
+          },
+          { status: 400 },
+        );
+      }
+      if (requested === 'void') {
+        return NextResponse.json(
+          { ok: false, error: 'Use the void action to void an invoice (a reason is required).' },
           { status: 400 },
         );
       }
@@ -308,6 +349,63 @@ export async function POST(req: Request) {
         console.error('audit log error:', auditError);
       }
       return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'void') {
+      try {
+        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+      } catch {
+        return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+      }
+
+      const reason = parseString(body?.reason).trim();
+      if (!reason) {
+        return NextResponse.json(
+          { ok: false, error: 'A void reason is required.' },
+          { status: 400 },
+        );
+      }
+
+      const currentStatus = normalizeInvoiceStatus(invoice.status);
+      if (currentStatus === 'void') {
+        return NextResponse.json({ ok: false, error: 'Invoice is already void.' }, { status: 400 });
+      }
+
+      // Ledger first (append-only): the void must never exist without its reversal entry.
+      const ledgerEntryId = await writeInvoiceVoidLedgerEntry({
+        tenantId: String(invoice.tenantId || tenantId || ''),
+        invoice,
+        invoiceId: id,
+        reason,
+        actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+      });
+
+      await ref.update({
+        status: 'void',
+        voidedAt: serverTimestamp(),
+        voidedBy: auth.user.uid,
+        voidReason: reason,
+        ledgerEntryId,
+        updatedAt: serverTimestamp(),
+      });
+
+      await writeAuditLog({
+        tenantId: auth.user.tenantId || null,
+        actorUserId: auth.user.uid,
+        actorName: auth.user.name || auth.user.fullName || '',
+        actorRole: auth.user.role,
+        actionType: 'invoice.voided',
+        entityType: 'invoice',
+        entityId: id,
+        metadata: {
+          orderId: invoice.orderId || id,
+          previousStatus: currentStatus,
+          reason,
+          ledgerEntryId,
+        },
+      }).catch(() => undefined);
+
+      return NextResponse.json({ ok: true, ledgerEntryId });
     }
 
     return NextResponse.json({ ok: false, error: 'Invalid action.' }, { status: 400 });

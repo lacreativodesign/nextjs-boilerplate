@@ -175,13 +175,19 @@ export default function FinanceInvoicesPage() {
 
   const handleMarkPaid = async (invoice: InvoiceRecord) => {
     if (!canUpdate) return;
+    const method = window
+      .prompt('Payment method (e.g. bank transfer, cash, cheque):', 'bank transfer')
+      ?.trim();
+    if (!method) return;
+    const reason = window.prompt('Reason for manually marking this invoice paid:')?.trim();
+    if (!reason) return;
     try {
       setActionLoading(invoice.id);
       await toastPromise(
         apiFetch('/api/finance/invoices/mark-paid', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: invoice.id, isDeleted: true }),
+          body: JSON.stringify({ id: invoice.id, method, reason }),
         }).then(async (res) => {
           const data = await res.json().catch(() => null);
           if (!res.ok || !data?.ok) {

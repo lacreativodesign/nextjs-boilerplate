@@ -18,6 +18,7 @@ import {
 import { generateInvoiceToken } from '@/lib/finance/invoiceToken';
 import { docTenantId, normalizeTenantId } from '@/lib/tenant';
 import { logEvent } from '@/lib/audit';
+import { writeFinanceLedgerEntry } from '@/lib/finance/ledger';
 import { assertPermission, Permission } from '../../../../lib/permissions';
 import { normalizeRole } from '../../../admin/_utils';
 import { createInvoiceSchema } from '@/lib/validations/invoice';
@@ -339,6 +340,20 @@ export async function POST(req: Request) {
     };
 
     await docRef.set(invoiceData);
+
+    await writeFinanceLedgerEntry({
+      tenantId,
+      type: 'invoice.created',
+      invoiceId: docRef.id,
+      orderId,
+      clientId,
+      amountUsd: Number(invoiceData.amountTotalUsd || 0),
+      newStatus: String(invoiceData.status || ''),
+      actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+    }).catch((ledgerError) => {
+      logError(ledgerError, { route: 'finance.invoice_created.ledger' });
+    });
+
     await incrementTenantStats(tenantId, {
       invoicesCreated: 1,
       invoiceAmountTotalBaseDelta: totalInBase,
