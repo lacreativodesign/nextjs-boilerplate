@@ -10,6 +10,7 @@ import {
 import { createNotification, getUserIdsByRoles } from '@/lib/notifications';
 import { queueClientActivationInvite } from '@/lib/clientActivation';
 import { logEvent } from '@/lib/audit';
+import { writeFinanceLedgerEntry } from '@/lib/finance/ledger';
 import { getClientIp } from '@/lib/security';
 import { CurrencyCode, getCurrency } from '@/lib/finance/currencies';
 import { generateInvoiceToken } from '@/lib/finance/invoiceToken';
@@ -184,9 +185,25 @@ export async function POST(req: Request) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
+      // Tenant isolation: without this, docTenantId() falls back to DEFAULT_TENANT_ID
+      // and the invoice silently reads as belonging to the platform tenant.
+      tenantId: auth.user.tenantId,
     };
 
     await ref.set(invoiceData);
+
+    await writeFinanceLedgerEntry({
+      tenantId: auth.user.tenantId,
+      type: 'invoice.created',
+      invoiceId: ref.id,
+      orderId,
+      clientId,
+      amountUsd: Number(invoiceData.amountTotalUsd || 0),
+      newStatus: String(invoiceData.status || ''),
+      actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+    }).catch((ledgerError) => {
+      console.error('admin invoice create ledger error:', ledgerError);
+    });
 
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
     const financeIds = await getUserIdsByRoles(

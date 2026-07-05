@@ -199,13 +199,19 @@ function FinanceInvoicesContent() {
 
   const handleMarkPaid = async (invoice: InvoiceRecord) => {
     if (!canAdmin) return;
+    const method = window
+      .prompt('Payment method (e.g. bank transfer, cash, cheque):', 'bank transfer')
+      ?.trim();
+    if (!method) return;
+    const reason = window.prompt('Reason for manually marking this invoice paid:')?.trim();
+    if (!reason) return;
     try {
       setActionLoading(invoice.id);
       await toastPromise(
         apiFetch('/api/admin/finance/invoices/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: invoice.id, action: 'mark_paid' }),
+          body: JSON.stringify({ id: invoice.id, action: 'mark_paid', method, reason }),
         }).then(async (res) => {
           const data = await res.json();
           if (!res.ok || !data.ok) {
