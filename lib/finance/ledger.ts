@@ -18,7 +18,22 @@ import { FieldValue } from 'firebase-admin/firestore';
  *   actorUid, actorName
  *   createdAt       server timestamp (immutable)
  */
-export type FinanceLedgerType = 'invoice_void';
+export type FinanceLedgerType = 'invoice_void' | 'payment.succeeded' | 'credit_note.created';
+
+export interface WriteFinanceLedgerParams {
+  tenantId: string;
+  type: FinanceLedgerType;
+  invoiceId?: string;
+  orderId?: string;
+  clientId?: string;
+  paymentId?: string;
+  amountUsd?: number;
+  previousStatus?: string;
+  newStatus?: string;
+  reason?: string;
+  method?: string;
+  actor: { uid: string; name?: string };
+}
 
 export interface WriteInvoiceVoidLedgerParams {
   tenantId: string;
@@ -51,5 +66,34 @@ export async function writeInvoiceVoidLedgerEntry(
   };
 
   const docRef = await adminDb.collection('finance_ledger').add(entry);
+  return docRef.id;
+}
+
+/**
+ * Builds a ledger entry document without writing it. Use this with tx.set()
+ * when the ledger entry must land atomically with the financial mutation
+ * inside a Firestore transaction ("same transaction where practical").
+ */
+export function buildFinanceLedgerEntry(params: WriteFinanceLedgerParams) {
+  return {
+    tenantId: params.tenantId,
+    type: params.type,
+    invoiceId: params.invoiceId || '',
+    orderId: params.orderId || '',
+    clientId: params.clientId || '',
+    paymentId: params.paymentId || '',
+    amountUsd: Number(params.amountUsd || 0),
+    previousStatus: params.previousStatus || '',
+    newStatus: params.newStatus || '',
+    reason: params.reason || '',
+    method: params.method || '',
+    actorUid: params.actor.uid,
+    actorName: params.actor.name || '',
+    createdAt: FieldValue.serverTimestamp(),
+  };
+}
+
+export async function writeFinanceLedgerEntry(params: WriteFinanceLedgerParams): Promise<string> {
+  const docRef = await adminDb.collection('finance_ledger').add(buildFinanceLedgerEntry(params));
   return docRef.id;
 }
