@@ -8,6 +8,7 @@ import { PLAN_MODULES } from '../../../../app/config/plans';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '../../../../lib/passwordSetup';
 import { createRoleNotifications, type NotificationType } from '@/lib/notifications';
 import { writeAuditLog } from '@/lib/tenant/audit';
+import { applySubscriptionState } from '@/lib/billing/apply-subscription-state';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -189,28 +190,26 @@ async function linkExistingTenant({
   stripeCustomerId,
   stripeSubscriptionId,
   billingCycle,
+  eventId,
 }: {
   tenantId: string;
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   billingCycle: BillingCycle;
+  eventId?: string;
 }): Promise<boolean> {
-  const now = admin.firestore.FieldValue.serverTimestamp();
-  const ref = adminDb.collection('tenants').doc(tenantId);
-  const snap = await ref.get();
-  if (!snap.exists) return false;
-  await ref.set(
-    {
-      stripeCustomerId,
-      stripeSubscriptionId,
-      billingStatus: 'active',
-      billingCycle,
-      status: 'active',
-      updatedAt: now,
-    },
-    { merge: true },
-  );
-  return true;
+  // Canonical billing state service: activates billing, stores Stripe IDs and
+  // billing cycle, and writes a billing_state_audit record. Returns false when
+  // the tenant does not exist so the caller can fall back to legacy handling.
+  const result = await applySubscriptionState({
+    tenantId,
+    source: 'checkout.linked',
+    eventId,
+    stripeCustomerId,
+    stripeSubscriptionId,
+    billingCycle,
+  });
+  return result.tenantExists;
 }
 
 function resolveCheckoutPlan(value: unknown): keyof typeof PLAN_MODULES {
@@ -487,6 +486,7 @@ export async function POST(req: Request) {
             stripeCustomerId,
             stripeSubscriptionId,
             billingCycle,
+            eventId: event.id,
           });
           if (linked) {
             await processedRef.set({
