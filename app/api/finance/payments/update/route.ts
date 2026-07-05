@@ -20,6 +20,7 @@ import {
 } from '@/lib/finance/status';
 import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
 import { normalizeRole } from '../../../admin/_utils';
+import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,23 @@ export async function POST(req: Request) {
             paidAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
+
+          // Ledger entry lands atomically with the payment mutation.
+          tx.set(
+            adminDb.collection('finance_ledger').doc(),
+            buildFinanceLedgerEntry({
+              tenantId: String(paymentData.tenantId || tenantId || ''),
+              type: 'payment.succeeded',
+              paymentId: id,
+              invoiceId,
+              clientId,
+              amountUsd: Number(paymentData.amountUsd || 0),
+              previousStatus: currentPaymentStatus,
+              newStatus: 'succeeded',
+              method: String(paymentData.method || ''),
+              actor: { uid: auth.user.uid, name: actorName },
+            }),
+          );
 
           if (!invoiceId) {
             return;

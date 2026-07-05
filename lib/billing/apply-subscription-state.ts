@@ -29,7 +29,8 @@ export type SubscriptionLifecycleSource =
   | 'subscription.updated'
   | 'subscription.deleted'
   | 'payment.succeeded'
-  | 'payment.failed';
+  | 'payment.failed'
+  | 'lock.advanced';
 
 const KNOWN_PAID_TIERS = ['starter', 'pro', 'enterprise'] as const;
 export type PaidTier = (typeof KNOWN_PAID_TIERS)[number];
@@ -112,7 +113,10 @@ function unixToIso(value: number | null | undefined): string | null {
 
 export interface ApplySubscriptionStateInput {
   tenantId: string;
-  source: Exclude<SubscriptionLifecycleSource, 'payment.succeeded' | 'payment.failed'>;
+  source: Exclude<
+    SubscriptionLifecycleSource,
+    'payment.succeeded' | 'payment.failed' | 'lock.advanced'
+  >;
   eventId?: string;
   /** Raw plan string from Stripe metadata (bizosto_plan). Unknown tiers fail closed. */
   plan?: unknown;
@@ -303,5 +307,101 @@ export async function applyPaymentFailed(input: {
     });
 
     return { ok: true, tenantExists: true, derived, failedPaymentCount };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Dunning lock-ladder advancement (locked founder decision):
+// soft lock (read-only) from day 8 of the failed-payment ladder, hard lock
+// from day 21. States are stamped as dates by applyPaymentFailed; the daily
+// billing-locks cron advances subscriptionState when those dates pass.
+// ---------------------------------------------------------------------------
+
+const PROTECTED_TENANTS = new Set(['bizosto', 'bizosto-demo']);
+
+export type LockAdvance = 'none' | 'soft_locked' | 'hard_locked';
+
+export interface LockLadderTenantInput {
+  tenantId: string;
+  subscriptionState?: string;
+  billingStatus?: string;
+  softLockAt?: string | null;
+  hardLockAt?: string | null;
+}
+
+export function classifyLockAdvance(input: LockLadderTenantInput, nowMs: number): LockAdvance {
+  if (PROTECTED_TENANTS.has(input.tenantId)) return 'none';
+  if (String(input.billingStatus || '') !== 'past_due') return 'none';
+
+  const state = String(input.subscriptionState || '');
+  if (state !== 'grace' && state !== 'soft_locked') return 'none';
+
+  const hardAt = input.hardLockAt ? new Date(input.hardLockAt).getTime() : NaN;
+  if (Number.isFinite(hardAt) && nowMs >= hardAt) {
+    return 'hard_locked';
+  }
+
+  const softAt = input.softLockAt ? new Date(input.softLockAt).getTime() : NaN;
+  if (state === 'grace' && Number.isFinite(softAt) && nowMs >= softAt) {
+    return 'soft_locked';
+  }
+
+  return 'none';
+}
+
+export async function applyLockAdvance(input: {
+  tenantId: string;
+  to: Exclude<LockAdvance, 'none'>;
+  eventId?: string;
+}): Promise<ApplyResult> {
+  const tenantId = String(input.tenantId || '').trim();
+  if (!tenantId || PROTECTED_TENANTS.has(tenantId)) {
+    return { ok: false, tenantExists: false, derived: {} };
+  }
+
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
+  const auditRef = adminDb.collection('billing_state_audit').doc();
+  const nowIso = new Date().toISOString();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(tenantRef);
+    if (!snap.exists) {
+      return { ok: false, tenantExists: false, derived: {} };
+    }
+    const before = snap.data() as Record<string, unknown>;
+
+    // Re-derive inside the transaction so a payment that succeeded between the
+    // cron's read and this write can never be overwritten with a lock.
+    const confirmed = classifyLockAdvance(
+      {
+        tenantId,
+        subscriptionState: String(before.subscriptionState || ''),
+        billingStatus: String(before.billingStatus || ''),
+        softLockAt: (before.softLockAt as string | null) ?? null,
+        hardLockAt: (before.hardLockAt as string | null) ?? null,
+      },
+      Date.now(),
+    );
+    if (confirmed !== input.to) {
+      return { ok: false, tenantExists: true, derived: {} };
+    }
+
+    const derived: Record<string, unknown> = {
+      subscriptionState: input.to,
+      updatedAt: nowIso,
+    };
+
+    tx.set(tenantRef, derived, { merge: true });
+    tx.set(auditRef, {
+      tenantId,
+      source: 'lock.advanced',
+      eventId: input.eventId || null,
+      warning: null,
+      before: auditSnapshot(before),
+      after: auditSnapshot({ ...before, ...derived }),
+      at: nowIso,
+    });
+
+    return { ok: true, tenantExists: true, derived };
   });
 }

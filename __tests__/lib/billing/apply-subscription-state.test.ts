@@ -26,6 +26,8 @@ import {
   applySubscriptionState,
   applyPaymentSucceeded,
   applyPaymentFailed,
+  applyLockAdvance,
+  classifyLockAdvance,
   deriveLockDates,
   isKnownPaidTier,
 } from '@/lib/billing/apply-subscription-state';
@@ -185,6 +187,81 @@ describe('canonical billing state service (P0-3)', () => {
     const failure = audits.find((a) => a.eventId === 'evt_11') as any;
     expect(failure.source).toBe('payment.failed');
     expect(failure.after.failedPaymentCount).toBe(1);
+  });
+
+  it('classifyLockAdvance walks the date ladder and never touches safe tenants', () => {
+    const now = Date.parse('2026-07-05T00:00:00.000Z');
+    const past = new Date(now - 1000).toISOString();
+    const future = new Date(now + 1000).toISOString();
+    const base = {
+      tenantId: 'tenant_a',
+      billingStatus: 'past_due',
+      subscriptionState: 'grace',
+      softLockAt: past,
+      hardLockAt: future,
+    };
+
+    expect(classifyLockAdvance(base, now)).toBe('soft_locked');
+    expect(classifyLockAdvance({ ...base, hardLockAt: past }, now)).toBe('hard_locked');
+    expect(
+      classifyLockAdvance({ ...base, subscriptionState: 'soft_locked', hardLockAt: past }, now),
+    ).toBe('hard_locked');
+    // Already soft-locked and hard date not reached: no repeat soft lock.
+    expect(classifyLockAdvance({ ...base, subscriptionState: 'soft_locked' }, now)).toBe('none');
+    // Active billing, protected tenants, or missing dates are never advanced.
+    expect(classifyLockAdvance({ ...base, billingStatus: 'active' }, now)).toBe('none');
+    expect(classifyLockAdvance({ ...base, tenantId: 'bizosto' }, now)).toBe('none');
+    expect(classifyLockAdvance({ ...base, softLockAt: null, hardLockAt: null }, now)).toBe('none');
+    expect(classifyLockAdvance({ ...base, subscriptionState: 'active' }, now)).toBe('none');
+  });
+
+  it('applyLockAdvance advances via the canonical service with an audit record', async () => {
+    const past = new Date(Date.now() - 1000).toISOString();
+    await db
+      .collection('tenants')
+      .doc('tenant_a')
+      .set(
+        {
+          billingStatus: 'past_due',
+          subscriptionState: 'grace',
+          softLockAt: past,
+          hardLockAt: new Date(Date.now() + 86_400_000).toISOString(),
+        },
+        { merge: true },
+      );
+
+    const result = await applyLockAdvance({ tenantId: 'tenant_a', to: 'soft_locked' });
+    expect(result.ok).toBe(true);
+
+    const t = await tenant();
+    expect(t.subscriptionState).toBe('soft_locked');
+    expect(t.billingStatus).toBe('past_due');
+
+    const audits = await auditRecords();
+    expect(audits).toHaveLength(1);
+    expect(audits[0].source).toBe('lock.advanced');
+  });
+
+  it('applyLockAdvance refuses when the transaction re-check disagrees (payment recovered)', async () => {
+    await db
+      .collection('tenants')
+      .doc('tenant_a')
+      .set(
+        {
+          billingStatus: 'active',
+          subscriptionState: 'active',
+          softLockAt: new Date(Date.now() - 1000).toISOString(),
+          hardLockAt: new Date(Date.now() - 500).toISOString(),
+        },
+        { merge: true },
+      );
+
+    const result = await applyLockAdvance({ tenantId: 'tenant_a', to: 'hard_locked' });
+    expect(result.ok).toBe(false);
+
+    const t = await tenant();
+    expect(t.subscriptionState).toBe('active');
+    expect(await auditRecords()).toHaveLength(0);
   });
 
   it('isKnownPaidTier accepts exactly the three launch tiers', () => {
