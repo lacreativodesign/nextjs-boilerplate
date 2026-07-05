@@ -4,33 +4,13 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { sendPaymentConfirmationEmail } from '@/lib/email/onboarding-emails';
 import { sendEmail } from '@/lib/email/email-service';
-import { resolvePlanModules, type PlanTier } from '@/lib/tenant/plan-access';
+import {
+  applySubscriptionState,
+  applyPaymentSucceeded,
+  applyPaymentFailed,
+} from '@/lib/billing/apply-subscription-state';
 
 export const runtime = 'nodejs';
-
-function mapStripeStatusToSubscriptionState(status: string) {
-  switch (status) {
-    case 'active':
-      return 'active';
-    case 'past_due':
-      return 'grace';
-    case 'unpaid':
-      return 'soft_locked';
-    case 'canceled':
-      return 'hard_locked';
-    case 'trialing':
-      return 'active';
-    default:
-      return 'grace';
-  }
-}
-
-function normalizeBillingStatus(status: string): 'active' | 'past_due' | 'canceled' {
-  if (status === 'active' || status === 'trialing') return 'active';
-  if (status === 'canceled') return 'canceled';
-  // past_due, unpaid, incomplete, incomplete_expired, paused -> restrict
-  return 'past_due';
-}
 
 async function resolveTenantIdFromInvoice(
   stripe: Stripe,
@@ -106,33 +86,23 @@ export async function POST(req: Request) {
         if (!tenantId) break;
 
         const updatedPlan = String(subscription.metadata?.bizosto_plan || '').trim();
-        // Keep module access in lockstep with the plan on every change. Only resolve a
-        // module map for a recognized tier — never grant modules for an unknown plan
-        // string (fail closed, matching the checkout webhook's plan resolution).
-        const isKnownPlan =
-          updatedPlan === 'starter' || updatedPlan === 'pro' || updatedPlan === 'enterprise';
-        const planModules = isKnownPlan ? resolvePlanModules(updatedPlan as PlanTier) : null;
-        await adminDb
-          .collection('tenants')
-          .doc(tenantId)
-          .set(
-            {
-              subscriptionState: mapStripeStatusToSubscriptionState(subscription.status),
-              billingStatus: normalizeBillingStatus(subscription.status),
-              currentPeriodEnd: subscription.current_period_end
-                ? new Date(subscription.current_period_end * 1000).toISOString()
-                : null,
-              cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-              stripeSubscriptionId: subscription.id,
-              ...(isKnownPlan
-                ? { plan: updatedPlan, modules: planModules, modulesEnabled: planModules }
-                : updatedPlan
-                  ? { plan: updatedPlan }
-                  : {}),
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true },
-          );
+        // Canonical billing state service: derives subscriptionState, billingStatus,
+        // plan, modules, limits, period end and cancelAtPeriodEnd in one place, fails
+        // closed on unknown tiers, and writes a billing_state_audit record.
+        await applySubscriptionState({
+          tenantId,
+          source:
+            event.type === 'customer.subscription.created'
+              ? 'subscription.created'
+              : 'subscription.updated',
+          eventId: event.id,
+          plan: updatedPlan,
+          stripeStatus: subscription.status,
+          stripeSubscriptionId: subscription.id,
+          currentPeriodEnd: subscription.current_period_end ?? null,
+          cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+          trialEnd: subscription.trial_end ?? null,
+        });
 
         if (updatedPlan) {
           sendEmail({
@@ -167,15 +137,12 @@ export async function POST(req: Request) {
         const tenantId = String(subscription.metadata?.tenantId || '').trim();
         if (!tenantId) break;
 
-        await adminDb.collection('tenants').doc(tenantId).set(
-          {
-            subscriptionState: 'hard_locked',
-            billingStatus: 'canceled',
-            plan: 'trial',
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true },
-        );
+        await applySubscriptionState({
+          tenantId,
+          source: 'subscription.deleted',
+          eventId: event.id,
+          stripeSubscriptionId: subscription.id,
+        });
 
         sendEmail({
           to: 'admin@bizosto.com',
@@ -210,16 +177,7 @@ export async function POST(req: Request) {
         const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
         if (!tenantId) break;
 
-        await adminDb.collection('tenants').doc(tenantId).set(
-          {
-            subscriptionState: 'active',
-            billingStatus: 'active',
-            failedPaymentCount: 0,
-            lastPaymentAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true },
-        );
+        await applyPaymentSucceeded({ tenantId, eventId: event.id });
 
         // Send payment confirmation email to tenant admin
         try {
@@ -259,23 +217,9 @@ export async function POST(req: Request) {
         const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
         if (!tenantId) break;
 
-        const tenantRef = adminDb.collection('tenants').doc(tenantId);
-        let failedCount = 0;
-        await adminDb.runTransaction(async (tx) => {
-          const snap = await tx.get(tenantRef);
-          const currentCount = Number(snap.data()?.failedPaymentCount || 0);
-          failedCount = currentCount + 1;
-
-          tx.set(
-            tenantRef,
-            {
-              failedPaymentCount: failedCount,
-              subscriptionState: failedCount >= 3 ? 'soft_locked' : 'grace',
-              billingStatus: 'past_due',
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true },
-          );
+        const { failedPaymentCount: failedCount } = await applyPaymentFailed({
+          tenantId,
+          eventId: event.id,
         });
 
         sendEmail({

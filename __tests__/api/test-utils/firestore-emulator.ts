@@ -144,6 +144,35 @@ class MockBatch {
   }
 }
 
+class MockTransaction {
+  private readonly writes: Array<() => Promise<void>> = [];
+
+  async get(target: MockDocRef | MockQuery) {
+    return target.get();
+  }
+
+  set(ref: MockDocRef, data: FirestoreRecord, options?: { merge?: boolean }) {
+    this.writes.push(() => ref.set(data, options));
+    return this;
+  }
+
+  update(ref: MockDocRef, data: FirestoreRecord) {
+    this.writes.push(() => ref.update(data));
+    return this;
+  }
+
+  delete(ref: MockDocRef) {
+    this.writes.push(() => ref.delete());
+    return this;
+  }
+
+  async commit() {
+    for (const write of this.writes) {
+      await write();
+    }
+  }
+}
+
 export class FirestoreEmulator {
   private readonly db = new Map<string, Map<string, FirestoreRecord>>();
   private seq = 0;
@@ -160,6 +189,15 @@ export class FirestoreEmulator {
 
   batch() {
     return new MockBatch();
+  }
+
+  // Mirrors Firestore's runTransaction shape closely enough for API tests:
+  // reads happen live, writes queue and apply after the callback resolves.
+  async runTransaction<T>(fn: (tx: MockTransaction) => Promise<T>): Promise<T> {
+    const tx = new MockTransaction();
+    const result = await fn(tx);
+    await tx.commit();
+    return result;
   }
 
   nextId() {
