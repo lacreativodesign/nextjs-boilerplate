@@ -1,84 +1,28 @@
 import fs from 'fs';
 import path from 'path';
+import { classifyRouteSource, PUBLIC_ROUTES, type RouteContract } from '@/lib/api/route-contract';
 
 /**
- * Static guard-coverage gate.
- * Every mutation route (POST/PUT/PATCH/DELETE) under app/api must either
- * reference an approved auth/guard mechanism, or be on the reviewed PUBLIC
- * allowlist below. This prevents a future route from shipping wide open.
+ * Route contract gate (P0-5).
+ *
+ * Every app/api route file that exports ANY handler — reads (GET/HEAD) as well
+ * as mutations (POST/PUT/PATCH/DELETE) — must classify into exactly one
+ * contract in lib/api/route-contract.ts. Unclassifiable routes fail the build.
+ *
+ * The classifier also enforces per-contract evidence:
+ * - cron/* paths must verify CRON_SECRET / x-vercel-cron
+ * - webhook-named routes must verify a provider signature
+ * - super_admin/* paths must call requireSuperAdmin
+ * - public routes must be individually reviewed and justified in PUBLIC_ROUTES
+ *
  * If you add a route that legitimately needs to be public, add it to
- * PUBLIC_ALLOWLIST with a justifying comment in the same PR.
+ * PUBLIC_ROUTES with a justification in the same PR.
  */
 
 const API_ROOT = path.join(process.cwd(), 'app', 'api');
 
-// Approved auth / guard mechanisms (named guards, internal signing, webhook
-// signatures, ingest keys). Matched against raw file text. Rate limiting and a
-// spoofable x-tenant-id header are NOT authorization and are intentionally excluded.
-const GUARD_PATTERNS = [
-  'require[A-Z][A-Za-z]+',
-  'getCurrentUser',
-  'getCurrentUserOrThrow',
-  'getSessionUser',
-  'getAmUser',
-  'getProductionUser',
-  'getResourcePlannerUser',
-  'getUserProfile',
-  'can[A-Z][A-Za-z]+',
-  'assertPermission',
-  'ensureClientPortalAccess',
-  'ensureClientAccountActivation',
-  'getTenantIdForRequest',
-  'getTenantIdForRequestOrThrow',
-  'authenticateIngest',
-  'INTERNAL_REQUEST_SIGNING_SECRET',
-  'INTERNAL_USAGE_LOG_KEY',
-  'x-internal-secret',
-  'x-internal-usage-key',
-  'CRON_SECRET',
-  'stripe-signature',
-  'constructEvent',
-  'verifyAndConstructBillingEvent',
-  'verifySlackSignature',
-  'verify[A-Za-z]+Signature',
-  '[a-z]+-signature',
-  'x-slack-signature',
-  'x-api-key',
-];
-const GUARD_RE = new RegExp(GUARD_PATTERNS.join('|'));
-
-// Detects an exported mutation handler.
-const MUTATION_RE =
-  /export\s+(async\s+)?function\s+(POST|PUT|PATCH|DELETE)\b|export\s+const\s+(POST|PUT|PATCH|DELETE)\s*=/;
-
-// Reviewed routes that are intentionally public (pre-auth flows protected by
-// OTP/invite/reset tokens, public invoice payment tokens, deprecated 410 stubs,
-// browser telemetry, redirect-only, versioned proxy catch-alls, and the Stripe
-// checkout entrypoint hardened in the Stripe sprint).
-const PUBLIC_ALLOWLIST = new Set<string>([
-  'auth/request-password-reset',
-  'auth/send-otp',
-  'auth/verify-otp',
-  'auth/consume-set-password-token',
-  'signup',
-  'session-login',
-  'login-stamp',
-  'logout',
-  'client/invites/complete',
-  'users/accept-invitation',
-  'public/invoice/[invoiceId]/pay',
-  'public/invoice/[invoiceId]/confirm',
-  'monitoring/ingest',
-  'invoices/search',
-  'v1/[[...path]]',
-  'v2/[[...path]]',
-  'webhooks/stripe',
-  'payments/webhooks',
-  'stripe/checkout',
-  // Deprecated 410 stubs: return 410 unconditionally, no auth needed, no data access.
-  'billing/subscribe',
-  'billing/webhook',
-]);
+const HANDLER_RE =
+  /export\s+(async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b|export\s+const\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*=/;
 
 function walk(dir: string): string[] {
   let out: string[] = [];
@@ -90,27 +34,85 @@ function walk(dir: string): string[] {
   return out;
 }
 
-describe('route guard coverage', () => {
-  it('every mutation route is guarded or explicitly allowlisted', () => {
-    const violations: string[] = [];
-    for (const file of walk(API_ROOT)) {
+function collectRoutes(): Array<{ rel: string; contract: RouteContract | null }> {
+  return walk(API_ROOT)
+    .map((file) => {
       const src = fs.readFileSync(file, 'utf8');
-      if (!MUTATION_RE.test(src)) continue;
+      if (!HANDLER_RE.test(src)) return null;
       const rel = path
         .relative(API_ROOT, file)
         .replace(/\\/g, '/')
         .replace(/\/route\.ts$/, '');
-      if (GUARD_RE.test(src)) continue;
-      if (PUBLIC_ALLOWLIST.has(rel)) continue;
-      violations.push(rel);
-    }
-    if (violations.length > 0) {
+      return { rel, contract: classifyRouteSource(rel, src) };
+    })
+    .filter((r): r is { rel: string; contract: RouteContract | null } => r !== null);
+}
+
+describe('route contract coverage (P0-5)', () => {
+  const routes = collectRoutes();
+
+  it('covers the full route surface', () => {
+    // Guards against the walker silently breaking: the repo has 600+ routes.
+    expect(routes.length).toBeGreaterThan(600);
+  });
+
+  it('every route (including GET) has a contract', () => {
+    const unclassified = routes.filter((r) => r.contract === null).map((r) => r.rel);
+    if (unclassified.length > 0) {
       throw new Error(
-        'Unguarded mutation route(s) found. Add an auth guard, or if ' +
-          'intentionally public, add to PUBLIC_ALLOWLIST with justification:\n' +
-          violations.map((v) => '  - ' + v).join('\n'),
+        'Unclassified route(s) found. Add an auth guard, or if intentionally ' +
+          'public, add to PUBLIC_ROUTES in lib/api/route-contract.ts with a ' +
+          'justification:\n' +
+          unclassified.map((v) => '  - ' + v).join('\n'),
       );
     }
-    expect(violations).toEqual([]);
+    expect(unclassified).toEqual([]);
+  });
+
+  it('every cron route verifies the cron secret', () => {
+    const bad = routes.filter((r) => r.rel.startsWith('cron/') && r.contract !== 'cron');
+    expect(bad.map((r) => r.rel)).toEqual([]);
+  });
+
+  it('every super_admin route is classified super_admin (requireSuperAdmin present)', () => {
+    const bad = routes.filter(
+      (r) => r.rel.startsWith('super_admin/') && r.contract !== 'super_admin',
+    );
+    expect(bad.map((r) => r.rel)).toEqual([]);
+  });
+
+  it('webhook-named routes verify signatures or are deprecated 410 stubs', () => {
+    const stubs = new Set(['webhooks/stripe', 'payments/webhooks', 'billing/webhook']);
+    const bad = routes.filter(
+      (r) =>
+        /(^|\/)webhooks?(\/|$)|-webhook(\/|$)/.test(r.rel) &&
+        !stubs.has(r.rel) &&
+        r.contract !== 'webhook' &&
+        // Nested tool routes under webhooks/subscriptions manage subscription
+        // records behind user auth; they are not inbound webhook receivers.
+        r.contract !== 'tenant_scoped' &&
+        r.contract !== 'authenticated',
+    );
+    expect(bad.map((r) => r.rel)).toEqual([]);
+  });
+
+  it('every PUBLIC_ROUTES entry has a non-empty justification', () => {
+    const missing = Object.entries(PUBLIC_ROUTES)
+      .filter(([, why]) => !why || !why.trim())
+      .map(([route]) => route);
+    expect(missing).toEqual([]);
+  });
+
+  it('PUBLIC_ROUTES has no stale entries for routes that no longer exist', () => {
+    const existing = new Set(routes.map((r) => r.rel));
+    const stale = Object.keys(PUBLIC_ROUTES).filter((route) => !existing.has(route));
+    expect(stale).toEqual([]);
+  });
+
+  it('the public surface does not silently grow', () => {
+    const publicCount = routes.filter((r) => r.contract === 'public').length;
+    // Update this number ONLY when a new public route has been reviewed and
+    // justified in PUBLIC_ROUTES in the same PR.
+    expect(publicCount).toBeLessThanOrEqual(Object.keys(PUBLIC_ROUTES).length);
   });
 });
