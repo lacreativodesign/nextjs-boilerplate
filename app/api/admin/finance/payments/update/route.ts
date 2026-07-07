@@ -276,49 +276,17 @@ export async function POST(req: Request) {
     }
 
     if (action === 'refund') {
-      await ref.update({
-        status: 'refunded',
-        updatedAt: serverTimestamp(),
-      });
-
-      await createFinanceEvent({
-        type: 'finance.payment_refunded',
-        title: 'Payment refunded',
-        description: `Payment ${id} refunded for ${clientName || 'client'}.`,
-        entityType: 'payment',
-        entityId: id,
-        createdByUid: auth.user.uid,
-        createdByName: auth.user.name || auth.user.fullName || auth.user.displayName || '',
-        tenantId: auth.user.tenantId,
-      });
-
-      try {
-        await logEvent({
-          type: 'finance.payment_refunded',
-          title: 'Payment refunded',
-          description: `Payment ${id} refunded for ${clientName || 'client'}.`,
-          entityType: 'payment',
-          entityId: id,
-          actor: {
-            uid: auth.user.uid,
-            name: auth.user.name || auth.user.fullName || auth.user.displayName || '',
-          },
-          metadata: {
-            ip: getClientIp(req),
-            userAgent: req.headers.get('user-agent') || '',
-          },
-          audit: {
-            action: 'update',
-            resource: 'payment',
-            resourceId: id,
-            changes: [{ field: 'status', oldValue: payment.status || null, newValue: 'refunded' }],
-          },
-        });
-      } catch (auditError) {
-        console.error('audit log error:', auditError);
-      }
-
-      return NextResponse.json({ ok: true });
+      // Refund state can only change through the canonical Stripe refund route
+      // (/api/payments/refund), which executes the refund on Stripe and writes
+      // refund.created + payment.refunded finance ledger entries atomically.
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Refunds must be processed through Stripe. Use the refund action on the Finance payments screen, which calls /api/payments/refund.',
+        },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ ok: false, error: 'Invalid action.' }, { status: 400 });

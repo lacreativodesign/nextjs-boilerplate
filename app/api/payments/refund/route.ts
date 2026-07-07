@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { requireFinance } from '../../finance/_utils';
 import { assertPermission, Permission } from '../../../lib/permissions';
 import { createStripeRefund, getStripeClient } from '@/lib/payments/stripe';
+import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
@@ -132,6 +133,38 @@ export async function POST(req: Request) {
           updatedAt: now,
         },
         { merge: true },
+      );
+
+      // Append-only finance ledger, atomic with the refund state change.
+      // Deterministic ids keyed to the Stripe refund id keep retries idempotent.
+      const nextStatus = nextRefunded >= Number(current.amountUsd || 0) ? 'refunded' : 'succeeded';
+      tx.set(
+        adminDb.collection('finance_ledger').doc(`refund_created_${refund.id}`),
+        buildFinanceLedgerEntry({
+          tenantId: String(current.tenantId || ''),
+          type: 'refund.created',
+          paymentId,
+          invoiceId: String(current.invoiceId || ''),
+          clientId: String(current.clientId || ''),
+          amountUsd: -refundAmountUsd,
+          reason: reason || 'other',
+          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+        }),
+      );
+      tx.set(
+        adminDb.collection('finance_ledger').doc(`payment_refunded_${refund.id}`),
+        buildFinanceLedgerEntry({
+          tenantId: String(current.tenantId || ''),
+          type: 'payment.refunded',
+          paymentId,
+          invoiceId: String(current.invoiceId || ''),
+          clientId: String(current.clientId || ''),
+          amountUsd: -refundAmountUsd,
+          previousStatus: String(current.status || ''),
+          newStatus: nextStatus,
+          reason: reason || 'other',
+          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+        }),
       );
     });
 

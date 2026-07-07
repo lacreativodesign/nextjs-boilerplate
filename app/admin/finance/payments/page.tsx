@@ -157,11 +157,20 @@ export default function FinancePaymentsPage() {
   const handleAction = async (payment: PaymentRecord, action: 'mark_paid' | 'refund') => {
     try {
       setActionLoading(payment.id);
-      const res = await apiFetch('/api/admin/finance/payments/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: payment.id, action }),
-      });
+      // Refunds go through the canonical Stripe refund route so the refund is
+      // executed on Stripe and ledgered; other actions use the admin update route.
+      const res =
+        action === 'refund'
+          ? await apiFetch('/api/payments/refund', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId: payment.id, reason: 'requested_by_customer' }),
+            })
+          : await apiFetch('/api/admin/finance/payments/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: payment.id, action }),
+            });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || 'Unable to update payment.');
