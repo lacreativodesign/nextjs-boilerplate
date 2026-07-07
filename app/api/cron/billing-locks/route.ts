@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { applyLockAdvance, classifyLockAdvance } from '@/lib/billing/apply-subscription-state';
+import { executeDuePendingDowngrades } from '@/lib/billing/pending-downgrade';
 
 export const runtime = 'nodejs';
 
@@ -67,7 +68,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, softLocked, hardLocked, errors });
+    // Apply period-end downgrades whose effective date has passed (locked
+    // decision: downgrades take effect at period end via the canonical service).
+    const downgrades = await executeDuePendingDowngrades();
+    errors.push(...downgrades.errors);
+
+    return NextResponse.json({
+      ok: true,
+      softLocked,
+      hardLocked,
+      downgradesApplied: downgrades.applied,
+      errors,
+    });
   } catch (err: any) {
     console.error('billing-locks cron error:', err?.message || err);
     return NextResponse.json(

@@ -30,7 +30,9 @@ export type SubscriptionLifecycleSource =
   | 'subscription.deleted'
   | 'payment.succeeded'
   | 'payment.failed'
-  | 'lock.advanced';
+  | 'lock.advanced'
+  | 'plan.downgrade_scheduled'
+  | 'plan.downgrade_cleared';
 
 const KNOWN_PAID_TIERS = ['starter', 'pro', 'enterprise'] as const;
 export type PaidTier = (typeof KNOWN_PAID_TIERS)[number];
@@ -95,6 +97,8 @@ const AUDIT_SNAPSHOT_FIELDS = [
   'trialEndsAt',
   'failedPaymentCount',
   'graceStartedAt',
+  'pendingDowngradePlan',
+  'pendingDowngradeAt',
 ] as const;
 
 function auditSnapshot(data: Record<string, unknown> | undefined) {
@@ -397,6 +401,105 @@ export async function applyLockAdvance(input: {
       source: 'lock.advanced',
       eventId: input.eventId || null,
       warning: null,
+      before: auditSnapshot(before),
+      after: auditSnapshot({ ...before, ...derived }),
+      at: nowIso,
+    });
+
+    return { ok: true, tenantExists: true, derived };
+  });
+}
+
+export interface SchedulePendingDowngradeInput {
+  tenantId: string;
+  /** Target tier the tenant downgrades to at period end. */
+  plan: PaidTier;
+  /** ISO timestamp when the downgrade takes effect (current period end). */
+  effectiveAtIso: string;
+  actorUid: string;
+}
+
+/**
+ * Records a period-end downgrade (locked decision: downgrades apply at period
+ * end). Only stamps pendingDowngradePlan/pendingDowngradeAt + audit — the
+ * entitlement change itself is applied later by the billing cron through
+ * applySubscriptionState, so plan/modules stay canonical-service-only writes.
+ */
+export async function schedulePendingDowngrade(
+  input: SchedulePendingDowngradeInput,
+): Promise<ApplyResult> {
+  const tenantId = String(input.tenantId || '').trim();
+  if (!tenantId || !isKnownPaidTier(input.plan)) {
+    return { ok: false, tenantExists: false, derived: {} };
+  }
+
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
+  const auditRef = adminDb.collection('billing_state_audit').doc();
+  const nowIso = new Date().toISOString();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(tenantRef);
+    if (!snap.exists) {
+      return { ok: false, tenantExists: false, derived: {} };
+    }
+    const before = snap.data() as Record<string, unknown>;
+
+    const derived: Record<string, unknown> = {
+      pendingDowngradePlan: input.plan,
+      pendingDowngradeAt: input.effectiveAtIso,
+      updatedAt: nowIso,
+    };
+
+    tx.set(tenantRef, derived, { merge: true });
+    tx.set(auditRef, {
+      tenantId,
+      source: 'plan.downgrade_scheduled',
+      eventId: `actor:${input.actorUid}`,
+      warning: null,
+      before: auditSnapshot(before),
+      after: auditSnapshot({ ...before, ...derived }),
+      at: nowIso,
+    });
+
+    return { ok: true, tenantExists: true, derived };
+  });
+}
+
+/**
+ * Clears a scheduled downgrade (cancelled by the tenant, superseded by an
+ * upgrade, or applied by the billing cron). Audit reason lands in `warning`.
+ */
+export async function clearPendingDowngrade(input: {
+  tenantId: string;
+  actorUid: string;
+  reason?: string;
+}): Promise<ApplyResult> {
+  const tenantId = String(input.tenantId || '').trim();
+  if (!tenantId) return { ok: false, tenantExists: false, derived: {} };
+
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
+  const auditRef = adminDb.collection('billing_state_audit').doc();
+  const nowIso = new Date().toISOString();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(tenantRef);
+    if (!snap.exists) {
+      return { ok: false, tenantExists: false, derived: {} };
+    }
+    const before = snap.data() as Record<string, unknown>;
+
+    const derived: Record<string, unknown> = {
+      pendingDowngradePlan: null,
+      pendingDowngradeAt: null,
+      updatedAt: nowIso,
+    };
+
+    tx.set(tenantRef, derived, { merge: true });
+    tx.set(auditRef, {
+      tenantId,
+      source: 'plan.downgrade_cleared',
+      eventId: `actor:${input.actorUid}`,
+      warning: input.reason || null,
       before: auditSnapshot(before),
       after: auditSnapshot({ ...before, ...derived }),
       at: nowIso,
