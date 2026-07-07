@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { calculatePlatformFee } from '@/lib/stripe/connect';
 import { getInvoiceWithValidation, getTenantRecord } from '../../shared';
+import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
 
 export const runtime = 'nodejs';
 
@@ -130,6 +131,41 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
         updatedAt: nowIso,
         isDeleted: false,
       });
+
+      // Append-only finance ledger: deterministic ids keyed to the PaymentIntent so
+      // the pay route and the confirm route converge on exactly one entry each.
+      batch.set(
+        adminDb.collection('finance_ledger').doc(`payment_succeeded_${paymentIntent.id}`),
+        buildFinanceLedgerEntry({
+          tenantId: validation.payload.tenantId,
+          type: 'payment.succeeded',
+          paymentId: paymentIntent.id,
+          invoiceId,
+          orderId: validation.payload.orderId,
+          clientId: validation.payload.clientId || '',
+          amountUsd: invoiceAmount,
+          previousStatus: String(validation.payload.status || ''),
+          newStatus: 'succeeded',
+          method: 'stripe_checkout',
+          actor: { uid: 'system', name: 'Client payment (Stripe)' },
+        }),
+      );
+      batch.set(
+        adminDb.collection('finance_ledger').doc(`invoice_paid_${paymentIntent.id}`),
+        buildFinanceLedgerEntry({
+          tenantId: validation.payload.tenantId,
+          type: 'invoice.mark_paid',
+          invoiceId,
+          orderId: validation.payload.orderId,
+          clientId: validation.payload.clientId || '',
+          amountUsd: invoiceAmount,
+          previousStatus: String(validation.payload.status || ''),
+          newStatus: 'paid',
+          method: 'stripe',
+          reason: 'Paid online via client payment page',
+          actor: { uid: 'system', name: 'Client payment (Stripe)' },
+        }),
+      );
       await batch.commit();
 
       return NextResponse.json({ ok: true, status: 'succeeded', receiptUrl: null });
