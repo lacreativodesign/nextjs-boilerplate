@@ -57,6 +57,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
   const [toDate, setToDate] = useState('');
   const [presence, setPresence] = useState<PresenceRecord[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -101,7 +102,11 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
       try {
         const r = await apiFetch(`/api/activities/feed?${p}`, { cache: 'no-store' });
         const d = await r.json().catch(() => null);
-        if (!r.ok || !d?.ok) return;
+        if (!r.ok || !d?.ok) {
+          setLoadError(String(d?.error || 'Unable to load activity feed.'));
+          return;
+        }
+        setLoadError(null);
         const fetched: ActivityRecord[] = Array.isArray(d.items) ? d.items : [];
         setItems((prev) => {
           if (!append) return fetched;
@@ -380,7 +385,21 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
               </div>
             )}
 
-            {!loading && items.length === 0 && (
+            {!loading && loadError && (
+              <div
+                className="mx-1 my-3 rounded-lg px-3 py-2 text-xs"
+                style={{
+                  background: 'rgba(220, 38, 38, 0.08)',
+                  border: '1px solid rgba(220, 38, 38, 0.25)',
+                  color: '#b91c1c',
+                }}
+                role="status"
+              >
+                {loadError} Please try again or contact support if this persists.
+              </div>
+            )}
+
+            {!loading && !loadError && items.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
                 <div
                   className="flex h-12 w-12 items-center justify-center rounded-2xl"
