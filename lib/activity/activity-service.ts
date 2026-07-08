@@ -60,11 +60,17 @@ export async function createActivity(input: CreateActivityInput): Promise<Activi
 export async function getActivityFeed(
   query: ActivityFeedQuery,
 ): Promise<{ items: ActivityRecord[]; nextCursor: string | null }> {
+  // Ordered by createdAt only: this uses the same composite index
+  // (tenantId ASC, createdAt DESC) that getUnreadCount already relies on.
+  // The previous secondary orderBy('id') required an additional composite
+  // index (tenantId, createdAt, id) that was never provisioned, so the feed
+  // query failed with FAILED_PRECONDITION while the unread count succeeded —
+  // badge visible, empty panel. createdAt is a millisecond ISO string, which
+  // is a sufficient pagination key for an activity feed.
   let fsQuery: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb
     .collection(ACTIVITIES_COLLECTION)
     .where('tenantId', '==', query.tenantId)
     .orderBy('createdAt', 'desc')
-    .orderBy('id', 'desc')
     .limit(query.limit);
 
   if (query.module) {
@@ -82,7 +88,7 @@ export async function getActivityFeed(
 
   const decoded = decodeCursor(query.cursor);
   if (decoded) {
-    fsQuery = fsQuery.startAfter(decoded.createdAt, decoded.id);
+    fsQuery = fsQuery.startAfter(decoded.createdAt);
   }
 
   const snap = await fsQuery.get();
