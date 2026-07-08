@@ -267,7 +267,7 @@ export default function LoginPage() {
     <>
       <div className="login-page" aria-live="polite" aria-busy={!firebaseAuth}>
         <aside className="login-brand" aria-hidden="true">
-          <div className="login-brand-inner">
+          <div className="login-brand-inner login-animate">
             <div className="login-logo-wrap">
               <div className="login-logo-lockup">
                 <div className="login-logo-icon">
@@ -311,7 +311,7 @@ export default function LoginPage() {
           </div>
 
           <div className="login-form-shell">
-            <div className="login-card">
+            <div className="login-card login-animate">
               <div className="login-heading">
                 <h1 className="login-title">Welcome back</h1>
                 <p className="login-subtitle">Sign in to your workspace</p>
@@ -362,7 +362,19 @@ export default function LoginPage() {
                         onClick={() => setShowPass(!showPass)}
                         aria-label={showPass ? 'Hide password' : 'Show password'}
                       >
-                        {showPass ? '🙈' : '👁️'}
+                        {showPass ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </svg>
+                        ) : (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </label>
@@ -429,6 +441,38 @@ export default function LoginPage() {
             background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
             color: #ffffff;
             display: flex;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .login-brand::before {
+            content: '';
+            position: absolute;
+            inset: -40%;
+            background: conic-gradient(
+              from 0deg,
+              transparent 0deg,
+              rgba(255, 255, 255, 0.1) 70deg,
+              rgba(102, 146, 249, 0.22) 140deg,
+              transparent 210deg,
+              rgba(255, 255, 255, 0.07) 300deg,
+              transparent 360deg
+            );
+            animation: login-aurora 30s linear infinite;
+            pointer-events: none;
+          }
+
+          .login-brand::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+              linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(ellipse at 30% 20%, black 30%, transparent 75%);
+            -webkit-mask-image: radial-gradient(ellipse at 30% 20%, black 30%, transparent 75%);
+            pointer-events: none;
           }
 
           .login-brand-inner {
@@ -436,6 +480,8 @@ export default function LoginPage() {
             display: flex;
             flex-direction: column;
             padding: 56px 44px 36px;
+            position: relative;
+            z-index: 1;
           }
 
           .login-logo-wrap {
@@ -535,14 +581,16 @@ export default function LoginPage() {
           }
 
           .login-feature-list span {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.2);
-            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            box-shadow: 0 0 12px rgba(102, 146, 249, 0.45);
+            font-size: 0.7rem;
           }
 
           .login-brand-footer {
@@ -655,6 +703,11 @@ export default function LoginPage() {
             padding-right: 0;
           }
 
+          .login-input:hover,
+          .login-input-wrap:hover {
+            border-color: rgba(1, 33, 103, 0.35);
+          }
+
           .login-input:focus,
           .login-input-wrap:focus-within {
             border-color: #012167;
@@ -667,8 +720,16 @@ export default function LoginPage() {
             border: none;
             background: transparent;
             cursor: pointer;
-            font-size: 1rem;
             line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+          }
+
+          .login-toggle:hover {
+            color: var(--text-primary);
           }
 
           .login-row {
@@ -700,6 +761,15 @@ export default function LoginPage() {
             font-weight: 600;
             cursor: pointer;
             padding: 0;
+            background-image: linear-gradient(currentColor, currentColor);
+            background-size: 0% 1.5px;
+            background-repeat: no-repeat;
+            background-position: left bottom;
+            transition: background-size 0.25s ease;
+          }
+
+          .login-forgot:hover {
+            background-size: 100% 1.5px;
           }
 
           .login-submit {
@@ -710,10 +780,36 @@ export default function LoginPage() {
             color: #ffffff;
             font-weight: 600;
             transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(1, 33, 103, 0.25);
           }
 
-          .login-submit:hover {
-            opacity: 0.92;
+          .login-submit::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -80%;
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(
+              100deg,
+              transparent 20%,
+              rgba(255, 255, 255, 0.35) 50%,
+              transparent 80%
+            );
+            transform: skewX(-18deg);
+            transition: left 0.55s ease;
+            pointer-events: none;
+          }
+
+          .login-submit:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(1, 33, 103, 0.35);
+          }
+
+          .login-submit:hover:not(:disabled)::after {
+            left: 130%;
           }
 
           .login-submit:disabled {
@@ -748,6 +844,15 @@ export default function LoginPage() {
             color: #012167;
             font-weight: 600;
             margin-left: 4px;
+            background-image: linear-gradient(currentColor, currentColor);
+            background-size: 0% 1.5px;
+            background-repeat: no-repeat;
+            background-position: left bottom;
+            transition: background-size 0.25s ease;
+          }
+
+          .login-signup-row a:hover {
+            background-size: 100% 1.5px;
           }
 
           @media (max-width: 767px) {
@@ -772,6 +877,24 @@ export default function LoginPage() {
               display: flex;
               align-items: center;
               justify-content: center;
+              position: relative;
+              overflow: hidden;
+            }
+
+            .login-mobile-header::before {
+              content: '';
+              position: absolute;
+              inset: -60%;
+              background: conic-gradient(
+                from 0deg,
+                transparent 0deg,
+                rgba(255, 255, 255, 0.12) 80deg,
+                transparent 160deg,
+                rgba(102, 146, 249, 0.2) 260deg,
+                transparent 360deg
+              );
+              animation: login-aurora 30s linear infinite;
+              pointer-events: none;
             }
 
             .login-form-shell {
@@ -791,6 +914,65 @@ export default function LoginPage() {
 
             .login-title {
               font-size: 1.7rem;
+            }
+          }
+
+          .login-animate > * {
+            opacity: 0;
+            transform: translateY(12px);
+            animation: login-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          }
+
+          .login-animate > *:nth-child(1) {
+            animation-delay: 0.05s;
+          }
+
+          .login-animate > *:nth-child(2) {
+            animation-delay: 0.15s;
+          }
+
+          .login-animate > *:nth-child(3) {
+            animation-delay: 0.25s;
+          }
+
+          .login-animate > *:nth-child(4) {
+            animation-delay: 0.35s;
+          }
+
+          @keyframes login-rise {
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes login-aurora {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .login-brand::before,
+            .login-mobile-header::before {
+              animation: none;
+            }
+
+            .login-animate > * {
+              opacity: 1;
+              transform: none;
+              animation: none;
+            }
+
+            .login-submit::after {
+              display: none;
+            }
+
+            .login-submit:hover:not(:disabled) {
+              transform: none;
             }
           }
         `}</style>
