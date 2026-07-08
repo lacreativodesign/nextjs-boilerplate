@@ -124,6 +124,7 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'payments/webhooks': 'Deprecated 410 stub.',
   'billing/webhook': 'Deprecated 410 stub.',
   'billing/subscribe': 'Deprecated 410 stub.',
+  'billing/cancel-subscription': 'Deprecated 410 stub.',
 };
 
 const matchesAny = (src: string, patterns: RegExp[]) => patterns.some((re) => re.test(src));

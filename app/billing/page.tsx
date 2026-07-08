@@ -279,11 +279,9 @@ export default function BillingOverviewPage() {
     setCancelLoading(true);
     setCancelError(null);
     try {
-      const res = await fetch('/api/billing/cancel-subscription', {
+      const res = await fetch('/api/billing/subscription/cancel', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cancel_at_period_end: true }),
       });
       const body = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !body.ok) throw new Error(body.error ?? 'Unable to cancel subscription');

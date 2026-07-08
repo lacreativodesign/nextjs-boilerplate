@@ -145,27 +145,3 @@ export async function getStripeSubscription(tenantId: string): Promise<Stripe.Su
     return null;
   }
 }
-
-export async function cancelStripeSubscription(tenantId: string): Promise<void> {
-  const tenantRef = adminDb.collection('tenants').doc(tenantId);
-  const tenantSnap = await tenantRef.get();
-  const subscriptionId =
-    typeof tenantSnap.data()?.stripeSubscriptionId === 'string'
-      ? tenantSnap.data()?.stripeSubscriptionId
-      : '';
-
-  if (!subscriptionId) {
-    return;
-  }
-
-  const stripe = getStripeClient();
-  await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
-
-  await tenantRef.set(
-    {
-      cancelAtPeriodEnd: true,
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
-}
