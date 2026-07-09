@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  claimWebhookEvent,
+  finalizeWebhookEvent,
+  releaseWebhookEvent,
+} from '@/lib/stripe/webhook-idempotency';
 import { getStripeClient } from '@/lib/payments/stripe';
 
 export const runtime = 'nodejs';
@@ -46,9 +51,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, received: true });
   }
 
-  const processedRef = adminDb.collection('processed_webhook_events').doc(event.id);
-  const processedSnap = await processedRef.get();
-  if (processedSnap.exists) {
+  const claim = await claimWebhookEvent(event.id, event.type);
+  if (claim === 'duplicate') {
     return NextResponse.json({ ok: true, received: true });
   }
   try {
@@ -152,15 +156,12 @@ export async function POST(req: Request) {
       }
     }
 
-    await processedRef.set({
-      eventId: event.id,
-      type: event.type,
-      processedAt: new Date().toISOString(),
-    });
+    await finalizeWebhookEvent(event.id, event.type);
     return NextResponse.json({ ok: true, received: true });
   } catch (error) {
     console.error('[STRIPE_CONNECT] Webhook handling failed', error);
-    // Do NOT mark processed; return non-2xx so Stripe retries this backstop.
+    // Release the claim so the next Stripe retry can re-process; return non-2xx.
+    await releaseWebhookEvent(event.id);
     return NextResponse.json({ ok: false, error: 'handler failed' }, { status: 500 });
   }
 }
