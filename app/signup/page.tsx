@@ -99,7 +99,7 @@ const COUNTRIES = [
 const termsText = `By creating a Bizosto account, you agree to the following:
 
 FREE TRIAL & BILLING
-Your 14-day free trial begins immediately upon account creation. No payment is required during the trial period. After your trial ends, your selected plan will be billed automatically on a monthly basis. You authorize Bizosto to charge your payment method on file at the start of each billing cycle. You may cancel at any time before your trial ends to avoid charges.
+Your 14-day free trial begins immediately upon account creation. A valid payment method is required at signup, but you will not be charged until day 15. If you cancel at any time before the end of day 14, you will not be charged anything. If you do not cancel, your selected plan is billed automatically starting on day 15, and on a recurring monthly basis thereafter. You authorize Bizosto to charge your payment method on file at the start of each billing cycle.
 
 PLATFORM HANDLING FEE
 A 0.5% platform handling fee applies to all transactions processed through Bizosto payment infrastructure.
@@ -114,10 +114,10 @@ CANCELLATION
 You may cancel your subscription at any time. Upon cancellation, your access continues until the end of the current billing period. No refunds are issued for partial months.
 
 ACCOUNT LOCK
-If a payment fails, a 7-day grace period applies. After 7 days, your account enters read-only mode. After 14 days, your account is locked. Full access is restored immediately upon successful payment.
+If a payment fails, a 7-day grace period applies with full access. On day 8, your account enters read-only mode. On day 21, your account is locked. Data is retained for 60 days after lock. Full access is restored immediately upon successful payment.
 
 DATA & PRIVACY
-Your data is securely stored and isolated from other tenants. Upon account cancellation, your data is retained for 30 days and then permanently deleted unless you request an export.
+Your data is securely stored and isolated from other tenants. Upon account cancellation, your data is retained for 30 days and then permanently deleted unless you request an export. If your account is locked for non-payment, data is retained for 60 days before deletion.
 
 By checking the box below, you confirm you have read and agree to these terms. You authorize automatic monthly billing after your free trial ends.`;
 

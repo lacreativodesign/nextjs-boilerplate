@@ -48,7 +48,7 @@ export function welcomeEmailHtml(data: WelcomeEmailData): string {
   return shell(`
     <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#1E3A5F;">Welcome to Bizosto, ${name}! 🎉</h1>
     <p style="margin:0 0 24px;color:#64748B;font-size:14px;">Your ${trialDays}-day free trial is ready for <strong>${companyName}</strong></p>
-    <p>Your workspace is set up and ready to go. No credit card required — you have <strong>${trialDays} days</strong> to explore everything.</p>
+    <p>Your workspace is set up and ready to go. You have <strong>${trialDays} days</strong> to explore everything. Your card won't be charged until day ${trialDays + 1} — cancel anytime before then and pay nothing.</p>
     ${btn('Access Your Dashboard', loginUrl, '#059669')}
     ${divider()}
     <table width="100%" cellpadding="0" cellspacing="0">

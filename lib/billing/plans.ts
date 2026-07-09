@@ -23,9 +23,9 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     interval: 'month',
     features: [
       '14-day free trial',
-      'All modules and features unlocked',
-      'Up to 10 users',
-      'No credit card required',
+      'Modules included with your selected plan',
+      'Card required at signup',
+      "You won't be charged until day 15",
     ],
     limits: { users: 10, storage: 21474836480, api_calls: 15000 },
     stripePriceIdEnv: '',

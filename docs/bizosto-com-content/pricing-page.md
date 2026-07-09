@@ -6,11 +6,11 @@
 
 ## Subheadline
 
-"Start with a 14-day free trial. No credit card required."
+"Start with a 14-day free trial. Card required - you won't be charged until day 15. Cancel anytime before then and pay nothing."
 
 ## Plans
 
-### Starter — $99/month
+### Starter — $79/month
 
 Best for: Small teams getting started
 
@@ -20,7 +20,7 @@ Best for: Small teams getting started
 - Basic support (email)
 - 14-day free trial
 
-### Pro — $299/month ⭐ Most Popular
+### Pro — $149/month ⭐ Most Popular
 
 Best for: Growing businesses
 
@@ -32,7 +32,7 @@ Best for: Growing businesses
 - Performance tracking and targets
 - 14-day free trial
 
-### Enterprise — $799/month
+### Enterprise — $299/month
 
 Best for: Large organizations
 
