@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getCurrentUser } from '@/lib/tenant/server';
 import { cookies } from 'next/headers';
 import { getAgentTask } from '@/lib/ai/agent-task';
+import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,11 @@ export async function GET(_req: NextRequest, { params }: { params: { taskId: str
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const aiPlan = await checkAiPlan(user.tenantId!);
+    if (!aiPlan.ok) {
+      return NextResponse.json(aiPlanLockedBody(aiPlan), { status: 403 });
     }
 
     const taskId = String(params?.taskId || '').trim();

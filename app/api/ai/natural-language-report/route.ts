@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getTenantAIKey } from '@/lib/ai/agent-task';
+import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
 import { getCurrentUserOrThrow } from '@/lib/tenant/server';
 
 export const dynamic = 'force-dynamic';
@@ -369,6 +370,11 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUserOrThrow(req).catch(() => null);
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const aiPlan = await checkAiPlan(user.tenantId || '');
+    if (!aiPlan.ok) {
+      return NextResponse.json(aiPlanLockedBody(aiPlan), { status: 403 });
     }
 
     const body = (await req.json().catch(() => ({}))) as { question?: unknown };

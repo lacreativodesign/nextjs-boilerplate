@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getCurrentUser } from '@/lib/tenant/server';
+import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
 import { cookies } from 'next/headers';
 import { getAgentTask } from '@/lib/ai/agent-task';
 import { runFinanceAgent } from '@/lib/ai/finance-agent';
@@ -15,6 +16,11 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const aiPlan = await checkAiPlan(user.tenantId!);
+    if (!aiPlan.ok) {
+      return NextResponse.json(aiPlanLockedBody(aiPlan), { status: 403 });
     }
 
     const taskId = String(params?.taskId || '').trim();

@@ -15,6 +15,7 @@ import {
   toOpenAITools,
   validateToolCall,
 } from '@/lib/ai/tool-registry';
+import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 55; // Vercel max for hobby/pro
@@ -41,6 +42,11 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const aiPlan = await checkAiPlan(user.tenantId!);
+    if (!aiPlan.ok) {
+      return NextResponse.json(aiPlanLockedBody(aiPlan), { status: 403 });
     }
 
     const taskId = String(params?.taskId || '').trim();
