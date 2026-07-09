@@ -17,7 +17,7 @@ const SECTIONS = [
   },
   {
     title: '3. Subscription and Billing',
-    content: `Bizosto is offered on a subscription basis. After your 14-day free trial, continued access requires a paid subscription. Subscriptions are billed monthly via Stripe. You authorise us to charge your payment method on a recurring basis. You may cancel at any time; cancellation takes effect at the end of the current billing period. No refunds are issued for partial periods.`,
+    content: `Bizosto is offered on a subscription basis with a 14-day free trial. A valid payment method is required at signup, but you will not be charged until day 15. If you cancel before the end of day 14, you will not be charged. After the trial, continued access requires a paid subscription billed monthly via Stripe, and you authorise us to charge your payment method on a recurring basis. You may cancel at any time; cancellation takes effect at the end of the current billing period. No refunds are issued for partial periods.`,
   },
   {
     title: '4. Acceptable Use',

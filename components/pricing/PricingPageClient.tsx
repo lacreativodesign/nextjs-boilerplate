@@ -138,7 +138,7 @@ const faqs = [
   {
     question: 'What is included in the 14-day free trial?',
     answer:
-      'You get full access to the selected plan features, guided onboarding, and sample data import support. No credit card is required to start.',
+      "You get full access to your selected plan's features, guided onboarding, and data import support. A card is required at signup, but you won't be charged until day 15 — cancel anytime before then and pay nothing.",
   },
   {
     question: 'Can I upgrade or downgrade at any time?',
