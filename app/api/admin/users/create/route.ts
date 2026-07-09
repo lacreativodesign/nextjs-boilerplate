@@ -13,6 +13,7 @@ import { isRoleEnabled } from '@/lib/tenant/access';
 import { sendEmail } from '@/lib/email/email-service';
 import { getUsersByRoles } from '@/lib/notifications';
 import { eligibleManagerRolesFor } from '@/lib/hierarchy';
+import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
 export const runtime = 'nodejs';
 
@@ -103,6 +104,13 @@ export async function POST(req: Request) {
         { error: 'This role is not enabled for your workspace. Contact your administrator.' },
         { status: 400 },
       );
+    }
+
+    // Plan seat limit (Starter 10 / Pro 20 / Enterprise unlimited). Client
+    // portal users are not staff seats and are never limited here.
+    const seatCheck = await checkUserLimit(tenantId, targetRole);
+    if (!seatCheck.ok) {
+      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
     }
 
     // Resolve managerId: validate if provided, else default to tenant admin uid

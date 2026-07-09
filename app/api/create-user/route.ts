@@ -3,6 +3,7 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import { ERP_ROLES } from '@/lib/erpAccess';
 import { isRoleEnabled } from '@/lib/tenant/access';
+import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
 export async function POST(req: Request) {
   const auth = await requireAdminOrSuperAdmin();
@@ -43,6 +44,12 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+    }
+
+    // Plan seat limit (Starter 10 / Pro 20 / Enterprise unlimited).
+    const seatCheck = await checkUserLimit(tenantId, targetRole);
+    if (!seatCheck.ok) {
+      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
     }
 
     // 1. Create user in Firebase Auth

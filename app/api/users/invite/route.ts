@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { UserService } from '@/lib/users/user-service';
 import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,14 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const data = inviteSchema.parse(body);
+
+    // Plan seat limit (Starter 10 / Pro 20 / Enterprise unlimited). Counts
+    // active staff seats; client portal users are not limited. Enforced at
+    // invite time so a tenant cannot exceed its plan by inviting.
+    const seatCheck = await checkUserLimit(me.tenantId, data.role);
+    if (!seatCheck.ok) {
+      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
+    }
 
     const invitationId = await UserService.inviteUser({
       tenantId: me.tenantId,
