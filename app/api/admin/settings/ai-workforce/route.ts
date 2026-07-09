@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdmin, serverTimestamp } from '../_utils';
+import { encryptApiKey, decryptApiKey } from '@/lib/ai/byok-crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export async function GET() {
       plan,
       settings: {
         provider: data.provider || null,
-        apiKeyMasked: data.apiKey ? maskKey(String(data.apiKey)) : null,
+        apiKeyMasked: data.apiKey ? maskKey(decryptApiKey(String(data.apiKey))) : null,
         hasKey: Boolean(data.apiKey),
         updatedAt: data.updatedAt || null,
         updatedBy: data.updatedBy || null,
@@ -126,7 +127,8 @@ export async function POST(req: Request) {
       .set(
         {
           provider,
-          apiKey: key,
+          // Encrypted at rest (AES-256-GCM). Decrypted only server-side at call time.
+          apiKey: encryptApiKey(key),
           updatedAt: serverTimestamp(),
           updatedBy: auth.user.uid,
         },
