@@ -148,9 +148,18 @@ export function HelpCenterPageContent() {
   const visibleArticleCards = useMemo(() => {
     if (!normalizedSearchQuery) return articleCards;
 
-    return articleCards.filter(({ article }) =>
-      article.title.toLowerCase().includes(normalizedSearchQuery),
-    );
+    // Match against title, excerpt, and keywords (previously title only) so
+    // searches for a topic or synonym surface the relevant guide.
+    return articleCards.filter(({ article }) => {
+      const haystack = [
+        article.title,
+        article.excerpt,
+        ...(article.keywords || []),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedSearchQuery);
+    });
   }, [articleCards, normalizedSearchQuery]);
 
   const handleRetakeTour = () => {
@@ -233,7 +242,7 @@ export function HelpCenterPageContent() {
                 </div>
                 <p className="mt-4 truncate text-sm text-[var(--text-muted)]">{article.excerpt}</p>
                 <a
-                  href="#"
+                  href={`/help/${categoryId}/${article.slug}`}
                   className="mt-5 inline-flex text-sm font-semibold text-[var(--erp-blue)] transition hover:text-[var(--erp-blue-hover)]"
                   aria-label={`Read ${article.title}`}
                 >
@@ -246,7 +255,7 @@ export function HelpCenterPageContent() {
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-8 text-center shadow-[var(--shadow-sm)]">
             <h3 className="text-base font-semibold text-[var(--text-primary)]">No guides found</h3>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Try a different title search to find guides available for your role.
+              Try a different search to find guides available for your role.
             </p>
           </div>
         )}
