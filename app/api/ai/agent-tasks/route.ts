@@ -2,10 +2,17 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/tenant/server';
 import { cookies } from 'next/headers';
 import { createAgentTask, listAgentTasks, type AgentType } from '@/lib/ai/agent-task';
+import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_ROLES = new Set(['admin', 'super_admin', 'finance']);
+const ALLOWED_ROLES = new Set([
+  'admin',
+  'super_admin',
+  'finance',
+  'sales',
+  'sales_manager',
+]);
 const ALLOWED_AGENT_TYPES = new Set<AgentType>(['coo', 'finance', 'sales']);
 
 export async function GET() {
@@ -13,6 +20,11 @@ export async function GET() {
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const aiPlan = await checkAiPlan(user.tenantId!);
+    if (!aiPlan.ok) {
+      return NextResponse.json(aiPlanLockedBody(aiPlan), { status: 403 });
     }
 
     const tasks = await listAgentTasks(user.tenantId!, 50);
@@ -27,6 +39,11 @@ export async function POST(req: Request) {
     const user = await getCurrentUser({ cookies: cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const aiPlan = await checkAiPlan(user.tenantId!);
+    if (!aiPlan.ok) {
+      return NextResponse.json(aiPlanLockedBody(aiPlan), { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
