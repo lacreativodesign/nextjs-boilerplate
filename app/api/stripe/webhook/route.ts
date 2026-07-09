@@ -9,6 +9,11 @@ import { createPasswordSetupToken, sendSetPasswordEmail } from '../../../../lib/
 import { createRoleNotifications, type NotificationType } from '@/lib/notifications';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { applySubscriptionState } from '@/lib/billing/apply-subscription-state';
+import {
+  claimWebhookEvent,
+  finalizeWebhookEvent,
+  releaseWebhookEvent,
+} from '@/lib/stripe/webhook-idempotency';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -427,6 +432,8 @@ async function updateSubscriptionStatus({
 }
 
 export async function POST(req: Request) {
+  // Hoisted so the outer catch can release a partial claim for Stripe retry.
+  let claimedEventId: string | null = null;
   try {
     const signature = req.headers.get('stripe-signature');
     if (!signature) {
@@ -438,17 +445,17 @@ export async function POST(req: Request) {
     const webhookSecret = requireWebhookSecret();
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
-    const processedRef = adminDb.collection('processed_webhook_events').doc(event.id);
-    const processedSnap = await processedRef.get();
-    if (processedSnap.exists) {
-      return NextResponse.json({ ok: true, received: true });
-    }
-
     if (!ALLOWED_EVENTS.has(event.type)) {
       // Subscription/invoice events are owned solely by /api/stripe/subscription-webhook.
       // Ack-and-ignore here so Stripe does not retry against this endpoint.
       return NextResponse.json({ ok: true, received: true });
     }
+
+    const claim = await claimWebhookEvent(event.id, event.type);
+    if (claim === 'duplicate') {
+      return NextResponse.json({ ok: true, received: true });
+    }
+    claimedEventId = event.id;
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -489,11 +496,7 @@ export async function POST(req: Request) {
             eventId: event.id,
           });
           if (linked) {
-            await processedRef.set({
-              eventId: event.id,
-              type: event.type,
-              processedAt: new Date().toISOString(),
-            });
+            await finalizeWebhookEvent(event.id, event.type);
             return NextResponse.json({ ok: true, received: true, tenantId: metadataTenantId });
           }
           // Tenant id present but not found — fall through to legacy create-by-email.
@@ -521,11 +524,7 @@ export async function POST(req: Request) {
           tenantName: tenantResult.tenantName,
         });
 
-        await processedRef.set({
-          eventId: event.id,
-          type: event.type,
-          processedAt: new Date().toISOString(),
-        });
+        await finalizeWebhookEvent(event.id, event.type);
         return NextResponse.json({ ok: true, received: true, tenantId: tenantResult.tenantId });
       } catch (handlerErr) {
         throw handlerErr;
@@ -535,17 +534,17 @@ export async function POST(req: Request) {
     try {
       const subscription = event.data.object as Stripe.Subscription;
       await updateSubscriptionStatus({ subscription, eventType: event.type });
-      await processedRef.set({
-        eventId: event.id,
-        type: event.type,
-        processedAt: new Date().toISOString(),
-      });
+      await finalizeWebhookEvent(event.id, event.type);
       return NextResponse.json({ ok: true, received: true });
     } catch (handlerErr) {
       throw handlerErr;
     }
   } catch (err) {
     console.error('stripe webhook error:', err);
+    // Release any claim made in this delivery so Stripe's retry can re-process.
+    if (claimedEventId) {
+      await releaseWebhookEvent(claimedEventId);
+    }
     return NextResponse.json({ ok: false, error: 'Webhook error.' }, { status: 500 });
   }
 }

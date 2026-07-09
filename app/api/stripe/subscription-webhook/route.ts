@@ -1,6 +1,11 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import {
+  claimWebhookEvent,
+  finalizeWebhookEvent,
+  releaseWebhookEvent,
+} from '@/lib/stripe/webhook-idempotency';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { sendPaymentConfirmationEmail } from '@/lib/email/onboarding-emails';
 import { sendEmail } from '@/lib/email/email-service';
@@ -71,9 +76,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid signature' }, { status: 400 });
   }
 
-  const processedRef = adminDb.collection('processed_webhook_events').doc(event.id);
-  const processedSnap = await processedRef.get();
-  if (processedSnap.exists) {
+  const claim = await claimWebhookEvent(event.id, event.type);
+  if (claim === 'duplicate') {
     return NextResponse.json({ ok: true, received: true });
   }
 
@@ -283,14 +287,11 @@ export async function POST(req: Request) {
       type: event.type,
       error,
     });
-    // Do NOT mark processed; return non-2xx so Stripe retries.
+    // Release the claim so the next Stripe retry can re-process; return non-2xx.
+    await releaseWebhookEvent(event.id);
     return NextResponse.json({ ok: false, error: 'Webhook handler failed' }, { status: 500 });
   }
 
-  await processedRef.set({
-    eventId: event.id,
-    type: event.type,
-    processedAt: new Date().toISOString(),
-  });
+  await finalizeWebhookEvent(event.id, event.type);
   return NextResponse.json({ ok: true, received: true });
 }
