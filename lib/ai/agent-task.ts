@@ -11,6 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebaseAdmin';
+import { decryptApiKey } from '@/lib/ai/byok-crypto';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,6 +154,7 @@ export async function getTenantAIKey(
 
   return {
     provider: data.provider as 'openai' | 'anthropic',
-    apiKey: String(data.apiKey),
+    // Stored encrypted at rest; decrypt only here, server-side, at call time.
+    apiKey: decryptApiKey(String(data.apiKey)),
   };
 }
