@@ -13,7 +13,8 @@
  * Hard safety guards — a tenant is NEVER touched if any of these hold:
  *   - it is a protected platform tenant (bizosto, bizosto-demo)
  *   - it has a stripeSubscriptionId or stripeCustomerId
- *   - billingStatus is 'active' or subscriptionState is not 'trial'
+ *   - billingStatus is 'active', or subscriptionState is neither 'pending_checkout'
+ *     (the S38 provisioned-but-unpaid state) nor the legacy 'trial'
  *
  * Kept outside the route file: Next.js validates route.ts exports at build time
  * and rejects any export that is not a handler or route-segment config.
@@ -46,7 +47,10 @@ export function classifyAbandonedTenant(
   if (PROTECTED_TENANTS.has(input.tenantId)) return 'skip';
   if (input.stripeSubscriptionId || input.stripeCustomerId) return 'skip';
   if (String(input.billingStatus || '').toLowerCase() === 'active') return 'skip';
-  if (String(input.subscriptionState || '') !== 'trial') return 'skip';
+  // S38 renamed the provisioned-but-unpaid state from 'trial' to 'pending_checkout'.
+  // Both are accepted so legacy trial tenants and new pending-checkout tenants are reclaimed.
+  const state = String(input.subscriptionState || '');
+  if (state !== 'pending_checkout' && state !== 'trial') return 'skip';
 
   const createdMs = input.createdAt ? new Date(input.createdAt).getTime() : NaN;
   if (!Number.isFinite(createdMs)) return 'skip';
