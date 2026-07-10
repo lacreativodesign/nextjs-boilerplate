@@ -76,6 +76,7 @@ const TENANT_EVIDENCE = [
  * reset, payment token) or OAuth state parameters — validated inside the route.
  */
 export const PUBLIC_ROUTES: Record<string, string> = {
+  'security/csp-report': 'Browser CSP violation report sink; unauthenticated by spec, logs only, no data access.',
   // Pre-auth account flows (token/OTP protected inside the route)
   'auth/request-password-reset': 'Pre-auth: issues password reset email; token-gated completion.',
   'auth/send-otp': 'Pre-auth signup step; rate limited; OTP hashed at rest.',

@@ -153,6 +153,19 @@ function hash(value: string): string {
   return Math.abs(h).toString(36).padStart(8, '0').slice(0, 24);
 }
 
+// Per-request CSP nonce. Web Crypto only (Edge runtime has no Node crypto):
+// 16 random bytes → base64. Forwarded on x-nonce and used for the Report-Only
+// strict CSP; the enforced CSP stays permissive so nothing is blocked.
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 function resolveTenantId(req: NextRequest) {
   // Do NOT trust an inbound x-tenant-id header — it is client-spoofable and would let a caller
   // poison or evade another tenant's rate-limit bucket and pollute usage logs. Use only the
@@ -198,7 +211,7 @@ function jsonError(
 }
 
 function withSecurityHeaders(response: NextResponse, nonce?: string) {
-  return applySecurityHeaders(response);
+  return applySecurityHeaders(response, nonce);
 }
 
 function isSuspiciousPath(req: NextRequest): boolean {
@@ -275,20 +288,27 @@ function applyRateHeaders(
     resetSeconds: number;
     retryAfterSeconds: number;
   },
+  nonce?: string,
 ) {
   const responseWithVersionHeaders = applyVersionHeaders(response, pathname);
   if (rateContext) {
     applyRateLimitHeaders(responseWithVersionHeaders.headers, rateContext);
   }
-  return withSecurityHeaders(responseWithVersionHeaders);
+  return withSecurityHeaders(responseWithVersionHeaders, nonce);
 }
 
 export async function middleware(req: NextRequest, event: NextFetchEvent) {
+  // Per-request CSP nonce. Forwarded to the app on the x-nonce request header so
+  // the root layout can attach it to its inline theme script, and used to emit
+  // the Report-Only strict CSP with a matching nonce (enforced CSP stays permissive).
+  const nonce = generateNonce();
+
   if (req.headers.get('x-middleware-prefetch') === '1') {
-    return withSecurityHeaders(NextResponse.next());
+    return withSecurityHeaders(NextResponse.next(), nonce);
   }
 
   const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
 
   const startedAt = Date.now();
   const { pathname } = req.nextUrl;
@@ -297,7 +317,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   const isDeprecatedApiAlias = isApiRequest && apiVersion === 'unversioned';
 
   if (pathname.startsWith('/api/internal/usage-log')) {
-    return withSecurityHeaders(NextResponse.next());
+    return withSecurityHeaders(NextResponse.next(), nonce);
   }
 
   if (isSuspiciousPath(req)) {
@@ -312,9 +332,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         }),
         { requestId: req.headers.get('x-request-id') || undefined },
       );
-      return withSecurityHeaders(NextResponse.json(body, { status: 403 }));
+      return withSecurityHeaders(NextResponse.json(body, { status: 403 }), nonce);
     }
-    return withSecurityHeaders(new NextResponse('Suspicious request blocked.', { status: 403 }));
+    return withSecurityHeaders(
+      new NextResponse('Suspicious request blocked.', { status: 403 }),
+      nonce,
+    );
   }
 
   const sessionToken = req.cookies.get('lac_session')?.value;
@@ -371,7 +394,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         createdAt: new Date().toISOString(),
       });
 
-      return applyRateHeaders(pathname, blocked, rateContext);
+      return applyRateHeaders(pathname, blocked, rateContext, nonce);
     }
 
     rateContext = {
@@ -391,6 +414,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     if (req.headers.get('x-requested-with') !== 'XMLHttpRequest') {
       return withSecurityHeaders(
         NextResponse.json({ ok: false, error: 'CSRF validation failed' }, { status: 403 }),
+        nonce,
       );
     }
   }
@@ -407,6 +431,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
           pathname,
           jsonError(req, 401, 'Missing or invalid API key.', 'UNAUTHORIZED'),
           rateContext,
+          nonce,
         );
       }
 
@@ -422,6 +447,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
           pathname,
           jsonError(req, 401, 'Invalid request signature.', 'UNAUTHORIZED'),
           rateContext,
+          nonce,
         );
       }
     }
@@ -435,7 +461,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     redirectLegacyPath(req, /^\/production-manager/, '/production_manager') ||
     redirectLegacyPath(req, /^\/customer/, '/client');
 
-  if (legacyRedirect) return applyRateHeaders(pathname, legacyRedirect, rateContext);
+  if (legacyRedirect) return applyRateHeaders(pathname, legacyRedirect, rateContext, nonce);
 
   // Skip tenant validation for login/signup pages
   if (
@@ -451,6 +477,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       pathname,
       NextResponse.next({ request: { headers: requestHeaders } }),
       rateContext,
+      nonce,
     );
   }
 
@@ -459,6 +486,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       pathname,
       NextResponse.next({ request: { headers: requestHeaders } }),
       rateContext,
+      nonce,
     );
     queueUsageLog(event, req, {
       endpoint: pathname,
@@ -486,12 +514,14 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         pathname,
         jsonError(req, 401, 'Unauthorized', 'UNAUTHORIZED'),
         rateContext,
+        nonce,
       );
     }
     return applyRateHeaders(
       pathname,
       NextResponse.redirect(new URL('/login', req.url)),
       rateContext,
+      nonce,
     );
   }
 
@@ -529,11 +559,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
               'SUBSCRIPTION_LOCKED',
             ),
             rateContext,
+            nonce,
           );
         }
         const redirectUrl = req.nextUrl.clone();
         redirectUrl.pathname = '/billing';
-        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
+        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
       }
 
       if (isApiRequest && isReadOnlySubscription(subscriptionState)) {
@@ -548,6 +579,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
               'SUBSCRIPTION_READ_ONLY',
             ),
             rateContext,
+            nonce,
           );
         }
       }
@@ -559,7 +591,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     if (sessionRole !== 'admin' && sessionRole !== 'super_admin') {
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = '/unauthorized';
-      return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
+      return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
     }
   }
 
@@ -586,7 +618,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       if (moduleEnabled === false) {
         const redirectUrl = req.nextUrl.clone();
         redirectUrl.pathname = '/module-disabled';
-        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext);
+        return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
       }
 
       if (moduleEnabled !== null) {
@@ -594,6 +626,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
           pathname,
           NextResponse.next({ request: { headers: requestHeaders } }),
           rateContext,
+          nonce,
         );
         response.headers.set(
           'x-module-check',
@@ -634,6 +667,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         pathname,
         jsonError(req, 403, 'Unauthorized for this API scope.', 'FORBIDDEN'),
         rateContext,
+        nonce,
       );
     }
   }
@@ -642,6 +676,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     pathname,
     NextResponse.next({ request: { headers: requestHeaders } }),
     rateContext,
+    nonce,
   );
 
   if (subCacheValue) {
