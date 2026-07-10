@@ -1,6 +1,7 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
 import { Suspense } from 'react';
+import { headers } from 'next/headers';
 import type { Metadata, Viewport } from 'next';
 import ToastProvider from '@/components/providers/ToastProvider';
 import RouteProgress from '@/components/ui/RouteProgress';
@@ -39,11 +40,17 @@ export const viewport: Viewport = {
   themeColor: '#012167',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Per-request CSP nonce, set by middleware on the x-nonce request header.
+  // Attaching it to the inline theme script makes that script compliant with
+  // the nonce-based strict CSP (Report-Only today, enforced in S31-B).
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="en-US" dir="ltr" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('bizosto_theme')||'system';var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t==='system'&&d);document.documentElement.classList.toggle('dark',dark);if(!dark&&t==='light')document.documentElement.classList.add('light');}catch(e){}})();`,
           }}
