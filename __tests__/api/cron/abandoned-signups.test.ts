@@ -73,6 +73,19 @@ describe('abandoned-signup lifecycle (P0-2)', () => {
     expect(classifyAbandonedTenant(base({ createdAt: daysAgo(45) }), NOW)).toBe('delete');
   });
 
+  it('applies the same lifecycle to S38 pending_checkout tenants', () => {
+    const pending = (over: Record<string, unknown> = {}) =>
+      base({ subscriptionState: 'pending_checkout', ...over });
+    expect(classifyAbandonedTenant(pending({ createdAt: daysAgo(10) }), NOW)).toBe('none');
+    expect(classifyAbandonedTenant(pending({ createdAt: daysAgo(18) }), NOW)).toBe('remind_first');
+    expect(classifyAbandonedTenant(pending({ createdAt: daysAgo(25) }), NOW)).toBe('remind_final');
+    expect(classifyAbandonedTenant(pending({ createdAt: daysAgo(30) }), NOW)).toBe('delete');
+    // Still never touched once billing is active or Stripe is linked.
+    expect(
+      classifyAbandonedTenant(pending({ createdAt: daysAgo(45), stripeCustomerId: 'cus_1' }), NOW),
+    ).toBe('skip');
+  });
+
   it('computes the deletion date 30 days after signup', () => {
     const createdAt = daysAgo(20);
     expect(deletionDateIso(createdAt)).toBe(new Date(NOW + 10 * DAY_MS).toISOString());

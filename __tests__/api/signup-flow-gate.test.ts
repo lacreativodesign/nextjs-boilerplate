@@ -59,4 +59,12 @@ describe('signup flow gate', () => {
       /setCustomUserClaims\(authUser\.uid, \{\s*role: 'admin',\s*tenantId,\s*\}\)/,
     );
   });
+
+  it('tenant is provisioned in pending_checkout — access activates only after Stripe Checkout (S38)', () => {
+    expect(signupRoute).toContain("subscriptionState: 'pending_checkout'");
+    // Signup must never grant a live trial/active state itself; the
+    // checkout.session.completed webhook is the only activation writer.
+    expect(signupRoute).not.toContain("subscriptionState: 'trial'");
+    expect(signupRoute).not.toContain("subscriptionState: 'active'");
+  });
 });

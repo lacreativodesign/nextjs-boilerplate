@@ -202,7 +202,12 @@ export async function POST(request: Request) {
         {
           plan: payload.selectedPlan,
           trialEndsAt,
-          subscriptionState: 'trial',
+          // S38: signup provisions the tenant but never grants live access. The tenant sits in
+          // `pending_checkout` (fails closed to hard_locked in normalizeSubscriptionState, so
+          // middleware blocks the app) until Stripe Checkout completes. The
+          // checkout.session.completed webhook — via linkExistingTenant → applySubscriptionState
+          // ('checkout.linked') — is the sole writer that flips this to 'active'.
+          subscriptionState: 'pending_checkout',
           referredBy: payload.referredBy || null,
           modules: modulesEnabled,
         },

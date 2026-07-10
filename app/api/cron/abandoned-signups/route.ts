@@ -78,9 +78,11 @@ export async function GET(request: NextRequest) {
   const nowMs = Date.now();
 
   try {
+    // S38: provisioned-but-unpaid tenants sit in 'pending_checkout'; legacy signups used 'trial'.
+    // Scan both so neither cohort leaks past the 30-day abandonment window.
     const trialSnap = await adminDb
       .collection('tenants')
-      .where('subscriptionState', '==', 'trial')
+      .where('subscriptionState', 'in', ['pending_checkout', 'trial'])
       .limit(500)
       .get();
 
