@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type Transaction } from 'firebase-admin/firestore';
 
 /**
  * Append-only finance ledger.
@@ -21,6 +21,7 @@ export type FinanceLedgerType =
   | 'invoice.created'
   | 'invoice.issued'
   | 'invoice.updated'
+  | 'invoice.deleted'
   | 'invoice_void'
   | 'invoice.mark_paid'
   | 'payment.created'
@@ -76,6 +77,63 @@ export function buildFinanceLedgerEntry(params: WriteFinanceLedgerParams) {
 export async function writeFinanceLedgerEntry(params: WriteFinanceLedgerParams): Promise<string> {
   const docRef = await adminDb.collection('finance_ledger').add(buildFinanceLedgerEntry(params));
   return docRef.id;
+}
+
+// ---------------------------------------------------------------------------
+// Shared transactional finance-mutation service (E4b, audit finding #4).
+//
+// The invariant: no financial state may change without an append-only ledger
+// entry landing in the SAME transaction. Routes that already batch their doc
+// writes together with a buildFinanceLedgerEntry() call satisfy this by
+// construction; this helper is the canonical way to add it to any path that
+// mutates finance state, and it fails closed — if a caller commits a mutation
+// without staging at least one ledger entry, the transaction throws instead of
+// silently persisting an unaudited change.
+// ---------------------------------------------------------------------------
+
+export interface FinanceMutationContext {
+  tx: Transaction;
+  /**
+   * Stage a ledger entry to be written atomically with this mutation. Must be
+   * called at least once, or the transaction is rejected.
+   */
+  ledger: (params: WriteFinanceLedgerParams) => void;
+}
+
+/**
+ * Runs `work` inside a Firestore transaction and guarantees an append-only
+ * finance_ledger entry is written atomically with it. The caller stages doc
+ * writes on `ctx.tx` and one or more ledger entries via `ctx.ledger(...)`.
+ * Ledger docs are created with fresh ids inside the same transaction.
+ */
+export async function mutateFinanceInTransaction<T>(
+  work: (ctx: FinanceMutationContext) => Promise<T>,
+): Promise<T> {
+  return adminDb.runTransaction(async (tx) => {
+    const staged: WriteFinanceLedgerParams[] = [];
+    const ctx: FinanceMutationContext = {
+      tx,
+      ledger: (params) => {
+        staged.push(params);
+      },
+    };
+
+    const result = await work(ctx);
+
+    if (staged.length === 0) {
+      // Fail closed: a finance mutation without an audit trail is not allowed.
+      throw new Error(
+        'mutateFinanceInTransaction: no ledger entry was staged — every finance mutation must record a finance_ledger entry.',
+      );
+    }
+
+    for (const params of staged) {
+      const ledgerRef = adminDb.collection('finance_ledger').doc();
+      tx.set(ledgerRef, buildFinanceLedgerEntry(params));
+    }
+
+    return result;
+  });
 }
 
 export interface WriteInvoiceVoidLedgerParams {
