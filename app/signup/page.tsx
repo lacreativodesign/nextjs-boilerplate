@@ -41,21 +41,25 @@ const plans: Array<{
     key: 'starter',
     name: 'Starter',
     price: 79,
-    features: ['CRM', 'Projects', 'Finance', 'Reports', '10 users', '10GB'],
+    // Source of truth: lib/billing/plans.ts + app/config/plans.ts (PLAN_MODULES).
+    // Starter unlocks CRM, Sales, Projects, Reports — NOT Finance/Production/HR.
+    features: ['CRM, Sales & Projects', 'Reports', '10 users', '20GB storage', '10 client portal seats'],
   },
   {
     key: 'pro',
     name: 'Pro',
     price: 149,
     badge: 'Most Popular',
-    features: ['All Starter', 'HR', 'AI Workforce', 'Website Embed', '50 users', '50GB'],
+    // Pro adds Finance, Production, Approvals, full Reports, AI Workforce, Website Embed.
+    features: ['All Starter, plus:', 'Finance & Production', 'AI Workforce + Website Embed', '20 users', '75GB storage'],
   },
   {
     key: 'enterprise',
     name: 'Enterprise',
     price: 299,
     badge: 'Best Value',
-    features: ['All Pro', 'White-label', 'Custom Domain', 'Unlimited users', '250GB'],
+    // Enterprise adds HR, Client Stripe Connect payments, white-label.
+    features: ['All Pro, plus:', 'HR module', 'Client payments + white-label', 'Unlimited users', '250GB storage'],
   },
 ];
 
