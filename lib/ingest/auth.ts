@@ -1,12 +1,11 @@
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { DEFAULT_TENANT_ID, normalizeTenantId } from '@/lib/tenant';
 
 export type IngestAuthSuccess = {
   ok: true;
   tenantId: string;
   tenantData: FirebaseFirestore.DocumentData;
-  via: 'tenant-header' | 'key-lookup' | 'global-key';
+  via: 'tenant-header' | 'key-lookup';
 };
 export type IngestAuthFailure = { ok: false; status: number; error: string };
 export type IngestAuthResult = IngestAuthSuccess | IngestAuthFailure;
@@ -21,16 +20,16 @@ function normalizeOptionalString(value: unknown): string | null {
 
 export interface AuthenticateIngestOptions {
   fallbackApiKey?: string | null;
-  fallbackTenantId?: string | null;
-  allowGlobalKeyFallback?: boolean;
 }
 
 /**
- * Single source of truth for inbound ingest authentication.
- * Models supported (preserved from the original routes):
- *  1) x-tenant-id header present -> validate x-api-key against that tenant's apiKeyHash (plaintext apiKey fallback).
+ * Single source of truth for inbound ingest authentication. Every request is
+ * bound to exactly one tenant by a per-tenant hashed API key — there is no
+ * global shared-key fallback (removed in E6: it let any holder of ERP_INGEST_KEY
+ * write into any tenant by naming it in the body).
+ * Models supported:
+ *  1) x-tenant-id header present -> validate x-api-key against that tenant's apiKeyHash (plaintext apiKey fallback for legacy tenants).
  *  2) no tenant header -> resolve tenant by apiKeyHash lookup (key is bound to exactly one workspace).
- *  3) opt-in legacy global ERP_INGEST_KEY -> tenantId from caller body/header.
  */
 export async function authenticateIngest(
   req: Request,
@@ -81,18 +80,6 @@ export async function authenticateIngest(
   if (!byHash.empty) {
     const doc = byHash.docs[0];
     return { ok: true, tenantId: doc.id, tenantData: doc.data() || {}, via: 'key-lookup' };
-  }
-
-  // 3) Legacy global key fallback (opt-in).
-  if (options.allowGlobalKeyFallback && apiKey === String(process.env.ERP_INGEST_KEY || '')) {
-    const resolved = normalizeTenantId(
-      normalizeOptionalString(options.fallbackTenantId ?? null) ||
-        headerTenantId ||
-        DEFAULT_TENANT_ID,
-    );
-    const tenantSnap = await adminDb.doc(`tenants/${resolved}`).get();
-    const tenantData = tenantSnap.exists ? tenantSnap.data() || {} : {};
-    return { ok: true, tenantId: resolved, tenantData, via: 'global-key' };
   }
 
   return { ok: false, status: 401, error: 'invalid_credentials' };
