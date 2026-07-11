@@ -85,7 +85,25 @@ describe('canonical billing state service (P0-3)', () => {
     expect(String(audits[0].warning)).toContain('platinum');
   });
 
-  it('subscription.deleted hard-locks and cancels billing', async () => {
+  it('subscription.deleted hard-locks, cancels billing and clears entitlements', async () => {
+    // Seed a paid tenant with live module access and a scheduled downgrade so we
+    // can prove cancellation strips all of it, not just plan/status.
+    await db
+      .collection('tenants')
+      .doc('tenant_a')
+      .set(
+        {
+          plan: 'enterprise',
+          modules: { crm: true, finance: true, hr: true, client_stripe_connect: true },
+          modulesEnabled: { crm: true, finance: true, hr: true, client_stripe_connect: true },
+          limits: { users: 999, storage: 268435456000, api_calls: 999999 },
+          cancelAtPeriodEnd: true,
+          pendingDowngradePlan: 'pro',
+          pendingDowngradeAt: '2026-08-01T00:00:00.000Z',
+        },
+        { merge: true },
+      );
+
     await applySubscriptionState({
       tenantId: 'tenant_a',
       source: 'subscription.deleted',
@@ -97,6 +115,18 @@ describe('canonical billing state service (P0-3)', () => {
     expect(t.subscriptionState).toBe('hard_locked');
     expect(t.billingStatus).toBe('canceled');
     expect(t.plan).toBe('trial');
+    // No stale paid-module access survives cancellation.
+    expect(Object.values(t.modules)).not.toContain(true);
+    expect(Object.values(t.modulesEnabled)).not.toContain(true);
+    expect(t.modules.finance).toBe(false);
+    expect(t.modules.hr).toBe(false);
+    expect(t.modules.client_stripe_connect).toBe(false);
+    // Limits fall back to the trial baseline, not the old enterprise numbers.
+    expect(t.limits.users).toBe(10);
+    // Cancellation supersedes any scheduled downgrade and any pending cancel flag.
+    expect(t.cancelAtPeriodEnd).toBe(false);
+    expect(t.pendingDowngradePlan).toBeNull();
+    expect(t.pendingDowngradeAt).toBeNull();
   });
 
   it('checkout.linked activates billing and stores Stripe IDs and cycle', async () => {
