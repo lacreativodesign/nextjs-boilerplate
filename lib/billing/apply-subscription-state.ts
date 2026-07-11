@@ -37,6 +37,25 @@ export type SubscriptionLifecycleSource =
 const KNOWN_PAID_TIERS = ['starter', 'pro', 'enterprise'] as const;
 export type PaidTier = (typeof KNOWN_PAID_TIERS)[number];
 
+// Fully locked-down entitlements for a canceled/hard-locked tenant. A canceled
+// subscription must not retain the paid plan's module access: canAccessPlanModule
+// reads modules[key] === true, so leaving the old paid module map in place would
+// keep granting Finance/HR/etc. after cancellation. subscription.deleted clears
+// modules to all-false and limits to the trial baseline so no stale paid
+// entitlement survives, while invoice/finance history is retained separately.
+const LOCKED_MODULES: Record<string, boolean> = {
+  crm: false,
+  sales: false,
+  production: false,
+  projects: false,
+  approvals: false,
+  notifications: false,
+  finance: false,
+  hr: false,
+  reports: false,
+  client_stripe_connect: false,
+};
+
 export function isKnownPaidTier(value: unknown): value is PaidTier {
   return KNOWN_PAID_TIERS.includes(String(value || '').trim() as PaidTier);
 }
@@ -177,6 +196,16 @@ export async function applySubscriptionState(
       derived.subscriptionState = 'hard_locked';
       derived.billingStatus = 'canceled';
       derived.plan = 'trial';
+      // Explicitly clear entitlements: a canceled tenant keeps no paid-plan
+      // module access or user/storage limits. History (invoices, finance_ledger)
+      // lives in its own collections and is untouched.
+      derived.modules = { ...LOCKED_MODULES };
+      derived.modulesEnabled = { ...LOCKED_MODULES };
+      derived.limits = { ...plans.trial.limits };
+      derived.cancelAtPeriodEnd = false;
+      // A cancellation supersedes any scheduled downgrade.
+      derived.pendingDowngradePlan = null;
+      derived.pendingDowngradeAt = null;
     }
 
     const rawPlan = String(input.plan || '').trim();
