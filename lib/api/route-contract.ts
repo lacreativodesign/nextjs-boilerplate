@@ -93,7 +93,10 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'public/invoice/[invoiceId]': 'Public invoice view; requires payment token query param.',
   'public/invoice/[invoiceId]/pay': 'Public invoice payment; payment token validated.',
   'public/invoice/[invoiceId]/confirm': 'Public payment confirmation; token validated.',
-  'stripe/checkout': 'Checkout entrypoint hardened in Stripe sprint; creates sessions only.',
+  // NOTE: stripe/checkout is NOT public. It calls requireAdminOrSuperAdmin and
+  // reads auth.user.tenantId, so it classifies as tenant_scoped by evidence.
+  // Do not re-add it here — that would hide the auth requirement behind a public
+  // label and let the "public surface" grow silently.
   // OAuth/SSO callbacks (state parameter validated inside; integrations dormant)
   'auth/sso/[provider]/callback': 'OAuth callback; state validated in-route.',
   'auth/sso/providers': 'Pre-login list of enabled SSO providers; no tenant data.',

@@ -115,4 +115,14 @@ describe('route contract coverage (P0-5)', () => {
     // justified in PUBLIC_ROUTES in the same PR.
     expect(publicCount).toBeLessThanOrEqual(Object.keys(PUBLIC_ROUTES).length);
   });
+
+  it('stripe/checkout is tenant_scoped, not public (E5a)', () => {
+    // Regression pin: stripe/checkout calls requireAdminOrSuperAdmin and reads
+    // auth.user.tenantId. It must never be labelled public — that would hide the
+    // auth requirement and let anyone create checkout sessions.
+    expect(PUBLIC_ROUTES['stripe/checkout']).toBeUndefined();
+    const checkout = routes.find((r) => r.rel === 'stripe/checkout');
+    expect(checkout).toBeDefined();
+    expect(checkout?.contract).toBe('tenant_scoped');
+  });
 });
