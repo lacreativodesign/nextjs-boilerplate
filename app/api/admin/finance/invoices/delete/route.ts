@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdmin, parseString, serverTimestamp } from '../../_utils';
 import { normalizeInvoiceStatus } from '@/lib/finance/status';
+import { mutateFinanceInTransaction } from '@/lib/finance/ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,14 +44,34 @@ export async function POST(req: Request) {
       );
     }
 
-    await adminDb.collection('invoices').doc(id).set(
-      {
-        isDeleted: true,
-        updatedAt: serverTimestamp(),
-        deletedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    // Soft-delete + ledger entry land in one transaction: deleting a draft/issued
+    // invoice removes it from AR, so it must leave an append-only audit trail.
+    const invoiceRef = adminDb.collection('invoices').doc(id);
+    await mutateFinanceInTransaction(async ({ tx, ledger }) => {
+      tx.set(
+        invoiceRef,
+        {
+          isDeleted: true,
+          updatedAt: serverTimestamp(),
+          deletedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      ledger({
+        tenantId: String(data.tenantId || auth.user.tenantId || ''),
+        type: 'invoice.deleted',
+        invoiceId: id,
+        orderId: String(data.orderId || ''),
+        clientId: String(data.clientId || ''),
+        previousStatus: status,
+        newStatus: 'deleted',
+        reason: 'Invoice soft-deleted',
+        actor: {
+          uid: auth.user.uid,
+          name: String(auth.user.displayName || auth.user.email || ''),
+        },
+      });
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
