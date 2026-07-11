@@ -45,6 +45,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // FM-14 (E4c): Recurring invoicing is a deferred, not-yet-wired feature. It
+    // writes to the tenant subcollection tenants/{id}/invoices, which the Finance
+    // module, AR reports, revenue, and the public pay page never read (they use
+    // the top-level `invoices` collection). Running it would silently create
+    // orphaned invoices with no ledger entry that no user can see or pay. It is
+    // therefore disabled at launch and no-ops unless explicitly enabled. To turn
+    // it on it must first be migrated to the canonical top-level invoice shape
+    // (orderId, paymentToken, amount fields, status, isDeleted) with an
+    // invoice.created ledger entry — see the E4c note in docs/audit.
+    if (process.env.ERP_ENABLE_RECURRING_INVOICES !== 'true') {
+      console.log('[CRON] Recurring invoice generation is deferred — skipping (no-op).');
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          message:
+            'Recurring invoice generation is deferred and disabled at launch. Set ERP_ENABLE_RECURRING_INVOICES=true only after migrating to the top-level invoices collection.',
+        },
+        { status: 200 },
+      );
+    }
+
     console.log('[CRON] Starting recurring invoice generation.');
     const results = await generateRecurringInvoices();
 
