@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { classifyRouteSource, PUBLIC_ROUTES, type RouteContract } from '@/lib/api/route-contract';
+import { classifyRouteSource, PUBLIC_ROUTES, AUTHENTICATED_ROUTES, type RouteContract } from '@/lib/api/route-contract';
 
 /**
  * Route contract gate (P0-5).
@@ -124,5 +124,38 @@ describe('route contract coverage (P0-5)', () => {
     const checkout = routes.find((r) => r.rel === 'stripe/checkout');
     expect(checkout).toBeDefined();
     expect(checkout?.contract).toBe('tenant_scoped');
+  });
+
+  it('every authenticated route is a reviewed non-tenant-scoped exception (E5b)', () => {
+    // A route behind user auth that does not scope by tenantId is a suspected
+    // missing-tenant-scope. Each must be individually reviewed and justified in
+    // AUTHENTICATED_ROUTES; anything else fails the build so new routes cannot
+    // silently ship without tenant scoping.
+    const unreviewed = routes
+      .filter((r) => r.contract === 'authenticated')
+      .map((r) => r.rel)
+      .filter((rel) => !AUTHENTICATED_ROUTES[rel]);
+    if (unreviewed.length > 0) {
+      throw new Error(
+        'Authenticated route(s) with no tenant scoping and no reviewed exception. ' +
+          'Add tenant scoping, or if the route is legitimately tenant-agnostic add ' +
+          'it to AUTHENTICATED_ROUTES in lib/api/route-contract.ts with a justification:\n' +
+          unreviewed.map((v) => '  - ' + v).join('\n'),
+      );
+    }
+    expect(unreviewed).toEqual([]);
+  });
+
+  it('every AUTHENTICATED_ROUTES entry has a non-empty justification', () => {
+    const missing = Object.entries(AUTHENTICATED_ROUTES)
+      .filter(([, why]) => !why || !why.trim())
+      .map(([route]) => route);
+    expect(missing).toEqual([]);
+  });
+
+  it('AUTHENTICATED_ROUTES has no stale entries for routes that no longer exist', () => {
+    const existing = new Set(routes.map((r) => r.rel));
+    const stale = Object.keys(AUTHENTICATED_ROUTES).filter((route) => !existing.has(route));
+    expect(stale).toEqual([]);
   });
 });

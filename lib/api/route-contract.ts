@@ -66,7 +66,16 @@ const TENANT_EVIDENCE = [
   /getTenantIdForRequest/,
   /docTenantId/,
   /normalizeTenantId/,
-  /\.user\.tenantId/,
+  // A route is tenant-scoped when it reads a resolved tenantId off the
+  // authenticated principal and/or filters Firestore by it. The original list
+  // only matched the literal `.user.tenantId`; real routes reach tenantId many
+  // equivalent ways (me.tenantId, session.tenantId, object shorthand, where
+  // filters, destructuring from the auth guard). These patterns recognize those
+  // without matching mere mentions in comments.
+  /\.tenantId\b/,
+  /tenantId:\s/,
+  /where\(['"]tenantId['"]/,
+  /\{[^}]*\btenantId\b[^}]*\}\s*=\s*await/,
   /tenantId.*claims|claims.*tenantId/,
 ];
 
@@ -129,6 +138,37 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'billing/webhook': 'Deprecated 410 stub.',
   'billing/subscribe': 'Deprecated 410 stub.',
   'billing/cancel-subscription': 'Deprecated 410 stub.',
+};
+
+/**
+ * Reviewed intentionally-authenticated (non-tenant-scoped) routes. Every entry
+ * needs a justification. These are routes behind a user-auth guard that
+ * legitimately do NOT scope by tenantId because they operate on the caller's own
+ * identity, on global/platform-level data (super-admin), on stateless utilities,
+ * or delegate to a tenant-scoped route. Any authenticated route NOT on this list
+ * is a suspected missing-tenant-scope and fails the coverage gate.
+ */
+export const AUTHENTICATED_ROUTES: Record<string, string> = {
+  // Caller-identity scoped (act on the current user, not a tenant collection)
+  me: 'Returns the current user profile; scoped to the caller, not a tenant.',
+  'auth/sessions': "Lists the caller's own sessions.",
+  'auth/sessions/[id]': "Revokes one of the caller's own sessions.",
+  'auth/sessions/invalidate-all': "Invalidates all of the caller's own sessions.",
+  'auth/create-set-password-token': 'Issues a set-password token for the caller.',
+  'auth/sso/status': 'Returns SSO status for the caller; no tenant data.',
+  'auth/sso/[provider]/authorize': 'Builds an OAuth authorize URL; tenantId is a query param, not tenant-scoped data access.',
+  'send-email': 'Sends an email as the current user; no tenant collection read.',
+  // Global / platform-level (super-admin, tenant-agnostic by design)
+  'admin/rate-limits': 'Super-admin only; manages global rate-limit rules.',
+  'admin/jobs/[id]/retry': 'Super-admin only; retries a platform job.',
+  'admin/launch-checklist/check': 'Super-admin only; platform launch checklist.',
+  'admin/monitoring/overview': 'Super-admin only; platform monitoring snapshot.',
+  'finance/reports/platform': 'Super-admin only; platform-wide (cross-tenant) finance report.',
+  // Stateless utility (no tenant data)
+  'finance/currency/convert': 'Pure currency conversion math; no tenant data.',
+  // Safe delegators (tenant scoping enforced by the route they call)
+  'finance/invoices/mark-paid': 'Delegates to finance/invoices/update (tenant-scoped) after requireFinance.',
+  'finance/payments/record': 'Delegates to finance/payments/update (tenant-scoped) after requireFinance.',
 };
 
 const matchesAny = (src: string, patterns: RegExp[]) => patterns.some((re) => re.test(src));
