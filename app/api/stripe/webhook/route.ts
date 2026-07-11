@@ -1,11 +1,7 @@
-import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
-import { adminAuth, adminDb } from '../../../../lib/firebaseAdmin';
-import { DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from '../../../../lib/tenant/constants';
-import { PLAN_MODULES } from '../../../../app/config/plans';
-import { createPasswordSetupToken, sendSetPasswordEmail } from '../../../../lib/passwordSetup';
+import { adminDb } from '../../../../lib/firebaseAdmin';
 import { createRoleNotifications, type NotificationType } from '@/lib/notifications';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { applySubscriptionState } from '@/lib/billing/apply-subscription-state';
@@ -21,7 +17,7 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_EVENTS = new Set(['checkout.session.completed']);
 
 // Checkout sessions Bizosto itself originated (app signup, platform, marketing site).
-// Only these provision/link a tenant; any other checkout.session.completed is ignored.
+// Only these link a tenant; any other checkout.session.completed is ignored.
 const TRUSTED_CHECKOUT_SOURCES = new Set(['bizosto_app', 'bizosto_platform', 'bizosto_website']);
 
 type BillingCycle = 'monthly' | 'annual';
@@ -48,21 +44,6 @@ function normalizeEmail(value: string | null | undefined) {
   return String(value || '')
     .trim()
     .toLowerCase();
-}
-
-function deriveTenantName(email: string) {
-  const domain = email.split('@')[1] || '';
-  const base = domain.split('.')[0] || '';
-  if (!base) return 'Bizosto Tenant';
-  return base.replace(/[^a-z0-9]/gi, ' ').trim() || 'Bizosto Tenant';
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 48);
 }
 
 function parseBillingCycle(value: string | null | undefined): BillingCycle | null {
@@ -121,75 +102,6 @@ function buildSubscriptionNotification({
   return { title, body, type, priority };
 }
 
-async function ensureAdminUser({
-  email,
-  tenantId,
-  tenantName,
-}: {
-  email: string;
-  tenantId: string;
-  tenantName: string;
-}) {
-  const normalizedEmail = normalizeEmail(email);
-  if (!normalizedEmail) {
-    throw new Error('Admin email is required.');
-  }
-
-  let userRecord = await adminAuth.getUserByEmail(normalizedEmail).catch(() => null);
-  let isNewUser = false;
-
-  if (!userRecord) {
-    userRecord = await adminAuth.createUser({
-      email: normalizedEmail,
-      password: crypto.randomBytes(16).toString('hex'),
-      displayName: normalizedEmail.split('@')[0],
-    });
-    isNewUser = true;
-  }
-
-  const now = admin.firestore.FieldValue.serverTimestamp();
-
-  await adminDb
-    .collection('users')
-    .doc(userRecord.uid)
-    .set(
-      {
-        uid: userRecord.uid,
-        email: normalizedEmail,
-        displayName: userRecord.displayName || normalizedEmail.split('@')[0],
-        role: 'admin',
-        tenantId,
-        status: 'active',
-        updatedAt: now,
-        createdAt: now,
-      },
-      { merge: true },
-    );
-
-  if (isNewUser) {
-    const tokenData = await createPasswordSetupToken({
-      uid: userRecord.uid,
-      email: normalizedEmail,
-      createdBy: 'stripe_checkout',
-    });
-    await sendSetPasswordEmail({ email: normalizedEmail, link: tokenData.link });
-
-    await adminDb.collection('events').add({
-      type: 'stripe.admin_invited',
-      title: 'Admin invited',
-      description: `Stripe checkout admin invite sent for ${tenantName}`,
-      createdAt: now,
-      updatedAt: now,
-      metadata: {
-        tenantId,
-        email: normalizedEmail,
-      },
-    });
-  }
-
-  return userRecord.uid;
-}
-
 async function linkExistingTenant({
   tenantId,
   stripeCustomerId,
@@ -205,7 +117,7 @@ async function linkExistingTenant({
 }): Promise<boolean> {
   // Canonical billing state service: activates billing, stores Stripe IDs and
   // billing cycle, and writes a billing_state_audit record. Returns false when
-  // the tenant does not exist so the caller can fall back to legacy handling.
+  // the tenant does not exist.
   const result = await applySubscriptionState({
     tenantId,
     source: 'checkout.linked',
@@ -215,106 +127,6 @@ async function linkExistingTenant({
     billingCycle,
   });
   return result.tenantExists;
-}
-
-function resolveCheckoutPlan(value: unknown): keyof typeof PLAN_MODULES {
-  const plan = String(value || '')
-    .trim()
-    .toLowerCase();
-  if (plan === 'starter' || plan === 'pro' || plan === 'enterprise') {
-    return plan;
-  }
-  // Fail closed: never silently grant a plan (previously hardcoded to "pro"). If checkout metadata
-  // lacks a valid bizosto_plan, reject so Stripe retries and this surfaces, rather than provisioning
-  // the wrong (higher) tier.
-  throw new Error(`Unable to resolve Bizosto plan from checkout metadata: "${String(value)}"`);
-}
-
-async function ensureTenantForCheckout({
-  email,
-  stripeCustomerId,
-  stripeSubscriptionId,
-  billingCycle,
-  plan,
-}: {
-  email: string;
-  stripeCustomerId: string;
-  stripeSubscriptionId: string;
-  billingCycle: BillingCycle;
-  plan: keyof typeof PLAN_MODULES;
-}) {
-  const now = admin.firestore.FieldValue.serverTimestamp();
-
-  return adminDb.runTransaction(async (tx) => {
-    const tenantsRef = adminDb.collection('tenants');
-    const byCustomerSnap = await tx.get(
-      tenantsRef.where('stripeCustomerId', '==', stripeCustomerId).limit(1),
-    );
-    const bySubscriptionSnap = await tx.get(
-      tenantsRef.where('stripeSubscriptionId', '==', stripeSubscriptionId).limit(1),
-    );
-
-    const existingDoc = byCustomerSnap.docs[0] || bySubscriptionSnap.docs[0];
-
-    if (existingDoc) {
-      const existingData = existingDoc.data() || {};
-      tx.set(
-        existingDoc.ref,
-        {
-          stripeCustomerId,
-          stripeSubscriptionId,
-          billingStatus: 'active',
-          billingCycle,
-          status: 'active',
-          updatedAt: now,
-        },
-        { merge: true },
-      );
-
-      return {
-        tenantId: existingDoc.id,
-        tenantName: String(existingData.name || 'Bizosto Tenant'),
-        created: false,
-      };
-    }
-
-    const name = deriveTenantName(email);
-    const slugBase = slugify(name) || 'bizosto-tenant';
-    const tenantRef = tenantsRef.doc();
-    const slug = `${slugBase}-${tenantRef.id.slice(0, 6)}`;
-
-    tx.set(tenantRef, {
-      name,
-      slug,
-      status: 'active',
-      source: 'stripe_checkout',
-      brand: {
-        ...DEFAULT_TENANT_BRAND,
-        name,
-      },
-      modulesEnabled: { ...PLAN_MODULES[plan] },
-      rolesEnabled: DEFAULT_ROLES,
-      plan,
-      settings: {
-        currency: 'USD',
-        timezone: 'UTC',
-        country: '',
-        state: '',
-      },
-      modules: { ...PLAN_MODULES[plan] },
-      planSetBy: { uid: 'system', role: 'super_admin' },
-      planUpdatedAt: now,
-      stripeCustomerId,
-      stripeSubscriptionId,
-      billingStatus: 'active',
-      billingCycle,
-      createdAt: now,
-      updatedAt: now,
-      updatedBy: 'system',
-    });
-
-    return { tenantId: tenantRef.id, tenantName: name, created: true };
-  });
 }
 
 async function updateSubscriptionStatus({
@@ -465,7 +277,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, received: true });
       }
 
-      const email = normalizeEmail(session.customer_details?.email || session.customer_email);
       const stripeCustomerId =
         typeof session.customer === 'string' ? session.customer : session.customer?.id || '';
       const stripeSubscriptionId =
@@ -483,62 +294,62 @@ export async function POST(req: Request) {
         );
       }
 
-      try {
-        // App signup flow: /api/signup already created the tenant, admin user,
-        // claims, plan, modules, and welcome email. Here we only link the Stripe
-        // customer/subscription to that existing tenant and activate billing.
-        if (metadataTenantId) {
-          const linked = await linkExistingTenant({
-            tenantId: metadataTenantId,
-            stripeCustomerId,
-            stripeSubscriptionId,
-            billingCycle,
-            eventId: event.id,
-          });
-          if (linked) {
-            await finalizeWebhookEvent(event.id, event.type);
-            return NextResponse.json({ ok: true, received: true, tenantId: metadataTenantId });
-          }
-          // Tenant id present but not found — fall through to legacy create-by-email.
-        }
-
-        // Legacy / marketing-site checkout with no pre-created tenant.
-        if (!email) {
-          return NextResponse.json(
-            { ok: false, error: 'Missing checkout details.' },
-            { status: 400 },
-          );
-        }
-
-        const tenantResult = await ensureTenantForCheckout({
-          email,
+      // S39 single-provisioning invariant: /api/signup is the ONLY path that
+      // creates a tenant, admin user, claims, plan, and modules — always before
+      // Checkout, always stamping metadata.tenantId. This webhook therefore only
+      // LINKS an existing tenant to its Stripe subscription and activates billing.
+      // The former create-by-email fallback (ensureTenantForCheckout / ensureAdminUser)
+      // was removed: no code path originates a tenant-less checkout, so the fallback
+      // was dead and could only misfire — creating a duplicate tenant, inferring a
+      // company name from an email domain, or granting a plan from unauthenticated
+      // metadata. Missing or unknown tenantId now fails closed.
+      if (!metadataTenantId) {
+        // Trusted source but no tenant reference — cannot safely link. Ack so Stripe
+        // stops retrying; the mismatch is logged for investigation rather than
+        // silently provisioning a new workspace.
+        console.error('stripe webhook: checkout.session.completed missing metadata.tenantId', {
+          eventId: event.id,
           stripeCustomerId,
           stripeSubscriptionId,
-          billingCycle,
-          plan: resolveCheckoutPlan(metadata.bizosto_plan),
+          source: metadata.source || '',
         });
-
-        await ensureAdminUser({
-          email,
-          tenantId: tenantResult.tenantId,
-          tenantName: tenantResult.tenantName,
-        });
-
         await finalizeWebhookEvent(event.id, event.type);
-        return NextResponse.json({ ok: true, received: true, tenantId: tenantResult.tenantId });
-      } catch (handlerErr) {
-        throw handlerErr;
+        return NextResponse.json({ ok: true, received: true, linked: false });
       }
+
+      const linked = await linkExistingTenant({
+        tenantId: metadataTenantId,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        billingCycle,
+        eventId: event.id,
+      });
+
+      if (!linked) {
+        // tenantId was present but no tenant document matched. Do NOT create one —
+        // ack, log, and let an operator reconcile. A retry cannot fix a nonexistent
+        // tenant, and creating one here would bypass the verified signup flow.
+        console.error('stripe webhook: metadata.tenantId did not match any tenant', {
+          eventId: event.id,
+          tenantId: metadataTenantId,
+          stripeCustomerId,
+          stripeSubscriptionId,
+        });
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
+      }
+
+      await finalizeWebhookEvent(event.id, event.type);
+      return NextResponse.json({ ok: true, received: true, tenantId: metadataTenantId });
     }
 
-    try {
-      const subscription = event.data.object as Stripe.Subscription;
-      await updateSubscriptionStatus({ subscription, eventType: event.type });
-      await finalizeWebhookEvent(event.id, event.type);
-      return NextResponse.json({ ok: true, received: true });
-    } catch (handlerErr) {
-      throw handlerErr;
-    }
+    // Defensive: ALLOWED_EVENTS currently admits only checkout.session.completed,
+    // so this path is unreachable today. Retained so that re-admitting subscription
+    // events here (instead of subscription-webhook) stays a one-line change.
+    const subscription = event.data.object as Stripe.Subscription;
+    await updateSubscriptionStatus({ subscription, eventType: event.type });
+    await finalizeWebhookEvent(event.id, event.type);
+    return NextResponse.json({ ok: true, received: true });
   } catch (err) {
     console.error('stripe webhook error:', err);
     // Release any claim made in this delivery so Stripe's retry can re-process.
