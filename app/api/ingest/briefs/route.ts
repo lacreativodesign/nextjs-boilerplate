@@ -61,8 +61,6 @@ export async function POST(req: Request) {
 
     const auth = await authenticateIngest(req, {
       fallbackApiKey: normalizeOptionalString(body.apiKey),
-      fallbackTenantId: normalizeOptionalString(body.tenantId),
-      allowGlobalKeyFallback: true,
     });
     if (!auth.ok) {
       return NextResponse.json(

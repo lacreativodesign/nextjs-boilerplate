@@ -41,7 +41,6 @@ const INTERNAL_EVIDENCE = [
   /x-internal-secret/,
   /x-internal-usage-key/,
   /authenticateIngest/,
-  /ERP_INGEST_KEY/,
   /x-api-key/,
 ];
 
