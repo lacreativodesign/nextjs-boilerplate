@@ -46,6 +46,85 @@ async function resolveTenantIdFromInvoice(
   }
 }
 
+/**
+ * Resolve the tenant for a subscription lifecycle event. Metadata is the primary
+ * source, but if a subscription is created/edited in the Stripe Dashboard the
+ * metadata.tenantId may be absent. Fall back to the tenant already linked by
+ * subscription id, then by customer id (single-field equality queries — no
+ * composite index needed). Returns '' only when the event is genuinely
+ * unmappable, which the caller must dead-letter rather than silently accept.
+ */
+async function resolveTenantIdFromSubscription(subscription: Stripe.Subscription): Promise<string> {
+  const metadataTenantId = String(subscription.metadata?.tenantId || '').trim();
+  if (metadataTenantId) {
+    return metadataTenantId;
+  }
+
+  const tenantsRef = adminDb.collection('tenants');
+  const bySub = await tenantsRef
+    .where('stripeSubscriptionId', '==', subscription.id)
+    .limit(1)
+    .get();
+  if (!bySub.empty) {
+    return bySub.docs[0].id;
+  }
+
+  const customerId =
+    typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer?.id || '';
+  if (customerId) {
+    const byCustomer = await tenantsRef
+      .where('stripeCustomerId', '==', customerId)
+      .limit(1)
+      .get();
+    if (!byCustomer.empty) {
+      return byCustomer.docs[0].id;
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Records an unmappable billing event to `dead_letter_webhooks` and alerts the
+ * super admin, so a subscription/payment event whose tenant cannot be resolved
+ * is never silently dropped. The caller returns a non-2xx so Stripe keeps
+ * retrying while the operator investigates.
+ */
+async function deadLetterWebhookEvent(event: Stripe.Event, reason: string): Promise<void> {
+  const nowIso = new Date().toISOString();
+  try {
+    await adminDb.collection('dead_letter_webhooks').doc(event.id).set(
+      {
+        eventId: event.id,
+        source: 'subscription-webhook',
+        type: event.type,
+        reason,
+        status: 'unresolved',
+        createdAt: nowIso,
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('[STRIPE] Failed to write dead-letter record', { eventId: event.id, err });
+  }
+
+  sendEmail({
+    to: 'admin@bizosto.com',
+    subject: `⚠️ Unresolved billing webhook — ${event.type}`,
+    html: `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1E293B;">
+<h1 style="font-size:18px;color:#DC2626;">Unresolved Stripe billing event</h1>
+<p>A subscription/payment webhook could not be mapped to a tenant and was dead-lettered. Stripe will keep retrying until it is resolved.</p>
+<table cellpadding="6" style="border-collapse:collapse;font-size:14px;">
+<tr><td style="color:#64748B;">Event ID</td><td style="font-weight:600;">${event.id}</td></tr>
+<tr><td style="color:#64748B;">Type</td><td style="font-weight:600;">${event.type}</td></tr>
+<tr><td style="color:#64748B;">Reason</td><td style="font-weight:600;">${reason}</td></tr>
+<tr><td style="color:#64748B;">At</td><td>${nowIso}</td></tr>
+</table></body></html>`,
+  }).catch((err) => console.error('[STRIPE] Failed to alert super admin of dead-letter', err));
+}
+
 export async function POST(req: Request) {
   const stripe = getStripeClient();
   const signature = req.headers.get('stripe-signature');
@@ -81,13 +160,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, received: true });
   }
 
+  let deadLettered = false;
   try {
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        const tenantId = String(subscription.metadata?.tenantId || '').trim();
-        if (!tenantId) break;
+        const tenantId = await resolveTenantIdFromSubscription(subscription);
+        if (!tenantId) {
+          await deadLetterWebhookEvent(event, 'subscription event has no resolvable tenantId');
+          deadLettered = true;
+          break;
+        }
 
         const updatedPlan = String(subscription.metadata?.bizosto_plan || '').trim();
         // Canonical billing state service: derives subscriptionState, billingStatus,
@@ -138,8 +222,12 @@ export async function POST(req: Request) {
       }
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        const tenantId = String(subscription.metadata?.tenantId || '').trim();
-        if (!tenantId) break;
+        const tenantId = await resolveTenantIdFromSubscription(subscription);
+        if (!tenantId) {
+          await deadLetterWebhookEvent(event, 'subscription.deleted has no resolvable tenantId');
+          deadLettered = true;
+          break;
+        }
 
         await applySubscriptionState({
           tenantId,
@@ -179,7 +267,11 @@ export async function POST(req: Request) {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
-        if (!tenantId) break;
+        if (!tenantId) {
+          await deadLetterWebhookEvent(event, 'invoice.payment_succeeded has no resolvable tenantId');
+          deadLettered = true;
+          break;
+        }
 
         await applyPaymentSucceeded({ tenantId, eventId: event.id });
 
@@ -219,7 +311,11 @@ export async function POST(req: Request) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
-        if (!tenantId) break;
+        if (!tenantId) {
+          await deadLetterWebhookEvent(event, 'invoice.payment_failed has no resolvable tenantId');
+          deadLettered = true;
+          break;
+        }
 
         const { failedPaymentCount: failedCount } = await applyPaymentFailed({
           tenantId,
@@ -290,6 +386,17 @@ export async function POST(req: Request) {
     // Release the claim so the next Stripe retry can re-process; return non-2xx.
     await releaseWebhookEvent(event.id);
     return NextResponse.json({ ok: false, error: 'Webhook handler failed' }, { status: 500 });
+  }
+
+  // A dead-lettered event was recorded but not applied: release the idempotency
+  // claim and return non-2xx so Stripe retries. If the tenant link is repaired
+  // (e.g. checkout finishes late), a retry resolves and processes normally.
+  if (deadLettered) {
+    await releaseWebhookEvent(event.id);
+    return NextResponse.json(
+      { ok: false, error: 'Event could not be mapped to a tenant; dead-lettered for retry' },
+      { status: 500 },
+    );
   }
 
   await finalizeWebhookEvent(event.id, event.type);
