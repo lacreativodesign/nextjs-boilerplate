@@ -71,43 +71,23 @@ export async function disconnectConnectAccount(accountId: string): Promise<void>
   }
 }
 
+/**
+ * CANONICAL CONNECT CHARGE MODEL — DIRECT CHARGES (decision record, E1).
+ *
+ * Client-portal invoice payments are Connect DIRECT charges: the PaymentIntent
+ * is created ON the tenant's connected account (stripeAccount request option)
+ * with application_fee_amount for the platform's 0.5% fee. The tenant is the
+ * merchant of record and pays Stripe processing fees; the platform collects
+ * only its application fee. Refunds are issued on the connected account with
+ * refund_application_fee: true.
+ *
+ * Do NOT use destination charges (transfer_data.destination) for client
+ * payments: they would make the platform the merchant of record and make the
+ * platform absorb Stripe processing fees out of a 0.5% application fee — a
+ * guaranteed per-transaction loss — and they cannot be combined with the
+ * stripeAccount option. The legacy createConnectCharge destination-charge
+ * helper was removed for this reason (it had no callers).
+ */
 export function calculatePlatformFee(amountCents: number): number {
   return Math.max(1, Math.round(amountCents * 0.005));
-}
-
-export async function createConnectCharge(params: {
-  amount: number;
-  currency: string;
-  customerId: string;
-  paymentMethodId: string;
-  connectedAccountId: string;
-  description: string;
-  metadata: Record<string, string>;
-}): Promise<Stripe.PaymentIntent> {
-  try {
-    const stripe = getStripeClient();
-    const platformFee = calculatePlatformFee(params.amount);
-
-    return await stripe.paymentIntents.create({
-      amount: params.amount,
-      currency: params.currency,
-      customer: params.customerId,
-      payment_method: params.paymentMethodId,
-      confirmation_method: 'automatic',
-      confirm: true,
-      description: params.description,
-      metadata: params.metadata,
-      application_fee_amount: platformFee,
-      transfer_data: {
-        destination: params.connectedAccountId,
-      },
-    });
-  } catch (error) {
-    console.error('[STRIPE_CONNECT] Failed to create connect charge', {
-      connectedAccountId: params.connectedAccountId,
-      amount: params.amount,
-      error,
-    });
-    throw error;
-  }
 }

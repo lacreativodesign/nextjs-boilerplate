@@ -50,6 +50,14 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
         acceptsPayments: Boolean(
           tenant.stripeConnectAccountId && tenant.stripeConnectChargesEnabled,
         ),
+        // Connect DIRECT charges require the PaymentMethod to be created on the
+        // tenant's connected account, so the pay page must initialize Stripe.js
+        // with this account id. Account ids are not secrets — this is Stripe's
+        // documented client-side pattern for direct charges.
+        stripeAccountId:
+          tenant.stripeConnectAccountId && tenant.stripeConnectChargesEnabled
+            ? String(tenant.stripeConnectAccountId)
+            : null,
       },
       client: {
         companyName: client?.companyName ? String(client.companyName) : null,

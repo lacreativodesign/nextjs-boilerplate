@@ -32,6 +32,7 @@ type PublicInvoiceResponse = {
     name: string;
     logoUrl: string | null;
     acceptsPayments: boolean;
+    stripeAccountId?: string | null;
   };
   client?: {
     companyName: string | null;
@@ -56,7 +57,7 @@ type StripeInstance = {
 
 declare global {
   interface Window {
-    Stripe?: (key: string) => StripeInstance;
+    Stripe?: (key: string, options?: { stripeAccount?: string }) => StripeInstance;
   }
 }
 
@@ -154,7 +155,13 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       }
       if (cardRef.current) return;
 
-      const stripe = window.Stripe(key);
+      // Connect DIRECT charges: the PaymentMethod must be created on the tenant's
+      // connected account, so Stripe.js is initialized with that account id.
+      const connectedAccountId = data?.tenant?.stripeAccountId || undefined;
+      const stripe = window.Stripe(
+        key,
+        connectedAccountId ? { stripeAccount: connectedAccountId } : undefined,
+      );
       const elements = stripe.elements();
       const card = elements.create('card', {
         style: {

@@ -7,6 +7,7 @@ import {
   releaseWebhookEvent,
 } from '@/lib/stripe/webhook-idempotency';
 import { getStripeClient } from '@/lib/payments/stripe';
+import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -151,6 +152,45 @@ export async function POST(req: Request) {
             updatedAt: nowIso,
             isDeleted: false,
           });
+          // Same deterministic ledger ids as the pay/confirm routes so this
+          // backstop converges on exactly one payment.succeeded and one
+          // invoice.mark_paid entry per PaymentIntent — no duplicates on replay,
+          // and no payment can be recorded without its ledger trail.
+          const previousStatus = String(
+            (invoiceSnap.data() as { status?: string }).status || '',
+          );
+          batch.set(
+            adminDb.collection('finance_ledger').doc(`payment_succeeded_${pi.id}`),
+            buildFinanceLedgerEntry({
+              tenantId,
+              type: 'payment.succeeded',
+              paymentId: pi.id,
+              invoiceId,
+              orderId: String(pi.metadata?.orderId || ''),
+              clientId: String(pi.metadata?.clientId || ''),
+              amountUsd,
+              previousStatus,
+              newStatus: 'succeeded',
+              method: 'stripe_checkout',
+              actor: { uid: 'system', name: 'Client payment (Stripe webhook backstop)' },
+            }),
+          );
+          batch.set(
+            adminDb.collection('finance_ledger').doc(`invoice_paid_${pi.id}`),
+            buildFinanceLedgerEntry({
+              tenantId,
+              type: 'invoice.mark_paid',
+              invoiceId,
+              orderId: String(pi.metadata?.orderId || ''),
+              clientId: String(pi.metadata?.clientId || ''),
+              amountUsd,
+              previousStatus,
+              newStatus: 'paid',
+              method: 'stripe',
+              reason: 'Paid online via client payment page',
+              actor: { uid: 'system', name: 'Client payment (Stripe webhook backstop)' },
+            }),
+          );
           await batch.commit();
         }
       }
