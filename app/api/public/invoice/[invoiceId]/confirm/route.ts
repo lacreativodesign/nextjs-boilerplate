@@ -52,9 +52,33 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
     }
 
     const stripe = getStripeClient();
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    let paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
       stripeAccount: connectAccountId,
     });
+
+    // The PaymentIntent id is client-supplied: bind it to THIS invoice before
+    // recording anything, so a succeeded intent belonging to another invoice
+    // cannot be replayed to mark this one paid.
+    if (String(paymentIntent.metadata?.invoiceId || '') !== invoiceId) {
+      return NextResponse.json(
+        { ok: false, error: 'Payment could not be confirmed' },
+        { status: 400 },
+      );
+    }
+
+    // Manual confirmation flow (pay route uses confirmation_method: 'manual'):
+    // after the customer completes 3DS via handleCardAction, the intent sits at
+    // requires_confirmation and must be confirmed server-side to capture funds.
+    if (paymentIntent.status === 'requires_confirmation') {
+      paymentIntent = await stripe.paymentIntents.confirm(
+        paymentIntentId,
+        {},
+        {
+          stripeAccount: connectAccountId,
+          idempotencyKey: `inv_confirm_${invoiceId}_${paymentIntentId}`,
+        },
+      );
+    }
 
     if (paymentIntent.status === 'succeeded') {
       const nowIso = new Date().toISOString();

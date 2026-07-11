@@ -87,11 +87,14 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
           source: 'client_payment_page',
         },
         application_fee_amount: platformFee,
-        transfer_data: {
-          destination: connectAccountId,
-        },
       },
       {
+        // Connect DIRECT charge: the PaymentIntent lives on the tenant's connected
+        // account (stripeAccount header). The tenant is the merchant of record and
+        // pays Stripe processing fees; the platform collects application_fee_amount
+        // (0.5%). Never add transfer_data.destination here — that is a
+        // destination-charge parameter and Stripe rejects it when combined with
+        // stripeAccount.
         stripeAccount: connectAccountId,
         idempotencyKey: `inv_pay_${invoiceId}_${paymentMethodId}`,
       },
