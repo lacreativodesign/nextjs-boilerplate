@@ -4,6 +4,7 @@ import MasterSelect from '@/components/ui/MasterSelect';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getCurrentTenantId, tenantProjectFilePath } from '@/lib/storage/paths';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 
@@ -352,7 +353,14 @@ export default function GlobalFilesPage() {
       const storage = await getFirebaseStorage();
       const fileId = makeFileId();
       const safeName = sanitizeFileName(selectedFile.name);
-      const path = `projects/${uploadProjectId}/${uploadCategory}/${fileId}_${safeName}`;
+      const tenantId = await getCurrentTenantId();
+      const path = tenantProjectFilePath({
+        tenantId,
+        projectId: uploadProjectId,
+        category: uploadCategory,
+        fileId,
+        safeName,
+      });
       const storageRef = ref(storage, path);
 
       await uploadBytes(storageRef, selectedFile);

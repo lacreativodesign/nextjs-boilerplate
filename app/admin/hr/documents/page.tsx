@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getCurrentTenantId, tenantEmployeeFilePath } from '@/lib/storage/paths';
 import { toastError } from '@/lib/toast';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import MasterSelect from '@/components/ui/MasterSelect';
@@ -118,7 +119,14 @@ export default function HrDocumentsPage() {
           ? crypto.randomUUID()
           : `${Date.now()}`;
       const safeName = selectedFile.name.replace(/\s+/g, '_');
-      const storagePath = `employees/${selectedUserId}/${selectedDocType}/${docId}_${safeName}`;
+      const tenantId = await getCurrentTenantId();
+      const storagePath = tenantEmployeeFilePath({
+        tenantId,
+        userId: selectedUserId,
+        docType: selectedDocType,
+        docId,
+        safeName,
+      });
       const fileRef = ref(storage, storagePath);
 
       await uploadBytes(fileRef, selectedFile);

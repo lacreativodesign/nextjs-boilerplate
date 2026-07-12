@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getCurrentTenantId, tenantProjectFilePath } from '@/lib/storage/paths';
 import MasterSelect from '@/components/ui/MasterSelect';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
@@ -223,7 +224,14 @@ export default function AMProjectDrawer({ open, project, onClose, onProjectUpdat
       const storage = await getFirebaseStorage();
       const fileId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const safeName = buildSafeName(file.name);
-      const storagePath = `projects/${activeProject.id}/${uploadingCategory}/${fileId}_${safeName}`;
+      const tenantId = await getCurrentTenantId();
+      const storagePath = tenantProjectFilePath({
+        tenantId,
+        projectId: activeProject.id,
+        category: uploadingCategory,
+        fileId,
+        safeName,
+      });
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
