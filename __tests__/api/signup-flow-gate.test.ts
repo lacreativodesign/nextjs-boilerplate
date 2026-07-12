@@ -49,9 +49,29 @@ describe('signup flow gate', () => {
     expect(userCreation).toBeLessThan(tenantCreation);
   });
 
-  it('users are created emailVerified and OTP is consumed after success', () => {
+  it('users are created emailVerified (E7: OTP burned transactionally, see below)', () => {
     expect(signupRoute).toContain('emailVerified: true');
-    expect(signupRoute).toContain("collection('email_otps').doc(email).delete()");
+  });
+
+  it('OTP is consumed ATOMICALLY and BEFORE any provisioning (E7)', () => {
+    // The old code only READ the OTP here and deleted it at the very end, leaving a
+    // TOCTOU window in which two concurrent requests both saw verified:true and each
+    // provisioned an Auth user + tenant from one code. The consume must now happen
+    // inside a transaction that also validates it, before any provisioning.
+    expect(signupRoute).toContain('adminDb.runTransaction');
+    expect(signupRoute).toContain('tx.delete(otpRef)');
+
+    const consume = signupRoute.indexOf('tx.delete(otpRef)');
+    const userCreation = signupRoute.indexOf('adminAuth.createUser');
+    const tenantCreation = signupRoute.indexOf('await createTenantWorkspace({');
+
+    expect(consume).toBeGreaterThan(-1);
+    // The OTP is burned strictly before an Auth user or tenant is created.
+    expect(consume).toBeLessThan(userCreation);
+    expect(consume).toBeLessThan(tenantCreation);
+
+    // The old best-effort trailing delete must be gone — it is what allowed the race.
+    expect(signupRoute).not.toContain("collection('email_otps').doc(email).delete()");
   });
 
   it('custom claims always include both role and tenantId', () => {
