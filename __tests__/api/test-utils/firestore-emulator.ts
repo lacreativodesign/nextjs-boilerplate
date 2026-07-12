@@ -29,6 +29,16 @@ class MockDocRef {
     public readonly id: string,
   ) {}
 
+  /**
+   * Subcollection access. Real routes read e.g. projects/{id}/messages; without
+   * this the emulator threw a synchronous TypeError that route-level `.catch()`
+   * could not trap. Subcollections are stored under a flattened path key so they
+   * behave like any other collection (seed them as 'projects/proj_a/messages').
+   */
+  collection(name: string) {
+    return new MockCollectionRef(this.db, `${this.collectionName}/${this.id}/${name}`);
+  }
+
   async get() {
     return new MockDocSnapshot(this.id, this.db.getDoc(this.collectionName, this.id));
   }
