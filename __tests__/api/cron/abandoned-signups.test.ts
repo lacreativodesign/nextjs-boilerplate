@@ -103,8 +103,17 @@ describe('signup OTP hardening — static gates (P0-2)', () => {
     expect(signupSrc).not.toContain('emailVerified: false');
   });
 
-  it('consumes the OTP after successful provisioning', () => {
-    expect(signupSrc).toContain("collection('email_otps').doc(email).delete()");
+  it('consumes the OTP atomically BEFORE provisioning (E7)', () => {
+    // E7 changed this: the OTP used to be deleted best-effort AFTER provisioning,
+    // which left a TOCTOU window where two concurrent requests could each
+    // provision a tenant from one verified code. It is now validated and burned
+    // inside a single transaction before any Auth user or tenant is created.
+    expect(signupSrc).toContain('adminDb.runTransaction');
+    expect(signupSrc).toContain('tx.delete(otpRef)');
+    expect(signupSrc).not.toContain("collection('email_otps').doc(email).delete()");
+    expect(signupSrc.indexOf('tx.delete(otpRef)')).toBeLessThan(
+      signupSrc.indexOf('adminAuth.createUser'),
+    );
   });
 
   it('cron is registered in vercel.json', () => {
