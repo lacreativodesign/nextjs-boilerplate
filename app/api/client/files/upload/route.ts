@@ -59,6 +59,7 @@ export async function POST(req: Request) {
 
     await ref.set({
       id: ref.id,
+      tenantId: auth.user.tenantId,
       projectId,
       projectName: cleanString(project.projectName || ''),
       clientId: auth.clientId,

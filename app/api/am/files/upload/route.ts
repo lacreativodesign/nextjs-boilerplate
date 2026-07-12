@@ -86,9 +86,17 @@ export async function POST(req: Request) {
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const docRef = fileId
-      ? adminDb.collection('files').doc(fileId)
-      : adminDb.collection('files').doc();
+    let docRef;
+    if (fileId) {
+      const existingRef = adminDb.collection('files').doc(fileId);
+      const existingSnap = await existingRef.get();
+      if (!existingSnap.exists || String(existingSnap.data()?.tenantId || '') !== me.tenantId) {
+        return NextResponse.json({ ok: false, error: 'File not found.' }, { status: 404 });
+      }
+      docRef = existingRef;
+    } else {
+      docRef = adminDb.collection('files').doc();
+    }
 
     const size = Number(body?.size || 0);
     const mimeType = cleanString(body?.mimeType);
@@ -115,6 +123,7 @@ export async function POST(req: Request) {
 
     const payload = {
       id: docRef.id,
+      tenantId: me.tenantId,
       projectId,
       projectName: cleanString(project.projectName || ''),
       clientId: cleanString(project.clientId || ''),

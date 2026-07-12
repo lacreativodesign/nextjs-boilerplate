@@ -35,9 +35,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
-    const docRef = id
-      ? adminDb.collection('employeeDocuments').doc(id)
-      : adminDb.collection('employeeDocuments').doc();
+    // Validate the target employee belongs to the actor's tenant BEFORE writing or
+    // notifying. A cross-tenant userId must not reveal existence — return 404.
+    const targetSnap = await adminDb.collection('users').doc(userId).get();
+    const targetData = targetSnap.data() || {};
+    if (!targetSnap.exists || String(targetData?.tenantId || '') !== access.user.tenantId) {
+      return NextResponse.json({ ok: false, error: 'Employee not found' }, { status: 404 });
+    }
+
+    // When updating an existing document, load it and require it to belong to the
+    // actor's tenant. This prevents supplying an arbitrary cross-tenant document id
+    // with merge semantics to overwrite or hijack another tenant's record.
+    let docRef;
+    if (id) {
+      const existingRef = adminDb.collection('employeeDocuments').doc(id);
+      const existingSnap = await existingRef.get();
+      if (!existingSnap.exists || String(existingSnap.data()?.tenantId || '') !== access.user.tenantId) {
+        return NextResponse.json({ ok: false, error: 'Document not found' }, { status: 404 });
+      }
+      docRef = existingRef;
+    } else {
+      docRef = adminDb.collection('employeeDocuments').doc();
+    }
 
     const payload = {
       id: docRef.id,
@@ -64,11 +83,10 @@ export async function POST(req: Request) {
       createdByUid: access.user.uid,
       createdByName: access.user.name || access.user.email || 'Admin',
       metadata: { userId, docType },
+      tenantId: access.user.tenantId,
     });
 
-    const userSnap = await adminDb.collection('users').doc(userId).get();
-    const userData = userSnap.data() || {};
-    const employeeRoute = getRouteForRole(userData?.role || '');
+    const employeeRoute = getRouteForRole(targetData?.role || '');
 
     await createHrNotification({
       userId,
