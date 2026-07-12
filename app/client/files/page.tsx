@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getCurrentTenantId, tenantClientFilePath } from '@/lib/storage/paths';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
@@ -113,7 +114,13 @@ export default function ClientFilesPage() {
     try {
       const storage = await getFirebaseStorage();
       const fileId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const storagePath = `client-files/${uploadProjectId}/${fileId}_${file.name.replace(/\s+/g, '_')}`;
+      const tenantId = await getCurrentTenantId();
+      const storagePath = tenantClientFilePath({
+        tenantId,
+        projectId: uploadProjectId,
+        fileId,
+        safeName: file.name.replace(/\s+/g, '_'),
+      });
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
