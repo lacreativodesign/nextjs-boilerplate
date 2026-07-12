@@ -8,6 +8,7 @@ import {
 } from '@/lib/notifications';
 import { getProductionUser, isAssignedToProduction } from '../../_utils';
 import { validateFile } from '@/lib/files/validation';
+import { isTenantStoragePath } from '@/lib/storage/paths';
 
 export const runtime = 'nodejs';
 
@@ -63,6 +64,13 @@ export async function POST(req: Request) {
     if (!storagePath || !downloadUrl) {
       return NextResponse.json(
         { ok: false, error: 'Storage details are required.' },
+        { status: 400 },
+      );
+    }
+
+    if (!isTenantStoragePath(storagePath, me.tenantId)) {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid storage path.' },
         { status: 400 },
       );
     }

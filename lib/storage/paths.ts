@@ -44,6 +44,25 @@ function safeSegment(value: string, label: string): string {
   return clean;
 }
 
+/**
+ * S5 (server-side): confirms a client-supplied storagePath actually lives inside the
+ * caller's own tenant prefix.
+ *
+ * The upload APIs persist a storagePath taken straight from the request body. Without
+ * this check a caller in tenant A can store a record pointing at
+ * `tenants/B/...`, or at a legacy flat path, or escape the prefix via traversal.
+ * Storage rules block the *object* access; this blocks the *reference* being written.
+ */
+export function isTenantStoragePath(storagePath: string, tenantId: string): boolean {
+  const cleanPath = String(storagePath ?? '').trim();
+  const cleanTenant = String(tenantId ?? '').trim();
+  if (!cleanPath || !cleanTenant) return false;
+  if (cleanPath.startsWith('/')) return false;
+  if (cleanPath.includes('..')) return false;
+  if (cleanPath.includes('\\')) return false;
+  return cleanPath.startsWith(`${TENANT_STORAGE_ROOT}/${cleanTenant}/`);
+}
+
 /** tenants/{tenantId}/projects/{projectId}/{category}/{fileId}_{safeName} */
 export function tenantProjectFilePath(args: {
   tenantId: string;

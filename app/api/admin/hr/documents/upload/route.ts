@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
 import { validateFile } from '@/lib/files/validation';
+import { isTenantStoragePath } from '@/lib/storage/paths';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,13 @@ export async function POST(req: Request) {
 
     if (!userId || !docType || !fileName || !storagePath || !downloadUrl) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!isTenantStoragePath(storagePath, access.user.tenantId)) {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid storage path.' },
+        { status: 400 },
+      );
     }
 
     const fileValidation = validateFile(fileName, Number(body?.size || 0));

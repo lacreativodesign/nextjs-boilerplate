@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// Bizosto Firebase Storage rules.
+//
+// Until now NO Storage rules were deployed, so the bucket ran on Firebase's default
+// policy: any signed-in user could read and write ANY object. Combined with flat,
+// global object paths, that meant a user in one tenant could read every other
+// tenant's project deliverables, client files and HR documents.
+//
+// Every object now lives under tenants/{tenantId}/..., so the tenant segment of the
+// path can be authorized against the caller's tenantId custom claim. Anything that
+// does not match a tenant prefix — including all legacy flat paths — is denied.
+//
+// Note: these rules govern direct object access. Files already shared through a
+// getDownloadURL() token remain reachable via that token; rotating those is tracked
+// separately.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function callerTenant() {
+      return request.auth.token.tenantId;
+    }
+
+    function callerRole() {
+      return request.auth.token.role;
+    }
+
+    // Platform-level operator. Super Admin manages tenant branding across tenants.
+    function isSuperAdmin() {
+      return isSignedIn() && callerRole() == 'super_admin';
+    }
+
+    // Fails closed: a session with no tenant claim, a blank claim, or a claim that
+    // does not match the tenant segment in the path is denied.
+    function inCallerTenant(tenantId) {
+      return isSignedIn()
+        && callerTenant() is string
+        && callerTenant() != ''
+        && callerTenant() == tenantId;
+    }
+
+    // Backstop ceiling. The application enforces its own stricter per-type limits.
+    function withinSizeLimit() {
+      return request.resource.size < 50 * 1024 * 1024;
+    }
+
+    match /tenants/{tenantId}/{allPaths=**} {
+      allow read: if inCallerTenant(tenantId) || isSuperAdmin();
+      allow create, update: if (inCallerTenant(tenantId) || isSuperAdmin()) && withinSizeLimit();
+      allow delete: if inCallerTenant(tenantId) || isSuperAdmin();
+    }
+
+    // Explicit deny for everything outside a tenant prefix, including legacy paths
+    // such as projects/**, employees/**, employee-documents/** and client-files/**.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
