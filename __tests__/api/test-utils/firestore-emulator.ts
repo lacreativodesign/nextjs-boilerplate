@@ -52,6 +52,22 @@ class MockDocRef {
     this.db.setDoc(this.collectionName, this.id, structuredClone(data));
   }
 
+  /**
+   * Mirrors Firestore's create(): fails if the document already exists. This is
+   * what makes claimWebhookEvent atomic — exactly one concurrent delivery wins
+   * the claim and every other gets ALREADY_EXISTS (gRPC code 6).
+   */
+  async create(data: FirestoreRecord) {
+    if (this.db.getDoc(this.collectionName, this.id)) {
+      const err = new Error(
+        `ALREADY_EXISTS: document ${this.collectionName}/${this.id} already exists`,
+      ) as Error & { code: number };
+      err.code = 6;
+      throw err;
+    }
+    this.db.setDoc(this.collectionName, this.id, structuredClone(data));
+  }
+
   async update(data: FirestoreRecord) {
     const existing = this.db.getDoc(this.collectionName, this.id);
     if (!existing) {
