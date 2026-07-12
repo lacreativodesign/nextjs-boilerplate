@@ -55,6 +55,7 @@ export async function createHrEvent({
   createdByUid,
   createdByName,
   metadata,
+  tenantId,
 }: {
   type: string;
   title: string;
@@ -64,6 +65,7 @@ export async function createHrEvent({
   createdByUid?: string;
   createdByName?: string;
   metadata?: Record<string, unknown>;
+  tenantId?: string | null;
 }) {
   await adminDb.collection('events').add({
     type,
@@ -74,6 +76,7 @@ export async function createHrEvent({
     metadata: metadata || {},
     createdByUid: createdByUid || null,
     createdByName: createdByName || null,
+    tenantId: tenantId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
