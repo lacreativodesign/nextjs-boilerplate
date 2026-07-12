@@ -155,7 +155,7 @@ export async function notifyUsers({
   );
 }
 
-export async function getWatcherUserIds(tenantId?: string | null) {
+export async function getWatcherUserIds(tenantId: string | null) {
   const ids = await getUserIdsByRoles(['admin', 'super_admin', 'sales_manager'], tenantId);
   return ids;
 }

@@ -155,7 +155,7 @@ export async function POST(req: Request) {
 
     await ref.set(updateData, { merge: true });
 
-    const adminIds = await getUserIdsByRoles(['admin', 'super_admin', 'sales_manager']);
+    const adminIds = await getUserIdsByRoles(['admin', 'super_admin', 'sales_manager'], me.tenantId);
     const recipients = new Set<string>();
     adminIds.forEach((id) => recipients.add(id));
     if (data.requestedByUid) recipients.add(String(data.requestedByUid));

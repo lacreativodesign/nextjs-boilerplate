@@ -140,7 +140,7 @@ export async function notifyUsers({
   );
 }
 
-export async function getAdminUserIds(tenantId?: string | null) {
+export async function getAdminUserIds(tenantId: string | null) {
   const ids = await getUserIdsByRoles(['admin', 'super_admin'], tenantId);
   return ids;
 }

@@ -280,12 +280,28 @@ export async function createNotificationEvent({
   });
 }
 
-export async function getUsersByRoles(roles: string[], tenantId?: string | null) {
+/**
+ * S3: tenantId is REQUIRED and fails closed.
+ *
+ * This lookup previously accepted an optional tenantId and, when it was omitted or
+ * empty, queried the `users` collection across EVERY tenant. Notification workflows
+ * in tenant A therefore selected admins/managers from tenant B and sent them
+ * notifications carrying tenant A project, client, invoice and file names.
+ *
+ * The parameter is now mandatory at compile time, and an empty/blank tenantId throws
+ * rather than silently degrading into a cross-tenant query. Recipient lookups must
+ * never be able to span tenants.
+ */
+export async function getUsersByRoles(roles: string[], tenantId: string | null) {
   if (!roles.length) return [];
-  let query: FirebaseFirestore.Query = adminDb.collection('users').where('role', 'in', roles);
-  if (tenantId) {
-    query = query.where('tenantId', '==', normalizeTenantId(tenantId));
+  const scopedTenantId = normalizeTenantId(tenantId || '');
+  if (!scopedTenantId) {
+    throw new Error('getUsersByRoles: tenantId is required and must be non-empty.');
   }
+  const query: FirebaseFirestore.Query = adminDb
+    .collection('users')
+    .where('role', 'in', roles)
+    .where('tenantId', '==', scopedTenantId);
   const snap = await query.get();
   return snap.docs.map((doc) => ({
     uid: doc.id,
@@ -295,7 +311,7 @@ export async function getUsersByRoles(roles: string[], tenantId?: string | null)
   }));
 }
 
-export async function getUserIdsByRoles(roles: string[], tenantId?: string | null) {
+export async function getUserIdsByRoles(roles: string[], tenantId: string | null) {
   const users = await getUsersByRoles(roles, tenantId);
   return users.map((user) => user.uid);
 }
