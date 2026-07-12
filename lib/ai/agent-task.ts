@@ -85,10 +85,65 @@ export async function createAgentTask(input: CreateAgentTaskInput): Promise<Agen
   return task;
 }
 
+/**
+ * Stuck-task recovery (AI-1).
+ *
+ * The run endpoint executes the agent loop synchronously inside one Vercel
+ * invocation (maxDuration = 55s). If that invocation times out, is killed, or
+ * the caller drops the request, the task is left in `processing` (or `queued`,
+ * if the run call never landed) forever — markTaskCompleted/markTaskFailed never
+ * run, and the widget polls a task that will never finish.
+ *
+ * There is no worker to sweep these, so recovery happens lazily on read: any
+ * task still unfinished past this deadline is reported (and persisted) as
+ * failed. The widget stops polling on `failed`, so the user sees a real error
+ * instead of an infinite spinner. The window is generously past maxDuration so a
+ * legitimately-running task is never killed early.
+ */
+const STUCK_TASK_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes (>> maxDuration of 55s)
+const STUCK_TASK_ERROR = 'Agent run timed out or was interrupted. Please try again.';
+
+function isStuck(task: AgentTask, now = Date.now()): boolean {
+  if (task.status !== 'queued' && task.status !== 'processing') return false;
+  // startedAt is set when the run begins; fall back to createdAt for tasks whose
+  // run call never landed at all.
+  const since = Date.parse(String(task.startedAt || task.createdAt || ''));
+  if (!Number.isFinite(since)) return false;
+  return now - since > STUCK_TASK_TIMEOUT_MS;
+}
+
+/**
+ * Marks a stuck task failed and returns the corrected task. Best-effort: if the
+ * write fails we still report it as failed to the caller rather than leaving the
+ * UI spinning.
+ */
+async function recoverIfStuck(task: AgentTask): Promise<AgentTask> {
+  if (!isStuck(task)) return task;
+
+  const failed: AgentTask = {
+    ...task,
+    status: 'failed',
+    error: STUCK_TASK_ERROR,
+    completedAt: new Date().toISOString(),
+  };
+
+  try {
+    await updateAgentTask(task.id, {
+      status: 'failed',
+      error: STUCK_TASK_ERROR,
+      completedAt: failed.completedAt,
+    });
+  } catch (err) {
+    console.error('[AI] Failed to persist stuck-task recovery', { taskId: task.id, err });
+  }
+
+  return failed;
+}
+
 export async function getAgentTask(taskId: string): Promise<AgentTask | null> {
   const snap = await adminDb.collection('agent_tasks').doc(taskId).get();
   if (!snap.exists) return null;
-  return snap.data() as AgentTask;
+  return recoverIfStuck(snap.data() as AgentTask);
 }
 
 export async function updateAgentTask(taskId: string, updates: Partial<AgentTask>): Promise<void> {
@@ -103,7 +158,7 @@ export async function listAgentTasks(tenantId: string, limit = 20): Promise<Agen
     .limit(limit)
     .get();
 
-  return snap.docs.map((doc) => doc.data() as AgentTask);
+  return Promise.all(snap.docs.map((doc) => recoverIfStuck(doc.data() as AgentTask)));
 }
 
 export async function markTaskProcessing(taskId: string): Promise<void> {

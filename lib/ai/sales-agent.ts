@@ -19,6 +19,7 @@ import {
   validateToolCall,
   TOOL_REGISTRY,
 } from '@/lib/ai/tool-registry';
+import { checkAiPlan } from '@/lib/ai/plan-gate';
 
 export type SalesProposedAction = {
   id: string;
@@ -69,6 +70,9 @@ function buildSalesTools() {
 export async function runSalesAgent(taskId: string, tenantId: string): Promise<void> {
   const task = await getAgentTask(taskId);
   if (!task) throw new Error('Task not found');
+
+  // AI-1: resolve the tenant's actual plan so per-tool requiredPlan gating is real.
+  const tenantPlan = (await checkAiPlan(tenantId)).plan;
 
   const keyConfig = await getTenantAIKey(tenantId);
   if (!keyConfig) {
@@ -156,6 +160,7 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
       result = await runAnthropicSalesLoop(
         keyConfig.apiKey,
         task.prompt,
+        tenantPlan,
         tools,
         toolCalls,
         proposedActions,
@@ -170,6 +175,7 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
       result = await runOpenAISalesLoop(
         keyConfig.apiKey,
         task.prompt,
+        tenantPlan,
         tools,
         toolCalls,
         proposedActions,
@@ -204,6 +210,7 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
 async function runAnthropicSalesLoop(
   apiKey: string,
   prompt: string,
+  tenantPlan: string,
   tools: typeof TOOL_REGISTRY,
   toolCalls: AgentToolCall[],
   proposedActions: SalesProposedAction[],
@@ -251,7 +258,7 @@ async function runAnthropicSalesLoop(
       const toolResults: any[] = [];
 
       for (const block of toolUseBlocks) {
-        const validation = validateToolCall(block.name, 'sales', 'pro');
+        const validation = validateToolCall(block.name, 'sales', tenantPlan);
         let toolOutput: unknown;
 
         if (!validation.valid) {
@@ -288,6 +295,7 @@ async function runAnthropicSalesLoop(
 async function runOpenAISalesLoop(
   apiKey: string,
   prompt: string,
+  tenantPlan: string,
   tools: typeof TOOL_REGISTRY,
   toolCalls: AgentToolCall[],
   proposedActions: SalesProposedAction[],
@@ -335,7 +343,7 @@ async function runOpenAISalesLoop(
       for (const tc of message?.tool_calls || []) {
         const toolName = tc.function?.name;
         const toolInput = JSON.parse(tc.function?.arguments || '{}');
-        const validation = validateToolCall(toolName, 'sales', 'pro');
+        const validation = validateToolCall(toolName, 'sales', tenantPlan);
         let toolOutput: unknown;
 
         if (!validation.valid) {

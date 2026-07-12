@@ -21,6 +21,7 @@ import {
   TOOL_REGISTRY,
   type AgentTool,
 } from '@/lib/ai/tool-registry';
+import { checkAiPlan } from '@/lib/ai/plan-gate';
 
 export type ProposedAction = {
   id: string;
@@ -97,12 +98,15 @@ function buildFinanceTools(): AgentTool[] {
 function validateFinanceToolCall(
   toolName: string,
   tools: AgentTool[],
+  tenantPlan: string,
 ): { tool?: AgentTool; error?: string } {
   const tool = tools.find((t) => t.name === toolName);
   if (!tool) return { error: `Tool ${toolName} is not available to the finance agent` };
 
   if (tool.access === 'write') {
-    const validation = validateToolCall(toolName, 'finance', 'pro');
+    // AI-1: use the tenant's real plan, not a hardcoded 'pro'. Hardcoding meant the
+    // per-tool requiredPlan gate was never actually evaluated against the tenant.
+    const validation = validateToolCall(toolName, 'finance', tenantPlan);
     if (!validation.valid)
       return { error: validation.error || `Tool ${toolName} is not permitted` };
   }
@@ -121,6 +125,9 @@ function parseToolArguments(args: string | undefined): JsonObject {
 export async function runFinanceAgent(taskId: string, tenantId: string): Promise<void> {
   const task = await getAgentTask(taskId);
   if (!task) throw new Error('Task not found');
+
+  // AI-1: resolve the tenant's actual plan so per-tool requiredPlan gating is real.
+  const tenantPlan = (await checkAiPlan(tenantId)).plan;
 
   const keyConfig = await getTenantAIKey(tenantId);
   if (!keyConfig) {
@@ -186,6 +193,7 @@ export async function runFinanceAgent(taskId: string, tenantId: string): Promise
       result = await runAnthropicFinanceLoop(
         keyConfig.apiKey,
         task.prompt,
+        tenantPlan,
         tools,
         toolCalls,
         executeReadTool,
@@ -199,6 +207,7 @@ export async function runFinanceAgent(taskId: string, tenantId: string): Promise
       result = await runOpenAIFinanceLoop(
         keyConfig.apiKey,
         task.prompt,
+        tenantPlan,
         tools,
         toolCalls,
         executeReadTool,
@@ -235,6 +244,7 @@ export async function runFinanceAgent(taskId: string, tenantId: string): Promise
 async function runAnthropicFinanceLoop(
   apiKey: string,
   prompt: string,
+  tenantPlan: string,
   tools: AgentTool[],
   toolCalls: AgentToolCall[],
   executeRead: (name: string, input: JsonObject) => Promise<unknown>,
@@ -286,7 +296,7 @@ async function runAnthropicFinanceLoop(
       const toolResults: unknown[] = [];
 
       for (const block of toolUseBlocks) {
-        const validation = validateFinanceToolCall(block.name, tools);
+        const validation = validateFinanceToolCall(block.name, tools, tenantPlan);
         let toolOutput: unknown;
 
         if (validation.error || !validation.tool) {
@@ -323,6 +333,7 @@ async function runAnthropicFinanceLoop(
 async function runOpenAIFinanceLoop(
   apiKey: string,
   prompt: string,
+  tenantPlan: string,
   tools: AgentTool[],
   toolCalls: AgentToolCall[],
   executeRead: (name: string, input: JsonObject) => Promise<unknown>,
@@ -367,7 +378,7 @@ async function runOpenAIFinanceLoop(
       for (const tc of message.tool_calls || []) {
         const toolName = tc.function?.name || '';
         const toolInput = parseToolArguments(tc.function?.arguments);
-        const validation = validateFinanceToolCall(toolName, tools);
+        const validation = validateFinanceToolCall(toolName, tools, tenantPlan);
         let toolOutput: unknown;
 
         if (validation.error || !validation.tool) {
