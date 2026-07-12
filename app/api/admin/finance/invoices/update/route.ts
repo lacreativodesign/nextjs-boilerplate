@@ -246,7 +246,7 @@ export async function POST(req: Request) {
       }
 
       const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
-      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin']);
+      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({

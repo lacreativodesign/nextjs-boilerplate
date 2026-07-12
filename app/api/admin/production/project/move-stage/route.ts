@@ -315,7 +315,7 @@ export async function POST(req: Request) {
     });
 
     if (eventType === 'project.qa_approved' || eventType === 'project.qa_rejected') {
-      const adminIds = await getUserIdsByRoles(['admin', 'super_admin']);
+      const adminIds = await getUserIdsByRoles(['admin', 'super_admin'], me.tenantId);
       const qaNotifications: Promise<void>[] = [];
 
       if (updated.ownerAmUid) {

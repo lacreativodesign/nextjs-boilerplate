@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       existing?.userId
         ? adminDb.collection('users').doc(existing.userId).get()
         : Promise.resolve(null),
-      getUserIdsByRoles(['hr']),
+      getUserIdsByRoles(['hr'], access.user.tenantId),
     ]);
 
     const employeeData = employeeSnap?.data() || {};

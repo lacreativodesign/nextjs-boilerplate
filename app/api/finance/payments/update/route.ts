@@ -188,7 +188,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
 
-      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin']);
+      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({
@@ -267,7 +267,7 @@ export async function POST(req: Request) {
         updatedAt: serverTimestamp(),
       });
 
-      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin']);
+      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
       await Promise.all(
         financeIds.map((uid) =>
           createNotification({

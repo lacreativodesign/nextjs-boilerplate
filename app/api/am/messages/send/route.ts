@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       createdAt: now,
     });
 
-    const adminIds = await getUserIdsByRoles(['admin', 'super_admin']);
+    const adminIds = await getUserIdsByRoles(['admin', 'super_admin'], me.tenantId);
     const recipients = new Set<string>();
     if (project.productionUid) recipients.add(String(project.productionUid));
     adminIds.forEach((id) => recipients.add(id));

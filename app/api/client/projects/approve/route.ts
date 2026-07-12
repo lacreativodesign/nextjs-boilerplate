@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
     const recipients = new Set<string>();
     if (project.ownerAmUid) recipients.add(String(project.ownerAmUid));
-    const adminIds = await getUserIdsByRoles(['admin', 'super_admin']);
+    const adminIds = await getUserIdsByRoles(['admin', 'super_admin'], auth.user.tenantId ?? null);
     adminIds.forEach((id) => recipients.add(id));
 
     await Promise.all(

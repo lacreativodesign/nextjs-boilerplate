@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       createdByName: userLabel(auth.user),
     });
 
-    const watchers = await getWatcherUserIds();
+    const watchers = await getWatcherUserIds(auth.user.tenantId ?? null);
     await notifyUsers({
       userIds: [existing.assignedTo, ...watchers].filter(Boolean),
       title: status === 'Done' ? 'Follow-up completed' : 'Follow-up updated',

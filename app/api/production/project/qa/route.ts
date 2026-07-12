@@ -196,7 +196,7 @@ export async function POST(req: Request) {
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
 
-    const adminIds = await getUserIdsByRoles(['admin', 'super_admin']);
+    const adminIds = await getUserIdsByRoles(['admin', 'super_admin'], me.tenantId);
     const recipients = new Set<string>();
     if (updated.ownerAmUid) recipients.add(String(updated.ownerAmUid));
     adminIds.forEach((id) => recipients.add(id));
