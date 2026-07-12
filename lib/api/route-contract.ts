@@ -156,7 +156,6 @@ export const AUTHENTICATED_ROUTES: Record<string, string> = {
   'auth/create-set-password-token': 'Issues a set-password token for the caller.',
   'auth/sso/status': 'Returns SSO status for the caller; no tenant data.',
   'auth/sso/[provider]/authorize': 'Builds an OAuth authorize URL; tenantId is a query param, not tenant-scoped data access.',
-  'send-email': 'Sends an email as the current user; no tenant collection read.',
   // Global / platform-level (super-admin, tenant-agnostic by design)
   'admin/rate-limits': 'Super-admin only; manages global rate-limit rules.',
   'admin/jobs/[id]/retry': 'Super-admin only; retries a platform job.',
