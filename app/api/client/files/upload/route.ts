@@ -8,6 +8,7 @@ import {
   getUserIdsByRoles,
 } from '@/lib/notifications';
 import { validateFile } from '@/lib/files/validation';
+import { isTenantStoragePath } from '@/lib/storage/paths';
 
 export const runtime = 'nodejs';
 
@@ -34,6 +35,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Project is required.' }, { status: 400 });
     if (!fileName || !storagePath || !downloadUrl) {
       return NextResponse.json({ ok: false, error: 'File details are required.' }, { status: 400 });
+    }
+
+    if (!isTenantStoragePath(storagePath, auth.user.tenantId ?? '')) {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid storage path.' },
+        { status: 400 },
+      );
     }
 
     const fileValidation = validateFile(fileName, size);
