@@ -1,5 +1,14 @@
 // Bizosto SaaS plan module access gates.
-// trial      = all modules for 14-day evaluation (client_stripe_connect excluded).
+//
+// S6: a 14-day trial is a trial OF A SELECTED PLAN — it is not an entitlement tier of
+// its own. A trialing tenant carries the explicit `modules` map of the plan it signed
+// up for, and that map governs. The `trial` entry below is ONLY the fallback used when
+// a tenant document has no explicit module map, so it must grant the LEAST privilege,
+// never the most. It previously granted every paid module (Finance, HR, Production,
+// Approvals), which meant any tenant with a missing or malformed module map silently
+// received Enterprise-level access for free.
+//
+// trial      = fallback only; mirrors Starter. Never grants a paid module.
 // starter    = CRM, Sales, Projects, Notifications, basic Reports.
 // pro        = adds Finance, Production, Approvals, full Reports.
 // enterprise = adds HR, Client Stripe Connect, white-label.
@@ -7,12 +16,12 @@ export const PLAN_MODULES = {
   trial: {
     crm: true,
     sales: true,
-    production: true,
+    production: false,
     projects: true,
-    approvals: true,
+    approvals: false,
     notifications: true,
-    finance: true,
-    hr: true,
+    finance: false,
+    hr: false,
     reports: true,
     client_stripe_connect: false,
   },

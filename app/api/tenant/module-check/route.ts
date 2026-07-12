@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { isModuleEnabled } from '@/lib/tenant/access';
+import {
+  canAccessPlanModule,
+  normalizePlan,
+  resolveTenantModules,
+  type PlanModuleKey,
+} from '@/lib/tenant/plan-access';
 
 export const runtime = 'nodejs';
 
@@ -37,8 +42,23 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantData = tenantSnap.data() || {};
-    const modulesEnabled = (tenantData.modulesEnabled || {}) as Record<string, boolean>;
-    const enabled = isModuleEnabled(modulesEnabled, moduleKey);
+
+    // S6: resolve through the canonical plan/module resolver rather than reading the
+    // legacy `modulesEnabled` map directly. That map is absent on many tenant
+    // documents, and the old helper treated an absent key as ENABLED — so middleware
+    // waved through every module, including Finance and HR, for any tenant whose map
+    // had not been written. Entitlement now derives from the plan, with the tenant's
+    // explicit module map applied on top, and fails closed.
+    const plan = normalizePlan(tenantData.plan);
+    const modules = resolveTenantModules({
+      plan,
+      modules: tenantData.modules,
+      legacyModulesEnabled: tenantData.modulesEnabled,
+    });
+    const enabled = canAccessPlanModule({
+      modules,
+      moduleKey: moduleKey as PlanModuleKey,
+    });
 
     const response = NextResponse.json({ ok: true, enabled });
     response.headers.set('Cache-Control', 'private, max-age=30');

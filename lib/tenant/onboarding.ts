@@ -36,6 +36,8 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
   const checklistRef = tenantRef.collection('onboarding_progress').doc('checklist');
 
+  // S6: an unrecognized plan previously fell through to 'trial', which granted every
+  // paid module. Unknown input now provisions the least-privilege tier.
   const planKey =
     plan === 'professional'
       ? 'pro'
@@ -43,9 +45,7 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
         ? 'enterprise'
         : plan === 'trial'
           ? 'trial'
-          : plan === 'starter'
-            ? 'starter'
-            : 'trial';
+          : 'starter';
 
   await adminDb.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
     const nowIso = new Date().toISOString();

@@ -1,9 +1,14 @@
+/**
+ * S6: fails closed. This previously returned `value !== false`, so a module KEY THAT
+ * WAS ABSENT counted as enabled — meaning a tenant with no module map (or a map that
+ * simply omitted `finance`) was treated as having every module switched on. A module
+ * must now be explicitly true.
+ */
 export function isModuleEnabled(
   modulesEnabled: Record<string, boolean>,
   moduleKey: string,
 ): boolean {
-  const value = modulesEnabled?.[moduleKey];
-  return value !== false;
+  return modulesEnabled?.[moduleKey] === true;
 }
 
 export function isRoleEnabled(rolesEnabled: Record<string, boolean>, role: string): boolean {

@@ -9,9 +9,34 @@ export type PlanModules = Record<PlanModuleKey, boolean>;
 
 const PLAN_KEYS = Object.keys(PLAN_MODULES) as PlanTier[];
 
+/** Every module denied. The fail-closed baseline. */
+export const LOCKED_MODULES: PlanModules = (
+  Object.keys(PLAN_MODULES.starter) as PlanModuleKey[]
+).reduce((acc, key) => {
+  acc[key] = false;
+  return acc;
+}, {} as PlanModules);
+
+/**
+ * S6: strict tier resolution. Returns null for an unknown, missing or malformed plan
+ * so callers can decide explicitly, instead of silently inheriting someone else's tier.
+ */
+export function resolvePlanTier(plan: unknown): PlanTier | null {
+  const normalized = String(plan || '')
+    .trim()
+    .toLowerCase();
+  return PLAN_KEYS.includes(normalized as PlanTier) ? (normalized as PlanTier) : null;
+}
+
+/**
+ * S6: an unknown/missing/malformed plan previously fell back to 'pro', silently
+ * granting Finance, Production and Approvals — paid modules — to any tenant whose plan
+ * field was absent or corrupt. The fallback is now the least-privilege tier, so a bad
+ * plan value can never hand out a paid entitlement. Callers that need to distinguish
+ * "unknown" from "starter" must use resolvePlanTier().
+ */
 export function normalizePlan(plan: unknown): PlanTier {
-  const normalized = String(plan || '').toLowerCase();
-  return PLAN_KEYS.includes(normalized as PlanTier) ? (normalized as PlanTier) : 'pro';
+  return resolvePlanTier(plan) ?? 'starter';
 }
 
 function normalizeModules(input: unknown): Partial<PlanModules> {
@@ -56,9 +81,18 @@ export function resolveTenantModules({
     if (legacy.notifications !== undefined)
       legacyOverrides.notifications = Boolean(legacy.notifications);
     if (legacy.humanResource !== undefined) legacyOverrides.hr = Boolean(legacy.humanResource);
+
+    // S6: a legacy flag may only REMOVE an entitlement the plan already grants — never
+    // add one. Previously a stale `modulesEnabled.humanResource: true` on a Starter
+    // tenant granted HR, an Enterprise-only module, with no subscription behind it.
+    const intersected: Partial<PlanModules> = {};
+    (Object.keys(legacyOverrides) as PlanModuleKey[]).forEach((key) => {
+      intersected[key] = baseModules[key] === true && legacyOverrides[key] === true;
+    });
+
     return {
       ...baseModules,
-      ...legacyOverrides,
+      ...intersected,
     };
   }
 
@@ -69,8 +103,8 @@ export function isSuperAdminRole(role?: string | null) {
   return String(role || '').toLowerCase() === 'super_admin';
 }
 
-// Used by UI + server checks. Defaults to allowing access when module maps are missing
-// to avoid breaking existing tenants that have not been upgraded.
+// Used by UI + server checks. Fails closed: a missing or malformed module map denies
+// access, and a module must be explicitly true to be granted.
 export function canAccessPlanModule({
   modules,
   moduleKey,
