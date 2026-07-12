@@ -89,6 +89,7 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
           keyConfig.apiKey,
           task.prompt,
           user.tenantId,
+          aiPlan.plan,
           tools,
           toolCalls,
           (i, o) => {
@@ -101,6 +102,7 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
           keyConfig.apiKey,
           task.prompt,
           user.tenantId,
+          aiPlan.plan,
           tools,
           toolCalls,
           (i, o) => {
@@ -136,6 +138,7 @@ async function runAnthropicAgent(
   apiKey: string,
   prompt: string,
   tenantId: string,
+  tenantPlan: string,
   tools: ReturnType<typeof getReadOnlyTools>,
   toolCalls: AgentToolCall[],
   trackTokens: (input: number, output: number) => void,
@@ -182,7 +185,7 @@ async function runAnthropicAgent(
       const toolResults: any[] = [];
 
       for (const block of toolUseBlocks) {
-        const validation = validateToolCall(block.name, 'coo', 'pro');
+        const validation = validateToolCall(block.name, 'coo', tenantPlan);
         let toolOutput: unknown;
 
         if (!validation.valid) {
@@ -220,6 +223,7 @@ async function runOpenAIAgent(
   apiKey: string,
   prompt: string,
   tenantId: string,
+  tenantPlan: string,
   tools: ReturnType<typeof getReadOnlyTools>,
   toolCalls: AgentToolCall[],
   trackTokens: (input: number, output: number) => void,
@@ -267,7 +271,7 @@ async function runOpenAIAgent(
         const toolName = tc.function?.name;
         const toolInput = JSON.parse(tc.function?.arguments || '{}');
 
-        const validation = validateToolCall(toolName, 'coo', 'pro');
+        const validation = validateToolCall(toolName, 'coo', tenantPlan);
         let toolOutput: unknown;
 
         if (!validation.valid) {
