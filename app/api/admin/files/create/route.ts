@@ -10,6 +10,7 @@ import {
 } from '../../_utils';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
+import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
 
 export const runtime = 'nodejs';
 
@@ -128,6 +129,11 @@ export async function POST(req: Request) {
       : adminDb.collection('files').doc();
 
     const size = Number(body?.size || 0);
+
+    const storageCheck = await checkStorageLimit(me.tenantId, size);
+    if (!storageCheck.ok) {
+      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
+    }
     const mimeType = cleanString(body?.mimeType);
     const version = body?.version ? String(body.version).trim() : null;
     const notes = body?.notes ? String(body.notes).trim() : null;

@@ -4,6 +4,7 @@ import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
+import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
 
 export const runtime = 'nodejs';
 
@@ -32,9 +33,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const fileValidation = validateFile(fileName, Number(body?.size || 0));
+    const size = Number(body?.size || 0);
+
+    const fileValidation = validateFile(fileName, size);
     if (!fileValidation.valid) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
+    }
+
+    const storageCheck = await checkStorageLimit(access.user.tenantId, size);
+    if (!storageCheck.ok) {
+      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
     }
 
     const payload = {
@@ -43,6 +51,11 @@ export async function POST(req: Request) {
       fileName,
       storagePath,
       downloadUrl,
+      // S11: this record was written with NO tenantId, so it was invisible to the
+      // tenant-scoped HR document list AND to storage accounting. Same defect class as
+      // the file records fixed earlier; this admin route was the missed sibling.
+      tenantId: access.user.tenantId,
+      size,
       uploadedBy: access.user.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
