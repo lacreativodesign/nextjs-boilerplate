@@ -32,15 +32,35 @@ function seatLimitForPlan(plan: PlanTier): number {
 }
 
 /**
- * Counts active, non-client users already in the tenant. Roles are read from
- * the users collection and lower-cased; `client` and disabled users are
- * excluded. Returns a live count via an aggregation-free scan bounded by the
- * tenant's own user set (tenants are small: 10–200 users by product design).
+ * Counts seats already consumed by the tenant: active, non-client users PLUS
+ * outstanding (pending, unexpired) staff invitations.
+ *
+ * S9: pending invitations previously consumed no seat. A Starter tenant sitting at
+ * 9 of 10 seats could therefore issue an unlimited number of invitations — every one
+ * of them passed the check, because each was measured against a count that ignored
+ * the invitations already in flight — and end up far over its plan once they were
+ * accepted. An invitation is a reserved seat and must be counted as one.
+ *
+ * Accepting an invitation flips its status to 'accepted' in the same batch that
+ * creates the user document, so a seat is never counted twice. Expired invitations
+ * hold no seat.
+ *
+ * Client-portal invitations are the tenant's own customers, not staff seats, so they
+ * are excluded exactly as client users are.
  */
 async function countBillableSeats(tenantId: string): Promise<number> {
-  const snap = await adminDb.collection('users').where('tenantId', '==', tenantId).get();
+  const [usersSnap, invitesSnap] = await Promise.all([
+    adminDb.collection('users').where('tenantId', '==', tenantId).get(),
+    adminDb
+      .collection('user_invitations')
+      .where('tenantId', '==', tenantId)
+      .where('status', '==', 'pending')
+      .get(),
+  ]);
+
   let count = 0;
-  for (const doc of snap.docs) {
+
+  for (const doc of usersSnap.docs) {
     const data = doc.data() || {};
     const role = String(data.role || '').toLowerCase();
     const status = String(data.status || 'active').toLowerCase();
@@ -48,6 +68,21 @@ async function countBillableSeats(tenantId: string): Promise<number> {
     if (status === 'disabled' || status === 'deleted') continue;
     count += 1;
   }
+
+  const now = Date.now();
+  for (const doc of invitesSnap.docs) {
+    const data = doc.data() || {};
+    const role = String(data.role || '').toLowerCase();
+    if (role === 'client') continue;
+
+    const expiresAt = data.expiresAt;
+    const expiresMs =
+      typeof expiresAt?.toDate === 'function' ? expiresAt.toDate().getTime() : Number.NaN;
+    if (Number.isFinite(expiresMs) && expiresMs < now) continue;
+
+    count += 1;
+  }
+
   return count;
 }
 

@@ -218,13 +218,33 @@ export async function checkPermission(input: PermissionCheckInput): Promise<Perm
     };
   }
 
+  // S9: ownership fails closed.
+  //
+  // This previously read `if (ownershipRestricted && input.ownerId && ...)`, so when a
+  // permission was limited to owned records but the caller supplied NO ownerId, the
+  // ownership test was skipped entirely and access was granted. A custom role scoped to
+  // "own records only" therefore reached every record in the tenant simply by omitting
+  // the ownerId — the restriction was opt-in from the caller rather than enforced.
+  //
+  // Ownership is only meaningful for actions against an existing record. `create` has no
+  // owner yet (the caller becomes the owner), so it is not ownership-restricted; every
+  // other action must prove ownership, and an absent ownerId cannot prove it.
   const ownershipRestricted = allowedByAction.some((permission) => permission.ownOnly);
-  if (ownershipRestricted && input.ownerId && input.ownerId !== input.userId) {
-    return {
-      allowed: false,
-      fieldAccess: 'hidden',
-      reason: 'Permission is limited to owned records.',
-    };
+  if (ownershipRestricted && input.action !== 'create') {
+    if (!input.ownerId) {
+      return {
+        allowed: false,
+        fieldAccess: 'hidden',
+        reason: 'Permission is limited to owned records and no record owner was supplied.',
+      };
+    }
+    if (input.ownerId !== input.userId) {
+      return {
+        allowed: false,
+        fieldAccess: 'hidden',
+        reason: 'Permission is limited to owned records.',
+      };
+    }
   }
 
   const fieldAccess = allowedByAction.reduce<FieldAccess>((access, permission) => {
