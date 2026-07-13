@@ -38,7 +38,6 @@
     "@sentry/nextjs": "^8.55.0",
     "@uploadcare/react-uploader": "^1.12.0",
     "@upstash/redis": "^1.35.3",
-    "axios": "^1.7.2",
     "classnames": "^2.3.2",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
@@ -51,10 +50,9 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.441.0",
-    "next": "14.2.12",
-    "next-pwa": "^5.6.0",
+    "next": "14.2.35",
     "next-themes": "^0.4.6",
-    "nodemailer": "^6.9.15",
+    "nodemailer": "^9.0.3",
     "papaparse": "^5.4.1",
     "rate-limiter-flexible": "^9.1.0",
     "react": "18.2.0",
@@ -91,6 +89,10 @@
     "prettier": "3.9.4",
     "tailwindcss": "3.4.10",
     "typescript": "5.5.4"
+  },
+  "overrides": {
+    "protobufjs": "^7.6.5",
+    "@google-cloud/storage": "^7.21.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs}": [
