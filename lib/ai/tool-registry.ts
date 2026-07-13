@@ -291,7 +291,7 @@ export const TOOL_REGISTRY: AgentTool[] = [
       required: ['leadId', 'stage'],
     },
     access: 'write',
-    requiresApproval: false,
+    requiresApproval: true,
     allowedAgents: ['sales'],
     requiredPlan: 'pro',
     phase: '2',
