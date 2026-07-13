@@ -44,6 +44,10 @@ const esmPackages = [
   'strict-event-emitter',
   'outvariant',
   '@open-draft',
+  // S14: exceljs ships ESM in parts of its xlsx transform layer, and pulls a nested
+  // ESM-only build of uuid.
+  'exceljs',
+  'uuid',
 ];
 
 module.exports = async () => {

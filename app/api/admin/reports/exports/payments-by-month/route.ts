@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       });
 
     if (format === 'xlsx') {
-      const buffer = toExcel(rows, 'Payments by Month');
+      const buffer = await toExcel(rows, 'Payments by Month');
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

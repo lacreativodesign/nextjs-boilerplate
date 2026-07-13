@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     });
 
     if (format === 'xlsx') {
-      const buffer = toExcel(rows, 'Outstanding AR');
+      const buffer = await toExcel(rows, 'Outstanding AR');
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
