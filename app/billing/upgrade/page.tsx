@@ -3,96 +3,56 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import {
+  ANNUAL_FREE_MONTHS,
+  PURCHASABLE_PLAN_KEYS,
+  plans as PLAN_CATALOG,
+  toCheckoutPlanKey,
+  type BillingCycle,
+  type PurchasablePlanKey,
+} from '@/lib/billing/plans';
 
-const PLANS = [
-  {
-    key: 'starter',
-    name: 'Starter',
-    price: '$79',
-    period: '/month',
+// S7: plan names, prices, limits and features are read from the canonical catalog in
+// lib/billing/plans.ts. This page previously hardcoded its own copy, which contradicted
+// the locked packages and mis-sold the product — it overstated Pro's seat count and
+// storage, listed HR (an Enterprise-only module) as a Pro feature, listed Finance (a
+// Pro module) as a Starter feature, understated Starter's storage, and advertised four
+// paid add-ons that do not exist and cannot be purchased. Every factual claim now comes
+// from the catalog; only presentation styling lives here. The accompanying test asserts
+// those false strings never reappear anywhere in this file.
+const PLAN_PRESENTATION: Record<
+  PurchasablePlanKey,
+  { tagline: string; color: string; badge?: string; cta: string }
+> = {
+  starter: {
     tagline: 'Perfect for small teams getting started',
     color: '#6366f1',
-    badge: undefined as string | undefined,
-    features: [
-      'Up to 10 users',
-      'Core CRM & Projects',
-      'Finance & Invoicing',
-      '5GB storage',
-      'Email support',
-    ],
     cta: 'Get Started',
   },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: '$149',
-    period: '/month',
+  pro: {
     tagline: 'For growing businesses that need more power',
     color: '#8b5cf6',
     badge: 'Most Popular',
-    features: [
-      'Up to 50 users',
-      'All Starter features',
-      'HR Module',
-      'AI Workforce (BYOK)',
-      'Website embed',
-      '25GB storage',
-      'Priority support',
-      'Advanced reports',
-    ],
     cta: 'Upgrade to Pro',
   },
-  {
-    key: 'enterprise',
-    name: 'Enterprise',
-    price: '$299',
-    period: '/month',
+  enterprise: {
     tagline: 'For established teams that need everything',
     color: '#f59e0b',
     badge: 'Best Value',
-    features: [
-      'Unlimited users',
-      'All Pro features',
-      'White-label branding',
-      'Custom domain',
-      'Client Stripe Connect',
-      '250GB storage',
-      'Dedicated support',
-      'AI Workforce — 4 agents + AI Reports',
-      'Free onboarding session',
-    ],
     cta: 'Upgrade to Enterprise',
   },
-] as const;
+};
 
-const ADD_ONS = [
-  {
-    key: 'extra_storage',
-    name: 'Extra Storage (50GB)',
-    price: '$19/month',
-    description: 'Add 50GB of document and file storage to any plan.',
-  },
-  {
-    key: 'extra_users',
-    name: 'Additional Users (10-pack)',
-    price: '$29/month',
-    description: 'Add 10 more user seats to your current plan.',
-  },
-  {
-    key: 'onboarding',
-    name: 'Professional Onboarding',
-    price: '$299 once',
-    description: '3 live sessions with a Bizosto expert to set up your workspace.',
-  },
-  {
-    key: 'ai_workforce_extra',
-    name: 'Extra AI Agents',
-    price: '$49/month',
-    description: 'Add 2 more AI agents to your AI Workforce.',
-  },
-] as const;
+const PLANS = PURCHASABLE_PLAN_KEYS.map((key) => ({
+  key,
+  name: PLAN_CATALOG[key].name,
+  monthlyPrice: PLAN_CATALOG[key].price,
+  annualPrice: PLAN_CATALOG[key].annualPrice,
+  features: PLAN_CATALOG[key].features,
+  ...PLAN_PRESENTATION[key],
+}));
 
-type PlanKey = (typeof PLANS)[number]['key'];
+type PlanKey = PurchasablePlanKey;
 
 type SubscriptionResponse = {
   ok?: boolean;
@@ -109,7 +69,7 @@ type CheckoutResponse = {
   error?: string;
 };
 
-const PLAN_ORDER: PlanKey[] = ['starter', 'pro', 'enterprise'];
+const PLAN_ORDER: PlanKey[] = [...PURCHASABLE_PLAN_KEYS];
 
 function normalizePlanKey(value: unknown): PlanKey | null {
   const normalized = String(value || '')
@@ -132,6 +92,7 @@ export default function BillingUpgradePage() {
   const [error, setError] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<PlanKey | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
 
   const loadSubscription = useCallback(async () => {
     setLoading(true);
@@ -163,6 +124,7 @@ export default function BillingUpgradePage() {
   }, [loadSubscription]);
 
   const recommendedPlan = useMemo(() => getRecommendedPlan(currentPlan), [currentPlan]);
+  const isAnnual = billingCycle === 'annual';
 
   const startCheckout = useCallback(
     async (planKey: PlanKey) => {
@@ -175,7 +137,10 @@ export default function BillingUpgradePage() {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            plan: planKey,
+            // S7: the checkout route keys prices as `${plan}_${cycle}`. Sending the bare
+            // plan key silently defaulted every purchase to monthly, which is why annual
+            // billing was impossible to buy despite being fully wired on the server.
+            plan: toCheckoutPlanKey(planKey, billingCycle),
             tenantId: tenantContext?.tenant?.id || undefined,
           }),
         });
@@ -191,7 +156,7 @@ export default function BillingUpgradePage() {
         setCheckoutPlan(null);
       }
     },
-    [tenantContext?.tenant?.id],
+    [tenantContext?.tenant?.id, billingCycle],
   );
 
   return (
@@ -251,6 +216,39 @@ export default function BillingUpgradePage() {
         </div>
       )}
 
+      <section className="mt-8 flex justify-center">
+        <div
+          className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-1"
+          role="group"
+          aria-label="Billing cycle"
+        >
+          <button
+            type="button"
+            onClick={() => setBillingCycle('monthly')}
+            aria-pressed={billingCycle === 'monthly'}
+            className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${
+              billingCycle === 'monthly'
+                ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                : 'text-[var(--text-muted)]'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingCycle('annual')}
+            aria-pressed={billingCycle === 'annual'}
+            className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${
+              billingCycle === 'annual'
+                ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                : 'text-[var(--text-muted)]'
+            }`}
+          >
+            Annual — {ANNUAL_FREE_MONTHS} months free
+          </button>
+        </div>
+      </section>
+
       <section className="mt-8 grid gap-5 lg:grid-cols-3">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.key;
@@ -300,11 +298,18 @@ export default function BillingUpgradePage() {
               </div>
 
               <div className="relative mt-7 flex items-end gap-1">
-                <span className="text-5xl font-black tracking-tight">{plan.price}</span>
+                <span className="text-5xl font-black tracking-tight">
+                  ${isAnnual ? plan.annualPrice : plan.monthlyPrice}
+                </span>
                 <span className="pb-2 text-sm font-semibold text-[var(--text-muted)]">
-                  {plan.period}
+                  {isAnnual ? '/year' : '/month'}
                 </span>
               </div>
+              {isAnnual && (
+                <p className="relative mt-2 text-sm font-semibold text-[var(--success,#16a34a)]">
+                  {ANNUAL_FREE_MONTHS} months free vs monthly
+                </p>
+              )}
 
               <ul className="relative mt-7 flex-1 space-y-3">
                 {plan.features.map((feature) => (
@@ -346,39 +351,6 @@ export default function BillingUpgradePage() {
             </article>
           );
         })}
-      </section>
-
-      <section className="mt-10 rounded-[1.75rem] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)] sm:p-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="helper-text mb-2 uppercase tracking-[0.2em]">Add-ons</p>
-            <h2 className="section-title">Extend your workspace</h2>
-            <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Add capacity and expert support without changing plans.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {ADD_ONS.map((addOn) => (
-            <div
-              key={addOn.key}
-              className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-5 transition-colors hover:border-[var(--erp-blue)]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-black text-[var(--text-primary)]">{addOn.name}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-                    {addOn.description}
-                  </p>
-                </div>
-                <div className="shrink-0 rounded-full bg-[var(--surface-card)] px-3 py-1 text-sm font-black text-[var(--text-primary)] shadow-[var(--shadow-sm)]">
-                  {addOn.price}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
     </main>
   );
