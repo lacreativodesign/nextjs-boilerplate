@@ -11,11 +11,13 @@ import { adminDb } from '@/lib/firebaseAdmin';
  * A file whose project cannot be resolved is left untouched and reported, never
  * assigned to an arbitrary tenant.
  */
-export async function backfillFileTenantIds(): Promise<{
+export async function backfillFileTenantIds(options: { dryRun?: boolean } = {}): Promise<{
   scanned: number;
   updated: number;
   skippedNoProject: number;
+  dryRun: boolean;
 }> {
+  const dryRun = options.dryRun === true;
   const now = admin.firestore.FieldValue.serverTimestamp();
   const projectTenantCache = new Map<string, string | null>();
 
@@ -72,7 +74,9 @@ export async function backfillFileTenantIds(): Promise<{
       updated += 1;
     }
 
-    if (hasUpdates) {
+    // S13: a dry run reports exactly what WOULD change without writing anything, so the
+    // repair can be reviewed before it is committed to production data.
+    if (hasUpdates && !dryRun) {
       await batch.commit();
     }
 
@@ -80,5 +84,5 @@ export async function backfillFileTenantIds(): Promise<{
     if (snap.docs.length < 300) break;
   }
 
-  return { scanned, updated, skippedNoProject };
+  return { scanned, updated, skippedNoProject, dryRun };
 }
