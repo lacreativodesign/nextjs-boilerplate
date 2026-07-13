@@ -4,6 +4,7 @@ import { hashInviteToken } from '@/lib/clientInvites';
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { sendEmail } from '@/lib/email/email-service';
+import { checkUserLimit } from '@/lib/billing/user-limit';
 import type {
   ActivityType,
   UserActivity,
@@ -134,6 +135,19 @@ export class UserService {
     if (invitation.expiresAt.toDate() < new Date()) {
       await inviteDoc.ref.update({ status: 'expired', updatedAt: Timestamp.now() });
       throw new Error('Invitation has expired');
+    }
+
+    // S9: re-check the plan seat limit at ACCEPTANCE, not only at invite time.
+    // The invite-time check is a point-in-time snapshot: seats can be consumed after an
+    // invitation is issued (other invitations accepted, or the tenant downgraded), and
+    // acceptance previously performed no check at all, so a tenant could be pushed past
+    // its plan limit. Counting this invitation itself would double-count the seat it
+    // already reserves, so it is excluded from the comparison.
+    const seatCheck = await checkUserLimit(invitation.tenantId, invitation.role);
+    if (!seatCheck.ok && seatCheck.used > seatCheck.limit) {
+      throw new Error(
+        'This workspace has reached its plan limit for team members. Ask an administrator to upgrade the plan before accepting this invitation.',
+      );
     }
 
     const userRecord = await adminAuth.createUser({
