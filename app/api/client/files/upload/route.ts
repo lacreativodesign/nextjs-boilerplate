@@ -9,6 +9,7 @@ import {
 } from '@/lib/notifications';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
+import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,11 @@ export async function POST(req: Request) {
     const storagePath = cleanString(body?.storagePath);
     const downloadUrl = cleanString(body?.downloadUrl);
     const size = Number(body?.size || 0);
+
+    const storageCheck = await checkStorageLimit(auth.user.tenantId ?? '', size);
+    if (!storageCheck.ok) {
+      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
+    }
     const mimeType = cleanString(body?.mimeType);
 
     if (!projectId)

@@ -9,6 +9,7 @@ import {
 } from '../../_utils';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
+import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
 
 export const runtime = 'nodejs';
 
@@ -38,9 +39,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const fileValidation = validateFile(fileName, Number(body?.size || 0));
+    const size = Number(body?.size || 0);
+
+    const fileValidation = validateFile(fileName, size);
     if (!fileValidation.valid) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
+    }
+
+    const storageCheck = await checkStorageLimit(access.user.tenantId, size);
+    if (!storageCheck.ok) {
+      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
     }
 
     // Validate the target employee belongs to the actor's tenant BEFORE writing or
@@ -73,6 +81,8 @@ export async function POST(req: Request) {
       fileName,
       storagePath,
       downloadUrl,
+      // S11: persisted so HR documents are counted against the plan storage limit.
+      size,
       uploadedBy: access.user.uid,
       tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
