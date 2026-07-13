@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     });
 
     if (format === 'xlsx') {
-      const buffer = toExcel(rows, 'Projects by Stage');
+      const buffer = await toExcel(rows, 'Projects by Stage');
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

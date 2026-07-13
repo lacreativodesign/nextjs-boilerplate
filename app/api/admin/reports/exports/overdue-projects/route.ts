@@ -43,7 +43,7 @@ export async function GET(req: Request) {
     });
 
     if (format === 'xlsx') {
-      const buffer = toExcel(rows, 'Overdue Projects');
+      const buffer = await toExcel(rows, 'Overdue Projects');
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

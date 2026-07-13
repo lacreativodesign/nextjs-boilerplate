@@ -1,16 +1,28 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
+/**
+ * S14: xlsx (SheetJS) was replaced with exceljs.
+ *
+ * The `xlsx` package on npm carries a high-severity advisory (prototype pollution and
+ * ReDoS) and CANNOT be patched: SheetJS stopped publishing to the npm registry, so the
+ * newest version available there is still the vulnerable one. There is no version to
+ * upgrade to. exceljs is a maintained replacement with no critical or high advisories.
+ *
+ * exceljs writes asynchronously, so toExcel is now async. Its output is byte-compatible
+ * for consumers: a real .xlsx Buffer.
+ */
 export function toCSV(rows: string[][]): string {
   return rows
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     .join('\n');
 }
 
-export function toExcel(rows: string[][], sheetName: string): Buffer {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+export async function toExcel(rows: string[][], sheetName: string): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sheetName);
+  sheet.addRows(rows);
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
 }
 
 export async function toPDF(rows: string[][], title: string): Promise<Buffer> {
