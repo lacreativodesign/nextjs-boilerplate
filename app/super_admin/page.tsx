@@ -108,6 +108,11 @@ const ACTION_LINKS = [
     desc: 'Review all platform activity and changes.',
   },
   {
+    title: 'Maintenance',
+    href: '/super_admin/maintenance',
+    desc: 'Run one-off data repairs. Dry run first, then apply.',
+  },
+  {
     title: 'Payment Terminal',
     href: '/super_admin/payments',
     desc: 'Subscription revenue, billing status, and transaction history.',

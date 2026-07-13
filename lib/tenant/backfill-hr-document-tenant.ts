@@ -18,11 +18,15 @@ import { adminDb } from '@/lib/firebaseAdmin';
  * Firestore, so pre-existing HR documents will not count toward the plan storage limit.
  * Only newly uploaded documents are metered.
  */
-export async function backfillHrDocumentTenantIds(): Promise<{
+export async function backfillHrDocumentTenantIds(
+  options: { dryRun?: boolean } = {},
+): Promise<{
   scanned: number;
   updated: number;
   skippedNoEmployee: number;
+  dryRun: boolean;
 }> {
+  const dryRun = options.dryRun === true;
   const now = admin.firestore.FieldValue.serverTimestamp();
   const userTenantCache = new Map<string, string | null>();
 
@@ -82,7 +86,9 @@ export async function backfillHrDocumentTenantIds(): Promise<{
       updated += 1;
     }
 
-    if (hasUpdates) {
+    // S13: a dry run reports exactly what WOULD change without writing anything, so the
+    // repair can be reviewed before it is committed to production data.
+    if (hasUpdates && !dryRun) {
       await batch.commit();
     }
 
@@ -90,5 +96,5 @@ export async function backfillHrDocumentTenantIds(): Promise<{
     if (snap.docs.length < 300) break;
   }
 
-  return { scanned, updated, skippedNoEmployee };
+  return { scanned, updated, skippedNoEmployee, dryRun };
 }
