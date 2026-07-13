@@ -106,7 +106,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
     }
 
-    if (project?.tenantId !== me.tenantId && (me.role || '').toLowerCase() !== 'super_admin') {
+    // S12: a file always belongs to the tenant that owns the project.
+    //
+    // This previously let a super_admin upload into ANOTHER tenant's project, but every
+    // downstream write still used the super_admin's own tenant: the record was stamped
+    // `tenantId: me.tenantId`, the storage path was built under the super_admin's own
+    // tenant prefix, the version-chain lookup was scoped to the super_admin's tenant, and
+    // (since S11) the bytes were billed to the super_admin's storage quota. The file was
+    // therefore invisible to the tenant that owned the project and surfaced in the wrong
+    // tenant's file list — the capability never actually worked.
+    //
+    // Cross-tenant uploads are closed. A super_admin who needs to act inside a tenant has
+    // impersonation, which gives them that tenant's context for every one of these writes.
+    if (project?.tenantId !== me.tenantId) {
       return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
     }
 
