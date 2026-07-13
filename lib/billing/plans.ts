@@ -2,7 +2,10 @@ export type BillingPlanKey = 'trial' | 'starter' | 'pro' | 'enterprise';
 
 export type BillingPlanDefinition = {
   name: string;
+  /** Monthly list price in USD. */
   price: number;
+  /** Annual list price in USD. Annual billing equals two months free. */
+  annualPrice: number;
   currency: 'USD';
   interval: 'month';
   features: string[];
@@ -12,13 +15,33 @@ export type BillingPlanDefinition = {
     api_calls: number;
   };
   stripePriceIdEnv: string;
+  annualStripePriceIdEnv: string;
   taxBehavior: 'exclusive' | 'inclusive';
 };
+
+/** The plans a customer can actually buy. `trial` is a state, not a purchasable plan. */
+export const PURCHASABLE_PLAN_KEYS = ['starter', 'pro', 'enterprise'] as const;
+export type PurchasablePlanKey = (typeof PURCHASABLE_PLAN_KEYS)[number];
+
+export type BillingCycle = 'monthly' | 'annual';
+
+/** Annual billing equals two months free. */
+export const ANNUAL_FREE_MONTHS = 2;
+
+/**
+ * S7: the Stripe checkout route keys prices as `${plan}_${cycle}`. Annual prices and
+ * price-id envs existed but no UI ever produced an annual key, so annual billing —
+ * part of the locked packages — was defined in code yet impossible to buy.
+ */
+export function toCheckoutPlanKey(plan: PurchasablePlanKey, cycle: BillingCycle): string {
+  return `${plan}_${cycle}`;
+}
 
 export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
   trial: {
     name: 'Free Trial',
     price: 0,
+    annualPrice: 0,
     currency: 'USD',
     interval: 'month',
     features: [
@@ -29,11 +52,13 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     ],
     limits: { users: 10, storage: 21474836480, api_calls: 15000 },
     stripePriceIdEnv: '',
+    annualStripePriceIdEnv: '',
     taxBehavior: 'exclusive',
   },
   starter: {
     name: 'Starter',
     price: 79,
+    annualPrice: 790,
     currency: 'USD',
     interval: 'month',
     features: [
@@ -45,11 +70,13 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     ],
     limits: { users: 10, storage: 21474836480, api_calls: 15000 },
     stripePriceIdEnv: 'STRIPE_PRICE_STARTER_MONTHLY',
+    annualStripePriceIdEnv: 'STRIPE_PRICE_STARTER_ANNUAL',
     taxBehavior: 'exclusive',
   },
   pro: {
     name: 'Pro',
     price: 149,
+    annualPrice: 1490,
     currency: 'USD',
     interval: 'month',
     features: [
@@ -65,11 +92,13 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     ],
     limits: { users: 20, storage: 80530636800, api_calls: 100000 },
     stripePriceIdEnv: 'STRIPE_PRICE_PRO_MONTHLY',
+    annualStripePriceIdEnv: 'STRIPE_PRICE_PRO_ANNUAL',
     taxBehavior: 'exclusive',
   },
   enterprise: {
     name: 'Enterprise',
     price: 299,
+    annualPrice: 2990,
     currency: 'USD',
     interval: 'month',
     features: [
@@ -85,6 +114,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
     ],
     limits: { users: -1, storage: 268435456000, api_calls: -1 },
     stripePriceIdEnv: 'STRIPE_PRICE_ENTERPRISE_MONTHLY',
+    annualStripePriceIdEnv: 'STRIPE_PRICE_ENTERPRISE_ANNUAL',
     taxBehavior: 'exclusive',
   },
 };

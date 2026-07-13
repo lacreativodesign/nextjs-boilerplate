@@ -7,6 +7,12 @@ import { Suspense } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useEffect, useMemo, useState } from 'react';
 import { getFirebaseAuth } from '@/lib/firebaseClient';
+import {
+  ANNUAL_FREE_MONTHS,
+  plans as PLAN_CATALOG,
+  toCheckoutPlanKey,
+  type BillingCycle,
+} from '@/lib/billing/plans';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type PlanKey = 'starter' | 'pro' | 'enterprise';
@@ -183,6 +189,8 @@ function SignupInner() {
   }, [otpResendCooldown]);
 
   const progress = useMemo(() => ((step - 1) / 6) * 100, [step]);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const isAnnual = billingCycle === 'annual';
   const selectedPlan = plans.find((plan) => plan.key === formState.selectedPlan) || plans[1];
   const noChargeUntil = useMemo(
     () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
@@ -385,7 +393,9 @@ function SignupInner() {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            plan: formState.selectedPlan,
+            // S7: `${plan}_${cycle}` — sending the bare plan key always resolved to the
+            // monthly Stripe price, making annual billing impossible to purchase.
+            plan: toCheckoutPlanKey(formState.selectedPlan, billingCycle),
             tenantId: payload.tenantId,
             customerEmail: formState.email.trim().toLowerCase(),
             trialPeriodDays: 14,
@@ -692,6 +702,31 @@ function SignupInner() {
 
                 {step === 4 ? (
                   <div className="grid grid-cols-1 gap-3">
+                    <div className="mb-4 flex justify-center">
+                      <div
+                        className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-1"
+                        role="group"
+                        aria-label="Billing cycle"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setBillingCycle('monthly')}
+                          aria-pressed={!isAnnual}
+                          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${!isAnnual ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]'}`}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBillingCycle('annual')}
+                          aria-pressed={isAnnual}
+                          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${isAnnual ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]'}`}
+                        >
+                          Annual — {ANNUAL_FREE_MONTHS} months free
+                        </button>
+                      </div>
+                    </div>
+
                     {plans.map((plan) => {
                       const selected = formState.selectedPlan === plan.key;
 
@@ -707,9 +742,9 @@ function SignupInner() {
                             <div>
                               <p className="text-lg font-semibold">{plan.name}</p>
                               <p className="mt-1 text-2xl font-bold">
-                                ${plan.price}
+                                ${isAnnual ? PLAN_CATALOG[plan.key].annualPrice : plan.price}
                                 <span className="text-sm font-medium text-[var(--text-muted)]">
-                                  /mo
+                                  {isAnnual ? '/yr' : '/mo'}
                                 </span>
                               </p>
                             </div>
