@@ -103,6 +103,40 @@ describe('S17: the sales charts and reports show real numbers', () => {
   });
 });
 
+describe('S18: production reports show real operational metrics', () => {
+  const page = read('app/production/reports/page.tsx');
+
+  it('loads real data from the production endpoints', () => {
+    expect(page).toContain('/api/production/overview');
+    expect(page).toContain('/api/production/queue');
+    expect(page).toContain('apiFetch(');
+  });
+
+  it('the invented KPI tiles are gone', () => {
+    // A production manager could have made a capacity decision on these literals.
+    expect(page).not.toMatch(/Projects In Queue/);
+    expect(page).not.toMatch(/Avg Turnaround/);
+    expect(page).not.toMatch(/Revisions This Week/);
+    expect(page).not.toMatch(/value:\s*38\b/);
+  });
+
+  it('the invented team-performance chart is gone', () => {
+    ['Ali', 'Sara', 'Imran', 'Fatima'].forEach((name) =>
+      expect(page).not.toMatch(new RegExp(`name:\\s*'${name}'`)),
+    );
+    expect(page).not.toMatch(/tasks:\s*\d+/);
+  });
+
+  it('the invented category pie is gone', () => {
+    expect(page).not.toMatch(/name:\s*'Branding'/);
+    expect(page).not.toMatch(/name:\s*'Video\/Animation'/);
+  });
+
+  it('never invents a category from blank data', () => {
+    expect(page).toContain("if (!key) return;");
+  });
+});
+
 describe('S16: no user-facing page fabricates customer records', () => {
   it('no page under app/ contains placeholder demo data', () => {
     const offenders: string[] = [];
