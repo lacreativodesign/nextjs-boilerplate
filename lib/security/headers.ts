@@ -44,8 +44,15 @@ export const CSP_REPORT_URI = '/api/security/csp-report';
  * to the CSP report sink. This is REPORT-ONLY — it never blocks anything. The
  * enforced Content-Security-Policy stays the permissive buildCsp policy, so
  * promoting this to enforcing is a separate, deliberate step (S31-B).
+ *
+ * S15: this is also set on the REQUEST headers by middleware. Next.js reads the nonce out
+ * of a Content-Security-Policy request header in order to stamp `nonce=` onto the script
+ * tags IT generates (the bootstrap and hydration scripts). Without that, Next's own
+ * scripts carry no nonce, so a strict policy blocks the framework itself — which is why a
+ * previous attempt to enforce this produced a blank screen. Emitting it on the request
+ * does not block anything: the enforced response policy is still the permissive one.
  */
-function buildStrictCsp(nonce: string, reportUri: string) {
+export function buildStrictCsp(nonce: string, reportUri: string) {
   const isProd = process.env.NODE_ENV === 'production';
 
   const scriptSrc = [

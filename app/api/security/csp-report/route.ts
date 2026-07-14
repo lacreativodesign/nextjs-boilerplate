@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { normalizeViolation, recordViolation } from '@/lib/security/csp-violations';
 
 /**
  * CSP violation report sink (S31-A).
@@ -54,7 +55,24 @@ export async function POST(req: NextRequest) {
         : [parsed?.['csp-report']];
 
       for (const report of reports) {
-        console.warn('[CSP-REPORT]', JSON.stringify(summarize(report)));
+        const summary = summarize(report);
+        console.warn('[CSP-REPORT]', JSON.stringify(summary));
+
+        // S15: also aggregate into Firestore. Logging alone gave nobody a way to answer
+        // "what would break if we enforced this?", so enforcement stayed deferred forever.
+        // normalizeViolation bounds the key space and drops anything that is not a
+        // recognised CSP directive, which matters because this endpoint is unauthenticated.
+        const violation = normalizeViolation({
+          directive: summary.directive as string | null,
+          blockedUri: summary.blockedUri as string | null,
+          documentUri: summary.documentUri as string | null,
+        });
+
+        if (violation) {
+          await recordViolation(violation).catch((err) => {
+            console.error('[CSP-REPORT] failed to persist violation', err);
+          });
+        }
       }
     }
   } catch {
