@@ -72,3 +72,70 @@ describe('S20: the profile endpoint accepts and stores preferences', () => {
     expect(route).toContain('const me = await getCurrentUser();');
   });
 });
+
+describe('S21: the production files page is real and its upload works', () => {
+  const page = read('app/production/files/page.tsx');
+
+  it('lists the real files of a real assigned project', () => {
+    expect(page).toContain('/api/production/queue');
+    expect(page).toContain('/api/production/files/list?projectId=');
+  });
+
+  it('the invented file records and uploaders are gone', () => {
+    expect(page).not.toContain('sampleFiles');
+    ['Sarah Johnson', 'David Wilson', 'Emily Carter'].forEach((fake) =>
+      expect(page).not.toContain(fake),
+    );
+    expect(page).not.toContain('Corporate Website Redesign');
+  });
+
+  it('the Upload button is wired — it previously had no handler at all', () => {
+    expect(page).toContain('onClick={() => void handleUpload()}');
+    expect(page).toContain("apiFetch('/api/production/files/upload'");
+  });
+
+  it('uploads through the tenant-scoped storage path helper, not a raw path', () => {
+    expect(page).toContain('tenantProjectFilePath({');
+    expect(page).toContain('getCurrentTenantId()');
+  });
+
+  it('only sends categories the server accepts', () => {
+    expect(page).toContain(
+      "const CATEGORIES = ['Draft', 'Revision', 'Final', 'Asset', 'Other'] as const;",
+    );
+  });
+
+  it('reports a failed upload instead of silently pretending it worked', () => {
+    expect(page).toMatch(/did not finish uploading/);
+  });
+});
+
+describe('S21: no page ships a write button with no handler', () => {
+  it('a type="button" that promises a write always has an onClick', () => {
+    const offenders: string[] = [];
+
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.name === 'page.tsx') {
+          const src = fs.readFileSync(full, 'utf8');
+
+          // Only flag UNAMBIGUOUSLY dead controls. A bare <button> inside a <form> defaults
+          // to type="submit" and is driven by the form's onSubmit, so it is not dead. But a
+          // button explicitly marked type="button" does nothing at all without an onClick —
+          // which is exactly what the production Upload button was.
+          const deadButton =
+            /<button(?=[^>]*type="button")(?![^>]*onClick)[^>]*>\s*(Upload|Save|Add|Submit)\b/;
+          if (deadButton.test(src)) {
+            offenders.push(path.relative(process.cwd(), full));
+          }
+        }
+      }
+    }
+
+    walk(path.join(process.cwd(), 'app'));
+    expect(offenders).toEqual([]);
+  });
+});
