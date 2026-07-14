@@ -8,12 +8,34 @@ import { getCurrentUser } from '@/app/api/admin/_utils';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+/**
+ * S20: user preferences had nowhere to be stored.
+ *
+ * The preferences screen collected a timezone, a date format and three notification
+ * toggles, then "saved" them by setting a local `saved` flag and showing a success
+ * message. Nothing was ever sent to the server: the user's choices were discarded the
+ * moment they navigated away, while the UI told them it had worked.
+ *
+ * Preferences are validated here rather than accepted as an arbitrary blob, so a caller
+ * cannot write unbounded keys onto their own user document.
+ */
+const preferencesSchema = z.object({
+  timezone: z.string().min(1).max(64).optional(),
+  dateFormat: z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).optional(),
+  emailNotifications: z.boolean().optional(),
+  browserNotifications: z.boolean().optional(),
+  weeklyDigest: z.boolean().optional(),
+});
+
+export type UserPreferences = z.infer<typeof preferencesSchema>;
+
 const profileSchema = z.object({
   displayName: z.string().min(1).max(120).optional(),
   phone: z.string().max(40).optional().nullable(),
   jobTitle: z.string().max(120).optional().nullable(),
   department: z.string().max(120).optional().nullable(),
   bio: z.string().max(1000).optional().nullable(),
+  preferences: preferencesSchema.optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -44,6 +66,13 @@ export async function PATCH(request: Request) {
     if (data.jobTitle !== undefined) userUpdates.jobTitle = data.jobTitle;
     if (data.department !== undefined) userUpdates.department = data.department;
     if (data.bio !== undefined) userUpdates.bio = data.bio;
+
+    // S20: merge rather than replace, so updating one toggle does not wipe the others.
+    if (data.preferences !== undefined) {
+      Object.entries(data.preferences).forEach(([key, value]) => {
+        if (value !== undefined) userUpdates[`preferences.${key}`] = value;
+      });
+    }
 
     await adminDb.collection('users').doc(me.uid).update(userUpdates);
 
@@ -123,6 +152,13 @@ export async function GET() {
         avatarUrl: data.avatarUrl || data.photoURL || '',
         role: data.role || '',
         tenantId: data.tenantId || '',
+        preferences: {
+          timezone: data.preferences?.timezone || 'UTC',
+          dateFormat: data.preferences?.dateFormat || 'DD/MM/YYYY',
+          emailNotifications: data.preferences?.emailNotifications ?? true,
+          browserNotifications: data.preferences?.browserNotifications ?? false,
+          weeklyDigest: data.preferences?.weeklyDigest ?? true,
+        },
       },
     });
   } catch (error: any) {
