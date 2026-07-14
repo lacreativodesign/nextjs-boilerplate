@@ -137,6 +137,49 @@ describe('S18: production reports show real operational metrics', () => {
   });
 });
 
+describe('S19: the lead detail page shows the real lead and persists writes', () => {
+  const page = read('app/sales/leads/[id]/page.tsx');
+  const route = read('app/api/sales/leads/get/route.ts');
+
+  it('reads the lead named by the route parameter', () => {
+    expect(page).toContain('useParams');
+    expect(page).toContain('/api/sales/leads/get?leadId=');
+  });
+
+  it('the hardcoded lead and fabricated notes thread are gone', () => {
+    expect(page).not.toContain('mockLead');
+    expect(page).not.toContain('John Matthews');
+    expect(page).not.toContain('Zain Ahmed');
+    expect(page).not.toContain('initialNotes');
+  });
+
+  it('status changes are PERSISTED, not just held in local state', () => {
+    expect(page).toContain("apiFetch('/api/sales/leads/update'");
+    expect(page).toMatch(/id: lead\.id, status/);
+  });
+
+  it('notes are PERSISTED, not just appended locally', () => {
+    expect(page).toContain("apiFetch('/api/sales/lead-notes/create'");
+    expect(page).toContain('/api/sales/lead-notes/list?leadId=');
+  });
+
+  it('a rejected write is rolled back rather than shown as success', () => {
+    expect(page).toContain('setLead({ ...lead, status: previous })');
+  });
+
+  it('only sends status values the API actually accepts', () => {
+    ['new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'closed_won', 'closed_lost'].forEach(
+      (value) => expect(page).toContain(`value: '${value}'`),
+    );
+  });
+
+  it('the new lead endpoint enforces tenant and sales ownership', () => {
+    expect(route).toContain('requireSalesRead()');
+    expect(route).toMatch(/docTenantId\(data\) !== auth\.user\.tenantId/);
+    expect(route).toMatch(/auth\.user\.role === 'sales' && data\.ownerId !== auth\.user\.uid/);
+  });
+});
+
 describe('S16: no user-facing page fabricates customer records', () => {
   it('no page under app/ contains placeholder demo data', () => {
     const offenders: string[] = [];
