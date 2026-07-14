@@ -60,7 +60,27 @@ function toISO(value: any): string | null {
 
 function canViewClients(role: string) {
   const r = (role || '').toLowerCase();
-  return r === 'admin' || r === 'super_admin' || r === 'sales_manager' || r === 'am';
+  return (
+    r === 'admin' || r === 'super_admin' || r === 'sales_manager' || r === 'am' || r === 'sales'
+  );
+}
+
+/**
+ * S16: a `sales` rep sees only the clients they own; every other permitted role sees the
+ * whole tenant.
+ *
+ * `sales` was previously excluded from this route entirely, which is why /sales/clients
+ * shipped a hardcoded list of invented people instead of real data.
+ *
+ * Ownership is matched on the client's `salesOwner` field. That field stores the owner's
+ * NAME (the client add/edit forms submit `user.name`, not a uid), so the comparison has to
+ * be by name to work against the data that already exists. This is fragile — names collide
+ * and change — and `salesOwner` should be migrated to a uid. Until then the check fails
+ * CLOSED: a rep whose name does not match sees an empty list rather than someone else's
+ * clients.
+ */
+function ownsOnly(role: string) {
+  return (role || '').toLowerCase() === 'sales';
 }
 
 export async function GET(req: NextRequest) {
@@ -80,9 +100,22 @@ export async function GET(req: NextRequest) {
 
     let query: FirebaseFirestore.Query = db
       .collection('clients')
-      .where('tenantId', '==', me.tenantId)
-      .orderBy('createdAt', 'desc')
-      .limit(limit + 1);
+      .where('tenantId', '==', me.tenantId);
+
+    if (ownsOnly(role)) {
+      const ownerName = String(me.name || me.fullName || me.displayName || '').trim();
+      if (!ownerName) {
+        // No resolvable identity to own anything by — return nothing rather than everything.
+        return NextResponse.json({
+          ok: true,
+          clients: [],
+          pagination: { hasMore: false, nextCursor: null },
+        });
+      }
+      query = query.where('salesOwner', '==', ownerName);
+    }
+
+    query = query.orderBy('createdAt', 'desc').limit(limit + 1);
 
     if (cursor) {
       const cursorDoc = await db.collection('clients').doc(cursor).get();

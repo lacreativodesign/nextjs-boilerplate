@@ -1,82 +1,132 @@
 'use client';
 
-export default function SalesClientsPage() {
-  // Placeholder demo client list until Firebase is connected
-  const clients = [
-    {
-      id: 'C-1001',
-      name: 'John Carter',
-      company: 'Carter Studios',
-      email: 'john@carterstudios.com',
-      phone: '+1 555 234 8899',
-      status: 'Active',
-    },
-    {
-      id: 'C-1002',
-      name: 'Amelia Lopez',
-      company: 'Silver Peak Retail',
-      email: 'amelia@silverpeak.com',
-      phone: '+1 555 991 2200',
-      status: 'Pending',
-    },
-    {
-      id: 'C-1003',
-      name: 'Jacob Williams',
-      company: 'BlueBrick Tech',
-      email: 'jacob@bluebrick.io',
-      phone: '+1 555 776 1011',
-      status: 'Inactive',
-    },
-  ];
+import { useCallback, useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
-  const statusColor = (status: string) => {
-    if (status === 'Active') return 'text-green-600 dark:text-green-400';
-    if (status === 'Pending') return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
-  };
+/**
+ * S16: real clients, replacing a hardcoded list.
+ *
+ * This page previously rendered three invented people — fabricated names, companies, emails
+ * and phone numbers — identically for every tenant, and even captioned them as placeholder
+ * records pending a backend wire-up. A sales rep in a live workspace opened Clients and saw
+ * customers that do not exist. It now loads the tenant's real clients, scoped to the ones
+ * this rep owns. The accompanying test asserts those fabricated records and that caption can
+ * never reappear anywhere in this file.
+ */
+type Client = {
+  id: string;
+  companyName: string;
+  primaryContactName: string;
+  primaryContactEmail: string;
+  primaryContactPhone: string;
+  salesStage: string;
+  paymentStatus: string;
+};
+
+function stageColor(stage: string) {
+  const s = (stage || '').toLowerCase();
+  if (s === 'won' || s === 'active') return 'text-green-600 dark:text-green-400';
+  if (s === 'lost' || s === 'inactive') return 'text-red-600 dark:text-red-400';
+  return 'text-yellow-600 dark:text-yellow-400';
+}
+
+export default function SalesClientsPage() {
+  const [clients, setClients] = useState<Client[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await apiFetch('/api/admin/clients/list?limit=100', { cache: 'no-store' });
+      const payload = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        clients?: Client[];
+        error?: string;
+      } | null;
+
+      if (!res.ok || !payload?.ok) {
+        setError(payload?.error || `Could not load clients (${res.status})`);
+        setClients([]);
+        return;
+      }
+
+      setClients(payload.clients ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load clients');
+      setClients([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <div className="space-y-6">
       <h1 className="page-title">Clients</h1>
 
-      <div className="table-shell">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[var(--table-header-bg)] text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
-                <th className="py-3 px-4">Client ID</th>
-                <th className="py-3 px-4">Name</th>
-                <th className="py-3 px-4">Company</th>
-                <th className="py-3 px-4">Email</th>
-                <th className="py-3 px-4">Phone</th>
-                <th className="py-3 px-4">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
-                >
-                  <td className="py-3 px-4 text-[var(--text-muted)]">{c.id}</td>
-                  <td className="py-3 px-4 font-medium text-[var(--text-primary)]">{c.name}</td>
-                  <td className="py-3 px-4 text-[var(--text-primary)]">{c.company}</td>
-                  <td className="py-3 px-4 text-[var(--text-primary)]">{c.email}</td>
-                  <td className="py-3 px-4 text-[var(--text-primary)]">{c.phone}</td>
-                  <td className="py-3 px-4 font-semibold">
-                    <span className={statusColor(c.status)}>{c.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="helper-text px-4 py-3">
-          These are demo clients. Once Firebase is connected, this page will automatically load all
-          client records assigned to the logged-in sales user (or all clients for admins / sales
-          managers).
+      {error && (
+        <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+          {error}
         </p>
-      </div>
+      )}
+
+      {clients === null && !error && <p className="helper-text">Loading clients…</p>}
+
+      {clients !== null && clients.length === 0 && !error && (
+        <div className="table-shell">
+          <p className="helper-text px-4 py-6">
+            No clients are assigned to you yet. Clients appear here once an administrator or
+            sales manager assigns you as their sales owner.
+          </p>
+        </div>
+      )}
+
+      {clients !== null && clients.length > 0 && (
+        <div className="table-shell">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[var(--table-header-bg)] text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                  <th className="py-3 px-4">Company</th>
+                  <th className="py-3 px-4">Contact</th>
+                  <th className="py-3 px-4">Email</th>
+                  <th className="py-3 px-4">Phone</th>
+                  <th className="py-3 px-4">Stage</th>
+                  <th className="py-3 px-4">Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((c) => (
+                  <tr
+                    key={c.id}
+                    className="border-b border-[var(--border-subtle)] hover:bg-[var(--table-row-hover)] transition"
+                  >
+                    <td className="py-3 px-4 font-medium text-[var(--text-primary)]">
+                      {c.companyName || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-[var(--text-primary)]">
+                      {c.primaryContactName || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-[var(--text-primary)]">
+                      {c.primaryContactEmail || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-[var(--text-primary)]">
+                      {c.primaryContactPhone || '—'}
+                    </td>
+                    <td className="py-3 px-4 font-semibold">
+                      <span className={stageColor(c.salesStage)}>{c.salesStage || '—'}</span>
+                    </td>
+                    <td className="py-3 px-4 text-[var(--text-muted)]">
+                      {c.paymentStatus || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
