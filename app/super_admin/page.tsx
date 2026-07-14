@@ -113,6 +113,11 @@ const ACTION_LINKS = [
     desc: 'Run one-off data repairs. Dry run first, then apply.',
   },
   {
+    title: 'Content Security Policy',
+    href: '/super_admin/security',
+    desc: 'Review what the strict CSP would block before enforcing it.',
+  },
+  {
     title: 'Payment Terminal',
     href: '/super_admin/payments',
     desc: 'Subscription revenue, billing status, and transaction history.',

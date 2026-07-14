@@ -9,6 +9,7 @@ import {
 import { normalizeRole, roleFromPath, rolesAllowedForApi } from '@/lib/erpAccess';
 import { AppError, resolveErrorResponse } from '@/lib/errors';
 import { applyRateLimitHeaders, applySecurityHeaders, getClientIp } from '@/lib/security';
+import { buildStrictCsp, CSP_REPORT_URI } from '@/lib/security/headers';
 import {
   verifyRequestSignature,
   verifyRotatingApiKey,
@@ -309,6 +310,14 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-nonce', nonce);
+  // S15: Next.js stamps `nonce=` onto the script tags it generates ONLY when it can read a
+  // nonce out of a Content-Security-Policy REQUEST header. Without this, Next's own
+  // bootstrap and hydration scripts carry no nonce, so the strict nonce-based policy treats
+  // the framework itself as a violation — which is exactly why enforcing it previously
+  // produced a blank screen. This does not block anything: the ENFORCED response policy is
+  // still the permissive one. It makes the Report-Only findings trustworthy, and is the
+  // prerequisite for ever turning enforcement on.
+  requestHeaders.set('Content-Security-Policy', buildStrictCsp(nonce, CSP_REPORT_URI));
 
   const startedAt = Date.now();
   const { pathname } = req.nextUrl;
