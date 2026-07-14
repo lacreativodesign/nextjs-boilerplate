@@ -68,6 +68,41 @@ describe('S16: the clients API scopes a sales rep to their own clients', () => {
   });
 });
 
+describe('S17: the sales charts and reports show real numbers', () => {
+  const analytics = read('app/sales/analytics/page.tsx');
+  const reports = read('app/sales/reports/page.tsx');
+
+  it('both pages load the real pipeline instead of literal arrays', () => {
+    expect(analytics).toContain('/api/sales/pipeline');
+    expect(reports).toContain('/api/sales/pipeline');
+  });
+
+  it('the invented revenue trend is gone', () => {
+    // Was a literal series climbing 12000 -> 25000, identical for every tenant.
+    expect(analytics).not.toMatch(/value:\s*12000/);
+    expect(analytics).not.toMatch(/value:\s*25000/);
+    expect(analytics).not.toMatch(/month:\s*'Jan'/);
+  });
+
+  it('the invented conversion funnel is gone', () => {
+    expect(analytics).not.toMatch(/count:\s*45/);
+    expect(analytics).not.toMatch(/stage:\s*'New',\s*count/);
+  });
+
+  it('the dummy deal list is gone', () => {
+    expect(reports).not.toMatch(/Dummy deal/i);
+    expect(reports).not.toContain('John Carter');
+    expect(reports).not.toMatch(/id:\s*'D001'/);
+  });
+
+  it('both pages handle loading and empty states honestly', () => {
+    expect(analytics).toContain('Loading analytics');
+    expect(analytics).toMatch(/No deals yet/);
+    expect(reports).toContain('Loading deals');
+    expect(reports).toMatch(/No deals yet/);
+  });
+});
+
 describe('S16: no user-facing page fabricates customer records', () => {
   it('no page under app/ contains placeholder demo data', () => {
     const offenders: string[] = [];
