@@ -16,7 +16,19 @@ const eslintConfig = defineConfig([
       'prefer-const': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
       '@next/next/no-img-element': 'warn',
-      'jsx-a11y/alt-text': 'warn',
+      // S31: accessibility rules enforced at build time. The high-traffic surfaces were
+      // already clean under these rules; promoting them to 'error' stops regressions —
+      // an unlabeled icon button or an image with no alt text now fails the build rather
+      // than shipping silently.
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/anchor-has-content': 'error',
+      'jsx-a11y/aria-props': 'error',
+      'jsx-a11y/aria-proptypes': 'error',
+      'jsx-a11y/aria-role': 'error',
+      'jsx-a11y/aria-unsupported-elements': 'error',
+      'jsx-a11y/role-has-required-aria-props': 'error',
+      'jsx-a11y/role-supports-aria-props': 'error',
+      'jsx-a11y/no-redundant-roles': 'error',
       '@next/next/no-assign-module-variable': 'error',
       'react/no-unescaped-entities': 'error',
     },
