@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCountUp } from '@/lib/hooks/useCountUp';
 import dynamic from 'next/dynamic';
 const SalesAgentWidget = dynamic(() => import('@/components/ai/SalesAgentWidget'), { ssr: false });
+import FirstRunHint from '@/components/onboarding/FirstRunHint';
 
 type SalesStats = {
   totalLeads: number;
@@ -76,11 +77,28 @@ export default function SalesPage() {
 
   const v = (val: any) => (loading ? '...' : val);
 
+  // S28: a brand-new tenant has no leads or deals yet. Show a first-run pointer while every
+  // headline number is still zero; it vanishes the moment real sales data exists.
+  const isFirstRun =
+    !loading &&
+    !error &&
+    (data?.totalLeads ?? 0) === 0 &&
+    (data?.activeDeals ?? 0) === 0 &&
+    (data?.pipelineValue ?? 0) === 0 &&
+    (data?.closedWonThisMonth ?? 0) === 0;
+
   return (
     <div className="page-frame space-y-6">
       <div className="mb-6">
         <SalesAgentWidget />
       </div>
+
+      <FirstRunHint
+        show={isFirstRun}
+        title="Your pipeline is ready — add your first lead"
+        description="These cards fill in as leads and deals move through your pipeline. Start by adding a lead, and your totals, pipeline value and conversion rate will update automatically."
+        action={{ label: 'Add a lead', href: '/sales/leads' }}
+      />
 
       <div className="kpis">
         <StatCard
