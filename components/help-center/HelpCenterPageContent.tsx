@@ -36,18 +36,31 @@ type ArticleCard = {
   Icon: HelpIcon;
 };
 
+/**
+ * S24: these quick links previously pointed at external marketing/docs subdomains that have
+ * not been built yet. Each opened a new tab to a dead destination — a broken promise in front
+ * of the customer on the very page they land on when they need help. They now point at
+ * destinations that exist today: the searchable guide library on this page, the full help
+ * search, and the in-app support flow.
+ *
+ * `internal` links stay within the app (no new tab); the support action routes through the
+ * existing help search rather than pretending a community forum exists.
+ */
 const quickLinks = [
   {
-    label: '📖 Full Documentation',
-    href: 'https://docs.bizosto.com',
+    label: '📖 Browse all guides',
+    href: '#help-guide-search',
+    internal: true,
   },
   {
-    label: '🎥 Video Tutorials',
-    href: 'https://bizosto.com/tutorials',
+    label: '🔍 Search the help center',
+    href: '/help/search',
+    internal: true,
   },
   {
-    label: '💬 Community',
-    href: 'https://bizosto.com/community',
+    label: '💬 Contact support',
+    href: '/help/search?q=contact%20support',
+    internal: true,
   },
 ] as const;
 
@@ -266,8 +279,6 @@ export function HelpCenterPageContent() {
           <a
             key={link.href}
             href={link.href}
-            target="_blank"
-            rel="noopener noreferrer"
             className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 text-sm font-semibold text-[var(--text-primary)] shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-1 hover:border-[var(--erp-blue)] hover:text-[var(--erp-blue)] hover:shadow-[var(--shadow-lift)]"
           >
             {link.label}
