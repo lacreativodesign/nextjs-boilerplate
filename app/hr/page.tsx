@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import FirstRunHint from '@/components/onboarding/FirstRunHint';
 import Link from 'next/link';
 
 type HROverview = {
@@ -65,8 +66,24 @@ export default function HrOverviewPage() {
 
   const v = (n: number) => (loading ? '...' : n);
 
+  // S29: a workspace that has not added employees yet shows all zeros. Point HR at adding
+  // their first employee, which is what every other HR figure derives from.
+  const isFirstRun =
+    !loading &&
+    !error &&
+    (data?.totalEmployees ?? 0) === 0 &&
+    (data?.activeEmployees ?? 0) === 0 &&
+    (data?.newHires ?? 0) === 0;
+
   return (
     <div className="page-frame space-y-6">
+      <FirstRunHint
+        show={isFirstRun}
+        title="No employees added yet"
+        description="Attendance, leave, onboarding and payroll all build on your employee list. Add your first employee to get started."
+        action={{ label: 'Add an employee', href: '/hr/employees' }}
+      />
+
       <div className="kpis">
         <StatCard
           label="Total Employees"

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import FirstRunHint from '@/components/onboarding/FirstRunHint';
 import Link from 'next/link';
 
 type KPIs = {
@@ -33,9 +34,25 @@ export default function AmPage() {
     { label: 'Notifications', value: kpis ? fmt(kpis.unreadNotifications) : '—' },
   ];
 
+  // S29: an account manager with no assigned projects yet sees only zeros. Point them at their
+  // client accounts, which is where their work originates.
+  const isFirstRun =
+    !loading &&
+    !error &&
+    (kpis?.activeProjects ?? 0) === 0 &&
+    (kpis?.reviewProjects ?? 0) === 0 &&
+    (kpis?.openChangeRequests ?? 0) === 0;
+
   return (
     <div className="space-y-6">
       {error && <div className="card p-4 text-sm text-red-400">{error}</div>}
+
+      <FirstRunHint
+        show={isFirstRun}
+        title="No active projects yet"
+        description="Your project and review counts fill in as work is assigned to your client accounts. Open your clients to see the accounts you manage and get started."
+        action={{ label: 'View my clients', href: '/clients' }}
+      />
 
       <div className="kpis">
         {cards.map((c) => (
