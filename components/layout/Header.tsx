@@ -329,8 +329,12 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
                         'hover:bg-[var(--surface-muted)] transition-colors',
                         locale === item.code ? 'bg-[var(--erp-blue-soft)]' : '',
                       ].join(' ')}
+                      // S31: the flag emoji alone is not an accessible name. Give the button a
+                      // real label and hide the decorative flag from the accessibility tree.
+                      aria-label={`${item.language} (${item.nativeName})`}
+                      aria-current={locale === item.code ? 'true' : undefined}
                     >
-                      <span>{item.flag}</span>
+                      <span aria-hidden="true">{item.flag}</span>
                     </button>
                   ))}
                 </div>
