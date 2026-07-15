@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import FirstRunHint from '@/components/onboarding/FirstRunHint';
 import Link from 'next/link';
 
 type KPIs = {
@@ -55,6 +56,16 @@ export default function ProductionPage() {
     Final: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   };
 
+  // S29: a production team member with nothing assigned yet sees only zeros. Their work is
+  // assigned by a manager, so point them at their queue rather than a create action.
+  const isFirstRun =
+    !loading &&
+    !error &&
+    (kpis?.assigned ?? 0) === 0 &&
+    (kpis?.active ?? 0) === 0 &&
+    (kpis?.dueSoon ?? 0) === 0 &&
+    (kpis?.qaQueue ?? 0) === 0;
+
   return (
     <div className="space-y-6">
       {error && (
@@ -62,6 +73,13 @@ export default function ProductionPage() {
           {error}
         </div>
       )}
+
+      <FirstRunHint
+        show={isFirstRun}
+        title="Nothing in your queue yet"
+        description="Projects appear here once they are assigned to you. In the meantime, open the production queue to see everything in progress across the team."
+        action={{ label: 'Open the queue', href: '/production/queue' }}
+      />
 
       {/* KPI Cards */}
       <div className="kpis">

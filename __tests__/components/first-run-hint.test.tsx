@@ -63,3 +63,26 @@ describe('S28: the sales dashboard uses the hint, gated on empty data', () => {
     expect(fs.existsSync(path.join(process.cwd(), 'app/sales/leads/page.tsx'))).toBe(true);
   });
 });
+
+describe('S29: every worker dashboard has a gated first-run hint at a real action', () => {
+  const cases: { file: string; action: string }[] = [
+    { file: 'app/am/page.tsx', action: '/clients' },
+    { file: 'app/production/page.tsx', action: '/production/queue' },
+    { file: 'app/finance/page.tsx', action: '/finance/invoices' },
+    { file: 'app/hr/page.tsx', action: '/hr/employees' },
+  ];
+
+  it.each(cases)('$file renders FirstRunHint gated on isFirstRun', ({ file }) => {
+    const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+    expect(src).toContain("import FirstRunHint from '@/components/onboarding/FirstRunHint'");
+    expect(src).toContain('const isFirstRun =');
+    expect(src).toContain('show={isFirstRun}');
+  });
+
+  it.each(cases)('$file points at a first action that resolves', ({ file, action }) => {
+    const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+    expect(src).toContain(`href: '${action}'`);
+    const dir = action.replace(/^\//, '');
+    expect(fs.existsSync(path.join(process.cwd(), 'app', dir, 'page.tsx'))).toBe(true);
+  });
+});

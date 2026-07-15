@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import FirstRunHint from '@/components/onboarding/FirstRunHint';
 import dynamic from 'next/dynamic';
 
 const FinanceAgentWidget = dynamic(() => import('@/components/ai/FinanceAgentWidget'), {
@@ -77,11 +78,25 @@ export default function FinanceOverviewPage() {
 
   if (error) return <div className="card p-6 text-red-400">{error}</div>;
 
+  // S29: a new tenant has no invoices or payments yet, so every finance figure is zero.
+  // Point them at invoice creation, which is where finance data begins.
+  const isFirstRun =
+    (kpi?.totalRevenueMonth || 0) === 0 &&
+    (kpi?.outstandingInvoices || 0) === 0 &&
+    (pkr?.payrollDueMonth || 0) === 0;
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
         <FinanceAgentWidget />
       </div>
+
+      <FirstRunHint
+        show={isFirstRun}
+        title="No financial activity yet"
+        description="Revenue, outstanding balances and payroll fill in as you raise invoices and record payments. Create your first invoice to get started."
+        action={{ label: 'Create an invoice', href: '/finance/invoices' }}
+      />
 
       <section>
         <h2 className="section-title mb-4">USD Performance</h2>
