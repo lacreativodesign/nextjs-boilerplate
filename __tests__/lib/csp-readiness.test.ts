@@ -34,11 +34,14 @@ describe('S15: Next can nonce its own scripts', () => {
     );
   });
 
-  it('the ENFORCED response policy is still permissive — this session blocks nothing', () => {
+  it('the strict policy is still emitted Report-Only, and reporting is wired', () => {
+    // S27 promoted the strict policy to enforced, but it is STILL emitted Report-Only as well
+    // (so the readiness console keeps receiving reports), and the report sink is unchanged.
     const headers = read('lib/security/headers.ts');
-    expect(headers).toContain("'Content-Security-Policy': buildCsp(nonce)");
-    expect(headers).toContain("'unsafe-inline'");
     expect(headers).toContain('Content-Security-Policy-Report-Only');
+    expect(headers).toContain('buildStrictCsp');
+    // The permissive builder is retained for nonce-less responses and the CSP_ENFORCE=off path.
+    expect(headers).toContain('buildCsp(nonce)');
   });
 });
 

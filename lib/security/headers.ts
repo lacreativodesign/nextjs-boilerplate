@@ -85,6 +85,35 @@ export function buildStrictCsp(nonce: string, reportUri: string) {
   ].join('; ');
 }
 
+/**
+ * S27: the strict, nonce-based CSP is promoted from Report-Only to ENFORCED.
+ *
+ * It ran in Report-Only for an observation window across every role, and the readiness
+ * console (/super_admin/security) showed no violations — meaning nothing on the platform,
+ * including Firebase's own client scripts, would be blocked by it. That is the evidence this
+ * flip needs.
+ *
+ * Two safety properties are preserved deliberately:
+ *
+ *  1. Enforcement is GATED on a nonce. The strict policy locks script-src to a per-request
+ *     nonce, so it can only be the enforced policy on a response that actually carries one.
+ *     The main page path always generates a nonce; the rare nonce-less responses (e.g. some
+ *     middleware JSON errors) keep the permissive buildCsp policy so they cannot be bricked
+ *     by a policy with no matching nonce.
+ *
+ *  2. Enforcement is REVERSIBLE without a code change. Setting the env var
+ *     CSP_ENFORCE=off falls back to the previous behaviour (permissive enforced policy +
+ *     strict Report-Only) instantly, so if anything unexpected surfaces in production it can
+ *     be stood down from the dashboard rather than waiting on a redeploy.
+ *
+ * The strict policy also keeps emitting Report-Only, so violations continue to be recorded
+ * even while enforced — the readiness console stays useful.
+ */
+function cspEnforcementEnabled(): boolean {
+  // Default ON. Only an explicit opt-out disables it.
+  return process.env.CSP_ENFORCE !== 'off';
+}
+
 export function getSecurityHeaders(nonce?: string): Record<string, string> {
   const headers: Record<string, string> = {
     'X-Frame-Options': 'DENY',
@@ -96,15 +125,27 @@ export function getSecurityHeaders(nonce?: string): Record<string, string> {
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
     'X-DNS-Prefetch-Control': 'off',
-    // Enforced policy stays permissive (buildCsp) — nothing is blocked.
-    'Content-Security-Policy': buildCsp(nonce),
   };
 
-  // Only when a per-request nonce is available do we also emit the strict
-  // Report-Only policy + its reporting endpoint. Report-Only never blocks.
-  if (nonce) {
-    headers['Content-Security-Policy-Report-Only'] = buildStrictCsp(nonce, CSP_REPORT_URI);
+  const enforceStrict = Boolean(nonce) && cspEnforcementEnabled();
+
+  if (enforceStrict) {
+    // Enforce the strict, nonce-based policy. Still emit it Report-Only too, so the
+    // readiness console keeps receiving violation reports while enforced.
+    headers['Content-Security-Policy'] = buildStrictCsp(nonce as string, CSP_REPORT_URI);
+    headers['Content-Security-Policy-Report-Only'] = buildStrictCsp(
+      nonce as string,
+      CSP_REPORT_URI,
+    );
     headers['Reporting-Endpoints'] = `csp-endpoint="${CSP_REPORT_URI}"`;
+  } else {
+    // No nonce (rare) or explicitly disabled: keep the permissive enforced policy so nothing
+    // is bricked, and keep the strict policy in Report-Only when a nonce is available.
+    headers['Content-Security-Policy'] = buildCsp(nonce);
+    if (nonce) {
+      headers['Content-Security-Policy-Report-Only'] = buildStrictCsp(nonce, CSP_REPORT_URI);
+      headers['Reporting-Endpoints'] = `csp-endpoint="${CSP_REPORT_URI}"`;
+    }
   }
 
   return headers;
