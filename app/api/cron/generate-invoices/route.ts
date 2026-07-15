@@ -329,7 +329,9 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
       html: invoiceEmailHtml(invoiceData),
     });
 
-    console.log(`[EMAIL] Sent invoice ${invoice.invoiceNumber} to ${clientEmail}`);
+    // S23: never log the recipient's email address. invoice.id is a non-PII identifier
+    // that is just as useful for tracing a delivery in the logs.
+    console.log(`[EMAIL] Sent invoice ${invoice.invoiceNumber} (${invoice.id})`);
   } catch (error) {
     console.error('[EMAIL] Failed to send invoice email:', error);
   }
