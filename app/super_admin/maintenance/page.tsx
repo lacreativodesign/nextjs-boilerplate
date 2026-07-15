@@ -161,11 +161,59 @@ export default function SuperAdminMaintenancePage() {
             </p>
           )}
 
-          {result.dryRun && (
-            <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">
-              Review the numbers above, then press “Apply repair”.
-            </p>
-          )}
+          {(() => {
+            // S25: make a skipped-only / clean result legible. "repaired 0, skipped N" is the
+            // correct, safe outcome when a record's owner no longer exists — the job refuses to
+            // guess a tenant. Without this line it reads like nothing happened, so people press
+            // Dry run / Apply repeatedly expecting the numbers to change. They never will.
+            const files = result.results?.files;
+            const hr = result.results?.hrDocuments;
+            const totalToRepair = (files?.updated ?? 0) + (hr?.updated ?? 0);
+            const totalSkipped =
+              (files?.skippedNoProject ?? 0) + (hr?.skippedNoEmployee ?? 0);
+            const totalScanned = (files?.scanned ?? 0) + (hr?.scanned ?? 0);
+
+            if (totalScanned === 0) {
+              return (
+                <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">
+                  Nothing to repair — no records are missing a tenant. This is the healthy
+                  state; you don’t need to run this again.
+                </p>
+              );
+            }
+
+            if (result.dryRun && totalToRepair > 0) {
+              return (
+                <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">
+                  Review the numbers above, then press “Apply repair”.
+                </p>
+              );
+            }
+
+            if (totalToRepair === 0 && totalSkipped > 0) {
+              return (
+                <p className="mt-3 text-sm text-[var(--text-muted)]">
+                  <strong className="text-[var(--text-primary)]">Nothing more to do.</strong>{' '}
+                  The {totalSkipped === 1 ? 'record' : `${totalSkipped} records`} that could not
+                  be repaired {totalSkipped === 1 ? 'is' : 'are'} orphaned — the owning project or
+                  employee no longer exists, so there is no tenant to assign. The job deliberately
+                  skips {totalSkipped === 1 ? 'it' : 'them'} rather than guess. Running this again
+                  will keep reporting the same number; that is expected, not an error.
+                </p>
+              );
+            }
+
+            if (!result.dryRun && totalToRepair > 0) {
+              return (
+                <p className="mt-3 text-sm font-semibold text-green-600 dark:text-green-400">
+                  Done. {totalToRepair} {totalToRepair === 1 ? 'record was' : 'records were'}
+                  {' '}repaired.
+                </p>
+              );
+            }
+
+            return null;
+          })()}
         </section>
       )}
     </main>

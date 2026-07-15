@@ -41,6 +41,9 @@ const TABS = [
   { href: '/super_admin/backups', label: 'Backups' },
   { href: '/super_admin/demo', label: 'Demo' },
   { href: '/super_admin/migration', label: 'Migration' },
+  { href: '/super_admin/security', label: 'Security' },
+  { href: '/super_admin/maintenance', label: 'Maintenance' },
+  { href: '/super_admin/activity', label: 'Activity' },
   { href: '/super_admin/settings', label: 'Platform Settings' },
 ];
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
