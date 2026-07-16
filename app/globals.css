@@ -848,39 +848,62 @@ select option {
   background: var(--surface-card);
 }
 
+/*
+ * S36: premium "outlined tab group" with a gradient active pill.
+ *
+ * The tab bar is a contained segmented control — the whole group sits inside a subtle rounded
+ * outline with a muted background — and the active tab is a raised pill filled with a soft blue
+ * gradient (Linear / Vercel / Stripe dashboard style), instead of floating solid-blue pills on a
+ * bare bottom border. The gradient is built from the --erp-blue tokens, so it stays correct in
+ * light and dark mode, and because every module's tabs render through these two classes, the
+ * whole platform updates at once.
+ */
 .tabs-bar {
-  display: flex;
+  display: inline-flex;
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  gap: 8px;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 4px;
+  /* The outline that frames the whole group. */
+  padding: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-muted);
   margin-bottom: 20px;
-  padding-bottom: 2px;
+  max-width: 100%;
 }
 .tabs-bar::-webkit-scrollbar {
   display: none;
 }
 .tab-pill {
-  padding: 8px 14px;
-  border-radius: 12px 12px 0 0;
+  padding: 7px 15px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
   color: var(--text-muted);
+  border: 1px solid transparent;
   transition:
     background 160ms ease,
     color 160ms ease,
+    border-color 160ms ease,
     box-shadow 160ms ease;
 }
 .tab-pill:hover {
-  background: var(--surface-muted);
   color: var(--text-primary);
+  background: var(--surface-card);
 }
+/* Active tab: a raised pill filled with a soft blue gradient — richer than a flat fill. */
 .tab-pill.active {
-  background: var(--erp-blue);
+  background: linear-gradient(135deg, var(--erp-blue), var(--erp-blue-hover));
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+}
+.tab-pill.active:hover {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--erp-blue), var(--erp-blue-hover));
 }
 
 .drawer-overlay {
