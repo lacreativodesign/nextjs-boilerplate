@@ -71,7 +71,7 @@ export function mapStripeStatusToSubscriptionState(status: string) {
     case 'canceled':
       return 'hard_locked';
     case 'trialing':
-      return 'active';
+      return 'trial';
     default:
       return 'grace';
   }
