@@ -21,6 +21,7 @@ type HeaderUser = {
 type HeaderProps = {
   currentUser: HeaderUser;
   activityTrigger?: ReactNode;
+  notificationBell?: ReactNode;
   onMenuToggle?: () => void;
 };
 
@@ -83,7 +84,7 @@ function getUserInitials(name?: string | null, email?: string | null) {
   return (email?.trim().charAt(0) || 'U').toUpperCase();
 }
 
-export default function Header({ currentUser, activityTrigger }: HeaderProps) {
+export default function Header({ currentUser, activityTrigger, notificationBell }: HeaderProps) {
   const router = useRouter();
   const { locale, setLocale, t } = useI18n();
   const { isDark, toggle } = useTheme();
@@ -164,6 +165,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2">
+            {notificationBell || null}
             {activityTrigger || null}
 
             <div className="relative hidden items-center gap-2 sm:flex" ref={menuRef}>

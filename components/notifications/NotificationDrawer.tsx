@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import clsx from 'clsx';
 import { Skeleton } from '../ui/Skeleton';
 import EmptyState from '../ui/EmptyState';
@@ -173,6 +174,12 @@ export default function NotificationDrawer({
               />
             </div>
           )}
+        </div>
+
+        <div className="notification-drawer__footer">
+          <Link href="/notifications" className="btn ghost" onClick={onClose}>
+            View all notifications
+          </Link>
         </div>
 
         {selected && (

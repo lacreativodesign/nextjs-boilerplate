@@ -1150,6 +1150,18 @@ select option {
   justify-content: space-between;
   gap: 16px;
 }
+.notification-drawer__footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: center;
+}
+.notification-drawer__footer .btn.ghost {
+  width: 100%;
+  justify-content: center;
+  font-weight: 600;
+}
 .notification-list {
   margin-top: 18px;
   display: flex;
