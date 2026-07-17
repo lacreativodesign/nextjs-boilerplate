@@ -1,17 +1,9 @@
-export default function ChangeRequestsPage() {
-  return (
-    <div
-      style={{
-        background: 'var(--card-bg)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        padding: 20,
-      }}
-    >
-      <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>Change Requests</h3>
-      <p style={{ fontSize: 14, color: 'var(--sidebar-text)' }}>
-        Placeholder for CR list with status, description, approval state.
-      </p>
-    </div>
-  );
+import { redirect } from 'next/navigation';
+
+/**
+ * F12 (FUNC-02) — this route was a "Placeholder for ..." stub. The real, implemented feature
+ * lives at /admin/projects/change-requests, so this stub redirects there instead of showing an unfinished page.
+ */
+export default function RedirectStubPage() {
+  redirect('/admin/projects/change-requests');
 }
