@@ -250,7 +250,7 @@ export default function Header({ currentUser, activityTrigger }: HeaderProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigateFromMenu('/admin/settings/notifications')}
+                    onClick={() => navigateFromMenu('/settings/preferences')}
                     className={menuItemClass}
                     role="menuitem"
                   >
