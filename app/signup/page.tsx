@@ -49,7 +49,13 @@ const plans: Array<{
     price: 79,
     // Source of truth: lib/billing/plans.ts + app/config/plans.ts (PLAN_MODULES).
     // Starter unlocks CRM, Sales, Projects, Reports — NOT Finance/Production/HR.
-    features: ['CRM, Sales & Projects', 'Reports', '10 users', '20GB storage', '10 client portal seats'],
+    features: [
+      'CRM, Sales & Projects',
+      'Reports',
+      '10 users',
+      '20GB storage',
+      '10 client portal seats',
+    ],
   },
   {
     key: 'pro',
@@ -57,7 +63,13 @@ const plans: Array<{
     price: 149,
     badge: 'Most Popular',
     // Pro adds Finance, Production, Approvals, full Reports, AI Workforce, Website Embed.
-    features: ['All Starter, plus:', 'Finance & Production', 'AI Workforce + Website Embed', '20 users', '75GB storage'],
+    features: [
+      'All Starter, plus:',
+      'Finance & Production',
+      'AI Workforce + Website Embed',
+      '20 users',
+      '75GB storage',
+    ],
   },
   {
     key: 'enterprise',
@@ -65,7 +77,13 @@ const plans: Array<{
     price: 299,
     badge: 'Best Value',
     // Enterprise adds HR, Client Stripe Connect payments, white-label.
-    features: ['All Pro, plus:', 'HR module', 'Client payments + white-label', 'Unlimited users', '250GB storage'],
+    features: [
+      'All Pro, plus:',
+      'HR module',
+      'Client payments + white-label',
+      'Unlimited users',
+      '250GB storage',
+    ],
   },
 ];
 
@@ -106,10 +124,13 @@ const COUNTRIES = [
   'Other',
 ];
 
-const termsText = `By creating a Bizosto account, you agree to the following:
+function buildTermsText(isAnnual: boolean) {
+  const cadenceAdjective = isAnnual ? 'annual' : 'monthly';
+  const cadenceNoun = isAnnual ? 'year' : 'month';
+  return `By creating a Bizosto account, you agree to the following:
 
 FREE TRIAL & BILLING
-Your 14-day free trial begins immediately upon account creation. A valid payment method is required at signup, but you will not be charged until day 15. If you cancel at any time before the end of day 14, you will not be charged anything. If you do not cancel, your selected plan is billed automatically starting on day 15, and on a recurring monthly basis thereafter. You authorize Bizosto to charge your payment method on file at the start of each billing cycle.
+Your 14-day free trial begins immediately upon account creation. A valid payment method is required at signup, but you will not be charged until day 15. If you cancel at any time before the end of day 14, you will not be charged anything. If you do not cancel, your selected plan is billed automatically starting on day 15, and on a recurring ${cadenceAdjective} basis thereafter. You authorize Bizosto to charge your payment method on file at the start of each billing cycle.
 
 PLATFORM HANDLING FEE
 A 0.5% platform handling fee applies to all transactions processed through Bizosto payment infrastructure.
@@ -121,7 +142,7 @@ PAYMENTS & DISPUTES
 When you connect a payment account to accept payments from your clients, you become the merchant of record for those transactions. Bizosto bears no responsibility for chargebacks, payment disputes, or refunds between you and your clients.
 
 CANCELLATION
-You may cancel your subscription at any time. Upon cancellation, your access continues until the end of the current billing period. No refunds are issued for partial months.
+You may cancel your subscription at any time. Upon cancellation, your access continues until the end of the current billing period. No refunds are issued for partial ${cadenceNoun}s.
 
 ACCOUNT LOCK
 If a payment fails, a 7-day grace period applies with full access. On day 8, your account enters read-only mode. On day 21, your account is locked. Data is retained for 60 days after lock. Full access is restored immediately upon successful payment.
@@ -129,7 +150,8 @@ If a payment fails, a 7-day grace period applies with full access. On day 8, you
 DATA & PRIVACY
 Your data is securely stored and isolated from other tenants. Upon account cancellation, your data is retained for 30 days and then permanently deleted unless you request an export. If your account is locked for non-payment, data is retained for 60 days before deletion.
 
-By checking the box below, you confirm you have read and agree to these terms. You authorize automatic monthly billing after your free trial ends.`;
+By checking the box below, you confirm you have read and agree to these terms. You authorize automatic ${cadenceAdjective} billing after your free trial ends.`;
+}
 
 const stepContent: Record<Exclude<Step, 7>, { title: string; subtitle: string }> = {
   1: { title: 'Create Your Account', subtitle: 'Set your admin login credentials to begin.' },
@@ -789,7 +811,7 @@ function SignupInner() {
                 {step === 5 ? (
                   <>
                     <div className="max-h-[200px] overflow-y-auto rounded-xl border border-[var(--border-subtle)] p-3 text-sm leading-6 text-[var(--text-muted)] whitespace-pre-line">
-                      {termsText}
+                      {buildTermsText(isAnnual)}
                     </div>
                     <label className="flex items-start gap-3 text-sm text-[var(--text-primary)]">
                       <input
@@ -800,8 +822,9 @@ function SignupInner() {
                         className="mt-0.5"
                       />
                       <span>
-                        I have read and agree to the Bizosto Terms of Service. I authorize automatic
-                        monthly billing of my selected plan after my 14-day free trial ends.
+                        I have read and agree to the Bizosto Terms of Service. I authorize automatic{' '}
+                        {isAnnual ? 'annual' : 'monthly'} billing of my selected plan after my
+                        14-day free trial ends.
                       </span>
                     </label>
                     {fieldErrors.termsAccepted ? (
