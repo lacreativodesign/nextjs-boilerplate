@@ -66,10 +66,7 @@ describe('OTP is single-use, consumed before provisioning (E7)', () => {
   });
 
   it('rejects an unverified OTP without burning it', async () => {
-    await db
-      .collection('email_otps')
-      .doc(EMAIL)
-      .set({ verified: false, createdAt: Date.now() });
+    await db.collection('email_otps').doc(EMAIL).set({ verified: false, createdAt: Date.now() });
 
     const res = await consumeOtp(db);
     expect(res.ok).toBe(false);

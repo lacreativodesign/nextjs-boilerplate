@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import { classifyRouteSource, PUBLIC_ROUTES, AUTHENTICATED_ROUTES, type RouteContract } from '@/lib/api/route-contract';
+import {
+  classifyRouteSource,
+  PUBLIC_ROUTES,
+  AUTHENTICATED_ROUTES,
+  type RouteContract,
+} from '@/lib/api/route-contract';
 
 /**
  * Route contract gate (P0-5).

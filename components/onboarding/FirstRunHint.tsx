@@ -35,10 +35,7 @@ export default function FirstRunHint({ show, title, description, action }: First
         <p className="text-sm font-bold text-[var(--text-primary)]">{title}</p>
         <p className="mt-1 max-w-2xl text-sm text-[var(--text-muted)]">{description}</p>
       </div>
-      <Link
-        href={action.href}
-        className="btn shrink-0 self-start whitespace-nowrap sm:self-auto"
-      >
+      <Link href={action.href} className="btn shrink-0 self-start whitespace-nowrap sm:self-auto">
         {action.label}
       </Link>
     </div>

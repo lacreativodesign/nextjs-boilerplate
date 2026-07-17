@@ -72,9 +72,13 @@ export default function RefundCancellationPage() {
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-8">
           <h1 className="page-title">Refund & Cancellation Policy</h1>
-          <p className="page-subtitle mt-2">Last updated: July 2026 &nbsp;·&nbsp; Effective: July 2026</p>
+          <p className="page-subtitle mt-2">
+            Last updated: July 2026 &nbsp;·&nbsp; Effective: July 2026
+          </p>
           <p className="mt-4 text-sm text-[var(--text-muted)]">
-            This Refund &amp; Cancellation Policy applies to all subscriptions to the Bizosto ERP platform operated by LA Creativo Group. It forms part of, and should be read together with, our Terms of Service.
+            This Refund &amp; Cancellation Policy applies to all subscriptions to the Bizosto ERP
+            platform operated by LA Creativo Group. It forms part of, and should be read together
+            with, our Terms of Service.
           </p>
         </div>
         <div className="space-y-6">

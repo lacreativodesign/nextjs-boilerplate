@@ -184,13 +184,7 @@ export default function ProductionReportsPage() {
       >
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>
-            <Pie
-              data={byType}
-              dataKey="value"
-              nameKey="name"
-              outerRadius={100}
-              {...chartAnimation}
-            >
+            <Pie data={byType} dataKey="value" nameKey="name" outerRadius={100} {...chartAnimation}>
               {byType.map((entry, index) => (
                 <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
               ))}

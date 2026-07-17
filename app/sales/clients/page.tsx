@@ -76,8 +76,8 @@ export default function SalesClientsPage() {
       {clients !== null && clients.length === 0 && !error && (
         <div className="table-shell">
           <p className="helper-text px-4 py-6">
-            No clients are assigned to you yet. Clients appear here once an administrator or
-            sales manager assigns you as their sales owner.
+            No clients are assigned to you yet. Clients appear here once an administrator or sales
+            manager assigns you as their sales owner.
           </p>
         </div>
       )}
@@ -117,9 +117,7 @@ export default function SalesClientsPage() {
                     <td className="py-3 px-4 font-semibold">
                       <span className={stageColor(c.salesStage)}>{c.salesStage || '—'}</span>
                     </td>
-                    <td className="py-3 px-4 text-[var(--text-muted)]">
-                      {c.paymentStatus || '—'}
-                    </td>
+                    <td className="py-3 px-4 text-[var(--text-muted)]">{c.paymentStatus || '—'}</td>
                   </tr>
                 ))}
               </tbody>

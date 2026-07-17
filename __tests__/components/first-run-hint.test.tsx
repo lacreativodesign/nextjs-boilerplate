@@ -44,10 +44,7 @@ describe('S28: FirstRunHint', () => {
 });
 
 describe('S28: the sales dashboard uses the hint, gated on empty data', () => {
-  const page = fs.readFileSync(
-    path.join(process.cwd(), 'app/sales/page.tsx'),
-    'utf8',
-  );
+  const page = fs.readFileSync(path.join(process.cwd(), 'app/sales/page.tsx'), 'utf8');
 
   it('shows the hint only when every headline number is zero', () => {
     expect(page).toContain('const isFirstRun =');

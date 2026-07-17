@@ -23,5 +23,7 @@ export default function SuperAdminError({
     console.error('Platform Admin section error:', error);
   }, [error]);
 
-  return <ErrorFallback error={error} resetError={reset} context="module" moduleName="Platform Admin" />;
+  return (
+    <ErrorFallback error={error} resetError={reset} context="module" moduleName="Platform Admin" />
+  );
 }

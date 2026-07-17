@@ -47,9 +47,7 @@ describe('subscription webhook dead-letters unmappable events (E3)', () => {
   it('a dead-lettered event releases the claim and returns non-2xx for retry', () => {
     expect(source).toContain('if (deadLettered) {');
     expect(source).toContain('await releaseWebhookEvent(event.id);');
-    const deadLetterReturn = source
-      .slice(source.indexOf('if (deadLettered) {'))
-      .slice(0, 400);
+    const deadLetterReturn = source.slice(source.indexOf('if (deadLettered) {')).slice(0, 400);
     expect(deadLetterReturn).toContain('status: 500');
   });
 

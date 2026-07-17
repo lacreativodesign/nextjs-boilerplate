@@ -234,9 +234,7 @@ describe('S10: an AI write cannot escape its tenant or its approval', () => {
 
 describe('S19: a lead is readable only by its tenant and its owner', () => {
   it("tenant A cannot read tenant B's lead", async () => {
-    const res = await getLead(
-      new Request('https://app.local/api/sales/leads/get?leadId=lead_b'),
-    );
+    const res = await getLead(new Request('https://app.local/api/sales/leads/get?leadId=lead_b'));
     expect(res.status).toBe(403);
   });
 
@@ -248,9 +246,7 @@ describe('S19: a lead is readable only by its tenant and its owner', () => {
   });
 
   it('a sales rep can still read their own lead (the guard is not over-broad)', async () => {
-    const res = await getLead(
-      new Request('https://app.local/api/sales/leads/get?leadId=lead_a'),
-    );
+    const res = await getLead(new Request('https://app.local/api/sales/leads/get?leadId=lead_a'));
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -262,9 +258,7 @@ describe('S19: a lead is readable only by its tenant and its owner', () => {
 
 describe('S16: a sales rep sees only the clients they own', () => {
   it('a rep never sees a colleague’s client, nor another tenant’s', async () => {
-    const res = await listClients(
-      nextGet('https://app.local/api/admin/clients/list?limit=50'),
-    );
+    const res = await listClients(nextGet('https://app.local/api/admin/clients/list?limit=50'));
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -278,9 +272,7 @@ describe('S16: a sales rep sees only the clients they own', () => {
   it('an admin sees the whole tenant, but still never another tenant', async () => {
     currentUser = adminA;
 
-    const res = await listClients(
-      nextGet('https://app.local/api/admin/clients/list?limit=50'),
-    );
+    const res = await listClients(nextGet('https://app.local/api/admin/clients/list?limit=50'));
     expect(res.status).toBe(200);
 
     const body = await res.json();

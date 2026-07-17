@@ -164,11 +164,7 @@ export function HelpCenterPageContent() {
     // Match against title, excerpt, and keywords (previously title only) so
     // searches for a topic or synonym surface the relevant guide.
     return articleCards.filter(({ article }) => {
-      const haystack = [
-        article.title,
-        article.excerpt,
-        ...(article.keywords || []),
-      ]
+      const haystack = [article.title, article.excerpt, ...(article.keywords || [])]
         .join(' ')
         .toLowerCase();
       return haystack.includes(normalizedSearchQuery);

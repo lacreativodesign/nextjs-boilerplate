@@ -89,8 +89,8 @@ export default function SuperAdminMaintenancePage() {
       <header>
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Maintenance</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          One-off data repairs. Always run a dry run first — it reports exactly what would
-          change and writes nothing. These jobs are idempotent and safe to re-run.
+          One-off data repairs. Always run a dry run first — it reports exactly what would change
+          and writes nothing. These jobs are idempotent and safe to re-run.
         </p>
       </header>
 
@@ -117,9 +117,7 @@ export default function SuperAdminMaintenancePage() {
                 onClick={() => run(job.key, false)}
                 disabled={busy !== null || lastDryRun !== job.key}
                 title={
-                  lastDryRun === job.key
-                    ? 'Apply the repair'
-                    : 'Run a dry run for this job first'
+                  lastDryRun === job.key ? 'Apply the repair' : 'Run a dry run for this job first'
                 }
                 className="rounded-full bg-[var(--brand-primary,#6366f1)] px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               >
@@ -144,8 +142,8 @@ export default function SuperAdminMaintenancePage() {
 
           {result.results?.files && (
             <p className="mt-3 text-sm text-[var(--text-muted)]">
-              <strong className="text-[var(--text-primary)]">File records:</strong>{' '}
-              scanned {result.results.files.scanned}, {result.dryRun ? 'would repair' : 'repaired'}{' '}
+              <strong className="text-[var(--text-primary)]">File records:</strong> scanned{' '}
+              {result.results.files.scanned}, {result.dryRun ? 'would repair' : 'repaired'}{' '}
               {result.results.files.updated}, skipped {result.results.files.skippedNoProject}{' '}
               (project could not be resolved).
             </p>
@@ -153,11 +151,10 @@ export default function SuperAdminMaintenancePage() {
 
           {result.results?.hrDocuments && (
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              <strong className="text-[var(--text-primary)]">HR documents:</strong>{' '}
-              scanned {result.results.hrDocuments.scanned},{' '}
-              {result.dryRun ? 'would repair' : 'repaired'} {result.results.hrDocuments.updated},
-              skipped {result.results.hrDocuments.skippedNoEmployee} (employee could not be
-              resolved).
+              <strong className="text-[var(--text-primary)]">HR documents:</strong> scanned{' '}
+              {result.results.hrDocuments.scanned}, {result.dryRun ? 'would repair' : 'repaired'}{' '}
+              {result.results.hrDocuments.updated}, skipped{' '}
+              {result.results.hrDocuments.skippedNoEmployee} (employee could not be resolved).
             </p>
           )}
 
@@ -169,15 +166,14 @@ export default function SuperAdminMaintenancePage() {
             const files = result.results?.files;
             const hr = result.results?.hrDocuments;
             const totalToRepair = (files?.updated ?? 0) + (hr?.updated ?? 0);
-            const totalSkipped =
-              (files?.skippedNoProject ?? 0) + (hr?.skippedNoEmployee ?? 0);
+            const totalSkipped = (files?.skippedNoProject ?? 0) + (hr?.skippedNoEmployee ?? 0);
             const totalScanned = (files?.scanned ?? 0) + (hr?.scanned ?? 0);
 
             if (totalScanned === 0) {
               return (
                 <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">
-                  Nothing to repair — no records are missing a tenant. This is the healthy
-                  state; you don’t need to run this again.
+                  Nothing to repair — no records are missing a tenant. This is the healthy state;
+                  you don’t need to run this again.
                 </p>
               );
             }
@@ -193,9 +189,9 @@ export default function SuperAdminMaintenancePage() {
             if (totalToRepair === 0 && totalSkipped > 0) {
               return (
                 <p className="mt-3 text-sm text-[var(--text-muted)]">
-                  <strong className="text-[var(--text-primary)]">Nothing more to do.</strong>{' '}
-                  The {totalSkipped === 1 ? 'record' : `${totalSkipped} records`} that could not
-                  be repaired {totalSkipped === 1 ? 'is' : 'are'} orphaned — the owning project or
+                  <strong className="text-[var(--text-primary)]">Nothing more to do.</strong> The{' '}
+                  {totalSkipped === 1 ? 'record' : `${totalSkipped} records`} that could not be
+                  repaired {totalSkipped === 1 ? 'is' : 'are'} orphaned — the owning project or
                   employee no longer exists, so there is no tenant to assign. The job deliberately
                   skips {totalSkipped === 1 ? 'it' : 'them'} rather than guess. Running this again
                   will keep reporting the same number; that is expected, not an error.
@@ -206,8 +202,8 @@ export default function SuperAdminMaintenancePage() {
             if (!result.dryRun && totalToRepair > 0) {
               return (
                 <p className="mt-3 text-sm font-semibold text-green-600 dark:text-green-400">
-                  Done. {totalToRepair} {totalToRepair === 1 ? 'record was' : 'records were'}
-                  {' '}repaired.
+                  Done. {totalToRepair} {totalToRepair === 1 ? 'record was' : 'records were'}{' '}
+                  repaired.
                 </p>
               );
             }

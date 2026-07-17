@@ -39,7 +39,7 @@ describe('S20: preferences are persisted server-side', () => {
   });
 
   it('success is only shown after the server confirms', () => {
-    const okIndex = page.indexOf("if (!res.ok || !payload?.ok)");
+    const okIndex = page.indexOf('if (!res.ok || !payload?.ok)');
     const savedIndex = page.indexOf("setStatus('saved')");
     expect(okIndex).toBeGreaterThan(-1);
     expect(savedIndex).toBeGreaterThan(okIndex);

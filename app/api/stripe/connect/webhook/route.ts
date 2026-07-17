@@ -156,9 +156,7 @@ export async function POST(req: Request) {
           // backstop converges on exactly one payment.succeeded and one
           // invoice.mark_paid entry per PaymentIntent — no duplicates on replay,
           // and no payment can be recorded without its ledger trail.
-          const previousStatus = String(
-            (invoiceSnap.data() as { status?: string }).status || '',
-          );
+          const previousStatus = String((invoiceSnap.data() as { status?: string }).status || '');
           batch.set(
             adminDb.collection('finance_ledger').doc(`payment_succeeded_${pi.id}`),
             buildFinanceLedgerEntry({

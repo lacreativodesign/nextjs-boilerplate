@@ -79,7 +79,9 @@ describe('S3: no API route omits the tenant argument', () => {
           else if (ch === ',' && d === 0) args += 1;
         }
         if (args < 2) {
-          offenders.push(`${path.relative(process.cwd(), file)}:${src.slice(0, m.index).split('\n').length}`);
+          offenders.push(
+            `${path.relative(process.cwd(), file)}:${src.slice(0, m.index).split('\n').length}`,
+          );
         }
       }
     }

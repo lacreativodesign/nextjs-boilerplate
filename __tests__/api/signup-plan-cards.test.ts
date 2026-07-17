@@ -15,10 +15,7 @@ import { PLAN_MODULES } from '@/app/config/plans';
  * cards can never silently drift from what a customer actually receives.
  */
 
-const signup = fs.readFileSync(
-  path.join(process.cwd(), 'app/signup/page.tsx'),
-  'utf8',
-);
+const signup = fs.readFileSync(path.join(process.cwd(), 'app/signup/page.tsx'), 'utf8');
 
 // Isolate the plan-card array so we only assert against card copy, not the
 // whole page (which legitimately mentions many module names elsewhere).

@@ -44,10 +44,7 @@ export async function POST(req: Request) {
     }
 
     if (!isTenantStoragePath(storagePath, auth.user.tenantId ?? '')) {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid storage path.' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'Invalid storage path.' }, { status: 400 });
     }
 
     const fileValidation = validateFile(fileName, size);

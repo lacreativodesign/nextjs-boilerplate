@@ -41,7 +41,7 @@ function buildRouteSet(): Set<string> {
 
 /** True if `href` maps to a real page, allowing for dynamic [segments]. */
 function resolves(href: string, routes: Set<string>): boolean {
-  const clean = (href.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/');
+  const clean = href.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
   if (routes.has(clean)) return true;
 
   // Match dynamic segments: /sales/leads/[id] should satisfy /sales/leads/123.
@@ -54,10 +54,7 @@ function resolves(href: string, routes: Set<string>): boolean {
 }
 
 function sidebarHrefs(): string[] {
-  const src = fs.readFileSync(
-    path.join(process.cwd(), 'lib/navigation/sidebarConfig.ts'),
-    'utf8',
-  );
+  const src = fs.readFileSync(path.join(process.cwd(), 'lib/navigation/sidebarConfig.ts'), 'utf8');
   const hrefs: string[] = [];
   const re = /href: '([^']+)'/g;
   let m: RegExpExecArray | null;

@@ -103,26 +103,30 @@ export function getBudgetPeriodDates(
   let startDate: Date;
   let endDate: Date;
 
+  // QUAL-02: build all boundaries in UTC so a budget period is the same instant regardless of the
+  // server or test timezone. Local-time construction (new Date(year, month, ...)) shifted the
+  // ISO boundary by the offset (e.g. Asia/Karachi turned 2025-02-01 into 2025-01-31T19:00Z),
+  // which corrupted period math and failed finance tests outside UTC.
   switch (period) {
     case 'yearly':
-      startDate = new Date(year, 0, 1);
-      endDate = new Date(year, 11, 31, 23, 59, 59);
+      startDate = new Date(Date.UTC(year, 0, 1));
+      endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
       break;
 
     case 'quarterly':
       if (!quarter || quarter < 1 || quarter > 4) {
         throw new Error('Invalid quarter');
       }
-      startDate = new Date(year, (quarter - 1) * 3, 1);
-      endDate = new Date(year, (quarter - 1) * 3 + 3, 0, 23, 59, 59);
+      startDate = new Date(Date.UTC(year, (quarter - 1) * 3, 1));
+      endDate = new Date(Date.UTC(year, (quarter - 1) * 3 + 3, 0, 23, 59, 59));
       break;
 
     case 'monthly':
       if (!month || month < 1 || month > 12) {
         throw new Error('Invalid month');
       }
-      startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month, 0, 23, 59, 59);
+      startDate = new Date(Date.UTC(year, month - 1, 1));
+      endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
       break;
 
     default:

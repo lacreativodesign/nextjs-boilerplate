@@ -25,7 +25,11 @@ jest.mock('@/lib/firebaseAdmin', () => ({
   },
 }));
 
-import { checkUserLimit, PLAN_LIMIT_EXCEEDED, planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  checkUserLimit,
+  PLAN_LIMIT_EXCEEDED,
+  planLimitResponseBody,
+} from '@/lib/billing/user-limit';
 
 async function addUsers(
   tenantId: string,

@@ -23,5 +23,12 @@ export default function AmError({
     console.error('Account Management section error:', error);
   }, [error]);
 
-  return <ErrorFallback error={error} resetError={reset} context="module" moduleName="Account Management" />;
+  return (
+    <ErrorFallback
+      error={error}
+      resetError={reset}
+      context="module"
+      moduleName="Account Management"
+    />
+  );
 }

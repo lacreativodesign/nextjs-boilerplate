@@ -80,9 +80,12 @@ export default function SecurityPage() {
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-8">
           <h1 className="page-title">Security</h1>
-          <p className="page-subtitle mt-2">Last updated: July 2026 &nbsp;·&nbsp; Effective: July 2026</p>
+          <p className="page-subtitle mt-2">
+            Last updated: July 2026 &nbsp;·&nbsp; Effective: July 2026
+          </p>
           <p className="mt-4 text-sm text-[var(--text-muted)]">
-            Security is built into the core of Bizosto. This page describes the concrete controls that protect your business data.
+            Security is built into the core of Bizosto. This page describes the concrete controls
+            that protect your business data.
           </p>
         </div>
         <div className="space-y-6">

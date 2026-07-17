@@ -23,5 +23,7 @@ export default function ClientError({
     console.error('Client Portal section error:', error);
   }, [error]);
 
-  return <ErrorFallback error={error} resetError={reset} context="module" moduleName="Client Portal" />;
+  return (
+    <ErrorFallback error={error} resetError={reset} context="module" moduleName="Client Portal" />
+  );
 }

@@ -76,7 +76,9 @@ describe('S10: sales-write enforces an approved, tenant-scoped proposal', () => 
   });
 
   it('no longer blind-writes agent_tasks without a tenant check', () => {
-    expect(src).not.toMatch(/const taskSnap = await adminDb\.collection\('agent_tasks'\)\.doc\(taskId\)\.get\(\);\s*\n\s*if \(taskSnap\.exists\)/);
+    expect(src).not.toMatch(
+      /const taskSnap = await adminDb\.collection\('agent_tasks'\)\.doc\(taskId\)\.get\(\);\s*\n\s*if \(taskSnap\.exists\)/,
+    );
   });
 
   it('supports rejecting a proposal', () => {

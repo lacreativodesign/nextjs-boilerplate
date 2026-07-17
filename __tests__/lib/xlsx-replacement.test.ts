@@ -19,9 +19,10 @@ import { parseFile } from '@/lib/import/parser';
  * write -> read round-trip through the production code paths, not just source strings.
  */
 describe('S14: xlsx is no longer a dependency', () => {
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'),
-  ) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
 
   it('is absent from dependencies', () => {
     expect(pkg.dependencies?.xlsx).toBeUndefined();

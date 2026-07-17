@@ -13,10 +13,7 @@ import * as path from 'path';
  * tab bar or is a deliberately-nested detail route (dynamic segment, or a sub-view of a page
  * that IS linked). It fails the build the next time a page is added without a tab.
  */
-const layout = fs.readFileSync(
-  path.join(process.cwd(), 'app/super_admin/layout.tsx'),
-  'utf8',
-);
+const layout = fs.readFileSync(path.join(process.cwd(), 'app/super_admin/layout.tsx'), 'utf8');
 
 function tabHrefs(): Set<string> {
   const hrefs = new Set<string>();
@@ -33,7 +30,13 @@ function superAdminRoutes(): string[] {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else if (entry.name === 'page.tsx') {
-        routes.push('/' + path.relative(process.cwd(), path.dirname(full)).replace(/\\/g, '/').replace(/^app\//, ''));
+        routes.push(
+          '/' +
+            path
+              .relative(process.cwd(), path.dirname(full))
+              .replace(/\\/g, '/')
+              .replace(/^app\//, ''),
+        );
       }
     }
   }

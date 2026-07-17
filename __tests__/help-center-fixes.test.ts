@@ -14,8 +14,7 @@ import * as path from 'path';
 
 const read = (relative: string): string =>
   fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
-const exists = (relative: string): boolean =>
-  fs.existsSync(path.join(process.cwd(), relative));
+const exists = (relative: string): boolean => fs.existsSync(path.join(process.cwd(), relative));
 
 describe('Help Center article cards link to real guides', () => {
   const source = read('components/help-center/HelpCenterPageContent.tsx');
@@ -40,8 +39,6 @@ describe('Help Center home search matches more than the title', () => {
     expect(source).toContain('article.excerpt');
     expect(source).toContain('article.keywords');
     // The old title-only filter is gone.
-    expect(source).not.toContain(
-      'article.title.toLowerCase().includes(normalizedSearchQuery),',
-    );
+    expect(source).not.toContain('article.title.toLowerCase().includes(normalizedSearchQuery),');
   });
 });

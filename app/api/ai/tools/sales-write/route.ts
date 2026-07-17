@@ -19,8 +19,7 @@ type TaskData = {
 function normalizeActions(value: unknown): SalesProposedAction[] {
   return Array.isArray(value)
     ? (value as SalesProposedAction[]).filter(
-        (action) =>
-          action && typeof action === 'object' && 'id' in action && 'status' in action,
+        (action) => action && typeof action === 'object' && 'id' in action && 'status' in action,
       )
     : [];
 }

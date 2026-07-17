@@ -78,7 +78,7 @@ describe('S5: storage.rules', () => {
   });
 
   it('fails closed on a missing or blank tenant claim', () => {
-    expect(rules).toContain("callerTenant() is string");
+    expect(rules).toContain('callerTenant() is string');
     expect(rules).toContain("callerTenant() != ''");
   });
 

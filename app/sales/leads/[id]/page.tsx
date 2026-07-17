@@ -259,7 +259,11 @@ export default function LeadDetailPage() {
             }}
             className="input flex-1"
           />
-          <button onClick={() => void addNote()} disabled={busy || !noteInput.trim()} className="btn">
+          <button
+            onClick={() => void addNote()}
+            disabled={busy || !noteInput.trim()}
+            className="btn"
+          >
             {busy ? 'Saving…' : 'Add'}
           </button>
         </div>
