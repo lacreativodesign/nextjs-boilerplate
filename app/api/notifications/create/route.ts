@@ -29,6 +29,22 @@ export async function POST(req: Request) {
       );
     }
 
+    // SEC-01: the recipient must belong to the caller's tenant. userId arrives from the request
+    // body, so without this check an admin could target a user ID from another tenant. We look
+    // up the recipient and require an exact tenant match; anything else is rejected. This is the
+    // authoritative membership gate — the notification's tenantId is always the caller's tenant,
+    // never a value supplied by the client.
+    const recipientDoc = await adminDb.collection('users').doc(userId).get();
+    const recipientTenantId = recipientDoc.exists
+      ? String(recipientDoc.data()?.tenantId || '')
+      : '';
+    if (!recipientDoc.exists || recipientTenantId !== me.tenantId) {
+      return NextResponse.json(
+        { ok: false, error: 'Recipient not found in your workspace.' },
+        { status: 400 },
+      );
+    }
+
     const now = admin.firestore.FieldValue.serverTimestamp();
     const ref = adminDb.collection('notifications').doc();
     await ref.set({
