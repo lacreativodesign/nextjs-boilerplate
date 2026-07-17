@@ -10,7 +10,10 @@ const VALID_STATES: SubscriptionState[] = [
 
 export function normalizeSubscriptionState(value: unknown): SubscriptionState {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'trial') return 'active';
+  // BIL-02: 'trial' is a first-class state (an active Stripe trial: full access, plus a
+  // countdown/reminders in the UI). It must NOT be collapsed to 'active', or the trial banner
+  // and countdown can never fire. It grants access like 'active' — the lock checks below only
+  // trip on soft_locked/hard_locked — so trial users are never restricted.
   return VALID_STATES.includes(normalized as SubscriptionState)
     ? (normalized as SubscriptionState)
     : 'hard_locked';
@@ -43,12 +46,24 @@ export function isHardLockedSubscription(state: SubscriptionState) {
   return state === 'hard_locked';
 }
 
+export function isTrialSubscription(state: SubscriptionState) {
+  return state === 'trial';
+}
+
 export function isNonActiveSubscription(state: SubscriptionState) {
-  return state !== 'active';
+  // A trial is a healthy, full-access state — not a billing problem. It is surfaced with its own
+  // informational banner, so it must not be treated as a "non-active" (amber) subscription here.
+  return state !== 'active' && state !== 'trial';
 }
 
 export function getSubscriptionBannerCopy(state: SubscriptionState) {
   switch (state) {
+    case 'trial':
+      return {
+        title: 'Free trial',
+        message:
+          'You have full access during your trial. Add or confirm billing to continue after it ends.',
+      };
     case 'grace':
       return {
         title: 'Subscription past due',
