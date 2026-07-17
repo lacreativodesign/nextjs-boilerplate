@@ -59,7 +59,11 @@ export class StorageService {
     const checksum = crypto.createHash('sha256').update(params.file).digest('hex');
     const virusScanStatus = await this.scanFile(params.file, params.fileName, params.mimeType);
 
-    if (virusScanStatus !== 'clean') {
+    // SEC-02: only genuinely bad outcomes block an upload. A file is rejected when the scanner
+    // reports it infected, or when a configured scan could not complete ('failed'). When no
+    // scanner is configured the status is the truthful 'unscanned' — the upload is allowed but
+    // the record never falsely claims the file was scanned clean.
+    if (virusScanStatus === 'infected' || virusScanStatus === 'failed') {
       throw new Error('Virus scan failed or file is infected.');
     }
 
@@ -296,7 +300,10 @@ export class StorageService {
     if (endpoint) {
       return this.scanFileWithEndpoint({ endpoint, file, fileName, mimeType });
     }
-    return 'clean'; // No scanner configured — skip scan, allow upload
+    // No scanner configured: report the truth ('unscanned'), never a false 'clean'. The upload
+    // is still allowed (see uploadDocument), but the stored record honestly reflects that the
+    // file was not scanned, so a download-time gate or later async scan can act on it.
+    return 'unscanned';
   }
 
   private static async scanFileWithEndpoint(params: {
