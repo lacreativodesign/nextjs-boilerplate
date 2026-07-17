@@ -238,6 +238,26 @@ function isPublicPagePath(pathname: string) {
   return pathname.startsWith('/pay');
 }
 
+// Shared authenticated shells that are not owned by any single role (roleFromPath returns
+// null for them) but must still require a valid session and an unlocked subscription. Without
+// this, these pages relied only on the client-side RequireAuth guard, so a direct URL hit was
+// not stopped server-side. They are intentionally NOT role-restricted here — any signed-in
+// role may use them; per-page RequireAuth allow-lists still apply on the client.
+const PROTECTED_PAGE_PREFIXES = [
+  '/settings',
+  '/users',
+  '/activity',
+  '/onboarding',
+  '/search',
+  '/help',
+];
+
+function isProtectedPagePath(pathname: string) {
+  return PROTECTED_PAGE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function isPublicApiPath(pathname: string) {
   return (
     pathname.startsWith('/api/stripe') ||
@@ -517,7 +537,9 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
 
   const pageRole = roleFromPath(pathname);
 
-  if ((pageRole || isApiRequest) && !sessionToken) {
+  const isProtectedPage = !isApiRequest && isProtectedPagePath(pathname);
+
+  if ((pageRole || isApiRequest || isProtectedPage) && !sessionToken) {
     if (isApiRequest) {
       return applyRateHeaders(
         pathname,
@@ -536,7 +558,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
 
   const requiresSubscriptionCheck =
     Boolean(sessionToken) &&
-    (Boolean(pageRole) || isApiRequest) &&
+    (Boolean(pageRole) || isApiRequest || isProtectedPage) &&
     !pathname.startsWith('/billing');
 
   let sessionRole = normalizeRole(null);
@@ -755,5 +777,17 @@ export const config = {
     '/notifications/:path*',
     '/client/:path*',
     '/pay/:path*',
+    '/settings/:path*',
+    '/settings',
+    '/users/:path*',
+    '/users',
+    '/activity/:path*',
+    '/activity',
+    '/onboarding/:path*',
+    '/onboarding',
+    '/search/:path*',
+    '/search',
+    '/help/:path*',
+    '/help',
   ],
 };
