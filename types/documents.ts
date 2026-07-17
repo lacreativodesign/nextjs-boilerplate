@@ -15,7 +15,7 @@ export type DocumentVisibility = 'private' | 'team' | 'public';
 
 export type DocumentStatus = 'uploading' | 'processing' | 'ready' | 'failed' | 'deleted';
 
-export type VirusScanStatus = 'pending' | 'clean' | 'infected' | 'failed';
+export type VirusScanStatus = 'pending' | 'clean' | 'unscanned' | 'infected' | 'failed';
 
 export interface Document {
   id: string;
