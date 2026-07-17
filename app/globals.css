@@ -859,9 +859,14 @@ select option {
  * whole platform updates at once.
  */
 .tabs-bar {
-  display: inline-flex;
+  /* Flex (not inline-flex) so the bar always spans the available width and reliably
+     clamps its children — this is what makes overflow-x scrolling actually engage when
+     there are many tabs (e.g. the 16 super_admin tabs). */
+  display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   gap: 4px;
@@ -871,28 +876,40 @@ select option {
   border-radius: 14px;
   background: var(--surface-muted);
   margin-bottom: 20px;
+  width: 100%;
   max-width: 100%;
 }
 .tabs-bar::-webkit-scrollbar {
-  display: none;
+  height: 0;
 }
 .tab-pill {
+  /* Center the label vertically and horizontally within the pill, so multi-tab bars read
+     as an even, corporate row rather than left-hugged text. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   padding: 7px 15px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
+  flex: 0 0 auto;
+  scroll-margin-inline: 12px;
   color: var(--text-muted);
   border: 1px solid transparent;
   transition:
     background 160ms ease,
     color 160ms ease,
     border-color 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 .tab-pill:hover {
   color: var(--text-primary);
   background: var(--surface-card);
+  transform: translateY(-1px);
 }
 /* Active tab: a raised pill filled with a soft blue gradient — richer than a flat fill. */
 .tab-pill.active {

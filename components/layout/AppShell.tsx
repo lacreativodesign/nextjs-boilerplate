@@ -18,6 +18,7 @@ import NotificationToast from '@/components/notifications/NotificationToast';
 import { fetchUserRole, getFirebaseAuth } from '@/lib/firebaseClient';
 import { onAuthStateChanged } from 'firebase/auth';
 import ImpersonationBanner from '@/components/super_admin/ImpersonationBanner';
+import ActiveTabScroller from '@/components/layout/ActiveTabScroller';
 
 const GlobalSearchModal = dynamic(() => import('@/components/search/GlobalSearchModal'), {
   ssr: false,
@@ -172,6 +173,7 @@ function AppShellInner({
         </main>
       </div>
 
+      <ActiveTabScroller />
       <ImpersonationBanner />
       <BugReportButton />
       <NotificationToast />
