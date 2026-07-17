@@ -14,8 +14,7 @@ import * as path from 'path';
 
 const read = (relative: string): string =>
   fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
-const exists = (relative: string): boolean =>
-  fs.existsSync(path.join(process.cwd(), relative));
+const exists = (relative: string): boolean => fs.existsSync(path.join(process.cwd(), relative));
 
 describe('trial copy alignment (P0-5)', () => {
   const files = [

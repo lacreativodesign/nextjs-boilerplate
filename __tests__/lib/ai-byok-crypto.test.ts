@@ -15,11 +15,7 @@ import * as path from 'path';
 process.env.AI_BYOK_ENCRYPTION_KEY =
   '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
-import {
-  encryptApiKey,
-  decryptApiKey,
-  isEncryptedApiKey,
-} from '@/lib/ai/byok-crypto';
+import { encryptApiKey, decryptApiKey, isEncryptedApiKey } from '@/lib/ai/byok-crypto';
 
 describe('BYOK key encryption round-trip', () => {
   it('encrypts then decrypts back to the original key', () => {
@@ -50,8 +46,7 @@ describe('BYOK key encryption round-trip', () => {
     // Flip a character in the base64 body to corrupt the ciphertext.
     const prefix = 'enc:v1:';
     const body = enc.slice(prefix.length);
-    const flipped =
-      prefix + (body[0] === 'A' ? 'B' : 'A') + body.slice(1);
+    const flipped = prefix + (body[0] === 'A' ? 'B' : 'A') + body.slice(1);
     expect(() => decryptApiKey(flipped)).toThrow();
   });
 });

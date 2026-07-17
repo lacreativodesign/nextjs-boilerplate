@@ -77,17 +77,15 @@ export default function SuperAdminSecurityPage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8">
       <header>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-          Content Security Policy
-        </h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Content Security Policy</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          A strict, nonce-based CSP is running in <strong>report-only</strong> mode: it records
-          what it would block, but blocks nothing. Everything listed below is something the
-          strict policy <em>would</em> have blocked if enforcement were switched on.
+          A strict, nonce-based CSP is running in <strong>report-only</strong> mode: it records what
+          it would block, but blocks nothing. Everything listed below is something the strict policy{' '}
+          <em>would</em> have blocked if enforcement were switched on.
         </p>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Exercise the app across every role for a few days. When this list stays empty, the
-          policy is safe to enforce.
+          Exercise the app across every role for a few days. When this list stays empty, the policy
+          is safe to enforce.
         </p>
       </header>
 
@@ -118,8 +116,8 @@ export default function SuperAdminSecurityPage() {
 
       {isClean && (
         <p className="mt-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-5 text-sm text-[var(--text-primary)]">
-          <strong>No violations recorded.</strong> If the app has been used broadly since the
-          last reset, the strict policy is a candidate for enforcement.
+          <strong>No violations recorded.</strong> If the app has been used broadly since the last
+          reset, the strict policy is a candidate for enforcement.
         </p>
       )}
 
@@ -139,12 +137,10 @@ export default function SuperAdminSecurityPage() {
                 </span>
               </div>
               <p className="mt-2 break-all text-sm text-[var(--text-muted)]">
-                <strong className="text-[var(--text-primary)]">Blocked:</strong>{' '}
-                {v.blockedOrigin}
+                <strong className="text-[var(--text-primary)]">Blocked:</strong> {v.blockedOrigin}
               </p>
               <p className="mt-1 break-all text-sm text-[var(--text-muted)]">
-                <strong className="text-[var(--text-primary)]">On page:</strong>{' '}
-                {v.documentPath}
+                <strong className="text-[var(--text-primary)]">On page:</strong> {v.documentPath}
               </p>
             </article>
           ))}

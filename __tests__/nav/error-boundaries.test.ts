@@ -31,10 +31,7 @@ describe('S32: role dashboards have error boundaries', () => {
   });
 
   it.each(SEGMENTS)('app/%s error boundary uses the shared ErrorFallback', (seg) => {
-    const src = fs.readFileSync(
-      path.join(process.cwd(), 'app', seg, 'error.tsx'),
-      'utf8',
-    );
+    const src = fs.readFileSync(path.join(process.cwd(), 'app', seg, 'error.tsx'), 'utf8');
     expect(src).toContain("from '@/components/errors/ErrorFallback'");
     expect(src).toContain('resetError={reset}');
     expect(src).toContain("'use client'");

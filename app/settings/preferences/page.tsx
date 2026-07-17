@@ -169,9 +169,7 @@ export default function SettingsPreferencesPage() {
                 className="flex items-center justify-between gap-4 rounded-xl border border-[var(--border-subtle)] p-4"
               >
                 <div>
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">
-                    {toggle.label}
-                  </p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{toggle.label}</p>
                   <p className="text-xs text-[var(--text-muted)]">{toggle.description}</p>
                 </div>
                 <button

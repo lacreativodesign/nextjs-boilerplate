@@ -6,13 +6,7 @@ import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_ROLES = new Set([
-  'admin',
-  'super_admin',
-  'finance',
-  'sales',
-  'sales_manager',
-]);
+const ALLOWED_ROLES = new Set(['admin', 'super_admin', 'finance', 'sales', 'sales_manager']);
 const ALLOWED_AGENT_TYPES = new Set<AgentType>(['coo', 'finance', 'sales']);
 
 export async function GET() {

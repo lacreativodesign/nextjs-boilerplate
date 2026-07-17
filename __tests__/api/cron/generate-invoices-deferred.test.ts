@@ -42,7 +42,9 @@ jest.mock('firebase-admin', () => ({
 import { GET } from '@/app/api/cron/generate-invoices/route';
 
 const authedRequest = () =>
-  ({ headers: { get: (h: string) => (h === 'authorization' ? `Bearer ${CRON_SECRET}` : null) } }) as any;
+  ({
+    headers: { get: (h: string) => (h === 'authorization' ? `Bearer ${CRON_SECRET}` : null) },
+  }) as any;
 
 const originalEnv = { ...process.env };
 

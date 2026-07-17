@@ -49,7 +49,10 @@ jest.mock('@/lib/firebaseAdmin', () => {
 import { authenticateIngest } from '@/lib/ingest/auth';
 
 const reqWith = (headers: Record<string, string>, url = 'https://app.local/api/ingest/leads') =>
-  ({ headers: { get: (h: string) => headers[h.toLowerCase()] ?? null }, url }) as unknown as Request;
+  ({
+    headers: { get: (h: string) => headers[h.toLowerCase()] ?? null },
+    url,
+  }) as unknown as Request;
 
 describe('ingest auth is per-tenant, no global fallback (E6)', () => {
   const originalEnv = { ...process.env };

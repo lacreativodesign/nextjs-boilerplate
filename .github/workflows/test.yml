@@ -38,6 +38,11 @@ jobs:
       - name: Run tests with coverage threshold
         run: npm test
 
+      - name: Run tests under a non-UTC timezone (QUAL-02 regression guard)
+        run: TZ=Asia/Karachi npm test
+        env:
+          TZ: Asia/Karachi
+
       - name: Build application
         run: npm run build
 

@@ -59,7 +59,9 @@ describe('S9: ownOnly permissions fail closed', () => {
   const src = read('lib/permissions/permission-engine.ts');
 
   it('no longer skips the ownership test when ownerId is absent', () => {
-    expect(src).not.toContain('if (ownershipRestricted && input.ownerId && input.ownerId !== input.userId)');
+    expect(src).not.toContain(
+      'if (ownershipRestricted && input.ownerId && input.ownerId !== input.userId)',
+    );
   });
 
   it('denies an ownership-restricted action that supplies no owner', () => {

@@ -47,10 +47,7 @@ describe('S2: file upload records carry tenantId', () => {
 });
 
 describe('S2: versioned file uploads reject cross-tenant id overwrite', () => {
-  const routes = [
-    'app/api/production/files/upload/route.ts',
-    'app/api/am/files/upload/route.ts',
-  ];
+  const routes = ['app/api/production/files/upload/route.ts', 'app/api/am/files/upload/route.ts'];
 
   it.each(routes)('%s tenant-checks a supplied fileId', (rel) => {
     const src = read(rel);

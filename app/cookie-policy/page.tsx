@@ -72,9 +72,13 @@ export default function CookiePolicyPage() {
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-8">
           <h1 className="page-title">Cookie Policy</h1>
-          <p className="page-subtitle mt-2">Last updated: July 2026 &nbsp;·&nbsp; Effective: July 2026</p>
+          <p className="page-subtitle mt-2">
+            Last updated: July 2026 &nbsp;·&nbsp; Effective: July 2026
+          </p>
           <p className="mt-4 text-sm text-[var(--text-muted)]">
-            This Cookie Policy explains how the Bizosto ERP platform, operated by LA Creativo Group, uses cookies and similar technologies. It should be read together with our Privacy Policy.
+            This Cookie Policy explains how the Bizosto ERP platform, operated by LA Creativo Group,
+            uses cookies and similar technologies. It should be read together with our Privacy
+            Policy.
           </p>
         </div>
         <div className="space-y-6">

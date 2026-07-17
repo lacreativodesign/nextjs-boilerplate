@@ -25,8 +25,8 @@ describe('S16: the sales clients page shows real data', () => {
   });
 
   it('contains none of the invented demo records', () => {
-    ['Carter Studios', 'Silver Peak', 'BlueBrick', 'John Carter', 'Amelia Lopez'].forEach(
-      (fake) => expect(page).not.toContain(fake),
+    ['Carter Studios', 'Silver Peak', 'BlueBrick', 'John Carter', 'Amelia Lopez'].forEach((fake) =>
+      expect(page).not.toContain(fake),
     );
     expect(page).not.toMatch(/\+1 555/);
   });
@@ -133,7 +133,7 @@ describe('S18: production reports show real operational metrics', () => {
   });
 
   it('never invents a category from blank data', () => {
-    expect(page).toContain("if (!key) return;");
+    expect(page).toContain('if (!key) return;');
   });
 });
 
@@ -168,9 +168,15 @@ describe('S19: the lead detail page shows the real lead and persists writes', ()
   });
 
   it('only sends status values the API actually accepts', () => {
-    ['new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'closed_won', 'closed_lost'].forEach(
-      (value) => expect(page).toContain(`value: '${value}'`),
-    );
+    [
+      'new',
+      'contacted',
+      'qualified',
+      'proposal_sent',
+      'negotiation',
+      'closed_won',
+      'closed_lost',
+    ].forEach((value) => expect(page).toContain(`value: '${value}'`));
   });
 
   it('the new lead endpoint enforces tenant and sales ownership', () => {

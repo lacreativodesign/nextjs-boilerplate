@@ -18,9 +18,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
  * Firestore, so pre-existing HR documents will not count toward the plan storage limit.
  * Only newly uploaded documents are metered.
  */
-export async function backfillHrDocumentTenantIds(
-  options: { dryRun?: boolean } = {},
-): Promise<{
+export async function backfillHrDocumentTenantIds(options: { dryRun?: boolean } = {}): Promise<{
   scanned: number;
   updated: number;
   skippedNoEmployee: number;

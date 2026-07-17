@@ -84,7 +84,8 @@ const TENANT_EVIDENCE = [
  * reset, payment token) or OAuth state parameters — validated inside the route.
  */
 export const PUBLIC_ROUTES: Record<string, string> = {
-  'security/csp-report': 'Browser CSP violation report sink; unauthenticated by spec, logs only, no data access.',
+  'security/csp-report':
+    'Browser CSP violation report sink; unauthenticated by spec, logs only, no data access.',
   // Pre-auth account flows (token/OTP protected inside the route)
   'auth/request-password-reset': 'Pre-auth: issues password reset email; token-gated completion.',
   'auth/send-otp': 'Pre-auth signup step; rate limited; OTP hashed at rest.',
@@ -155,7 +156,8 @@ export const AUTHENTICATED_ROUTES: Record<string, string> = {
   'auth/sessions/invalidate-all': "Invalidates all of the caller's own sessions.",
   'auth/create-set-password-token': 'Issues a set-password token for the caller.',
   'auth/sso/status': 'Returns SSO status for the caller; no tenant data.',
-  'auth/sso/[provider]/authorize': 'Builds an OAuth authorize URL; tenantId is a query param, not tenant-scoped data access.',
+  'auth/sso/[provider]/authorize':
+    'Builds an OAuth authorize URL; tenantId is a query param, not tenant-scoped data access.',
   // Global / platform-level (super-admin, tenant-agnostic by design)
   'admin/rate-limits': 'Super-admin only; manages global rate-limit rules.',
   'admin/jobs/[id]/retry': 'Super-admin only; retries a platform job.',
@@ -165,8 +167,10 @@ export const AUTHENTICATED_ROUTES: Record<string, string> = {
   // Stateless utility (no tenant data)
   'finance/currency/convert': 'Pure currency conversion math; no tenant data.',
   // Safe delegators (tenant scoping enforced by the route they call)
-  'finance/invoices/mark-paid': 'Delegates to finance/invoices/update (tenant-scoped) after requireFinance.',
-  'finance/payments/record': 'Delegates to finance/payments/update (tenant-scoped) after requireFinance.',
+  'finance/invoices/mark-paid':
+    'Delegates to finance/invoices/update (tenant-scoped) after requireFinance.',
+  'finance/payments/record':
+    'Delegates to finance/payments/update (tenant-scoped) after requireFinance.',
 };
 
 const matchesAny = (src: string, patterns: RegExp[]) => patterns.some((re) => re.test(src));

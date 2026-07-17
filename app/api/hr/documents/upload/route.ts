@@ -33,10 +33,7 @@ export async function POST(req: Request) {
     }
 
     if (!isTenantStoragePath(storagePath, access.user.tenantId)) {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid storage path.' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'Invalid storage path.' }, { status: 400 });
     }
 
     const size = Number(body?.size || 0);
@@ -66,7 +63,10 @@ export async function POST(req: Request) {
     if (id) {
       const existingRef = adminDb.collection('employeeDocuments').doc(id);
       const existingSnap = await existingRef.get();
-      if (!existingSnap.exists || String(existingSnap.data()?.tenantId || '') !== access.user.tenantId) {
+      if (
+        !existingSnap.exists ||
+        String(existingSnap.data()?.tenantId || '') !== access.user.tenantId
+      ) {
         return NextResponse.json({ ok: false, error: 'Document not found' }, { status: 404 });
       }
       docRef = existingRef;

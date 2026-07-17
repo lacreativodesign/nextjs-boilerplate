@@ -111,6 +111,8 @@ describe('mutateFinanceInTransaction fails closed (E4b)', () => {
     const invoice = (await db.collection('invoices').doc('inv_y').get()).data() as any;
     expect(invoice.status).toBe('issued');
     const entries = await ledgerEntries();
-    expect(entries.find((e: any) => e.invoiceId === 'inv_y' && e.type === 'invoice.created')).toBeDefined();
+    expect(
+      entries.find((e: any) => e.invoiceId === 'inv_y' && e.type === 'invoice.created'),
+    ).toBeDefined();
   });
 });

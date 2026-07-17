@@ -173,7 +173,7 @@ describe('billing single-writer static gate', () => {
 
   it('subscription cancel route has no direct tenant billing writes', () => {
     const source = read('app/api/billing/subscription/cancel/route.ts');
-    expect(source).not.toContain("set(\n      {\n        cancelAtPeriodEnd: true");
+    expect(source).not.toContain('set(\n      {\n        cancelAtPeriodEnd: true');
     expect(source).toContain('applySubscriptionState');
     expect(source).toContain('cancel_at_period_end: true');
   });

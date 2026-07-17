@@ -74,10 +74,7 @@ async function resolveTenantIdFromSubscription(subscription: Stripe.Subscription
       ? subscription.customer
       : subscription.customer?.id || '';
   if (customerId) {
-    const byCustomer = await tenantsRef
-      .where('stripeCustomerId', '==', customerId)
-      .limit(1)
-      .get();
+    const byCustomer = await tenantsRef.where('stripeCustomerId', '==', customerId).limit(1).get();
     if (!byCustomer.empty) {
       return byCustomer.docs[0].id;
     }
@@ -268,7 +265,10 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const tenantId = await resolveTenantIdFromInvoice(stripe, invoice);
         if (!tenantId) {
-          await deadLetterWebhookEvent(event, 'invoice.payment_succeeded has no resolvable tenantId');
+          await deadLetterWebhookEvent(
+            event,
+            'invoice.payment_succeeded has no resolvable tenantId',
+          );
           deadLettered = true;
           break;
         }

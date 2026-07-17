@@ -46,18 +46,15 @@ export async function claimWebhookEvent(eventId: string, type: string): Promise<
 }
 
 export async function finalizeWebhookEvent(eventId: string, type: string): Promise<void> {
-  await adminDb
-    .collection(COLLECTION)
-    .doc(eventId)
-    .set(
-      {
-        eventId,
-        type,
-        status: 'processed',
-        processedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+  await adminDb.collection(COLLECTION).doc(eventId).set(
+    {
+      eventId,
+      type,
+      status: 'processed',
+      processedAt: new Date().toISOString(),
+    },
+    { merge: true },
+  );
 }
 
 export async function releaseWebhookEvent(eventId: string): Promise<void> {

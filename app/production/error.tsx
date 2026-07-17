@@ -23,5 +23,7 @@ export default function ProductionError({
     console.error('Production section error:', error);
   }, [error]);
 
-  return <ErrorFallback error={error} resetError={reset} context="module" moduleName="Production" />;
+  return (
+    <ErrorFallback error={error} resetError={reset} context="module" moduleName="Production" />
+  );
 }

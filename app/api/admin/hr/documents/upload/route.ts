@@ -27,10 +27,7 @@ export async function POST(req: Request) {
     }
 
     if (!isTenantStoragePath(storagePath, access.user.tenantId)) {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid storage path.' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'Invalid storage path.' }, { status: 400 });
     }
 
     const size = Number(body?.size || 0);
