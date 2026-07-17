@@ -1,10 +1,8 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
-import { Suspense } from 'react';
 import { headers } from 'next/headers';
 import type { Metadata, Viewport } from 'next';
 import ToastProvider from '@/components/providers/ToastProvider';
-import RouteProgress from '@/components/ui/RouteProgress';
 import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 import { PageErrorFallback } from '@/components/errors/ErrorFallback';
 import PWAInitializer from '@/components/pwa/PWAInitializer';
@@ -59,9 +57,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ErrorBoundary fallbackComponent={PageErrorFallback}>
             <ToastProvider />
             <PWAInitializer />
-            <Suspense fallback={null}>
-              <RouteProgress />
-            </Suspense>
             <ClientMonitoring />
             {children}
           </ErrorBoundary>

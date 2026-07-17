@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { SidebarProvider, useSidebar } from '@/lib/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
@@ -32,7 +32,6 @@ function AppShellInner({
   data: TenantContextResponse | null;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const { isCollapsed, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
@@ -168,9 +167,7 @@ function AppShellInner({
         />
         <main className="flex-1 py-[var(--page-padding-y)]">
           <PullToRefresh>
-            <div className="page-frame" key={pathname}>
-              {children}
-            </div>
+            <div className="page-frame">{children}</div>
           </PullToRefresh>
         </main>
       </div>
