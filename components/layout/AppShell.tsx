@@ -7,6 +7,7 @@ import { SidebarProvider, useSidebar } from '@/lib/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import ActivityFeedSidebar from '@/components/activity/ActivityFeedSidebar';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { useTenantContext, type TenantContextResponse } from '@/lib/tenant/useTenantContext';
 import { normalizeRole } from '@/lib/erpAccess';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
@@ -159,6 +160,7 @@ function AppShellInner({
       >
         <Header
           currentUser={currentUser}
+          notificationBell={<NotificationBell />}
           activityTrigger={
             <ActivityFeedSidebar
               open={activityOpen}
