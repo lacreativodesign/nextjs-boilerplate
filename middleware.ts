@@ -18,6 +18,7 @@ import {
 } from '@/lib/security/request-signing';
 import { buildRateLimitHeaders, checkRateLimit } from '@/lib/rate-limit/limiter';
 import { applyVersionHeaders, getApiVersion } from '@/lib/api/versioning';
+import { PUBLIC_ROUTES } from '@/lib/api/route-contract';
 
 const PATH_TO_MODULE: Record<string, string> = {
   '/finance': 'finance',
@@ -258,8 +259,13 @@ function isProtectedPagePath(pathname: string) {
   );
 }
 
+// A path is public if it matches one of the prefix families below (dynamic route groups whose
+// members are all public), OR if its relative path is an exact key in the reviewed PUBLIC_ROUTES
+// contract. Sourcing the static case from PUBLIC_ROUTES keeps middleware and the route contract
+// from drifting apart (F5-01): previously this list was hand-maintained and omitted genuinely
+// public endpoints such as monitoring/ingest, so anonymous telemetry received 401 (OBS-01).
 function isPublicApiPath(pathname: string) {
-  return (
+  const prefixPublic =
     pathname.startsWith('/api/stripe') ||
     pathname.startsWith('/api/webhooks/stripe') ||
     pathname.startsWith('/api/session-login') ||
@@ -269,8 +275,12 @@ function isPublicApiPath(pathname: string) {
     pathname.startsWith('/api/public') ||
     pathname.startsWith('/api/signup') ||
     pathname.startsWith('/api/client/invites/') ||
-    pathname.startsWith('/api/auth')
-  );
+    pathname.startsWith('/api/auth');
+  if (prefixPublic) return true;
+  // Exact-match against the reviewed public contract (static keys only; dynamic [param] keys are
+  // covered by the prefix families above, e.g. /api/public/*).
+  const relPath = pathname.replace(/^\/api\//, '');
+  return Object.prototype.hasOwnProperty.call(PUBLIC_ROUTES, relPath);
 }
 
 function isSensitiveApiPath(pathname: string) {
