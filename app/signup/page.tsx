@@ -421,7 +421,7 @@ function SignupInner() {
             tenantId: payload.tenantId,
             customerEmail: formState.email.trim().toLowerCase(),
             trialPeriodDays: 14,
-            successUrl: `${window.location.origin}/dashboard?signup=success`,
+            successUrl: `${window.location.origin}/onboarding?signup=success`,
             cancelUrl: `${window.location.origin}/signup?checkout=cancelled&plan=${formState.selectedPlan}`,
           }),
         });
@@ -890,11 +890,13 @@ function SignupInner() {
               <button
                 type="button"
                 onClick={() => {
-                  router.push('/dashboard');
+                  // ONB-05: send new signups into the verified activation sequence, not straight
+                  // to the dashboard.
+                  router.push('/onboarding');
                 }}
                 className="mt-6 w-full rounded-lg bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                Go to Dashboard
+                Get started
               </button>
               <p className="mt-4 text-xs text-[var(--text-muted)]">
                 If you are not redirected, you can{' '}
