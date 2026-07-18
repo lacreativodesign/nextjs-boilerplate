@@ -143,7 +143,10 @@ export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) 
   );
 
   const completeTour = useCallback(() => {
+    // ONB-02: cache locally for an instant no-flash re-render, and persist server-side (per user +
+    // tour version) so completion follows the user across devices. The POST is fire-and-forget.
     localStorage.setItem(TOUR_COMPLETED_STORAGE_KEY, 'true');
+    void fetch('/api/users/tour-state', { method: 'POST', credentials: 'include' }).catch(() => {});
     onClose?.();
   }, [onClose]);
 

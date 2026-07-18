@@ -173,6 +173,10 @@ export function HelpCenterPageContent() {
 
   const handleRetakeTour = () => {
     localStorage.removeItem(TOUR_COMPLETED_STORAGE_KEY);
+    // ONB-02: also reset the server-side completion so replay works across devices.
+    void fetch('/api/users/tour-state', { method: 'DELETE', credentials: 'include' }).catch(
+      () => {},
+    );
     router.push('/dashboard');
   };
 
