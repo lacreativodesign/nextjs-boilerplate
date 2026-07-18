@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCountUp } from '@/lib/hooks/useCountUp';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
-import { PlatformTour } from '@/components/onboarding/PlatformTour';
 import { ActivationChecklist } from '@/components/onboarding/ActivationChecklist';
 import { normalizeRole, type ErpRole } from '@/lib/erpAccess';
 import dynamic from 'next/dynamic';
@@ -78,38 +77,12 @@ export default function DashboardPage() {
   const overviewSubtitle = currentRole
     ? ROLE_OVERVIEW_SUBTITLES[currentRole]
     : ROLE_OVERVIEW_SUBTITLES.admin;
-  const tourRole = currentRole?.replace(/_/g, ' ') || tenantData?.user?.role || 'team member';
-  const tourCompanyName =
-    tenantData?.tenant?.brand?.name || tenantData?.tenant?.name || 'your workspace';
 
   function moduleEnabled(key: string): boolean {
     return modulesEnabled[key] !== false;
   }
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showTour, setShowTour] = useState(false);
-
-  useEffect(() => {
-    // ONB-02: completion is authoritative on the server (per user + tour version). Use the local
-    // flag only as a fast-path to avoid a flash; the server check is the source of truth and also
-    // prevents a completed tour re-triggering on a new device.
-    let cancelled = false;
-    const localDone = localStorage.getItem('bizosto_tour_complete') === 'true';
-    if (localDone) return;
-    (async () => {
-      try {
-        const res = await fetch('/api/users/tour-state', { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        if (!cancelled && !data?.completed) setShowTour(true);
-        else if (data?.completed) localStorage.setItem('bizosto_tour_complete', 'true');
-      } catch {
-        if (!cancelled) setShowTour(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     async function load() {
@@ -248,14 +221,6 @@ export default function DashboardPage() {
       <div className="mt-6">
         <COOSummaryWidget />
       </div>
-
-      {showTour && (
-        <PlatformTour
-          role={tourRole}
-          companyName={tourCompanyName}
-          onClose={() => setShowTour(false)}
-        />
-      )}
     </div>
   );
 }
