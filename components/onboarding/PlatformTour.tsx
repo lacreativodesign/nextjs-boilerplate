@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const TOUR_COMPLETED_STORAGE_KEY = 'bizosto_tour_complete';
 
@@ -128,6 +128,8 @@ function calculateCardPosition(
 export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
+  const cardRef = useRef<HTMLElement | null>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
   const currentStep = TOUR_STEPS[currentStepIndex];
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === TOUR_STEPS.length - 1;
@@ -196,6 +198,49 @@ export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) 
     };
   }, []);
 
+  // ONB-03: dialog accessibility. Remember the element that had focus, move focus into the tour
+  // card, trap Tab within it, close on Escape, and restore focus on unmount.
+  useEffect(() => {
+    previouslyFocused.current = (document.activeElement as HTMLElement) || null;
+    const card = cardRef.current;
+    const focusable = () =>
+      card
+        ? Array.from(
+            card.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+            ),
+          )
+        : [];
+    focusable()[0]?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        completeTour();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocused.current?.focus?.();
+    };
+  }, [completeTour]);
+
   const cardPosition = calculateCardPosition(highlightRect, currentStep.position);
 
   return (
@@ -221,6 +266,7 @@ export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) 
       )}
 
       <section
+        ref={cardRef}
         className="fixed w-[min(24rem,calc(100vw-2rem))] rounded-3xl border border-white/20 bg-white p-6 text-slate-950 shadow-2xl"
         style={cardPosition}
       >
@@ -275,6 +321,12 @@ export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) 
 
         .platform-tour-highlight {
           animation: platformTourPulse 1.25s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .platform-tour-highlight {
+            animation: none;
+          }
         }
       `}</style>
     </div>
