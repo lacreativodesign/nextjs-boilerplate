@@ -14,43 +14,60 @@ type TourStep = {
   cta?: string;
 };
 
-const TOUR_STEPS: TourStep[] = [
-  {
-    title: 'Welcome to Bizosto! 👋',
-    description:
-      "You're now set up as {role} on {companyName}. Let's show you around in 60 seconds.",
-    target: null,
-    position: 'center',
-  },
-  {
-    title: 'Your Dashboard',
-    description:
-      'This is your command center. See live KPIs, recent activity, and AI summaries here.',
-    target: '#sidebar-dashboard',
-    position: 'right',
-  },
-  {
-    title: 'Navigation Sidebar',
-    description: 'Access every module from here. Modules shown depend on your plan and role.',
-    target: '#main-sidebar',
-    position: 'right',
-  },
-  {
-    title: 'AI Business Summary',
-    description:
-      'Click Generate to get a plain-English summary of your business health, powered by AI.',
-    target: '#ai-summary-widget',
-    position: 'top',
-  },
-  {
-    title: "You're all set! 🚀",
-    description:
-      'Explore freely. Click any section in the sidebar to get started. Need help? Visit the Help Center.',
-    target: null,
-    position: 'center',
-    cta: 'Start Exploring',
-  },
-];
+// ONB-01: the tour runs for every role, so its steps only target elements that exist in every
+// role shell (the shared sidebar). The middle "what you do here" line is tailored per role, while
+// the welcome/closing cards are centered and target-free so they never depend on page-specific DOM.
+const ROLE_FOCUS: Record<string, string> = {
+  super_admin: 'Manage tenants, billing, and platform health from your sidebar.',
+  admin: 'See live KPIs, run your team, and manage every module from the sidebar.',
+  sales_manager: "Track your team's pipeline, targets, and deals from the sidebar.",
+  sales: 'Work your leads, deals, and pipeline from the sidebar.',
+  am_manager: 'Oversee accounts and your AM team from the sidebar.',
+  am: 'Manage your accounts, projects, and change requests from the sidebar.',
+  production_manager: 'Assign work and track production stages from the sidebar.',
+  production: 'Pick up assigned work and move projects through stages from the sidebar.',
+  finance: 'Handle invoices, payments, and reports from the sidebar.',
+  hr: 'Manage employees, leave, and payroll from the sidebar.',
+  client: 'View your projects, approvals, and invoices from the sidebar.',
+};
+
+function focusLineForRole(role: string): string {
+  const normalized = role.toLowerCase().replace(/\s+/g, '_');
+  return ROLE_FOCUS[normalized] || 'Access everything you need from the sidebar.';
+}
+
+function getTourSteps(role: string): TourStep[] {
+  return [
+    {
+      title: 'Welcome to Bizosto! 👋',
+      description:
+        "You're now set up as {role} on {companyName}. Let's show you around in 60 seconds.",
+      target: null,
+      position: 'center',
+    },
+    {
+      title: 'Your Navigation',
+      description: focusLineForRole(role),
+      target: '#main-sidebar',
+      position: 'right',
+    },
+    {
+      title: 'Notifications',
+      description:
+        'The bell in the top bar shows your notifications. Open it any time, and use "View all notifications" for the full inbox.',
+      target: null,
+      position: 'center',
+    },
+    {
+      title: "You're all set! 🚀",
+      description:
+        'Explore freely. Need help later? Open the Help Center from your account menu to retake this tour.',
+      target: null,
+      position: 'center',
+      cta: 'Start Exploring',
+    },
+  ];
+}
 
 type PlatformTourProps = {
   role: string;
@@ -126,6 +143,7 @@ function calculateCardPosition(
 }
 
 export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) {
+  const TOUR_STEPS = useMemo(() => getTourSteps(role), [role]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);

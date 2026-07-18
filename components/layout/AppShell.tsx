@@ -20,6 +20,7 @@ import { fetchUserRole, getFirebaseAuth } from '@/lib/firebaseClient';
 import { onAuthStateChanged } from 'firebase/auth';
 import ImpersonationBanner from '@/components/super_admin/ImpersonationBanner';
 import ActiveTabScroller from '@/components/layout/ActiveTabScroller';
+import { PlatformTourGate } from '@/components/onboarding/PlatformTourGate';
 
 const GlobalSearchModal = dynamic(() => import('@/components/search/GlobalSearchModal'), {
   ssr: false,
@@ -176,6 +177,7 @@ function AppShellInner({
       </div>
 
       <ActiveTabScroller />
+      <PlatformTourGate role={currentUser.role} companyName={data?.tenant?.name || 'Bizosto'} />
       <ImpersonationBanner />
       <BugReportButton />
       <NotificationToast />
