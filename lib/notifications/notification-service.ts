@@ -284,6 +284,46 @@ export class NotificationService {
     });
   }
 
+  // NOT-08: reject webhook targets that could drive SSRF before we ever fetch them. Only https
+  // is allowed, and hosts that resolve to loopback, private, link-local or cloud-metadata ranges
+  // (or are bare IPs / non-dotted names) are refused. Returns true when the URL is safe to call.
+  private static isSafeWebhookUrl(raw: string): boolean {
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      return false;
+    }
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) {
+      return false;
+    }
+    // Block the cloud metadata endpoint explicitly.
+    if (host === '169.254.169.254' || host === 'metadata.google.internal') return false;
+    // Block obvious private / loopback / link-local IPv4 ranges and IPv6 loopback.
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+      if (a === 10) return false;
+      if (a === 127) return false;
+      if (a === 0) return false;
+      if (a === 169 && b === 254) return false;
+      if (a === 172 && b >= 16 && b <= 31) return false;
+      if (a === 192 && b === 168) return false;
+    }
+    if (
+      host === '::1' ||
+      host === '[::1]' ||
+      host.startsWith('fe80') ||
+      host.startsWith('fc') ||
+      host.startsWith('fd')
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   private static async sendWebhooks(
     notificationId: string,
     notification: Omit<Notification, 'id'>,
@@ -317,19 +357,33 @@ export class NotificationService {
         const eventTypes = Array.isArray(data.eventTypes) ? data.eventTypes : null;
         if (!url || !enabled) return;
         if (eventTypes && !eventTypes.includes(notification.type)) return;
+        // NOT-08: refuse SSRF-prone targets before making any request.
+        if (!this.isSafeWebhookUrl(url)) {
+          throw new Error(`Webhook target rejected (unsafe URL): ${url}`);
+        }
 
         const secret = String(data.secret || '');
         const signature = secret ? cryptoSign(payload, secret) : '';
 
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Notification-Id': notificationId,
-            ...(signature ? { 'X-Notification-Signature': signature } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
+        // NOT-08: cap the request so a slow/hostile endpoint cannot hang delivery.
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        let response: Response;
+        try {
+          response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Notification-Id': notificationId,
+              ...(signature ? { 'X-Notification-Signature': signature } : {}),
+            },
+            body: JSON.stringify(payload),
+            redirect: 'error',
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
 
         if (!response.ok) {
           const responseBody = await response.text();
@@ -464,7 +518,36 @@ export class NotificationService {
     });
   }
 
+  // NOT-09: escape any text interpolated into notification email HTML so a crafted title/message
+  // cannot inject markup or scripts.
+  private static escapeHtml(value: unknown): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // NOT-09: only allow http(s) action URLs into the email; anything else (javascript:, data:,
+  // etc.) is dropped so it cannot become an executable href.
+  private static sanitizeActionUrl(value: unknown): string | null {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+      return this.escapeHtml(parsed.toString());
+    } catch {
+      return null;
+    }
+  }
+
   private static buildEmailHtml(notification: Omit<Notification, 'id'>): string {
+    const safeTitle = this.escapeHtml(notification.title);
+    const safeMessage = this.escapeHtml(notification.message);
+    const safeActionUrl = this.sanitizeActionUrl(notification.actionUrl);
+    const safeActionLabel = this.escapeHtml(notification.actionLabel || 'View Details');
     return `
       <!DOCTYPE html>
       <html>
@@ -488,16 +571,16 @@ export class NotificationService {
         <body>
           <div class="container">
             <div class="header">
-              <h2>${notification.title}</h2>
+              <h2>${safeTitle}</h2>
             </div>
             <div class="content">
-              <p>${notification.message}</p>
+              <p>${safeMessage}</p>
               ${
-                notification.actionUrl
+                safeActionUrl
                   ? `
                 <div class="action">
-                  <a href="${notification.actionUrl}" class="button">
-                    ${notification.actionLabel || 'View Details'}
+                  <a href="${safeActionUrl}" class="button">
+                    ${safeActionLabel}
                   </a>
                 </div>
               `
