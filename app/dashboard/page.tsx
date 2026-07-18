@@ -90,10 +90,25 @@ export default function DashboardPage() {
   const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
-    const toured = localStorage.getItem('bizosto_tour_complete');
-    if (!toured) {
-      setShowTour(true);
-    }
+    // ONB-02: completion is authoritative on the server (per user + tour version). Use the local
+    // flag only as a fast-path to avoid a flash; the server check is the source of truth and also
+    // prevents a completed tour re-triggering on a new device.
+    let cancelled = false;
+    const localDone = localStorage.getItem('bizosto_tour_complete') === 'true';
+    if (localDone) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/users/tour-state', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && !data?.completed) setShowTour(true);
+        else if (data?.completed) localStorage.setItem('bizosto_tour_complete', 'true');
+      } catch {
+        if (!cancelled) setShowTour(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

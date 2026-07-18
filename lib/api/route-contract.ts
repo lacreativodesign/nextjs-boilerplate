@@ -22,7 +22,13 @@
  */
 
 export type RouteContract =
-  'public' | 'authenticated' | 'tenant_scoped' | 'super_admin' | 'webhook' | 'cron' | 'internal';
+  | 'public'
+  | 'authenticated'
+  | 'tenant_scoped'
+  | 'super_admin'
+  | 'webhook'
+  | 'cron'
+  | 'internal';
 
 const CRON_EVIDENCE = [/CRON_SECRET/, /x-vercel-cron/];
 
@@ -151,6 +157,8 @@ export const PUBLIC_ROUTES: Record<string, string> = {
 export const AUTHENTICATED_ROUTES: Record<string, string> = {
   // Caller-identity scoped (act on the current user, not a tenant collection)
   me: 'Returns the current user profile; scoped to the caller, not a tenant.',
+  'users/tour-state':
+    "Reads/sets/resets the caller's own first-login tour completion on their user doc; per-user, not tenant-scoped.",
   'auth/sessions': "Lists the caller's own sessions.",
   'auth/sessions/[id]': "Revokes one of the caller's own sessions.",
   'auth/sessions/invalidate-all': "Invalidates all of the caller's own sessions.",
