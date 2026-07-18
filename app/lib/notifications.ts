@@ -138,20 +138,28 @@ function nowTimestamp() {
   return admin.firestore.FieldValue.serverTimestamp();
 }
 
+export type NotificationDeliveryOutcome = {
+  ok: boolean;
+  written: number;
+  failed: boolean;
+};
+
 export async function createNotifications({
   recipients,
   ...payload
-}: NotificationPayload & { recipients: NotificationRecipient[] }) {
+}: NotificationPayload & {
+  recipients: NotificationRecipient[];
+}): Promise<NotificationDeliveryOutcome> {
   try {
-    if (!recipients.length) return;
+    if (!recipients.length) return { ok: true, written: 0, failed: false };
     const unique = uniqueRecipients(recipients);
-    if (!unique.length) return;
+    if (!unique.length) return { ok: true, written: 0, failed: false };
     const message = payload.message ?? payload.body ?? '';
-    if (!payload.title && !message) return;
+    if (!payload.title && !message) return { ok: true, written: 0, failed: false };
 
     const resolved = await Promise.all(unique.map((recipient) => resolveRecipient(recipient)));
     const usable = resolved.filter(Boolean) as ResolvedRecipient[];
-    if (!usable.length) return;
+    if (!usable.length) return { ok: true, written: 0, failed: false };
 
     const now = nowTimestamp();
     const notificationsRef = adminDb.collection('notifications');
@@ -224,14 +232,33 @@ export async function createNotifications({
     if (writes > 0) {
       await batch.commit();
     }
+    return { ok: true, written: writes, failed: false };
   } catch (error) {
+    // NOT-04: do not silently swallow. Record the failure to a dead-letter collection so lost
+    // notifications are observable and recoverable, then report failure to the caller. The
+    // dead-letter write is itself guarded so a logging failure can never mask the original error.
     console.error('notification create error:', error);
+    try {
+      await adminDb.collection('dead_letter_notifications').add({
+        tenantId: payload.tenantId ? normalizeTenantId(payload.tenantId) : null,
+        type: payload.type || 'system',
+        title: payload.title || null,
+        recipientCount: recipients.length,
+        error: error instanceof Error ? error.message : String(error),
+        createdAt: nowTimestamp(),
+      });
+    } catch (dlErr) {
+      console.error('notification dead-letter write failed:', dlErr);
+    }
+    return { ok: false, written: 0, failed: true };
   }
 }
 
-export async function createNotification(payload: NotificationPayload) {
+export async function createNotification(payload: NotificationPayload): Promise<void> {
   const recipientUid = payload.recipientUid || payload.toUserId;
   if (!recipientUid) return;
+  // The shared createNotifications sink performs the dead-letter on failure (NOT-04); this
+  // wrapper stays void-returning for its many fire-and-forget callers.
   await createNotifications({
     ...payload,
     recipients: [
