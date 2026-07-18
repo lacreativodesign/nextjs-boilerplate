@@ -10,6 +10,7 @@ import {
   type HelpIcon,
 } from '@/lib/help-center/data';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { getRoleRoute } from '@/lib/roleRouting';
 import { TOUR_COMPLETED_STORAGE_KEY } from '@/components/onboarding/PlatformTour';
 
 const HELP_ROLE_TOPIC_ACCESS: Record<
@@ -177,7 +178,9 @@ export function HelpCenterPageContent() {
     void fetch('/api/users/tour-state', { method: 'DELETE', credentials: 'include' }).catch(
       () => {},
     );
-    router.push('/dashboard');
+    // ONB-04: replay must return the user to their own role home, not /dashboard (which the
+    // middleware rejects for the nine non-admin roles).
+    router.push(getRoleRoute(currentRole));
   };
 
   return (
