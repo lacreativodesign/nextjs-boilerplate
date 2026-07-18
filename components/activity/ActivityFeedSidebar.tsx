@@ -131,8 +131,10 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
 
   useEffect(() => {
     void sendPresence(true);
-    const t1 = setInterval(() => void fetchUnread(), 8000);
-    const t2 = setInterval(() => void load(), 15000);
+    // NOT-05: reduce idle polling cost. The unread count no longer needs 8s cadence here — the
+    // bell's realtime listener is authoritative — so poll the activity feed less aggressively.
+    const t1 = setInterval(() => void fetchUnread(), 30000);
+    const t2 = setInterval(() => void load(), 30000);
     const t3 = setInterval(() => {
       void sendPresence(true);
       void fetchPresence();

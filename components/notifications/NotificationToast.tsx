@@ -84,10 +84,12 @@ export default function NotificationToast() {
     }
   }, [dismiss]);
 
-  // Poll every 8 seconds — same cadence as bell
+  // NOT-05: the authoritative unread badge is driven by the bell's realtime onSnapshot listener,
+  // so this transient toast surface only needs an occasional poll. 30s (was 8s) cuts the toast's
+  // idle Firestore read cost by ~73% with no user-visible effect (toasts auto-dismiss in 4.5s).
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 8000);
+    const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
