@@ -27,7 +27,10 @@ describe('session revocation hardening (P0-1)', () => {
   });
 
   it('CI workflow does not allow lint to fail (P0-6)', () => {
-    const src = read('.github/workflows/ci.yml');
+    // Q1 consolidated the two pipelines into a single Quality Gates workflow (test.yml); the
+    // redundant ci.yml was removed. Lint is a required, non-softened gate there.
+    const src = read('.github/workflows/test.yml');
+    expect(src).toContain('npm run lint');
     expect(src).not.toContain('lint || true');
   });
 });
