@@ -19,33 +19,7 @@ import {
 import { buildRateLimitHeaders, checkRateLimit } from '@/lib/rate-limit/limiter';
 import { applyVersionHeaders, getApiVersion } from '@/lib/api/versioning';
 import { PUBLIC_ROUTES } from '@/lib/api/route-contract';
-
-const PATH_TO_MODULE: Record<string, string> = {
-  '/finance': 'finance',
-  '/sales': 'sales',
-  '/sales_manager': 'sales',
-  '/hr': 'hr',
-  '/production': 'production',
-  '/production_manager': 'production',
-  '/am': 'sales',
-  '/am_manager': 'sales',
-  '/clients': 'clients',
-  '/projects': 'projects',
-  '/reports': 'reports',
-  '/billing': 'billing',
-  '/crm': 'crm',
-  '/inventory': 'inventory',
-  '/approvals': 'approvals',
-  '/support': 'support',
-  '/notifications': 'notifications',
-};
-
-function resolveModuleForPath(pathname: string): string | null {
-  const matched = Object.entries(PATH_TO_MODULE).find(
-    ([path]) => pathname === path || pathname.startsWith(`${path}/`),
-  );
-  return matched?.[1] || null;
-}
+import { resolveModuleForPath } from '@/lib/api/module-paths';
 
 function shouldSkipModuleCheck(pathname: string): boolean {
   return (
