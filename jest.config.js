@@ -27,6 +27,22 @@ const customJestConfig = {
       lines: 5,
       statements: 5,
     },
+    // Q2: risk-based floors on the highest-risk billing gate. lib/subscription.ts decides tenant
+    // access (read-only / hard-lock / trial) and the billing state machine; it is now fully
+    // covered, so pin a high floor to prevent regressions in this critical path specifically,
+    // independent of the (low) global floor.
+    './lib/subscription.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+    './lib/billing/apply-subscription-state.ts': {
+      branches: 60,
+      functions: 90,
+      lines: 85,
+      statements: 85,
+    },
   },
 };
 
