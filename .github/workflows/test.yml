@@ -29,6 +29,12 @@ jobs:
       - name: OpenAPI drift check (DOC-01)
         run: git diff --exit-code -- docs/api/openapi.yaml
 
+      - name: Generate Firestore schema inventory
+        run: npm run docs:schema
+
+      - name: Firestore schema drift check (DOC-02)
+        run: git diff --exit-code -- docs/database/collections.generated.md
+
       - name: Validate formatting
         run: npm run format:check
 
