@@ -52,6 +52,13 @@ jobs:
       - name: License compliance
         run: npm run licenses:check
 
+      - name: Dependency audit (blocks on critical)
+        run: npm audit --audit-level=critical
+
+      - name: Dependency audit report (high; non-blocking until Q3 triage)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
   sonar:
     runs-on: ubuntu-latest
     if: ${{ secrets.SONAR_TOKEN != '' }}
