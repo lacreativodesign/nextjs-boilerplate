@@ -3,7 +3,13 @@
 import { useMemo, useState } from 'react';
 import { toastError, toastWarning } from '@/lib/toast';
 import { Download, FileText } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import dynamic from 'next/dynamic';
+
+// QUAL-07: load the recharts-based chart lazily so recharts is not in the route's initial bundle.
+const ExpenseBreakdownChart = dynamic(() => import('@/components/finance/ExpenseBreakdownChart'), {
+  ssr: false,
+  loading: () => <div style={{ height: 300 }} />,
+});
 import { exportProfitLossToPDF } from '@/lib/exports/pdfExport';
 import type { ProfitLossReport } from '@/lib/reports/profitLoss';
 
@@ -39,8 +45,6 @@ const REPORTS = [
     filename: 'finance-expenses-by-category.csv',
   },
 ];
-
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#14B8A6'];
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
@@ -294,25 +298,7 @@ export default function FinanceReportsPage() {
                   Expense Breakdown
                 </div>
                 <div style={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer>
-                    <PieChart>
-                      <Pie
-                        data={profitLossReport.expenses.breakdown}
-                        dataKey="amount"
-                        nameKey="category"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label
-                      >
-                        {profitLossReport.expenses.breakdown.map((entry, index) => (
-                          <Cell key={entry.category} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <ExpenseBreakdownChart data={profitLossReport.expenses.breakdown} />
                 </div>
               </div>
             </div>
