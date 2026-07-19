@@ -26,6 +26,9 @@ jobs:
       - name: Generate OpenAPI
         run: npm run docs:api
 
+      - name: OpenAPI drift check (DOC-01)
+        run: git diff --exit-code -- docs/api/openapi.yaml
+
       - name: Validate formatting
         run: npm run format:check
 

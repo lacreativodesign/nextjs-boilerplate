@@ -22,13 +22,7 @@
  */
 
 export type RouteContract =
-  | 'public'
-  | 'authenticated'
-  | 'tenant_scoped'
-  | 'super_admin'
-  | 'webhook'
-  | 'cron'
-  | 'internal';
+  'public' | 'authenticated' | 'tenant_scoped' | 'super_admin' | 'webhook' | 'cron' | 'internal';
 
 const CRON_EVIDENCE = [/CRON_SECRET/, /x-vercel-cron/];
 
