@@ -22,7 +22,13 @@
  */
 
 export type RouteContract =
-  'public' | 'authenticated' | 'tenant_scoped' | 'super_admin' | 'webhook' | 'cron' | 'internal';
+  | 'public'
+  | 'authenticated'
+  | 'tenant_scoped'
+  | 'super_admin'
+  | 'webhook'
+  | 'cron'
+  | 'internal';
 
 const CRON_EVIDENCE = [/CRON_SECRET/, /x-vercel-cron/];
 
@@ -174,6 +180,53 @@ export const AUTHENTICATED_ROUTES: Record<string, string> = {
   'finance/payments/record':
     'Delegates to finance/payments/update (tenant-scoped) after requireFinance.',
 };
+
+/**
+ * Routes that legitimately read a tenant identifier from the REQUEST (body, query,
+ * or a dynamic [tenantId] path segment) rather than deriving it from the session.
+ *
+ * The default rule (SEC rule #7) is: tenantId comes from the authenticated
+ * session, never the request — otherwise a caller can spoof another tenant.
+ * `super_admin/*` routes are exempt (they operate across tenants and are gated by
+ * requireSuperAdmin, enforced by route-guard-coverage). Every OTHER route that
+ * sources a request tenantId must be reviewed and justified here; the
+ * tenant-scope-source guard fails the build on any un-listed one.
+ */
+export const REQUEST_TENANT_ROUTES: Record<string, string> = {
+  'admin/finance/reports/profit-loss':
+    'Session tenantId is authoritative; a mismatched ?tenantId is rejected (403).',
+  'admin/quotas': 'super_admin-gated (isSuperAdmin) before writing tenant_quotas by id.',
+  'admin/sso/audit':
+    'Uses ?tenantId only for super_admin; non-super_admin falls back to session tenantId.',
+  'auth/sso/providers':
+    'Pre-login discovery of enabled SSO providers; returns no secrets or tenant data.',
+  'auth/sso/[provider]/authorize':
+    'Pre-login OAuth initiation; the tenant being signed into is named in the query.',
+  'tenant/module-check':
+    'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); middleware passes the tenant.',
+};
+
+/**
+ * Evidence that a route reads a tenant identifier from the request surface
+ * (body, query param, or destructured from req.json()/nextUrl).
+ */
+const REQUEST_TENANT_EVIDENCE = [
+  /searchParams\.get\(\s*['"]tenantId['"]/,
+  /(?:req|request|url)\.query\.tenantId\b/,
+  /\bbody\s*\??\.\s*tenantId\b/,
+  /\bparams\s*\??\.\s*tenantId\b/,
+  /const\s*\{[^}]*\btenantId\b[^}]*\}\s*=\s*(?:await\s*)?(?:req|request)\.(?:json|nextUrl)/,
+];
+
+/**
+ * True when a route sources a tenant identifier from the request (body, query, or
+ * a dynamic [tenantId] path segment) instead of the session. Drives the
+ * tenant-scope-source guard that enforces REQUEST_TENANT_ROUTES.
+ */
+export function sourcesRequestTenant(relPath: string, src: string): boolean {
+  if (/\[tenantId\]/.test(relPath)) return true;
+  return REQUEST_TENANT_EVIDENCE.some((re) => re.test(src));
+}
 
 const matchesAny = (src: string, patterns: RegExp[]) => patterns.some((re) => re.test(src));
 
