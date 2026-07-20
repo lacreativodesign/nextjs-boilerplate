@@ -21,14 +21,23 @@
  * and are deliberately absent from the evidence lists.
  */
 
-export type RouteContract =
-  | 'public'
-  | 'authenticated'
-  | 'tenant_scoped'
-  | 'super_admin'
-  | 'webhook'
-  | 'cron'
-  | 'internal';
+// Defined as a const tuple (not a bare union) so its formatting is identical under
+// any Prettier printWidth. A short union like this sits in the 80–100 column
+// danger zone: Prettier collapses it to one line at printWidth 100 but expands it
+// to one-member-per-line at printWidth 80, so a tool formatting at 80 and CI
+// checking at 100 fought over it every commit. The tuple always breaks
+// multi-line, so both widths agree.
+export const ROUTE_CONTRACTS = [
+  'public',
+  'authenticated',
+  'tenant_scoped',
+  'super_admin',
+  'webhook',
+  'cron',
+  'internal',
+] as const;
+
+export type RouteContract = (typeof ROUTE_CONTRACTS)[number];
 
 const CRON_EVIDENCE = [/CRON_SECRET/, /x-vercel-cron/];
 
