@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getBackupBucketName } from '@/lib/backup/backup-bucket';
 import { requireSuperAdmin } from '../_utils';
 
 export const runtime = 'nodejs';
@@ -34,7 +35,7 @@ export const maxDuration = 300;
  * pointed at an arbitrary Storage object.
  */
 
-const BACKUP_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || 'bizosto-backups';
+const BACKUP_BUCKET = getBackupBucketName();
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
