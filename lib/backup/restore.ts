@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getBackupBucketName } from '@/lib/backup/backup-bucket';
 
 type BackupRecord = {
   tenantId: string;
@@ -53,7 +54,7 @@ export async function restoreBackup(backupId: string) {
   const backupData = backupSnap.data();
   assertBackupRecord(backupData);
 
-  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'bizosto-backups';
+  const bucketName = getBackupBucketName();
   const bucket = adminStorage.bucket(bucketName);
 
   await backupRef.update({

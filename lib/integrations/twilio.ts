@@ -193,7 +193,9 @@ export async function sendTwilioNotification(input: {
     config.statusCallbackUrl || `${getBaseUrl()}/api/integrations/twilio/webhook`,
   ).trim();
 
-  const fromNumber = String(config.fromNumber || process.env.TWILIO_FROM_NUMBER || '').trim();
+  const fromNumber = String(
+    config.fromNumber || process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER || '',
+  ).trim();
   const messagingServiceSid = String(
     config.messagingServiceSid || process.env.TWILIO_MESSAGING_SERVICE_SID || '',
   ).trim();

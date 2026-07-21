@@ -30,7 +30,11 @@ export async function GET() {
       ok: true,
       connection: {
         enabled: Boolean(connection?.enabled),
-        fromNumber: connection?.fromNumber || process.env.TWILIO_FROM_NUMBER || null,
+        fromNumber:
+          connection?.fromNumber ||
+          process.env.TWILIO_FROM_NUMBER ||
+          process.env.TWILIO_PHONE_NUMBER ||
+          null,
         messagingServiceSid:
           connection?.messagingServiceSid || process.env.TWILIO_MESSAGING_SERVICE_SID || null,
         statusCallbackUrl:

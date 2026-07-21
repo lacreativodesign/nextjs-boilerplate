@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getBackupBucketName } from '@/lib/backup/backup-bucket';
 import { sendEmail } from '@/lib/email/email-service';
 
 export const runtime = 'nodejs';
@@ -39,7 +40,7 @@ const BACKUP_COLLECTIONS = [
   'documents',
 ] as const;
 
-const BACKUP_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || 'bizosto-backups';
+const BACKUP_BUCKET = getBackupBucketName();
 
 function isAuthorized(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
