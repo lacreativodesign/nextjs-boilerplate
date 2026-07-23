@@ -56,13 +56,31 @@ async function sumCollectionBytes(collection: string, tenantId: string): Promise
   return Number.isFinite(total) && total > 0 ? total : 0;
 }
 
+/**
+ * P0-2: the chunked managed-file store (`erp_files`, written by lib/files/file-manager.ts)
+ * was never counted, so every byte uploaded through /api/files/upload was free. It marks
+ * deletion with `deletedAt: null` rather than `isDeleted: false`, hence the separate query.
+ */
+async function sumManagedFileBytes(tenantId: string): Promise<number> {
+  const snap = await adminDb
+    .collection('erp_files')
+    .where('tenantId', '==', tenantId)
+    .where('deletedAt', '==', null)
+    .aggregate({ total: AggregateField.sum('size') })
+    .get();
+
+  const total = Number(snap.data().total || 0);
+  return Number.isFinite(total) && total > 0 ? total : 0;
+}
+
 /** Total live bytes stored by a tenant across every file-bearing collection. */
 export async function getTenantStorageUsage(tenantId: string): Promise<number> {
-  const [fileBytes, hrDocumentBytes] = await Promise.all([
+  const [fileBytes, hrDocumentBytes, managedFileBytes] = await Promise.all([
     sumCollectionBytes('files', tenantId),
     sumCollectionBytes('employeeDocuments', tenantId),
+    sumManagedFileBytes(tenantId),
   ]);
-  return fileBytes + hrDocumentBytes;
+  return fileBytes + hrDocumentBytes + managedFileBytes;
 }
 
 /** Checks whether the tenant can store `incomingBytes` more without exceeding its plan. */
