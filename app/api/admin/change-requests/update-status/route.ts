@@ -9,6 +9,7 @@ import {
   isSalesManager,
   normalizeRole,
 } from '../../_utils';
+import { isTenantOwned } from '@/lib/tenant/ownership';
 import {
   createNotification,
   createNotificationEvent,
@@ -120,6 +121,13 @@ export async function POST(req: Request) {
     }
 
     const data = snap.data() || {};
+
+    // V37-SEC-009: without this an admin of tenant A could transition tenant B's
+    // change request and inject notifications into tenant B.
+    if (!isTenantOwned({ data, callerTenantId: me.tenantId, callerRole: me.role })) {
+      return NextResponse.json({ ok: false, error: 'Change request not found.' }, { status: 404 });
+    }
+
     const fromStatus = cleanString(data.status) || 'Submitted';
 
     if (!canTransition(fromStatus, toStatus)) {

@@ -6,18 +6,32 @@ import { validateFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
 
-const chunkSchema = z.object({
-  uploadId: z.string().min(8),
-  chunkIndex: z.coerce.number().int().min(0),
-  totalChunks: z.coerce.number().int().min(1),
-  fileName: z.string().min(1),
-  mimeType: z.string().min(1),
-  size: z.coerce.number().int().positive(),
-  folderId: z.string().optional(),
-  changes: z.string().max(500).optional(),
-  fileId: z.string().optional(),
-  visibility: z.enum(['private', 'team', 'public']).optional(),
-});
+// SEC-004 (partial): uploadId is used as a Firestore doc id AND as a server
+// filesystem path segment, so it must be an opaque token with no separators.
+// Chunk counts are bounded and chunkIndex must fall inside the declared range.
+const MAX_TOTAL_CHUNKS = 2048;
+
+const chunkSchema = z
+  .object({
+    uploadId: z
+      .string()
+      .min(8)
+      .max(128)
+      .regex(/^[A-Za-z0-9_-]+$/, 'uploadId must be an opaque token'),
+    chunkIndex: z.coerce.number().int().min(0),
+    totalChunks: z.coerce.number().int().min(1).max(MAX_TOTAL_CHUNKS),
+    fileName: z.string().min(1),
+    mimeType: z.string().min(1),
+    size: z.coerce.number().int().positive(),
+    folderId: z.string().optional(),
+    changes: z.string().max(500).optional(),
+    fileId: z.string().optional(),
+    visibility: z.enum(['private', 'team', 'public']).optional(),
+  })
+  .refine((value) => value.chunkIndex < value.totalChunks, {
+    message: 'chunkIndex must be less than totalChunks',
+    path: ['chunkIndex'],
+  });
 
 export async function POST(request: Request) {
   try {

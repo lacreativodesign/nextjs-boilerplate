@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { isTenantOwned } from '@/lib/tenant/ownership';
 import type {
   ManagedFile,
   FileVersion,
@@ -250,6 +251,39 @@ export class FileManager {
     const ext = extensionFromName(params.fileName);
     const cleanName = safeName(params.fileName);
     const checksum = crypto.createHash('sha256').update(params.fileBuffer).digest('hex');
+
+    // SEC-003: a caller-supplied fileId may only target a file owned by this tenant.
+    // Without this a user who learns another tenant's erp_files id can push a new
+    // version and overwrite that record's name/size/storagePath/checksum.
+    if (params.fileId) {
+      const existing = await adminDb.collection(FILES_COLLECTION).doc(params.fileId).get();
+      if (
+        existing.exists &&
+        !isTenantOwned({
+          data: existing.data(),
+          callerTenantId: params.tenantId,
+          allowSuperAdmin: false,
+        })
+      ) {
+        throw new Error('File not found');
+      }
+    }
+
+    // Folder ownership must be proven too, otherwise a foreign folderId is written
+    // into this tenant's file path/record.
+    if (params.folderId) {
+      const folder = await adminDb.collection(FOLDERS_COLLECTION).doc(params.folderId).get();
+      if (
+        !folder.exists ||
+        !isTenantOwned({
+          data: folder.data(),
+          callerTenantId: params.tenantId,
+          allowSuperAdmin: false,
+        })
+      ) {
+        throw new Error('Folder not found');
+      }
+    }
 
     const fileRoot = params.fileId ?? adminDb.collection(FILES_COLLECTION).doc().id;
     const existingVersions = await adminDb
