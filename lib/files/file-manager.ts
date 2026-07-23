@@ -5,6 +5,8 @@ import os from 'os';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { isTenantOwned } from '@/lib/tenant/ownership';
+import { validateAssembledFile, MAX_FILE_SIZE } from '@/lib/files/validation';
+import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
 import type {
   ManagedFile,
   FileVersion,
@@ -23,6 +25,45 @@ const FILE_TAGS_COLLECTION = 'erp_file_tags';
 const CHUNK_UPLOAD_COLLECTION = 'erp_file_upload_sessions';
 
 const MAX_CHUNK_SIZE = 8 * 1024 * 1024;
+const MAX_TOTAL_CHUNKS = 2048;
+/** Hard ceiling on assembled bytes, independent of the declared size. */
+const MAX_ASSEMBLED_BYTES = MAX_FILE_SIZE;
+const CHUNK_TEMP_DIR = 'erp-file-chunks';
+const CHUNK_SESSION_TTL_MS = 6 * 60 * 60 * 1000;
+const SAFE_UPLOAD_ID = /^[A-Za-z0-9_-]{8,128}$/;
+
+type ChunkSession = {
+  tenantId: string;
+  totalChunks: number;
+  receivedChunks: number[];
+  fileName: string;
+  mimeType: string;
+  size: number;
+  folderId: string | null;
+  changes: string | null;
+  fileId: string | null;
+  userId: string;
+  userEmail: string;
+  permissions: FilePermissions;
+  createdAt: admin.firestore.Timestamp;
+  updatedAt: admin.firestore.Timestamp;
+  /** Optional: sessions created before P0-2 carry no expiry. */
+  expiresAt?: admin.firestore.Timestamp;
+};
+
+/**
+ * A rejection the caller caused. The upload route maps this to a 4xx; anything else
+ * remains a 500 so real server faults are not disguised as client errors.
+ */
+export class UploadRejected extends Error {
+  readonly status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = 'UploadRejected';
+    this.status = status;
+  }
+}
 
 function safeName(name: string) {
   return name.replace(/[^a-zA-Z0-9_.-]/g, '_');
@@ -154,84 +195,198 @@ export class FileManager {
     permissions?: Partial<FilePermissions>;
   }) {
     if (params.chunk.length > MAX_CHUNK_SIZE) {
-      throw new Error('Chunk too large');
+      throw new UploadRejected('Chunk too large');
+    }
+    if (params.chunkIndex >= params.totalChunks) {
+      throw new UploadRejected('chunkIndex is outside the declared chunk range');
+    }
+    if (params.totalChunks > MAX_TOTAL_CHUNKS) {
+      throw new UploadRejected('Too many chunks');
+    }
+    if (params.size > MAX_FILE_SIZE) {
+      throw new UploadRejected('Declared file size exceeds the maximum upload size');
+    }
+    if (params.totalChunks * MAX_CHUNK_SIZE > MAX_ASSEMBLED_BYTES) {
+      throw new UploadRejected('Declared upload exceeds the maximum assembled size');
     }
 
+    // SEC-004: uploadId becomes a filesystem path segment. Reject anything that is not an
+    // opaque token, then prove the resolved directory is still under the approved root.
+    if (!SAFE_UPLOAD_ID.test(params.uploadId)) {
+      throw new UploadRejected('Invalid upload id');
+    }
+    const tempRoot = path.resolve(os.tmpdir(), CHUNK_TEMP_DIR);
+    const tempDir = path.resolve(tempRoot, params.uploadId);
+    if (
+      tempDir !== path.join(tempRoot, params.uploadId) ||
+      !tempDir.startsWith(tempRoot + path.sep)
+    ) {
+      throw new UploadRejected('Invalid upload id');
+    }
+
+    const nowMs = Date.now();
     const now = admin.firestore.Timestamp.now();
     const sessionRef = adminDb.collection(CHUNK_UPLOAD_COLLECTION).doc(params.uploadId);
-    const session = await sessionRef.get();
 
-    if (!session.exists) {
-      await sessionRef.set({
-        tenantId: params.tenantId,
-        totalChunks: params.totalChunks,
-        receivedChunks: [params.chunkIndex],
-        fileName: params.fileName,
-        mimeType: params.mimeType,
-        size: params.size,
-        folderId: params.folderId ?? null,
-        changes: params.changes ?? null,
-        fileId: params.fileId ?? null,
-        userId: params.userId,
-        userEmail: params.userEmail,
-        permissions: buildPermissions(params.permissions),
-        createdAt: now,
-        updatedAt: now,
-      });
-    } else {
-      const data = session.data() as any;
-      if (data.tenantId !== params.tenantId) {
-        throw new Error('Forbidden');
+    // The session is claimed atomically so two concurrent chunks cannot both initialise it,
+    // and so metadata declared on the first chunk cannot be changed by a later one.
+    const session = await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(sessionRef);
+
+      if (!snap.exists) {
+        const created = {
+          tenantId: params.tenantId,
+          totalChunks: params.totalChunks,
+          receivedChunks: [params.chunkIndex],
+          fileName: params.fileName,
+          mimeType: params.mimeType,
+          size: params.size,
+          folderId: params.folderId ?? null,
+          changes: params.changes ?? null,
+          fileId: params.fileId ?? null,
+          userId: params.userId,
+          userEmail: params.userEmail,
+          permissions: buildPermissions(params.permissions),
+          createdAt: now,
+          updatedAt: now,
+          expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + CHUNK_SESSION_TTL_MS),
+        };
+        tx.set(sessionRef, created);
+        return created as ChunkSession;
       }
-      await sessionRef.update({
-        receivedChunks: admin.firestore.FieldValue.arrayUnion(params.chunkIndex),
-        updatedAt: now,
-      });
-    }
 
-    const tempDir = path.join(os.tmpdir(), 'erp-file-chunks', params.uploadId);
+      const data = snap.data() as ChunkSession;
+
+      // An expired session is never resumed: it is a new upload that happens to reuse an id.
+      const expiresAtMs = data.expiresAt?.toMillis?.() ?? 0;
+      if (expiresAtMs && expiresAtMs < nowMs) {
+        throw new UploadRejected('Upload session has expired. Start the upload again.');
+      }
+
+      // Ownership: tenant AND the user who opened the session.
+      if (data.tenantId !== params.tenantId || data.userId !== params.userId) {
+        throw new UploadRejected('Upload session not found');
+      }
+
+      // Metadata is immutable for the life of the session. Without this a caller declares a
+      // small file on chunk 0 and a different file on chunk 1.
+      if (
+        data.totalChunks !== params.totalChunks ||
+        data.fileName !== params.fileName ||
+        data.mimeType !== params.mimeType ||
+        data.size !== params.size ||
+        (data.fileId ?? null) !== (params.fileId ?? null) ||
+        (data.folderId ?? null) !== (params.folderId ?? null)
+      ) {
+        throw new UploadRejected('Upload session metadata does not match the original request');
+      }
+
+      const receivedChunks = Array.from(
+        new Set<number>([...(data.receivedChunks || []), params.chunkIndex]),
+      );
+      tx.update(sessionRef, { receivedChunks, updatedAt: now });
+      return { ...data, receivedChunks } as ChunkSession;
+    });
+
     await fs.mkdir(tempDir, { recursive: true });
     await fs.writeFile(path.join(tempDir, `${params.chunkIndex}.part`), params.chunk);
 
-    const activeSession = (await sessionRef.get()).data() as any;
-    const received = new Set<number>(activeSession.receivedChunks || []);
-    const completed = received.size === params.totalChunks;
+    const received = new Set<number>(session.receivedChunks || []);
+    const completed = received.size === session.totalChunks;
 
     if (!completed) {
-      return { completed: false };
+      return { completed: false as const };
     }
-
-    const assembledPath = path.join(tempDir, 'assembled.bin');
-    const assembledHandle = await fs.open(assembledPath, 'w');
 
     try {
-      for (let index = 0; index < params.totalChunks; index += 1) {
-        const part = await fs.readFile(path.join(tempDir, `${index}.part`));
-        await assembledHandle.write(part);
+      const assembledPath = path.join(tempDir, 'assembled.bin');
+      const assembledHandle = await fs.open(assembledPath, 'w');
+      let assembledBytes = 0;
+
+      try {
+        for (let index = 0; index < session.totalChunks; index += 1) {
+          const partPath = path.join(tempDir, `${index}.part`);
+          const part = await fs.readFile(partPath).catch(() => null);
+          if (!part) {
+            throw new UploadRejected(`Chunk ${index} is missing. Start the upload again.`);
+          }
+          assembledBytes += part.length;
+          if (assembledBytes > MAX_ASSEMBLED_BYTES) {
+            throw new UploadRejected('Assembled upload exceeds the maximum size');
+          }
+          await assembledHandle.write(part);
+        }
+      } finally {
+        await assembledHandle.close();
       }
+
+      const buffer = await fs.readFile(assembledPath);
+
+      // SEC-004/SEC-006: the only checks that see what was ACTUALLY uploaded — real byte
+      // length against the ceiling and the declared size, and magic bytes against the
+      // claimed extension.
+      const assembledCheck = validateAssembledFile(buffer, session.fileName, session.size);
+      if (!assembledCheck.valid) {
+        throw new UploadRejected(assembledCheck.error || 'Uploaded file failed validation');
+      }
+
+      // Quota is charged on real bytes, after assembly, never on the declared size.
+      const quota = await checkStorageLimit(params.tenantId, buffer.length);
+      if (!quota.ok) {
+        throw new UploadRejected(storageLimitResponseBody(quota).message, 403);
+      }
+
+      const result = await this.storeVersion({
+        tenantId: params.tenantId,
+        userId: session.userId,
+        userEmail: session.userEmail,
+        fileName: session.fileName,
+        mimeType: session.mimeType,
+        size: buffer.length,
+        folderId: session.folderId ?? undefined,
+        changes: session.changes ?? undefined,
+        fileId: session.fileId ?? undefined,
+        fileBuffer: buffer,
+        permissions: session.permissions,
+      });
+
+      return { completed: true as const, ...result };
     } finally {
-      await assembledHandle.close();
+      // Temp bytes and the session record are released whether or not the upload succeeded.
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+      await sessionRef.delete().catch(() => undefined);
+      void FileManager.purgeExpiredUploadSessions();
     }
+  }
 
-    const buffer = await fs.readFile(assembledPath);
-    const result = await this.storeVersion({
-      tenantId: params.tenantId,
-      userId: activeSession.userId,
-      userEmail: activeSession.userEmail,
-      fileName: activeSession.fileName,
-      mimeType: activeSession.mimeType,
-      size: activeSession.size,
-      folderId: activeSession.folderId ?? undefined,
-      changes: activeSession.changes ?? undefined,
-      fileId: activeSession.fileId ?? undefined,
-      fileBuffer: buffer,
-      permissions: activeSession.permissions,
-    });
+  /**
+   * Lazy cleanup of abandoned chunk sessions and their temp directories. Called
+   * opportunistically after a completed upload so no extra cron job is required.
+   */
+  static async purgeExpiredUploadSessions(limit = 25) {
+    try {
+      const expired = await adminDb
+        .collection(CHUNK_UPLOAD_COLLECTION)
+        .where('expiresAt', '<', admin.firestore.Timestamp.now())
+        .limit(limit)
+        .get();
 
-    await fs.rm(tempDir, { recursive: true, force: true });
-    await sessionRef.delete();
+      const tempRoot = path.resolve(os.tmpdir(), CHUNK_TEMP_DIR);
 
-    return { completed: true, ...result };
+      await Promise.all(
+        expired.docs.map(async (doc) => {
+          if (SAFE_UPLOAD_ID.test(doc.id)) {
+            const dir = path.resolve(tempRoot, doc.id);
+            if (dir.startsWith(tempRoot + path.sep)) {
+              await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+            }
+          }
+          await doc.ref.delete().catch(() => undefined);
+        }),
+      );
+    } catch {
+      // Cleanup is best-effort and must never fail a successful upload.
+    }
   }
 
   static async storeVersion(params: {
