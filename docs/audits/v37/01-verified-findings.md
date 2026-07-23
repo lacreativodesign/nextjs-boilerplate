@@ -81,3 +81,25 @@ Deferred with reasons: malware scanning and quarantine (a scanner already exists
 `lib/storage/storage-service.ts` for the documents path and should be unified, not duplicated);
 decompression-bomb limits on zip/rar (needs an archive reader, tracked in P3); download-time
 content-disposition hardening (touches the share/serve flow).
+
+## P0-3(a) — canonical subscription lifecycle policy (closed)
+
+`lib/billing/lifecycle-policy.ts` is now the single source of truth. The Terms, Privacy Policy and
+Refund & Cancellation page derive every lifecycle statement from it.
+
+| Fact                        | Canonical value                                | Was                                                                   |
+| --------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| Trial                       | 14 days, card required, first charge day 15    | consistent, now single-sourced                                        |
+| Dunning                     | 7-day grace, read-only day 8, hard lock day 21 | stated only on the refund page                                        |
+| Retention after hard lock   | 60 days                                        | refund page said 60, Terms/Privacy said 30, neither named the trigger |
+| Retention after termination | 30 days                                        | same, and the two were indistinguishable                              |
+| Money-back guarantee        | none                                           | pricing page promised 30 days against a non-refundable policy         |
+| Billing cycles              | monthly and annual                             | Terms claimed monthly only                                            |
+
+Neither retention number changed. What changed is that each page now names the event that starts
+its clock, so the 60-day and 30-day windows can no longer read as a contradiction.
+
+`__tests__/lib/billing/lifecycle-policy-consistency.test.ts` fails the build if a legal page
+hardcodes a lifecycle day count again, or if a withdrawn promise reappears.
+
+The pricing page is intentionally out of scope here and is corrected in P0-3(b).
