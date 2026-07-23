@@ -103,3 +103,29 @@ its clock, so the 60-day and 30-day windows can no longer read as a contradictio
 hardcodes a lifecycle day count again, or if a withdrawn promise reappears.
 
 The pricing page is intentionally out of scope here and is corrected in P0-3(b).
+
+## P0-3(b) — pricing page truth (closed)
+
+| Removed                                                                                       | Why                                                                   |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Four testimonials (Northline Manufacturing, Alder Retail Group, TerraBuild, Helios Logistics) | Bizosto is pre-revenue. None are customers; the quotes were invented. |
+| Four-name logo wall                                                                           | Same non-customers presented as logos.                                |
+| "reduced month-end close time by 42%"                                                         | No source, no customer, no measurement.                               |
+| "SOC 2 Ready"                                                                                 | No audit, no report, no auditor engaged.                              |
+| "GDPR Compliant"                                                                              | No DPA and no subprocessor list; both are tracked in P3-3.            |
+| "30-Day Money-Back Guarantee"                                                                 | Withdrawn in P0-3a; contradicted the Refund page and Terms.           |
+| FAQ "your workspace is paused and retained for 30 days"                                       | Contradicted a card-required trial that auto-converts on day 15.      |
+
+| Corrected                                                               | Evidence                                                                                                                                        |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SSO / SAML` → `SSO (OAuth/OIDC)`, SAML marked planned                  | `lib/auth/sso-oauth.ts` supports `google \| microsoft \| okta \| auth0` over OAuth 2.0 / OIDC. The string "saml" appears nowhere in the module. |
+| `AI forecasting` Enterprise `true` → `'coming-soon'` on all three plans | No forecasting implementation exists in `lib/ai` or `app/reports`.                                                                              |
+| "Advanced finance & HR" tooltip no longer mentions forecasting          | Same reason.                                                                                                                                    |
+
+Left unchanged because they are accurate: seat counts (10 / 20 / Unlimited) and storage
+(20GB / 75GB / 250GB) both match `lib/billing/plans.ts` byte for byte.
+
+The removed proof was replaced with four controls that are verifiable in this repository
+(tenant isolation, RBAC, audit trail, encryption) plus an explicit statement that Bizosto is not
+SOC 2 certified. `lib/marketing/proof-policy.ts` is the single list of what may not be claimed,
+and `__tests__/marketing/pricing-truth.test.ts` fails the build if any of it returns.

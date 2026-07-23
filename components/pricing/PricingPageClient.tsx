@@ -10,6 +10,7 @@ import type {
   CurrencyConfig,
   PricingPlan,
 } from '@/components/pricing/types';
+import { LIFECYCLE_COPY } from '@/lib/billing/lifecycle-policy';
 
 const plans: PricingPlan[] = [
   {
@@ -79,10 +80,14 @@ const comparisonFeatures = [
   { label: 'CRM & invoicing', tooltip: 'Customer management and invoice lifecycle features.' },
   {
     label: 'Advanced finance & HR',
-    tooltip: 'Extended ERP modules for payroll, compliance, and forecasting.',
+    tooltip: 'Extended ERP modules for finance operations, payroll and HR compliance.',
   },
   { label: 'API access', tooltip: 'Programmatic access for secure integrations and automations.' },
-  { label: 'SSO / SAML', tooltip: 'Enterprise identity federation for secure single sign-on.' },
+  {
+    label: 'SSO (OAuth/OIDC)',
+    tooltip:
+      'Single sign-on with Google, Microsoft, Okta or Auth0 over OAuth 2.0 / OIDC. SAML is planned.',
+  },
   { label: 'Priority support', tooltip: 'Faster SLA response times for support tickets.' },
   {
     label: 'Dedicated account manager',
@@ -92,7 +97,10 @@ const comparisonFeatures = [
     label: 'White-label branding',
     tooltip: 'Apply company branding to the platform and shared portals.',
   },
-  { label: 'AI forecasting', tooltip: 'Machine-learning demand and cashflow forecasts.' },
+  {
+    label: 'AI forecasting',
+    tooltip: 'Demand and cashflow forecasting. Planned; not yet available on any plan.',
+  },
 ] as const;
 
 const comparisonMatrix = {
@@ -102,7 +110,7 @@ const comparisonMatrix = {
     'CRM & invoicing': true,
     'Advanced finance & HR': false,
     'API access': false,
-    'SSO / SAML': false,
+    'SSO (OAuth/OIDC)': false,
     'Priority support': false,
     'Dedicated account manager': false,
     'White-label branding': false,
@@ -114,7 +122,7 @@ const comparisonMatrix = {
     'CRM & invoicing': true,
     'Advanced finance & HR': true,
     'API access': true,
-    'SSO / SAML': 'coming-soon',
+    'SSO (OAuth/OIDC)': 'coming-soon',
     'Priority support': true,
     'Dedicated account manager': false,
     'White-label branding': false,
@@ -126,11 +134,13 @@ const comparisonMatrix = {
     'CRM & invoicing': true,
     'Advanced finance & HR': true,
     'API access': true,
-    'SSO / SAML': true,
+    'SSO (OAuth/OIDC)': true,
     'Priority support': true,
     'Dedicated account manager': true,
     'White-label branding': true,
-    'AI forecasting': true,
+    // P0-3b: no forecasting code exists in lib/ai or app/reports. Was `true` on
+    // Enterprise, which was a straight false claim.
+    'AI forecasting': 'coming-soon',
   },
 } as const;
 
@@ -157,13 +167,17 @@ const faqs = [
   },
   {
     question: 'What happens when the free trial ends?',
-    answer:
-      'You can choose a paid plan to continue immediately. If you do not subscribe, your workspace is paused and retained for 30 days.',
+    // P0-3b: previously said the workspace is "paused and retained for 30 days", which
+    // contradicts a card-required trial that auto-converts. Derived from the canonical
+    // policy so it cannot drift from the Terms and Refund pages again.
+    answer: LIFECYCLE_COPY.trial,
   },
   {
     question: 'Do you offer refunds?',
-    answer:
-      'Yes. Monthly subscriptions are covered by a 30-day money-back guarantee for first-time customers.',
+    // P0-3b: the 30-day money-back guarantee was withdrawn in P0-3a. It contradicted the
+    // Refund & Cancellation Policy and the Terms, both of which state that elapsed and
+    // partial periods are non-refundable.
+    answer: LIFECYCLE_COPY.refunds,
   },
   {
     question: 'Can I cancel anytime?',
@@ -177,23 +191,34 @@ const faqs = [
   },
 ];
 
-const testimonials = [
+/**
+ * P0-3b: four invented testimonials and a four-name logo wall were removed. Bizosto is
+ * pre-revenue; none of those companies are customers, and one quote carried an unsourced
+ * "42%" outcome metric. They are replaced with controls that are verifiable in this
+ * repository. Nothing here is a claim we cannot point at code for.
+ *
+ *   - Tenant isolation: lib/tenant/ownership.ts + the CI guards in __tests__/api/
+ *   - RBAC: 11 roles enforced at every API route
+ *   - Audit trail: lib/audit.ts, written on privileged mutations
+ *   - Encryption: TLS in transit, Google Cloud encryption at rest
+ */
+const verifiedControls = [
   {
-    quote:
-      'Bizosto unified our finance and operations stack in six weeks. The reporting depth is excellent.',
-    author: 'CFO, Northline Manufacturing',
+    title: 'Tenant-isolated by default',
+    detail:
+      'Every record carries a tenant, and cross-tenant access is blocked at the API layer with automated tests that fail the build on regression.',
   },
   {
-    quote: 'We replaced three disconnected systems and reduced month-end close time by 42%.',
-    author: 'Finance Director, Alder Retail Group',
+    title: 'Role-based access control',
+    detail: '11 roles, enforced on every route rather than hidden in the interface.',
   },
   {
-    quote: 'The Pro plan gave us the controls we needed while scaling from 12 to 60 users.',
-    author: 'Operations Lead, TerraBuild',
+    title: 'Audit trail on privileged actions',
+    detail: 'Who changed what, when, and from where — retained and exportable.',
   },
   {
-    quote: 'Enterprise support and SSO controls made security reviews straightforward.',
-    author: 'IT Manager, Helios Logistics',
+    title: 'Encrypted in transit and at rest',
+    detail: 'TLS everywhere, Google Cloud encryption at rest, no shared database credentials.',
   },
 ];
 
@@ -373,44 +398,44 @@ export function PricingPageClient() {
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900">Trusted by operations-driven teams</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {['Northline', 'Alder Group', 'TerraBuild', 'Helios Logistics'].map((logo) => (
-              <div
-                key={logo}
-                className="flex h-20 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600"
-              >
-                {logo}
+          <h2 className="text-3xl font-bold text-gray-900">Built for operations you can audit</h2>
+          <p className="mt-3 max-w-2xl text-sm text-gray-600">
+            Bizosto is in founder-led beta. Rather than quote customers we do not yet have, here is
+            what the platform enforces today — each of these is verifiable in the product.
+          </p>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {verifiedControls.map((item) => (
+              <div key={item.title} className="rounded-xl border border-gray-200 bg-white p-6">
+                <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
+                <p className="mt-2 text-sm text-gray-700">{item.detail}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {['SSL Encrypted', 'SOC 2 Ready', 'GDPR Compliant', '30-Day Money-Back Guarantee'].map(
-              (badge) => (
-                <div
-                  key={badge}
-                  className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800"
-                >
-                  {badge}
-                </div>
-              ),
-            )}
-          </div>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {testimonials.map((item) => (
-              <blockquote
-                key={item.author}
-                className="rounded-xl border border-gray-200 bg-white p-6"
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              'TLS in transit, encrypted at rest',
+              'Role-based access control',
+              'Audit trail on privileged actions',
+            ].map((badge) => (
+              <div
+                key={badge}
+                className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800"
               >
-                <p className="text-sm text-gray-700">“{item.quote}”</p>
-                <footer className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {item.author}
-                </footer>
-              </blockquote>
+                {badge}
+              </div>
             ))}
           </div>
+
+          <p className="mt-6 text-xs text-gray-500">
+            Bizosto is not SOC 2 certified and does not currently hold a third-party compliance
+            attestation. Our{' '}
+            <Link href="/security" className="font-medium text-blue-600 hover:underline">
+              security practices
+            </Link>{' '}
+            page describes the controls that are in place today.
+          </p>
         </section>
 
         <section className="border-t border-gray-200 bg-white py-14">
