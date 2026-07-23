@@ -79,10 +79,14 @@ const comparisonFeatures = [
   { label: 'CRM & invoicing', tooltip: 'Customer management and invoice lifecycle features.' },
   {
     label: 'Advanced finance & HR',
-    tooltip: 'Extended ERP modules for payroll, compliance, and forecasting.',
+    tooltip: 'Extended ERP modules for finance operations, payroll and HR compliance.',
   },
   { label: 'API access', tooltip: 'Programmatic access for secure integrations and automations.' },
-  { label: 'SSO / SAML', tooltip: 'Enterprise identity federation for secure single sign-on.' },
+  {
+    label: 'SSO (OAuth/OIDC)',
+    tooltip:
+      'Single sign-on with Google, Microsoft, Okta or Auth0 over OAuth 2.0 / OIDC. SAML is planned.',
+  },
   { label: 'Priority support', tooltip: 'Faster SLA response times for support tickets.' },
   {
     label: 'Dedicated account manager',
@@ -92,7 +96,10 @@ const comparisonFeatures = [
     label: 'White-label branding',
     tooltip: 'Apply company branding to the platform and shared portals.',
   },
-  { label: 'AI forecasting', tooltip: 'Machine-learning demand and cashflow forecasts.' },
+  {
+    label: 'AI forecasting',
+    tooltip: 'Demand and cashflow forecasting. Planned; not yet available on any plan.',
+  },
 ] as const;
 
 const comparisonMatrix = {
@@ -102,7 +109,7 @@ const comparisonMatrix = {
     'CRM & invoicing': true,
     'Advanced finance & HR': false,
     'API access': false,
-    'SSO / SAML': false,
+    'SSO (OAuth/OIDC)': false,
     'Priority support': false,
     'Dedicated account manager': false,
     'White-label branding': false,
@@ -114,7 +121,7 @@ const comparisonMatrix = {
     'CRM & invoicing': true,
     'Advanced finance & HR': true,
     'API access': true,
-    'SSO / SAML': 'coming-soon',
+    'SSO (OAuth/OIDC)': 'coming-soon',
     'Priority support': true,
     'Dedicated account manager': false,
     'White-label branding': false,
@@ -126,11 +133,13 @@ const comparisonMatrix = {
     'CRM & invoicing': true,
     'Advanced finance & HR': true,
     'API access': true,
-    'SSO / SAML': true,
+    'SSO (OAuth/OIDC)': true,
     'Priority support': true,
     'Dedicated account manager': true,
     'White-label branding': true,
-    'AI forecasting': true,
+    // P0-3b: no forecasting code exists in lib/ai or app/reports. Was `true` on
+    // Enterprise, which was a straight false claim.
+    'AI forecasting': 'coming-soon',
   },
 } as const;
 
