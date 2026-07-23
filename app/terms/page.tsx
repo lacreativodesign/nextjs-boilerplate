@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BILLING_LIFECYCLE, LIFECYCLE_COPY } from '@/lib/billing/lifecycle-policy';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Bizosto',
@@ -17,7 +18,7 @@ const SECTIONS = [
   },
   {
     title: '3. Subscription and Billing',
-    content: `Bizosto is offered on a subscription basis with a 14-day free trial. A valid payment method is required at signup, but you will not be charged until day 15. If you cancel before the end of day 14, you will not be charged. After the trial, continued access requires a paid subscription billed monthly via Stripe, and you authorise us to charge your payment method on a recurring basis. You may cancel at any time; cancellation takes effect at the end of the current billing period. No refunds are issued for partial periods.`,
+    content: `${LIFECYCLE_COPY.trial} After the trial, continued access requires a paid subscription billed ${BILLING_LIFECYCLE.billingCycles.join(' or ')} via Stripe, and you authorise us to charge your payment method on a recurring basis. You may cancel at any time; cancellation takes effect at the end of the current billing period. No refunds are issued for partial periods.`,
   },
   {
     title: '4. Acceptable Use',
@@ -37,7 +38,7 @@ const SECTIONS = [
   },
   {
     title: '8. Termination',
-    content: `We may suspend or terminate your account immediately if you breach these Terms. You may terminate your account at any time by contacting support@bizosto.com. Upon termination, your data will be retained for 30 days in read-only state before permanent deletion.`,
+    content: `We may suspend or terminate your account immediately if you breach these Terms. You may terminate your account at any time by contacting support@bizosto.com. ${LIFECYCLE_COPY.termination}`,
   },
   {
     title: '9. Changes to Terms',

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LIFECYCLE_COPY } from '@/lib/billing/lifecycle-policy';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Bizosto',
@@ -21,7 +22,7 @@ const SECTIONS = [
   },
   {
     title: '4. Data Retention',
-    content: `We retain your data for as long as your account is active. Upon account termination, your data is retained for 30 days in a read-only state, after which it is permanently deleted from our systems. You may request immediate deletion by contacting support@bizosto.com.`,
+    content: `We retain your data for as long as your account is active. ${LIFECYCLE_COPY.termination} You may request immediate deletion by contacting support@bizosto.com.`,
   },
   {
     title: '5. Cookies and Tracking',

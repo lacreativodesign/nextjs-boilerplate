@@ -65,11 +65,21 @@ describe('legal / trust pages exist (P0-6)', () => {
   });
 
   it('refund page covers the locked failed-payment ladder', () => {
+    // P0-3a: the lifecycle copy is derived from the canonical policy
+    // (lib/billing/lifecycle-policy.ts) rather than hardcoded on the page, so the
+    // ladder literals no longer live in the page source. Verify the page renders the
+    // failed-payment and refund sections via the policy, and that the policy copy still
+    // states every rung of the locked schedule (day 8 read-only, day 21 lock, 60-day
+    // retention) and processes refunds through Stripe.
     const source = read('app/refund-cancellation/page.tsx');
-    expect(source).toContain('day 8');
-    expect(source).toContain('day 21');
-    expect(source).toContain('60 days');
-    expect(source).toContain('Stripe');
+    expect(source).toContain('LIFECYCLE_COPY.failedPayment');
+    expect(source).toContain('LIFECYCLE_COPY.refunds');
+
+    const { LIFECYCLE_COPY } = require('@/lib/billing/lifecycle-policy');
+    expect(LIFECYCLE_COPY.failedPayment).toContain('day 8');
+    expect(LIFECYCLE_COPY.failedPayment).toContain('day 21');
+    expect(LIFECYCLE_COPY.failedPayment).toContain('60 days');
+    expect(LIFECYCLE_COPY.refunds).toContain('Stripe');
   });
 
   it('security page makes no SOC 2 certification claim', () => {
