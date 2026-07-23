@@ -10,6 +10,7 @@ import type {
   CurrencyConfig,
   PricingPlan,
 } from '@/components/pricing/types';
+import { LIFECYCLE_COPY } from '@/lib/billing/lifecycle-policy';
 
 const plans: PricingPlan[] = [
   {
@@ -166,13 +167,17 @@ const faqs = [
   },
   {
     question: 'What happens when the free trial ends?',
-    answer:
-      'You can choose a paid plan to continue immediately. If you do not subscribe, your workspace is paused and retained for 30 days.',
+    // P0-3b: previously said the workspace is "paused and retained for 30 days", which
+    // contradicts a card-required trial that auto-converts. Derived from the canonical
+    // policy so it cannot drift from the Terms and Refund pages again.
+    answer: LIFECYCLE_COPY.trial,
   },
   {
     question: 'Do you offer refunds?',
-    answer:
-      'Yes. Monthly subscriptions are covered by a 30-day money-back guarantee for first-time customers.',
+    // P0-3b: the 30-day money-back guarantee was withdrawn in P0-3a. It contradicted the
+    // Refund & Cancellation Policy and the Terms, both of which state that elapsed and
+    // partial periods are non-refundable.
+    answer: LIFECYCLE_COPY.refunds,
   },
   {
     question: 'Can I cancel anytime?',
@@ -395,8 +400,8 @@ export function PricingPageClient() {
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-gray-900">Built for operations you can audit</h2>
           <p className="mt-3 max-w-2xl text-sm text-gray-600">
-            Bizosto is in founder-led beta. Rather than quote customers we do not yet have, here
-            is what the platform enforces today — each of these is verifiable in the product.
+            Bizosto is in founder-led beta. Rather than quote customers we do not yet have, here is
+            what the platform enforces today — each of these is verifiable in the product.
           </p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
