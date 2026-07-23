@@ -59,3 +59,25 @@ Routes return **404**, not 403, so a foreign id never confirms that the record e
 REL-001: this commit is not runtime-certified until `npm ci`, `format:check`, `lint`, `typecheck`,
 `test`, `build`, `bundle:check`, `licenses:check`, `npm audit` and Playwright all pass in CI on the
 merged SHA. P0-2, P0-3 and P0-4 are untouched by this session.
+
+## P0-2 — chunked upload and file content security (closed)
+
+| Control          | Before                                                      | After                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| uploadId         | `min(8)`, used directly as a filesystem path segment        | opaque token `^[A-Za-z0-9_-]{8,128}$`, resolved path asserted under the approved temp root                                                  |
+| chunkIndex       | unchecked at the manager layer                              | must be `< totalChunks`                                                                                                                     |
+| totalChunks      | unbounded                                                   | capped at 2048, and `totalChunks * MAX_CHUNK_SIZE` capped at the 25MB assembled ceiling                                                     |
+| assembled size   | never measured                                              | measured during assembly, capped, and compared with the declared size                                                                       |
+| file content     | extension + declared MIME only                              | magic-byte signature must agree with the extension; executables, ELF, Mach-O, Java class and shell scripts rejected whatever they are named |
+| SVG              | allowed image type                                          | blocked (executable document, was served from a signed URL on our own origin)                                                               |
+| session claim    | read-then-write                                             | single Firestore transaction                                                                                                                |
+| session binding  | tenant only                                                 | tenant AND the user who opened it                                                                                                           |
+| session metadata | mutable between chunks                                      | immutable; a mismatch aborts the upload                                                                                                     |
+| session lifetime | unbounded                                                   | 6h TTL, expired sessions never resumed, lazy purge of sessions and temp dirs                                                                |
+| storage quota    | `erp_files` counted nowhere — every chunked upload was free | counted, and charged on the real assembled byte length                                                                                      |
+| error surface    | 500 with the raw internal message                           | 4xx with an actionable message, 500 without internals                                                                                       |
+
+Deferred with reasons: malware scanning and quarantine (a scanner already exists at
+`lib/storage/storage-service.ts` for the documents path and should be unified, not duplicated);
+decompression-bomb limits on zip/rar (needs an archive reader, tracked in P3); download-time
+content-disposition hardening (touches the share/serve flow).
