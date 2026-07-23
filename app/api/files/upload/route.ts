@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCurrentUser } from '@/app/api/admin/_utils';
-import { FileManager } from '@/lib/files/file-manager';
+import { FileManager, UploadRejected } from '@/lib/files/file-manager';
 import { validateFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
@@ -83,7 +83,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error: any) {
+    // A caller-caused rejection is a 4xx with a usable message. Zod parse failures are 400.
+    // Everything else stays a 500 and is logged without echoing internals to the client.
+    if (error instanceof UploadRejected) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error?.name === 'ZodError') {
+      return NextResponse.json({ error: 'Invalid upload request' }, { status: 400 });
+    }
     console.error('file upload failed', error);
-    return NextResponse.json({ error: error?.message || 'Upload failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }
