@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminOrSuper } from '../../../_utils';
+import { isTenantOwned } from '@/lib/tenant/ownership';
 import { computeHealth, getWorkflowSettings } from '../../../settings/_utils';
 import {
   createNotification,
@@ -153,6 +154,12 @@ export async function POST(req: Request) {
 
     const data = snap.data() as ProjectDoc;
     if (data?.isDeleted) {
+      return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
+    }
+
+    // SEC-002: prove tenant ownership BEFORE stage validation or any side effect
+    // (stage write, automation events, notifications).
+    if (!isTenantOwned({ data, callerTenantId: me.tenantId, callerRole: me.role })) {
       return NextResponse.json({ ok: false, error: 'Project not found.' }, { status: 404 });
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { adminDb as db } from '@/lib/firebaseAdmin';
 import { getCurrentUser } from '../../_utils';
+import { isTenantOwned } from '@/lib/tenant/ownership';
 import { getClientIp } from '@/lib/security';
 import { logEvent } from '@/lib/audit';
 
@@ -36,6 +37,12 @@ export async function POST(req: Request) {
   const data = snap.data() || {};
   if ((data as any).deletedAt)
     return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
+
+  // SEC-001: a request-supplied client id must belong to the caller's tenant.
+  // 404 (not 403) so a foreign id never confirms that the record exists.
+  if (!isTenantOwned({ data, callerTenantId: me.tenantId, callerRole: me.role })) {
+    return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
+  }
 
   const now = admin.firestore.FieldValue.serverTimestamp();
 
