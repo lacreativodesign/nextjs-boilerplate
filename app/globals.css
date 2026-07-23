@@ -1379,3 +1379,55 @@ textarea {
     text-wrap: balance;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Theme-aware charts (recharts)
+
+   Recharts renders its legend, axis ticks, grid and default tooltip with
+   hardcoded light-theme colours (~#333 text on a #fff tooltip). On the dark
+   card surface those are close to invisible. Driving them from the design
+   tokens keeps every chart legible in both themes without touching the 13
+   individual chart components. Series/data colours are intentionally left
+   alone — they are chosen to read on both surfaces.
+
+   The tooltip needs !important because recharts sets it via inline styles.
+--------------------------------------------------------------------------- */
+
+.recharts-legend-item-text {
+  color: var(--text-primary) !important;
+}
+
+.recharts-text,
+.recharts-cartesian-axis-tick-value,
+.recharts-polar-angle-axis-tick-value,
+.recharts-label {
+  fill: var(--text-muted);
+}
+
+.recharts-pie-label-text {
+  fill: var(--text-primary);
+}
+
+.recharts-cartesian-grid line,
+.recharts-polar-grid line,
+.recharts-cartesian-axis line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--border-subtle);
+}
+
+.recharts-default-tooltip {
+  background-color: var(--surface-card) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 8px !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 12%);
+}
+
+.recharts-default-tooltip .recharts-tooltip-label,
+.recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--text-primary) !important;
+}
+
+.recharts-tooltip-cursor {
+  fill: var(--border-subtle);
+}
