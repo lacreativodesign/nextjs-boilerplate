@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LIFECYCLE_COPY } from '@/lib/billing/lifecycle-policy';
 
 export const metadata: Metadata = {
   title: 'Refund & Cancellation Policy | Bizosto',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 const SECTIONS = [
   {
     title: '1. Free Trial',
-    content: `New accounts receive a 14-day free trial. A valid payment method is required at signup to begin the trial, but you will not be charged during the trial period. If you cancel at any time before the end of day 14, you will not be charged anything. If you do not cancel, your subscription automatically converts to paid and billing begins on day 15 using the payment method provided at signup.`,
+    content: LIFECYCLE_COPY.trial,
   },
   {
     title: '2. Cancelling Your Subscription',
@@ -17,15 +18,15 @@ const SECTIONS = [
   },
   {
     title: '3. Plan Upgrades and Downgrades',
-    content: `Upgrades take effect immediately and are charged a prorated amount for the remainder of the current billing period at the new plan rate. Downgrades take effect at the end of the current billing period; you keep your current plan features until then, and the lower rate applies from the next period onward.`,
+    content: LIFECYCLE_COPY.planChanges,
   },
   {
     title: '4. Refunds',
-    content: `Subscription fees for billing periods that have already elapsed are non-refundable, except where required by law. Cancelling stops future charges but does not entitle you to a refund of fees already paid, and no partial or prorated refunds are issued for unused time within a billing period. Where a refund is issued, it is processed through Stripe to the original payment method and may take 5-10 business days to appear.`,
+    content: `${LIFECYCLE_COPY.refunds} Bizosto does not offer a money-back guarantee.`,
   },
   {
     title: '5. Failed Payments',
-    content: `If a scheduled payment fails, Bizosto retries automatically and notifies you. A 7-day grace period applies with full access. On day 8, your account enters a read-only state. On day 21, if payment is still outstanding, your account is hard-locked. Data is retained for 60 days after hard lock, after which it may be permanently deleted. You can restore access at any point before deletion by updating your payment method.`,
+    content: LIFECYCLE_COPY.failedPayment,
   },
   {
     title: '6. How to Cancel or Request a Refund',
