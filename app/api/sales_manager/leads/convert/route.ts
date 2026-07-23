@@ -7,6 +7,7 @@ import {
   requireSalesManager,
   serverTimestamp,
 } from '../../_utils';
+import { isTenantOwned } from '@/lib/tenant/ownership';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,19 @@ export async function POST(req: Request) {
         throw new Error('Lead not found');
       }
       const data = snap.data() || {};
+
+      // V37-SEC-008: converting a foreign lead copied its name/email/phone into the
+      // caller's tenant AND mutated the foreign lead record. Tenant must match first.
+      if (
+        !isTenantOwned({
+          data,
+          callerTenantId: auth.user.tenantId,
+          callerRole: auth.user.role,
+        })
+      ) {
+        throw new Error('Lead not found');
+      }
+
       if (data.dealId) {
         throw new Error('Lead already converted');
       }
