@@ -238,10 +238,29 @@ function isProtectedPagePath(pathname: string) {
 // contract. Sourcing the static case from PUBLIC_ROUTES keeps middleware and the route contract
 // from drifting apart (F5-01): previously this list was hand-maintained and omitted genuinely
 // public endpoints such as monitoring/ingest, so anonymous telemetry received 401 (OBS-01).
+// P1-3: only these Stripe endpoints are genuinely unauthenticated. Webhooks authenticate by
+// verifying the stripe-signature header inside the route; the Connect OAuth callback
+// authenticates by validating a single-use state nonce. Every OTHER /api/stripe/* route
+// (checkout, connect/start, connect/status, connect/disconnect) runs requireAdminOrSuperAdmin
+// or requireTenantStripeConnect and reads tenantId from the session — those must go through
+// the normal session gate, not be waved through as public.
+const PUBLIC_STRIPE_PATHS = new Set<string>([
+  '/api/stripe/webhook',
+  '/api/stripe/subscription-webhook',
+  '/api/stripe/connect/webhook',
+  '/api/stripe/connect/callback',
+]);
+
+function isPublicStripePath(pathname: string): boolean {
+  // The deprecated /api/webhooks/stripe 410 stub is matched by exact path, NOT by prefix, so
+  // it never covers the authenticated /api/webhooks/subscriptions and /api/webhooks/deliveries
+  // admin management routes that share the /api/webhooks/ segment.
+  return PUBLIC_STRIPE_PATHS.has(pathname) || pathname === '/api/webhooks/stripe';
+}
+
 function isPublicApiPath(pathname: string) {
   const prefixPublic =
-    pathname.startsWith('/api/stripe') ||
-    pathname.startsWith('/api/webhooks/stripe') ||
+    isPublicStripePath(pathname) ||
     pathname.startsWith('/api/session-login') ||
     pathname.startsWith('/api/logout') ||
     pathname.startsWith('/api/tenant/context') ||
@@ -268,8 +287,10 @@ function isSensitiveApiPath(pathname: string) {
 
 function shouldSkipCsrfCheck(pathname: string): boolean {
   return (
-    pathname.startsWith('/api/stripe/') ||
-    pathname.startsWith('/api/webhooks/stripe') ||
+    // P1-3: CSRF is skipped only for the Stripe endpoints that are genuinely unauthenticated
+    // (signature- or nonce-verified). checkout / connect start|status|disconnect are
+    // authenticated, state-changing routes and must keep CSRF protection.
+    isPublicStripePath(pathname) ||
     pathname.startsWith('/api/cron/') ||
     pathname.startsWith('/api/ingest/') ||
     pathname.startsWith('/api/public/') ||
