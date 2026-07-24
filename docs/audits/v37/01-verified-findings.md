@@ -215,3 +215,33 @@ They are a separate delivery path with its own semantics.
 
 TODO/FIXME count in `app`, `lib` and `components` is now zero, enforced by
 `__tests__/api/v37-email-delivery.test.ts`.
+
+## P1-1 — one identity source in the application shell (closed)
+
+`components/layout/AppShell.tsx` resolved `currentUser.role` from three sources in priority order:
+the server tenant context, a browser localStorage key, and finally the literal string `'admin'`. It
+also ran its own Firebase auth listener and its own Firestore read of `users/{uid}`, duplicating
+work `RequireAuth` performs on the same page load.
+
+| Before                                                            | After                                                                                                                                         |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `serverRole \|\| fallbackRole \|\| 'admin'`                       | `normalizeRole(data?.user?.role \|\| '') \|\| ''` — no fallback; an unrecognised role coerces to the empty role, never to a guessed `'admin'` |
+| role seeded from and written to browser storage                   | storage is not consulted; the key is now read by nothing                                                                                      |
+| second `getFirebaseAuth` + `onAuthStateChanged` + `fetchUserRole` | removed; the shared cached tenant context is the only source                                                                                  |
+
+**Severity, stated precisely.** This was not privilege escalation. `RequireAuth` never read browser
+storage — it verifies the role against `users/{uid}` or `/api/tenant/context` and redirects to
+`/unauthorized`, and every API route enforces role and tenant server-side (P0-1 guard: 119 routes,
+zero unexplained offenders). A forged storage value produced a misleading sidebar, not access.
+
+The material defects were that a legitimate non-admin with a slow context request was rendered an
+admin shell, and that every authenticated page paid for two Firebase auth initialisations and two
+identity reads before first paint.
+
+Removing the fallback required no change to any consumer. Verified against the real modules on this
+commit: `getNavigationForRole('')` returns 0 items (`'finance'` returns 7, `'admin'` returns 11),
+`formatRoleLabel('')` returns `'User'`, and `getRoleRoute('')` returns `'/login'`, which never
+matches the current pathname so the product tour cannot fire.
+
+Collapsing `RequireAuth`'s own duplicate identity fetch, and moving page authorisation to the server
+layout, is P1-2.

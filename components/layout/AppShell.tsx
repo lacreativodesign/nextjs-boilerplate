@@ -16,8 +16,6 @@ import { generateThemeCssVariables } from '@/lib/white-label/theme';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
 import BugReportButton from '@/components/support/BugReportButton';
 import NotificationToast from '@/components/notifications/NotificationToast';
-import { fetchUserRole, getFirebaseAuth } from '@/lib/firebaseClient';
-import { onAuthStateChanged } from 'firebase/auth';
 import ImpersonationBanner from '@/components/super_admin/ImpersonationBanner';
 import ActiveTabScroller from '@/components/layout/ActiveTabScroller';
 import { PlatformTourGate } from '@/components/onboarding/PlatformTourGate';
@@ -38,42 +36,34 @@ function AppShellInner({
   const { isCollapsed, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
-  const [clientRole, setClientRole] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return window.localStorage.getItem('bizosto_role') || null;
-  });
-  useEffect(() => {
-    let cancelled = false;
-    getFirebaseAuth()
-      .then((auth) => {
-        const unsub = onAuthStateChanged(auth, async (user) => {
-          if (user && !cancelled) {
-            const role = await fetchUserRole(user.uid);
-            if (!cancelled) {
-              setClientRole(role);
-              if (role) window.localStorage.setItem('bizosto_role', role);
-            }
-          }
-        });
-        return () => {
-          cancelled = true;
-          unsub();
-        };
-      })
-      .catch(() => {});
-  }, []);
-
+  /**
+   * P1-1: the shell's identity comes from one place — /api/tenant/context, resolved server-side
+   * with the Admin SDK by useTenantContext.
+   *
+   * It previously seeded the role from a browser localStorage key, re-derived it with a
+   * second Firebase auth listener and a second Firestore read of users/{uid}, and then fell back
+   * to 'admin' if neither had resolved. Three consequences:
+   *
+   *   - a browser-writable value fed the shell's idea of who you are
+   *   - every authenticated page paid for two Firebase auth initialisations and two identity
+   *     reads before first paint
+   *   - a legitimate non-admin whose context request was slow was rendered an admin shell
+   *
+   * There is no fallback now. An unresolved or unrecognised identity yields an empty role
+   * (normalizeRole returns null, coerced to ''), and every consumer already degrades safely:
+   * getNavigationForRole('') returns no items, the header badge reads 'User', and getRoleRoute('')
+   * returns '/login' so the product tour cannot fire. Page-level authorisation is unaffected —
+   * that is RequireAuth's job and it verifies independently.
+   */
   const currentUser = useMemo(() => {
-    const serverRole = normalizeRole(data?.user?.role || '');
-    const fallbackRole = normalizeRole(clientRole || '');
     return {
       name: data?.user?.displayName || (data?.user?.email ? data.user.email.split('@')[0] : 'User'),
       email: data?.user?.email || '',
-      role: serverRole || fallbackRole || 'admin',
+      role: normalizeRole(data?.user?.role || '') || '',
       avatarUrl: undefined,
       displayName: data?.user?.displayName || null,
     };
-  }, [data?.user?.displayName, data?.user?.email, data?.user?.role, clientRole]);
+  }, [data?.user?.displayName, data?.user?.email, data?.user?.role]);
 
   useEffect(() => {
     const whiteLabel = data?.tenant?.whiteLabel;
