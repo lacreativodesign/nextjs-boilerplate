@@ -6,6 +6,7 @@ import { requireSuperAdmin } from '../_utils';
 import { DEFAULT_MODULES, DEFAULT_ROLES, DEFAULT_TENANT_BRAND } from '@/lib/tenant/constants';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { queueEmailEvent } from '@/lib/emailEvents';
+import { createPasswordSetupToken } from '@/lib/passwordSetup';
 import {
   normalizePlan,
   resolvePlanModules,
@@ -138,6 +139,16 @@ export async function POST(req: NextRequest) {
           { merge: true },
         );
 
+      // P0-5: the Auth user above is created with NO password, and this activation email
+      // used to be queued into `email_events`, which nothing drains. The result was a tenant
+      // admin who could never obtain a credential. Mint a set-password token so the email
+      // has something to deliver.
+      const setupToken = await createPasswordSetupToken({
+        uid: authUser.uid,
+        email: createAdminEmail,
+        createdBy: user.uid,
+      });
+
       await queueEmailEvent({
         templateId: 'account_activation',
         to: createAdminEmail,
@@ -145,6 +156,7 @@ export async function POST(req: NextRequest) {
           tenantId: tenantRef.id,
           tenantName: name,
           role: 'admin',
+          setPasswordLink: setupToken.link,
         },
         metadata: {
           source: 'super_admin_tenant_create',
