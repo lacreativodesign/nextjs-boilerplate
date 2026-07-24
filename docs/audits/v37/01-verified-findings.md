@@ -245,3 +245,40 @@ matches the current pathname so the product tour cannot fire.
 
 Collapsing `RequireAuth`'s own duplicate identity fetch, and moving page authorisation to the server
 layout, is P1-2.
+
+## P1-3 — middleware Stripe exemption scope (closed)
+
+`middleware.ts` classified Stripe routes with two broad prefixes — `startsWith('/api/stripe')` for
+the public gate and `startsWith('/api/stripe/')` for the CSRF skip — plus a
+`startsWith('/api/webhooks/stripe')` prefix. Of the eight `/api/stripe/*` routes, only four are
+genuinely unauthenticated:
+
+| Exempt (unauthenticated)      | Authenticates by             |
+| ----------------------------- | ---------------------------- |
+| `stripe/webhook`              | stripe-signature             |
+| `stripe/subscription-webhook` | stripe-signature             |
+| `stripe/connect/webhook`      | stripe-signature             |
+| `stripe/connect/callback`     | single-use OAuth state nonce |
+
+The other four ran a session guard and were wrongly waved through:
+
+| Was exempt, should not be   | Guard                        |
+| --------------------------- | ---------------------------- |
+| `stripe/checkout`           | `requireAdminOrSuperAdmin`   |
+| `stripe/connect/status`     | `requireAdminOrSuperAdmin`   |
+| `stripe/connect/start`      | `requireTenantStripeConnect` |
+| `stripe/connect/disconnect` | `requireTenantStripeConnect` |
+
+The broad prefix skipped the middleware session gate and the CSRF check for all four. Separately,
+the `/api/webhooks/stripe` prefix also matched the authenticated `/api/webhooks/subscriptions/*` and
+`/api/webhooks/deliveries/*` admin routes; the real endpoint there is a deprecated 410 stub, now
+matched by exact path.
+
+**Severity.** Not a confirmed breach. Each route's own guard runs independently of the middleware
+and rejects unauthenticated or cross-tenant callers (P0-1 guard: 119 routes, zero unexplained
+offenders). The exposure was defence-in-depth plus CSRF on authenticated, state-changing routes —
+checkout creates a Stripe Checkout session, disconnect tears down a tenant's Connect account.
+
+Fix: `PUBLIC_STRIPE_PATHS` is an exact-match allowlist of the four public endpoints, shared by both
+the public gate and the CSRF skip via `isPublicStripePath`. The route contract's existing refusal to
+list `stripe/checkout` in `PUBLIC_ROUTES` is unchanged and now agrees with the middleware.
