@@ -187,7 +187,6 @@ export async function POST(req: Request) {
         data: {
           ...baseEmailData,
           setPasswordLink: activationResult.setPasswordLink || null,
-          instructions: 'TODO: Provide step-by-step onboarding instructions.',
         },
         metadata: emailMetadata,
         sequence: 3,

@@ -1,9 +1,12 @@
 import crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { createPasswordSetupToken } from '@/lib/passwordSetup';
+import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
+import { appUrl } from '@/lib/urls';
 
-const DASHBOARD_LOGIN_URL = 'https://app.bizosto.com/login';
+// P0-4b: was a hardcoded constant with no env read, so it could not work on a preview
+// deployment. P0-5: resolved through the canonical app URL helper.
+const DASHBOARD_LOGIN_URL = appUrl('/login');
 
 type ClientActivationData = {
   primaryContactEmail?: string;
@@ -146,6 +149,33 @@ export async function queueClientActivationInvite({
   });
 
   if (activation.activationPrepared) {
+    // P0-5: this used to write a row to `emails` with status 'pending' and stop. Nothing
+    // drains that collection, so the set-password link never reached the client and the
+    // portal account it had just created was unreachable. The link is now sent inline via
+    // the same helper the admin user-creation path already uses, and the row records what
+    // actually happened.
+    let status: 'sent' | 'failed' | 'unroutable' = 'unroutable';
+    let error: string | null = 'No set-password link was generated for this client.';
+
+    if (activation.setPasswordLink) {
+      try {
+        const result = await sendSetPasswordEmail({
+          email,
+          link: activation.setPasswordLink,
+        });
+        status = result.sent ? 'sent' : 'failed';
+        error = result.sent ? null : result.error || 'Email provider is not configured.';
+      } catch (sendError: unknown) {
+        status = 'failed';
+        error = sendError instanceof Error ? sendError.message : 'Unknown email provider error';
+      }
+    }
+
+    if (status !== 'sent') {
+      console.error(`[EMAIL] Client activation email not delivered for client=${clientId}:`, error);
+    }
+
+    // The set-password link is a live credential and is deliberately not persisted here.
     await adminDb.collection('emails').add({
       to: email,
       template: 'clientActivation',
@@ -154,13 +184,13 @@ export async function queueClientActivationInvite({
         clientId,
         companyName: cleanString(clientData.companyName),
         contactName: cleanString(clientData.primaryContactName),
-        setPasswordLink: activation.setPasswordLink || null,
         dashboardLoginUrl: activation.dashboardLoginUrl,
       },
       metadata: {
         reason: reason || 'client_activation',
       },
-      status: 'pending',
+      status,
+      error,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });

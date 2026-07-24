@@ -181,3 +181,37 @@ and churning 25 more files alongside three live 404 fixes would make this PR unr
 `generate-invoices` was inspected during this work and needs no P0 session: it is already correctly
 disabled behind `ERP_ENABLE_RECURRING_INVOICES` with an E4c note describing the same subcollection
 defect fixed in P0-4(a). Migrating it is feature completion, not a release blocker.
+
+## P0-5 — undelivered onboarding email (closed)
+
+Two Firestore collections were written to and never read. Every message routed through them
+since the features shipped was discarded.
+
+| Path                                  | Was                                                                                                         | Now                                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `lib/emailEvents.ts` → `email_events` | row written with a pending status; zero readers, no draining cron                                           | renders and sends inline via `sendEmail`, records `sent \| failed \| unroutable` with the failure reason |
+| `lib/clientActivation.ts` → `emails`  | the client's set-password link written with a pending status from five call sites                           | sent via `sendSetPasswordEmail`, the helper four other routes already use; the row records the outcome   |
+| `app/api/super_admin/tenants`         | Auth user created with **no password and no setup token**, activation email queued into the dead collection | mints a set-password token and delivers it                                                               |
+| `app/api/admin/projects/create`       | onboarding payload carried `instructions: 'TODO: …'`, unread by any template                                | removed                                                                                                  |
+
+Consequences before the fix: a client provisioned through client-create, invoice-create,
+client-activation, order-ingest or CRM never received the only link that grants portal access, and
+a super_admin-created tenant admin had no credential at all — no password, no token, no email.
+
+Design notes:
+
+- Delivery never throws. A provider outage must not roll back the client or tenant just created,
+  so failures are recorded and logged instead of propagated.
+- An activation email with no link is never sent. `render()` returns null and the row is marked
+  `unroutable`, because telling someone to activate and giving them nothing to click is worse than
+  sending nothing.
+- The set-password link is a live credential and is stripped from both stored payloads. It exists
+  only inside the message.
+- No cron was added. A queue nothing drains is the defect; a drainer is one more thing that can
+  silently fail to run.
+
+Deliberately out of scope: the five other writers to `emails` (sales, HR, finance, `lib/email.ts`).
+They are a separate delivery path with its own semantics.
+
+TODO/FIXME count in `app`, `lib` and `components` is now zero, enforced by
+`__tests__/api/v37-email-delivery.test.ts`.
