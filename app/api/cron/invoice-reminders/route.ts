@@ -2,33 +2,43 @@ import admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { mutateFinanceInTransaction } from '@/lib/finance/ledger';
+import {
+  REMINDABLE_STATUSES,
+  computeLateFee,
+  isOverdue,
+  resolveLateFeeSettings,
+  selectReminderType,
+  toDate,
+  type LateFeeSettings,
+  type ReminderType,
+  type ScheduleInvoice,
+} from '@/lib/finance/invoice-schedule';
 
-type ReminderType = 'upcoming' | 'due_today' | 'overdue_1week' | 'overdue_1month';
-
-type InvoiceRecord = {
-  id: string;
-  tenantId: string;
-  clientId: string;
-  invoiceNumber: string;
-  dueDate: string;
-  total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | string;
-  lateFeeApplied?: boolean;
-  lateFee?: number;
-  reminderCount?: number;
-  lastReminderSent?: string;
-};
-
-type LateFeesSettings = {
-  enabled: boolean;
-  type: 'percentage' | 'fixed';
-  value: number;
-  gracePeriodDays: number;
-};
+/**
+ * Invoice reminder cron (P0-4a).
+ *
+ * This job never did anything. It iterated `tenants/{id}/invoices` and
+ * `tenants/{id}/clients` — subcollections that nothing in the product writes to. Invoices
+ * live at top-level `invoices` with a `tenantId` field, clients at top-level `clients`. The
+ * record shape was wrong too: an invoice-number field vs `orderId`, a flat total vs
+ * `amountTotal`/`balanceDue`, an ISO-string dueDate vs a Firestore Timestamp, and statuses
+ * `sent`/`overdue` which are not canonical tokens (lib/finance/status.ts).
+ *
+ * Changes here:
+ *  - reads the canonical collection and schema
+ *  - one paginated pass over `invoices` instead of a full scan per tenant, with a hard
+ *    document budget so the job cannot silently exceed the serverless execution limit
+ *  - never writes the non-canonical status `overdue`; overdue is derived and recorded as
+ *    `overdueSince`, leaving `status` on the canonical token set
+ *  - late fees route through mutateFinanceInTransaction so the append-only finance ledger
+ *    records the adjustment atomically, and are OFF unless ERP_ENABLE_INVOICE_LATE_FEES=true
+ *  - payment links point at /pay/{id}?token=… , the route that actually exists
+ */
 
 type TenantRecord = {
   name?: string;
-  lateFeesSettings?: Partial<LateFeesSettings>;
+  lateFeesSettings?: Partial<LateFeeSettings>;
 };
 
 type ClientRecord = {
@@ -42,7 +52,20 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
+/**
+ * Late fees mutate invoice totals. This code path has never successfully executed against
+ * real data, so it stays behind an explicit flag until it has been exercised in staging —
+ * same posture as ERP_ENABLE_RECURRING_INVOICES.
+ */
+const LATE_FEES_ENABLED = process.env.ERP_ENABLE_INVOICE_LATE_FEES === 'true';
+
+/** Hard ceiling per run so a growing invoice table cannot silently time the job out. */
+const MAX_INVOICES_PER_RUN = 2000;
+const PAGE_SIZE = 200;
+
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com').replace(/\/+$/, '');
+
+const SYSTEM_ACTOR = { uid: 'system:cron:invoice-reminders', name: 'Invoice reminder cron' };
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,52 +94,76 @@ export async function GET(request: NextRequest) {
 
 async function processInvoiceReminders() {
   const results = {
+    scanned: 0,
     remindersSent: 0,
     lateFeesApplied: 0,
     markedOverdue: 0,
     errors: 0,
+    truncated: false,
+    lateFeesEnabled: LATE_FEES_ENABLED,
   };
 
-  const tenantsSnapshot = await adminDb.collection('tenants').get();
+  const today = new Date();
+  const tenantCache = new Map<string, TenantRecord>();
+  const clientCache = new Map<string, ClientRecord | null>();
 
-  for (const tenantDoc of tenantsSnapshot.docs) {
-    const tenantId = tenantDoc.id;
-    const tenant = (tenantDoc.data() || {}) as TenantRecord;
+  let cursor: admin.firestore.QueryDocumentSnapshot | null = null;
 
-    const invoicesSnapshot = await adminDb
-      .collection('tenants')
-      .doc(tenantId)
+  while (results.scanned < MAX_INVOICES_PER_RUN) {
+    let query = adminDb
       .collection('invoices')
-      .where('status', 'in', ['sent', 'overdue'])
-      .get();
+      .where('isDeleted', '==', false)
+      .where('status', 'in', [...REMINDABLE_STATUSES])
+      .orderBy(admin.firestore.FieldPath.documentId())
+      .limit(PAGE_SIZE);
 
-    for (const invoiceDoc of invoicesSnapshot.docs) {
-      const raw = invoiceDoc.data() || {};
-      const invoice: InvoiceRecord = {
-        id: invoiceDoc.id,
+    if (cursor) {
+      query = query.startAfter(cursor);
+    }
+
+    const page = await query.get();
+    if (page.empty) break;
+
+    for (const doc of page.docs) {
+      results.scanned += 1;
+      const raw = doc.data() || {};
+
+      const tenantId = String(raw.tenantId || '').trim();
+      if (!tenantId) {
+        // Without a tenant we cannot resolve settings or address a client safely.
+        continue;
+      }
+
+      const invoice: ScheduleInvoice = {
+        id: doc.id,
         tenantId,
         clientId: String(raw.clientId || ''),
-        invoiceNumber: String(raw.invoiceNumber || invoiceDoc.id),
-        dueDate: String(raw.dueDate || ''),
-        total: Number(raw.total || 0),
-        status: String(raw.status || 'sent'),
+        orderId: String(raw.orderId || doc.id),
+        status: String(raw.status || ''),
+        amountTotal: Number(raw.amountTotal ?? 0),
+        balanceDue: Number(raw.balanceDue ?? raw.amountTotal ?? 0),
+        dueDate: raw.dueDate,
         lateFeeApplied: Boolean(raw.lateFeeApplied),
-        lateFee: Number(raw.lateFee || 0),
         reminderCount: Number(raw.reminderCount || 0),
-        lastReminderSent: raw.lastReminderSent ? String(raw.lastReminderSent) : undefined,
+        lastReminderSent: raw.lastReminderSent,
       };
 
       try {
-        if (!invoice.clientId || !invoice.dueDate) {
-          continue;
-        }
+        const tenant = await loadTenant(tenantId, tenantCache);
 
-        const reminderType = shouldSendReminder(invoice);
+        const reminderType = selectReminderType(invoice, today);
         if (reminderType) {
-          const sent = await sendReminderEmail(tenantId, tenant, invoice, reminderType);
+          const sent = await sendReminderEmail({
+            tenant,
+            invoice,
+            reminderType,
+            paymentToken: String(raw.paymentToken || ''),
+            currencySymbol: String(raw.currencySymbol || '$'),
+            clientCache,
+          });
           if (sent) {
-            await invoiceDoc.ref.update({
-              lastReminderSent: new Date().toISOString(),
+            await doc.ref.update({
+              lastReminderSent: admin.firestore.Timestamp.fromDate(today),
               reminderCount: (invoice.reminderCount || 0) + 1,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
@@ -124,83 +171,145 @@ async function processInvoiceReminders() {
           }
         }
 
-        if (isOverdue(invoice) && !invoice.lateFeeApplied) {
-          const applied = await applyLateFee(tenantId, invoice, tenant);
-          if (applied) {
-            results.lateFeesApplied += 1;
-          }
-        }
+        const overdue = isOverdue(invoice, today);
 
-        if (isOverdue(invoice) && invoice.status !== 'overdue') {
-          await invoiceDoc.ref.update({
-            status: 'overdue',
+        if (overdue && !raw.overdueSince) {
+          // `overdue` is NOT a canonical invoice status. Record it as derived metadata and
+          // leave `status` on the canonical token set (draft|issued|partially_paid|paid|void).
+          await doc.ref.update({
+            overdueSince: admin.firestore.Timestamp.fromDate(today),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
           results.markedOverdue += 1;
         }
+
+        if (LATE_FEES_ENABLED) {
+          const settings = resolveLateFeeSettings(tenant.lateFeesSettings);
+          const fee = computeLateFee(invoice, settings, today);
+          if (fee > 0) {
+            await applyLateFee(invoice, fee);
+            results.lateFeesApplied += 1;
+          }
+        }
       } catch (error: unknown) {
-        console.error(`[CRON] Error processing invoice=${invoice.id} tenant=${tenantId}:`, error);
+        console.error(`[CRON] Error processing invoice=${doc.id} tenant=${tenantId}:`, error);
         results.errors += 1;
       }
     }
+
+    cursor = page.docs[page.docs.length - 1];
+    if (page.size < PAGE_SIZE) break;
+  }
+
+  if (results.scanned >= MAX_INVOICES_PER_RUN) {
+    results.truncated = true;
+    console.warn(
+      `[CRON] Invoice reminder job hit the ${MAX_INVOICES_PER_RUN} document budget; remaining invoices will be picked up on the next run.`,
+    );
   }
 
   return results;
 }
 
-function shouldSendReminder(invoice: InvoiceRecord): ReminderType | null {
-  const today = startOfUtcDay(new Date());
-  const due = startOfUtcDay(new Date(invoice.dueDate));
-  if (Number.isNaN(due.getTime())) return null;
-
-  const daysDiff = Math.floor((due.getTime() - today.getTime()) / MS_PER_DAY);
-
-  const lastReminder = invoice.lastReminderSent ? new Date(invoice.lastReminderSent) : null;
-  if (lastReminder && !Number.isNaN(lastReminder.getTime())) {
-    const sinceLast = Math.floor(
-      (today.getTime() - startOfUtcDay(lastReminder).getTime()) / MS_PER_DAY,
-    );
-    if (sinceLast < 1) return null;
-  }
-
-  if (daysDiff === 3) return 'upcoming';
-  if (daysDiff === 0) return 'due_today';
-  if (daysDiff === -7) return 'overdue_1week';
-  if (daysDiff === -30) return 'overdue_1month';
-
-  return null;
-}
-
-function isOverdue(invoice: InvoiceRecord): boolean {
-  const today = startOfUtcDay(new Date());
-  const due = startOfUtcDay(new Date(invoice.dueDate));
-  if (Number.isNaN(due.getTime())) return false;
-  return today.getTime() > due.getTime();
-}
-
-function startOfUtcDay(value: Date) {
-  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
-}
-
-async function sendReminderEmail(
+async function loadTenant(
   tenantId: string,
-  tenant: TenantRecord,
-  invoice: InvoiceRecord,
-  reminderType: ReminderType,
-): Promise<boolean> {
+  cache: Map<string, TenantRecord>,
+): Promise<TenantRecord> {
+  const cached = cache.get(tenantId);
+  if (cached) return cached;
+
+  const snap = await adminDb.collection('tenants').doc(tenantId).get();
+  const tenant = (snap.data() || {}) as TenantRecord;
+  cache.set(tenantId, tenant);
+  return tenant;
+}
+
+async function loadClient(
+  tenantId: string,
+  clientId: string,
+  cache: Map<string, ClientRecord | null>,
+): Promise<ClientRecord | null> {
+  const key = `${tenantId}:${clientId}`;
+  if (cache.has(key)) return cache.get(key) ?? null;
+
+  const snap = await adminDb.collection('clients').doc(clientId).get();
+  const data = snap.exists ? ((snap.data() || {}) as ClientRecord & { tenantId?: string }) : null;
+
+  // Tenant isolation: a client id from one tenant must never address another tenant's client.
+  const resolved = data && String(data.tenantId || '') === tenantId ? data : null;
+
+  cache.set(key, resolved);
+  return resolved;
+}
+
+/**
+ * Late fees are a financial mutation, so the invoice write and the append-only ledger entry
+ * land in the same transaction. `mutateFinanceInTransaction` throws if no entry is staged.
+ */
+async function applyLateFee(invoice: ScheduleInvoice, fee: number): Promise<void> {
+  await mutateFinanceInTransaction(async ({ tx, ledger }) => {
+    const ref = adminDb.collection('invoices').doc(invoice.id);
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+
+    const current = snap.data() || {};
+
+    // Re-check inside the transaction: the invoice may have been paid, voided or already
+    // charged between the read that queued this fee and now.
+    if (current.lateFeeApplied) return;
+    if (!(REMINDABLE_STATUSES as readonly string[]).includes(String(current.status || ''))) return;
+    if (Number(current.balanceDue ?? 0) <= 0) return;
+
+    const amountTotal = Number(current.amountTotal ?? 0);
+    const balanceDue = Number(current.balanceDue ?? 0);
+
+    tx.update(ref, {
+      lateFee: fee,
+      lateFeeApplied: true,
+      lateFeeAppliedAt: admin.firestore.FieldValue.serverTimestamp(),
+      amountTotal: Number((amountTotal + fee).toFixed(2)),
+      balanceDue: Number((balanceDue + fee).toFixed(2)),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    ledger({
+      tenantId: invoice.tenantId,
+      type: 'adjustment.created',
+      invoiceId: invoice.id,
+      orderId: invoice.orderId,
+      clientId: invoice.clientId,
+      amountUsd: fee,
+      reason: `Automatic late fee applied by the invoice reminder cron for overdue invoice ${invoice.orderId}.`,
+      actor: SYSTEM_ACTOR,
+    });
+  });
+
+  console.log(`[LATE_FEE] Applied ${fee.toFixed(2)} to invoice=${invoice.orderId}`);
+}
+
+async function sendReminderEmail(params: {
+  tenant: TenantRecord;
+  invoice: ScheduleInvoice;
+  reminderType: ReminderType;
+  paymentToken: string;
+  currencySymbol: string;
+  clientCache: Map<string, ClientRecord | null>;
+}): Promise<boolean> {
+  const { tenant, invoice, reminderType, paymentToken, currencySymbol, clientCache } = params;
+
   if (!resend) {
     console.warn('[CRON] RESEND_API_KEY is missing; skipping reminder email send.');
     return false;
   }
 
-  const client = await getClient(tenantId, invoice.clientId);
+  const client = await loadClient(invoice.tenantId, invoice.clientId, clientCache);
   if (!client?.email) return false;
 
   const subjects: Record<ReminderType, string> = {
-    upcoming: `Reminder: Invoice ${invoice.invoiceNumber} due in 3 days`,
-    due_today: `Invoice ${invoice.invoiceNumber} is due today`,
-    overdue_1week: `Overdue: Invoice ${invoice.invoiceNumber}`,
-    overdue_1month: `URGENT: Invoice ${invoice.invoiceNumber} is 30 days overdue`,
+    upcoming: `Reminder: Invoice ${invoice.orderId} due in 3 days`,
+    due_today: `Invoice ${invoice.orderId} is due today`,
+    overdue_1week: `Overdue: Invoice ${invoice.orderId}`,
+    overdue_1month: `URGENT: Invoice ${invoice.orderId} is 30 days overdue`,
   };
 
   const messages: Record<ReminderType, string> = {
@@ -212,7 +321,16 @@ async function sendReminderEmail(
       'This invoice is now 30 days overdue. Immediate payment is required to avoid further action.',
   };
 
-  const total = Number.isFinite(invoice.total) ? invoice.total : 0;
+  const balanceDue = Number.isFinite(invoice.balanceDue) ? invoice.balanceDue : 0;
+  const due = toDate(invoice.dueDate);
+  const dueLabel = due ? due.toISOString().slice(0, 10) : 'on file';
+
+  // FIN-002: the previous link pointed at a client invoice path that does not exist in the
+  // route tree. The payable page is /pay/{id} and it reads the token from the query string.
+  // The canonical URL builder lands in P0-4(c); this is the correct link in the meantime.
+  const payUrl = paymentToken
+    ? `${APP_URL}/pay/${invoice.id}?token=${encodeURIComponent(paymentToken)}`
+    : `${APP_URL}/pay/${invoice.id}`;
 
   await resend.emails.send({
     from: 'Bizosto <invoices@bizosto.com>',
@@ -224,92 +342,24 @@ async function sendReminderEmail(
         <p style="margin-top: 0;">${messages[reminderType]}</p>
 
         <div style="background: #F9FAFB; border: 1px solid #E5E7EB; padding: 20px; border-radius: 8px; margin: 24px 0;">
-          <p style="margin: 0 0 8px 0;"><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Amount Due:</strong> $${total.toFixed(2)}</p>
-          <p style="margin: 0;"><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Invoice Number:</strong> ${invoice.orderId}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Amount Due:</strong> ${currencySymbol}${balanceDue.toFixed(2)}</p>
+          <p style="margin: 0;"><strong>Due Date:</strong> ${dueLabel}</p>
         </div>
 
-        <a href="https://bizosto.com/client/invoices/${invoice.id}"
+        <a href="${payUrl}"
            style="display: inline-block; background: #2563EB; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-          View & Pay Invoice
+          View &amp; Pay Invoice
         </a>
 
         <p style="color: #6B7280; font-size: 13px; margin-top: 28px;">
           If you have already paid this invoice, please disregard this reminder.
+          ${tenant.name ? `Sent on behalf of ${tenant.name}.` : ''}
         </p>
       </div>
     `,
   });
 
-  console.log(
-    `[EMAIL] Sent ${reminderType} reminder for invoice=${invoice.invoiceNumber} tenant=${tenantId}`,
-  );
-  return true;
-}
-
-async function getClient(tenantId: string, clientId: string): Promise<ClientRecord | null> {
-  const byIdSnap = await adminDb
-    .collection('tenants')
-    .doc(tenantId)
-    .collection('clients')
-    .doc(clientId)
-    .get();
-  if (byIdSnap.exists) {
-    return (byIdSnap.data() || {}) as ClientRecord;
-  }
-
-  const byFieldSnap = await adminDb
-    .collection('tenants')
-    .doc(tenantId)
-    .collection('clients')
-    .where('id', '==', clientId)
-    .limit(1)
-    .get();
-
-  if (byFieldSnap.empty) return null;
-  return (byFieldSnap.docs[0].data() || {}) as ClientRecord;
-}
-
-async function applyLateFee(
-  tenantId: string,
-  invoice: InvoiceRecord,
-  tenant: TenantRecord,
-): Promise<boolean> {
-  const settings: LateFeesSettings = {
-    enabled: Boolean(tenant.lateFeesSettings?.enabled ?? true),
-    type: tenant.lateFeesSettings?.type === 'fixed' ? 'fixed' : 'percentage',
-    value: Number(tenant.lateFeesSettings?.value ?? 5),
-    gracePeriodDays: Math.max(0, Number(tenant.lateFeesSettings?.gracePeriodDays ?? 3)),
-  };
-
-  if (!settings.enabled) return false;
-
-  const today = startOfUtcDay(new Date());
-  const due = startOfUtcDay(new Date(invoice.dueDate));
-  if (Number.isNaN(due.getTime())) return false;
-
-  const daysOverdue = Math.floor((today.getTime() - due.getTime()) / MS_PER_DAY);
-  if (daysOverdue <= settings.gracePeriodDays) return false;
-
-  const lateFeeRaw =
-    settings.type === 'percentage'
-      ? Number(invoice.total) * (settings.value / 100)
-      : Number(settings.value);
-  const lateFee = Number(Math.max(0, lateFeeRaw).toFixed(2));
-  if (!Number.isFinite(lateFee) || lateFee <= 0) return false;
-
-  const nextTotal = Number((Number(invoice.total) + lateFee).toFixed(2));
-
-  await adminDb.collection('tenants').doc(tenantId).collection('invoices').doc(invoice.id).update({
-    lateFee,
-    lateFeeApplied: true,
-    lateFeeAppliedDate: new Date().toISOString(),
-    total: nextTotal,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  console.log(
-    `[LATE_FEE] Applied $${lateFee.toFixed(2)} for invoice=${invoice.invoiceNumber} tenant=${tenantId}`,
-  );
+  console.log(`[EMAIL] Sent ${reminderType} reminder for invoice=${invoice.orderId}`);
   return true;
 }
