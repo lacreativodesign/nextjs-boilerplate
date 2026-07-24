@@ -3,6 +3,7 @@ import { invoiceEmailHtml, invoiceEmailSubject } from '@/lib/email/html-template
 import admin from 'firebase-admin';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { invoicePaymentUrl } from '@/lib/urls';
 
 export const runtime = 'nodejs';
 
@@ -318,7 +319,8 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
       month: 'long',
       day: 'numeric',
     }),
-    viewUrl: `https://app.bizosto.com/client/invoices/${invoice.id}`,
+    // P0-4b: /client/invoices/{id} has never existed. The payable page is /pay/{id}.
+    viewUrl: invoicePaymentUrl(invoice.id),
   };
 
   try {
