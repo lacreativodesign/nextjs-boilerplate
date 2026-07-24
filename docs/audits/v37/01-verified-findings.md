@@ -153,3 +153,31 @@ top-level `invoices`, clients at top-level `clients`.
 All date and money logic moved to `lib/finance/invoice-schedule.ts` as pure functions, covered by
 `__tests__/finance/invoice-schedule.test.ts`. `generate-invoices` carries the same defect and is
 tracked as P0-4(b).
+
+## P0-4(b) — canonical URLs and link contract (closed)
+
+Resolving every hardcoded `app.bizosto.com` link against the real route tree found two dead
+links shipping to customers, plus two wrong base-URL fallbacks.
+
+| Defect                                            | Impact                                                                                                                                                | Fix                                                                                                             |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `/approvals` in the approval-request email        | The approval queues are role-scoped and nothing else in the app links to them, so this email was the only entry point and it 404'd for every approver | `approvalsUrlForRole(approver.role)` → the real per-role queue; roles without one (admin) get the root redirect |
+| `/client/invoices/{id}` in `generate-invoices`    | Dead link (job is no-op'd behind `ERP_ENABLE_RECURRING_INVOICES`)                                                                                     | `invoicePaymentUrl()` → `/pay/{id}`                                                                             |
+| `onboarding-emails.ts` fell back to `bizosto.com` | Trial, payment-failed and restore-access emails linked to the marketing site, which serves neither `/login` nor `/billing`                            | `getAppUrl()`                                                                                                   |
+| `billing/portal` fell back to `bizosto.com`       | Stripe `return_url` sent a paying customer to a 404                                                                                                   | `getAppUrl()`                                                                                                   |
+
+`lib/urls.ts` is the single source: `getAppUrl`, `getMarketingUrl`, `appUrl`, `invoicePaymentUrl`,
+`approvalsPathForRole`, `approvalsUrlForRole`. It is the one file exempt from the sweeps, since it
+defines both bases.
+
+`__tests__/api/v37-link-contract.test.ts` builds the route set from the app directory (257 routes on
+this commit) and fails the build on any link that does not resolve, or any file that resolves an app
+base URL to the marketing domain.
+
+Deliberately not done here: the ~40 remaining hardcoded `app.bizosto.com` links inside email HTML.
+All of them resolve to real routes — the new test proves it — so they are hygiene, not a blocker,
+and churning 25 more files alongside three live 404 fixes would make this PR unreviewable.
+
+`generate-invoices` was inspected during this work and needs no P0 session: it is already correctly
+disabled behind `ERP_ENABLE_RECURRING_INVOICES` with an E4c note describing the same subcollection
+defect fixed in P0-4(a). Migrating it is feature completion, not a release blocker.

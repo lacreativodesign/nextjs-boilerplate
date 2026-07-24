@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { getAppUrl } from '@/lib/urls';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,9 @@ export async function POST() {
     }
 
     const stripe = getStripeClient();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bizosto.com';
+    // P0-4b: fell back to the marketing site, so a customer returning from the Stripe
+    // billing portal landed on a 404 instead of their billing page.
+    const appUrl = getAppUrl();
 
     const session = await stripe.billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,

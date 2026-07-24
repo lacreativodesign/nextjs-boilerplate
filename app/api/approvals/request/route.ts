@@ -7,6 +7,7 @@ import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 import { sendEmail } from '@/lib/email/email-service';
 import { getCurrentUser, normalizeRole } from '../../admin/_utils';
 import { requireApprovalsModule } from '../_utils';
+import { approvalsUrlForRole } from '@/lib/urls';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -328,7 +329,7 @@ export async function POST(req: Request) {
 <tr><td style="color:#64748B;font-size:13px;border-bottom:1px solid #F1F5F9;">Entity</td><td style="font-weight:600;color:#1E293B;text-align:right;border-bottom:1px solid #F1F5F9;">${entityType} — ${entityId}</td></tr>
 <tr><td style="color:#64748B;font-size:13px;">Requested by</td><td style="font-weight:600;color:#1E293B;text-align:right;">${me.name || me.fullName || me.email || 'Team member'}</td></tr>
 </table>
-<p style="margin:24px 0 0;"><a href="https://app.bizosto.com/approvals" style="display:inline-block;padding:12px 24px;background:#D97706;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Review & Approve →</a></p>
+<p style="margin:24px 0 0;"><a href="${approvalsUrlForRole(approver.role)}" style="display:inline-block;padding:12px 24px;background:#D97706;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Review & Approve →</a></p>
 </td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;"><p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#012167;text-decoration:none;">bizosto.com</a></p></td></tr>
 </table></td></tr></table></body></html>`,
