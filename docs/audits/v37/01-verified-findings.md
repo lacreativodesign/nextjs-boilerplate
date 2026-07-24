@@ -129,3 +129,27 @@ The removed proof was replaced with four controls that are verifiable in this re
 (tenant isolation, RBAC, audit trail, encryption) plus an explicit statement that Bizosto is not
 SOC 2 certified. `lib/marketing/proof-policy.ts` is the single list of what may not be claimed,
 and `__tests__/marketing/pricing-truth.test.ts` fails the build if any of it returns.
+
+## P0-4(a) — invoice reminder cron (closed)
+
+The job had never executed a single action. It iterated `tenants/{id}/invoices` and
+`tenants/{id}/clients`; a repo-wide search finds no writer for either. Invoices are created at
+top-level `invoices`, clients at top-level `clients`.
+
+| Aspect           | Before                                                  | After                                                                                                                              |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Invoice source   | `tenants/{id}/invoices` (empty)                         | top-level `invoices`, filtered by `isDeleted` + canonical status                                                                   |
+| Client source    | `tenants/{id}/clients` (empty)                          | top-level `clients`, with a tenant match before use                                                                                |
+| Identifier       | an invoice-number field                                 | `orderId`                                                                                                                          |
+| Amount           | a flat total                                            | `amountTotal` and `balanceDue`                                                                                                     |
+| Due date         | `new Date(string)`                                      | Timestamp / Date / ISO / epoch, via `toDate()`                                                                                     |
+| Status filter    | `['sent','overdue']` — neither is canonical             | `['issued','partially_paid']`                                                                                                      |
+| Overdue          | wrote `status: 'overdue'`, corrupting the field         | derived; recorded as `overdueSince`                                                                                                |
+| Late fee         | direct `total` mutation, no audit trail                 | `mutateFinanceInTransaction` + `adjustment.created` ledger entry, both totals adjusted together, re-checked inside the transaction |
+| Late fee default | always on                                               | **off** unless `ERP_ENABLE_INVOICE_LATE_FEES=true`                                                                                 |
+| Scale            | unpaginated scan per tenant inside a 5-minute execution | paginated with a 2,000-document budget, `truncated` reported, tenant and client reads cached                                       |
+| Payment link     | `/client/invoices/{id}` — route does not exist          | `/pay/{id}?token=…` — the payable route                                                                                            |
+
+All date and money logic moved to `lib/finance/invoice-schedule.ts` as pure functions, covered by
+`__tests__/finance/invoice-schedule.test.ts`. `generate-invoices` carries the same defect and is
+tracked as P0-4(b).
