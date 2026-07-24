@@ -6,9 +6,13 @@ import {
   trialReminderEmailHtml,
   trialReminderEmailSubject,
 } from '@/lib/email/html-templates';
+import { getAppUrl } from '@/lib/urls';
 
 const onboardingFrom = process.env.ONBOARDING_FROM_EMAIL || 'Bizosto <welcome@bizosto.com>';
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://bizosto.com';
+// P0-4b: this fell back to https://bizosto.com — the marketing site, which serves neither
+// /login nor /billing. Every trial, payment-failed and restore-access email sent a paying
+// customer to a 404 whenever NEXT_PUBLIC_APP_URL was unset (any preview deployment).
+const appUrl = getAppUrl();
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
