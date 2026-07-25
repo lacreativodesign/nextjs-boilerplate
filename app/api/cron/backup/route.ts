@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getBackupBucketName } from '@/lib/backup/backup-bucket';
+import { getBackupCollections } from '@/lib/backup/backup-registry';
 import { sendEmail } from '@/lib/email/email-service';
 
 export const runtime = 'nodejs';
@@ -30,17 +31,18 @@ export const maxDuration = 300;
  * unnoticed.
  */
 
-const BACKUP_COLLECTIONS = [
-  'users',
-  'clients',
-  'invoices',
-  'projects',
-  'products',
-  'payments',
-  'documents',
-] as const;
+// P1-6a: the set of collections to back up now comes from the classification registry
+// (lib/backup/backup-registry.ts), not a hardcoded seven. A drift test fails CI if a
+// top-level collection appears in the code that the registry has not classified, so backup
+// coverage cannot silently regress when a new collection is introduced.
+const BACKUP_COLLECTIONS = getBackupCollections();
 
 const BACKUP_BUCKET = getBackupBucketName();
+
+// P1-6a: retention caps storage growth. Backups older than this many days are pruned after a
+// successful run, so nightly backups cannot accumulate without bound. 30 days is a standard
+// point-in-time recovery window; adjust via BACKUP_RETENTION_DAYS.
+const RETENTION_DAYS = Math.max(1, Number(process.env.BACKUP_RETENTION_DAYS || 30));
 
 function isAuthorized(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -97,6 +99,40 @@ async function deadLetterBackup(runDate: string, error: unknown) {
 <tr><td style="color:#64748B;">At</td><td>${nowIso}</td></tr>
 </table></body></html>`,
   }).catch((err) => console.error('[backup] Failed to alert admin of dead-letter', err));
+}
+
+/**
+ * Deletes backup folders older than the retention window. Best-effort: a prune failure is
+ * logged but never fails the backup run that just succeeded. Only paths matching
+ * backups/YYYY-MM-DD/ are ever considered, so nothing outside the backup prefix can be touched.
+ */
+async function pruneOldBackups(
+  bucket: ReturnType<typeof adminStorage.bucket>,
+  runDate: string,
+): Promise<{ prunedPrefixes: number; prunedFiles: number }> {
+  const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const [allFiles] = await bucket.getFiles({ prefix: 'backups/' });
+  const datePattern = /^backups\/(\d{4}-\d{2}-\d{2})\//;
+
+  const prunedPrefixes = new Set<string>();
+  let prunedFiles = 0;
+
+  for (const file of allFiles) {
+    const match = file.name.match(datePattern);
+    if (!match) continue;
+    const fileDate = match[1];
+    // Strictly older than the cutoff, and never today's run.
+    if (fileDate < cutoff && fileDate !== runDate) {
+      await file.delete().catch(() => undefined);
+      prunedPrefixes.add(fileDate);
+      prunedFiles += 1;
+    }
+  }
+
+  return { prunedPrefixes: prunedPrefixes.size, prunedFiles };
 }
 
 export async function GET(request: NextRequest) {
@@ -188,6 +224,18 @@ export async function GET(request: NextRequest) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    // Prune expired backups after the new one is safely written. Never before, so a prune
+    // failure can never leave the tenant with no recent backup.
+    let retention = { prunedPrefixes: 0, prunedFiles: 0 };
+    try {
+      retention = await pruneOldBackups(bucket, runDate);
+    } catch (pruneErr) {
+      console.error(
+        'backup retention prune failed (backup itself succeeded):',
+        pruneErr instanceof Error ? pruneErr.message : pruneErr,
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       runDate,
@@ -195,6 +243,9 @@ export async function GET(request: NextRequest) {
       fileCount: files.length,
       totalRecords,
       manifestPath,
+      retentionDays: RETENTION_DAYS,
+      prunedBackups: retention.prunedPrefixes,
+      prunedFiles: retention.prunedFiles,
     });
   } catch (err) {
     console.error('backup cron error:', err instanceof Error ? err.message : err);

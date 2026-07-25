@@ -333,3 +333,34 @@ the legacy chain.
 Two related items from an earlier note were verified already resolved in the tree and needed no
 work: the backup cron's hardcoded `bizosto-backups` fallback (replaced by `lib/backup/backup-bucket.ts`)
 and the dead `lib/firebase.ts` reading a nonexistent `NEXT_PUBLIC_FB_*` set (deleted).
+
+## P1-6a — backup coverage registry + retention (closed)
+
+The nightly backup cron backed up seven hardcoded collections. A scan of every `collection('name')`
+reference in app/ and lib/ found 113 distinct top-level collections, ~95 of them carrying tenant
+business or audit data — including the append-only `finance_ledger`, plus `deals`, `leads`, `orders`,
+`expenses`, `payroll`, `credit_notes`, the HR set and the tax tables. None of these were backed up,
+and nothing detected the drift.
+
+`lib/backup/backup-registry.ts` now classifies every top-level collection as
+`durable | audit | ephemeral | subcollection`, each with a one-line justification. The cron backs up
+`durable + audit` (95 collections); it skips `ephemeral` (40) and `subcollection` (3).
+`__tests__/backup/backup-registry-coverage.test.ts` walks the source and fails the build if any
+referenced top-level collection is unclassified, so coverage cannot silently regress.
+
+Retention: after each successful run, `pruneOldBackups` deletes `backups/YYYY-MM-DD/` folders older
+than `BACKUP_RETENTION_DAYS` (default 30). It runs only after the new backup is written, matches only
+dated backup prefixes, never touches the current run, and a prune failure is logged but never fails
+the backup. Storage growth is now bounded by design.
+
+Cost: the high-volume, low-restore-value collections (activity feeds, notification instances, CSP
+noise, usage and run logs) are classified `ephemeral` — both the correct things to skip and the
+collections that would otherwise dominate backup size and Firestore read cost. Backing up the durable
+business + audit set plus 30-day retention keeps this within the Firestore free read tier and pennies
+of storage at current scale.
+
+Deferred to P1-6b: the cron still reads each collection with a single unpaginated `.get()` and holds
+documents in memory. Fine at current volume; the streaming/paginated rewrite is needed before
+`finance_ledger` grows large. Also for P1-6b: subcollections (`counters` holds invoice sequence
+numbers; `messages` holds project comms) are not captured by the top-level backup and need
+collection-group handling.
