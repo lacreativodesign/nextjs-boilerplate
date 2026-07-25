@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getStorageBucketName } from '@/lib/storage/bucket';
 import type {
   ImportEntity,
   ImportFieldMapping,
@@ -233,8 +234,7 @@ export class BulkImportService {
     const key = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${params.fileName.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
     const storagePath = `tenants/${params.tenantId}/imports/${params.entity}/${key}`;
 
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     await bucket.file(storagePath).save(params.buffer, {
       metadata: {
@@ -265,8 +265,7 @@ export class BulkImportService {
   }
 
   static async parseJobFile(job: ImportJob): Promise<Record<string, string>[]> {
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const [buffer] = await bucket.file(job.storagePath).download();
     const content = buffer.toString('utf8');

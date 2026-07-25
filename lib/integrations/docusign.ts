@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getStorageBucketName } from '@/lib/storage/bucket';
 
 const DOCUSIGN_DOC_ID = 'docusign';
 const DOCUSIGN_STATE_COLLECTION = 'docusignOAuthStates';
@@ -504,8 +505,7 @@ export async function getEnvelopeStatus(tenantId: string, envelopeId: string) {
 
   let downloadUrl: string | null = null;
   if (record.signedStoragePath) {
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const file = bucket.file(record.signedStoragePath);
     const [signedUrl] = await file.getSignedUrl({
@@ -548,8 +548,7 @@ export async function downloadCompletedDocument(params: { tenantId: string; enve
   const fileName = `${params.envelopeId}-signed.pdf`;
   const storagePath = `tenants/${params.tenantId}/docusign/${fileName}`;
 
-  const bucketName =
-    process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+  const bucketName = getStorageBucketName();
   const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
   await bucket.file(storagePath).save(bytes, {
     metadata: {
