@@ -303,3 +303,33 @@ Liveness (`/api/health`) is unchanged and remains dependency-free, which is corr
 probe. Stripe, Resend and the storage bucket are deliberately not part of readiness: an instance can
 serve requests without them, and gating rotation on a payment provider or an email API would take
 the whole app out over a non-critical outage.
+
+## P1-6a — storage bucket resolution unified (closed)
+
+Ten server-side storage call sites across five files each inlined the same chain:
+
+    process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined
+
+`NEXT_PUBLIC_FB_STORAGE` is set nowhere; the real public var is
+`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`. Whenever the server var was unset, all ten sites silently
+used the Admin SDK default bucket instead of the configured one, and the dead legacy branch hid the
+missing fallback. This is the same defect class the backup path already fixed by dropping its
+hardcoded `bizosto-backups` fallback.
+
+| Call site                      | Occurrences |
+| ------------------------------ | ----------- |
+| lib/export/bulk-export.ts      | 1           |
+| lib/files/file-manager.ts      | 2           |
+| lib/integrations/docusign.ts   | 2           |
+| lib/storage/storage-service.ts | 3           |
+| lib/import/bulk-import.ts      | 2           |
+
+`lib/storage/bucket.ts` → `getStorageBucketName()` is now the single resolver
+(`FIREBASE_STORAGE_BUCKET` → `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` → `undefined`, no hardcoded
+fallback). `getBackupBucketName` delegates to it, so backup, restore and every storage path agree on
+the bucket. `__tests__/lib/storage-bucket-resolution.test.ts` fails the build if any file re-inlines
+the legacy chain.
+
+Two related items from an earlier note were verified already resolved in the tree and needed no
+work: the backup cron's hardcoded `bizosto-backups` fallback (replaced by `lib/backup/backup-bucket.ts`)
+and the dead `lib/firebase.ts` reading a nonexistent `NEXT_PUBLIC_FB_*` set (deleted).
