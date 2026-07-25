@@ -267,7 +267,7 @@ export default function PaymentTerminalPage() {
             label: 'Monthly Recurring Revenue',
             value: formatUsd(data?.metrics.mrr || 0),
             sub: 'Active subscriptions',
-            color: '#16a34a',
+            color: 'var(--color-green)',
           },
           {
             label: 'Active Tenants',
@@ -279,26 +279,26 @@ export default function PaymentTerminalPage() {
             label: 'Trial Tenants',
             value: data?.metrics.totalTrialTenants || 0,
             sub: 'In free trial',
-            color: '#7c3aed',
+            color: 'var(--color-purple)',
           },
           {
             label: 'Locked Accounts',
             value: data?.metrics.totalLockedTenants || 0,
             sub: 'Require attention',
-            color: '#dc2626',
+            color: 'var(--danger-strong)',
             redBorder: (data?.metrics.totalLockedTenants || 0) > 0,
           },
           {
             label: 'Tax Collected (Month)',
             value: formatUsd(data?.metrics.taxCollectedThisMonth || 0),
             sub: 'Auto-calculated by Stripe Tax',
-            color: '#d97706',
+            color: 'var(--warning-strong)',
           },
           {
             label: 'Platform Fee Revenue',
             value: formatUsd(data?.metrics.platformFeeRevenue || 0),
             sub: '0.5% handling fees',
-            color: '#0891b2',
+            color: 'var(--info-strong)',
           },
         ].map((metric) => (
           <div
