@@ -6,6 +6,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getStorageBucketName } from '@/lib/storage/bucket';
 import type {
   Document,
   DocumentCategory,
@@ -67,8 +68,7 @@ export class StorageService {
       throw new Error('Virus scan failed or file is infected.');
     }
 
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const file = bucket.file(storagePath);
 
@@ -157,8 +157,7 @@ export class StorageService {
     }
 
     const document = doc.data() as Document;
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const file = (bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket()).file(
       document.storagePath,
     );
@@ -192,8 +191,7 @@ export class StorageService {
 
     const document = doc.data() as Document;
 
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const file = (bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket()).file(
       document.storagePath,
     );

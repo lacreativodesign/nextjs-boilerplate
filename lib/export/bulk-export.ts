@@ -1,6 +1,7 @@
 import { PassThrough } from 'stream';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getStorageBucketName } from '@/lib/storage/bucket';
 import type { ExportConfiguration, ExportJob, ImportEntity } from '@/types/import-export';
 
 function toCsvValue(value: unknown) {
@@ -123,8 +124,7 @@ export class BulkExportService {
     const fileName = `${baseName}.${extension}`;
     const storagePath = `tenants/${params.tenantId}/exports/${job.entity}/${fileName}`;
 
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
 
     const outputStream = bucket.file(storagePath).createWriteStream({

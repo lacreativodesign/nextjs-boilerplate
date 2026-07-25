@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getStorageBucketName } from '@/lib/storage/bucket';
 import { isTenantOwned } from '@/lib/tenant/ownership';
 import { validateAssembledFile, MAX_FILE_SIZE } from '@/lib/files/validation';
 import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
@@ -170,8 +171,7 @@ export class FileManager {
   }
 
   static async generateDownloadUrl(storagePath: string) {
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const file = bucket.file(storagePath);
     const [url] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 1000 * 60 * 10 });
@@ -455,8 +455,7 @@ export class FileManager {
     const versionId = adminDb.collection(FILE_VERSIONS_COLLECTION).doc().id;
 
     const storagePath = `tenants/${params.tenantId}/files/${fileRoot}/v${nextVersion}-${Date.now()}-${cleanName}`;
-    const bucketName =
-      process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FB_STORAGE || undefined;
+    const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const storageFile = bucket.file(storagePath);
 
