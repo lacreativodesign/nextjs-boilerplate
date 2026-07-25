@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { getBackupCollections } from '@/lib/backup/backup-registry';
 
 /**
  * Canonical nightly backup cron gate (DR-01, DR-02).
@@ -39,8 +40,12 @@ describe('canonical nightly backup cron (DR-01, DR-02)', () => {
   });
 
   it('covers the core tenant-scoped collections', () => {
+    // P1-6a: the collection set moved out of this file into the classification registry, so
+    // the coverage assertion targets the registry-derived list rather than the route's source
+    // text. The intent is unchanged — the core tenant collections must be backed up.
+    const backed = getBackupCollections();
     for (const collection of ['users', 'clients', 'invoices', 'projects', 'payments']) {
-      expect(source).toContain(`'${collection}'`);
+      expect(backed).toContain(collection);
     }
   });
 

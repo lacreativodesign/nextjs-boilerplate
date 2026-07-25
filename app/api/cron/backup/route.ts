@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getBackupBucketName } from '@/lib/backup/backup-bucket';
+import { getBackupCollections } from '@/lib/backup/backup-registry';
 import { sendEmail } from '@/lib/email/email-service';
 
 export const runtime = 'nodejs';
@@ -30,15 +31,11 @@ export const maxDuration = 300;
  * unnoticed.
  */
 
-const BACKUP_COLLECTIONS = [
-  'users',
-  'clients',
-  'invoices',
-  'projects',
-  'products',
-  'payments',
-  'documents',
-] as const;
+// P1-6a: the set of collections to back up now comes from the classification registry
+// (lib/backup/backup-registry.ts), not a hardcoded seven. A drift test fails CI if a
+// top-level collection appears in the code that the registry has not classified, so backup
+// coverage cannot silently regress when a new collection is introduced.
+const BACKUP_COLLECTIONS = getBackupCollections();
 
 const BACKUP_BUCKET = getBackupBucketName();
 
