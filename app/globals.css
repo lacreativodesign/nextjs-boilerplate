@@ -13,6 +13,19 @@
   --warning: #f59e0b;
   --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
 
+  /* P2-1: shades that were hardcoded across many components, now formalized so nothing needs
+     raw hex. The -strong variants are the darker (Tailwind -600) shades used for TEXT on light
+     surfaces, where the -500 fill colors above do not have enough contrast. Keeping both as
+     named tokens preserves the exact rendered colors AND the fill-vs-text distinction. */
+  --danger-strong: #dc2626;
+  --warning-strong: #d97706;
+  --info-strong: #0891b2;
+
+  /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
+     the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
+  --brand-navy: #012167;
+  --brand-blue-light: #6692f9;
+
   --color-purple: #7c3aed;
   --color-blue: #2563eb;
   --color-green: #16a34a;
