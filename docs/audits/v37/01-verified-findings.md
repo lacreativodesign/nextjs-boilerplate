@@ -364,3 +364,28 @@ documents in memory. Fine at current volume; the streaming/paginated rewrite is 
 `finance_ledger` grows large. Also for P1-6b: subcollections (`counters` holds invoice sequence
 numbers; `messages` holds project comms) are not captured by the top-level backup and need
 collection-group handling.
+
+## P1-6b — restore path fixed (was non-functional and data-corrupting) (closed)
+
+`lib/backup/restore.ts` was written against a backup format that does not exist. It had never once
+run, and would have corrupted data if it had:
+
+| Defect               | Detail                                                                                                                                                                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Could never run      | Required a single-tenant `backups` record with `tenantId`; the cron writes a multi-tenant record (`tenants: <count>`, no `tenantId`), so the assertion threw on every real backup.                                                      |
+| Wrong read path      | Read `${storagePath}/{collection}.json`; the cron writes `backups/{runDate}/{tenantId}/{collection}.json`. The tenant segment was missing → 404.                                                                                        |
+| Wrong write location | Wrote to `tenants/{tenantId}/{collection}` subcollections; the app and the backup use top-level collections. A restore would have scattered data to a location nothing reads — the DR-01 defect the backup fixed and restore never did. |
+| No integrity check   | Ignored the per-file sha256 the cron records in the manifest.                                                                                                                                                                           |
+| No dry run           | Destructive overwrite with no preview.                                                                                                                                                                                                  |
+
+Rewrite: restore now drives entirely off `backups/{runDate}/manifest.json`, which lists every file
+with `{ path, tenantId, collection, records, sha256 }`. It downloads each file by its recorded path,
+verifies the checksum before writing, and restores documents to the top-level collection under their
+original id with `{ merge: true }`. A `dryRun` option verifies the manifest and all checksums and
+reports what would be written without touching Firestore; a `tenantIds` filter restores one tenant.
+The route (`app/api/backup/restore`) stays super_admin-gated and now accepts `dryRun`/`tenantIds` and
+returns the result.
+
+Deferred to P1-6c: the nightly cron still reads each collection with a single unpaginated `.get()`
+and holds documents in memory (fine at current volume, needs streaming before `finance_ledger` grows
+large), and subcollections (`counters`, `messages`) are still not captured.
