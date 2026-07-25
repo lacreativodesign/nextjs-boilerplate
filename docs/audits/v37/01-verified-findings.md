@@ -282,3 +282,24 @@ checkout creates a Stripe Checkout session, disconnect tears down a tenant's Con
 Fix: `PUBLIC_STRIPE_PATHS` is an exact-match allowlist of the four public endpoints, shared by both
 the public gate and the CSRF skip via `isPublicStripePath`. The route contract's existing refusal to
 list `stripe/checkout` in `PUBLIC_ROUTES` is unchanged and now agrees with the middleware.
+
+## P1-5 — readiness probe fails red on a dead dependency (closed)
+
+`/api/health/ready` checked Firestore only and, on failure, returned a bare `not_ready` naming no
+dependency. Redis — which backs every rate-limited and cached path — was not checked, so an instance
+with a configured-but-unreachable cache reported itself ready and continued to receive traffic it
+could not serve.
+
+| Aspect                    | Before               | After                                                                           |
+| ------------------------- | -------------------- | ------------------------------------------------------------------------------- |
+| Dependencies checked      | Firestore            | Firestore + Redis, run concurrently                                             |
+| Failure detail            | bare `not_ready`     | per-check `{ state, required, latencyMs, error }` naming the failing dependency |
+| Hung dependency           | could hang the probe | every check bounded by a 3s timeout                                             |
+| Unconfigured optional dep | n/a                  | reported `skipped`, never fails readiness (preview deployments)                 |
+| Configured-but-down Redis | reported ready       | fails readiness with 503                                                        |
+| Probe error               | possible 500         | returned as a 503 not-ready signal; never a stack trace                         |
+
+Liveness (`/api/health`) is unchanged and remains dependency-free, which is correct for a liveness
+probe. Stripe, Resend and the storage bucket are deliberately not part of readiness: an instance can
+serve requests without them, and gating rotation on a payment provider or an email API would take
+the whole app out over a non-critical outage.
