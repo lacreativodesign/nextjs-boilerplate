@@ -413,3 +413,32 @@ P2-1 lays the foundation:
   file re-introduces raw hex, so cleaned files cannot regress while the remaining ~94 are migrated.
 
 No rendered colour changed in this session — every replaced hex maps to a token of the same value.
+
+## P2-2 — super_admin route group migrated to design tokens
+
+Converted the eight remaining super_admin pages (21 raw-hex occurrences) to design tokens; the whole
+route group is now hex-free and covered by the drift guard's CLEAN_FILES allowlist.
+
+Every replaced hex maps to a token of the exact same value — no rendered colour changed. Four tokens
+were formalized to preserve exact colours: `--warning-strong-alt` (#b45309), `--warning-deep`
+(#92400e), `--warning-deeper` (#78350f) — the amber 700/800/900 ramp used for warning text and
+gradient stops — and `--brand-primary` (#6366f1), the indigo accent used in four files.
+
+Two latent bugs were fixed in passing: `text-[var(--erp-green,#16a34a)]` referenced an undefined
+token (`--erp-green`) and only rendered via its hex fallback — now `var(--color-green)`; and
+`bg-[var(--brand-primary,#6366f1)]` referenced `--brand-primary` before it existed — now formalized.
+
+Dead `var(--token,#hex)` fallbacks were dropped where the token is always defined, so no visual
+change: `var(--surface-muted,#f1f5f9)` (the token is also theme-aware, so the light-hex fallback
+could have flashed on a dark surface had it ever been missing) and `var(--brand-primary,#6366f1)`.
+
+Deviation from the batch spec on the two error banners (`maintenance`, `security`): the spec assumed
+each `<p>` banner's border had already migrated to `border-[var(--danger-strong)]`, leaving only the
+text to convert to `--danger-strong`. In the actual tree both the border and the text still read
+`var(--danger,#dc2626)`, and — because `--danger` is defined (#ef4444) — both render #ef4444, not the
+#dc2626 fallback. Converting the text to `--danger-strong` would have repainted #ef4444 → #dc2626 (a
+rendered change), and would have left the border hex in place, breaking the hex-free guarantee and the
+drift guard. To honour the batch's non-negotiable "no rendered colour changed" rule, both the border
+and text on each banner were instead converted to `var(--danger)` — dropping the dead #dc2626 fallback
+while preserving the exact #ef4444 render. This matches the spec's own "dead fallbacks dropped" list,
+which names `var(--danger,#dc2626)` as a no-visual-change drop.

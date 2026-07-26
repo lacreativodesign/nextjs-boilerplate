@@ -292,7 +292,7 @@ export default function TenantDetailPage() {
             disabled={impersonating}
             className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
             style={{
-              background: 'linear-gradient(135deg,#b45309,#d97706)',
+              background: 'linear-gradient(135deg,var(--warning-strong-alt),var(--warning-strong))',
               opacity: impersonating ? 0.7 : 1,
               cursor: impersonating ? 'not-allowed' : 'pointer',
               border: 'none',

@@ -241,7 +241,7 @@ export default function DemoEnvironmentPage() {
 
       <section
         className="card"
-        style={{ borderColor: '#f59e0b', background: 'rgba(254,243,199,0.5)' }}
+        style={{ borderColor: 'var(--warning)', background: 'rgba(254,243,199,0.5)' }}
       >
         <h2 className="section-title mb-4 text-amber-900">Reset Demo Data</h2>
         <p className="mt-2 text-sm text-amber-900">

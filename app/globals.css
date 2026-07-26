@@ -21,10 +21,18 @@
   --warning-strong: #d97706;
   --info-strong: #0891b2;
 
+  /* P2-2: the deeper amber ramp (Tailwind amber-700/800/900) used for warning TEXT and
+     gradient stops on light amber surfaces, where -500/-600 lack contrast. Formalized to
+     preserve exact colours while removing raw hex. */
+  --warning-strong-alt: #b45309;
+  --warning-deep: #92400e;
+  --warning-deeper: #78350f;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
   --brand-blue-light: #6692f9;
+  --brand-primary: #6366f1;
 
   --color-purple: #7c3aed;
   --color-blue: #2563eb;
