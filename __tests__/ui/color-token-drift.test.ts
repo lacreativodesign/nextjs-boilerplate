@@ -29,6 +29,14 @@ const CLEAN_FILES: string[] = [
   'app/super_admin/tax/page.tsx',
   'app/super_admin/system-health/full/page.tsx',
   'app/super_admin/tenants/[tenantId]/page.tsx',
+  // P2-3: finance / hr / production
+  'app/finance/page.tsx',
+  'app/finance/invoices/page.tsx',
+  'app/hr/attendance/page.tsx',
+  'app/hr/attendance/[employeeId]/page.tsx',
+  'app/production/resources/page.tsx',
+  'app/production/reports/page.tsx',
+  'app/production/files/page.tsx',
 ];
 
 /**
@@ -47,6 +55,12 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--warning-deep': '#92400e',
   '--warning-deeper': '#78350f',
   '--brand-primary': '#6366f1',
+  // P2-3
+  '--color-info': '#3b82f6',
+  '--warning-alt': '#eab308',
+  '--surface-inverse': '#1f2937',
+  '--status-success-bg': '#dcfce7',
+  '--status-success-text': '#166534',
 };
 
 /** Matches a six-digit hex colour literal. */
