@@ -676,7 +676,9 @@ function InvoiceDrawer({
                 Copy Link
               </button>
               {copied && (
-                <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>Copied!</span>
+                <span style={{ fontSize: 12, color: 'var(--color-green)', fontWeight: 600 }}>
+                  Copied!
+                </span>
               )}
             </div>
           </div>

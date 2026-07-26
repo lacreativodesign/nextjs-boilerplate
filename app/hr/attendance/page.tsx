@@ -126,8 +126,8 @@ export default function AttendanceDashboard() {
                   }
 
                   if (info?.hrs) {
-                    bg = 'var(--status-success-bg, #dcfce7)'; // green
-                    text = 'var(--status-success-text, #166534)';
+                    bg = 'var(--status-success-bg)';
+                    text = 'var(--status-success-text)';
                   }
 
                   return (

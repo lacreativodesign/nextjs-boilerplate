@@ -105,19 +105,19 @@ export default function FinanceOverviewPage() {
             label="Total Revenue (This Month)"
             value={fmt(kpi?.totalRevenueMonth || 0)}
             sub="Paid invoices"
-            color={kpi?.totalRevenueMonth ? '#10b981' : undefined}
+            color={kpi?.totalRevenueMonth ? 'var(--success)' : undefined}
           />
           <KpiCard
             label="Outstanding Invoices"
             value={fmt(kpi?.outstandingInvoices || 0)}
             sub="Sent / overdue"
-            color={kpi?.outstandingInvoices ? '#f59e0b' : undefined}
+            color={kpi?.outstandingInvoices ? 'var(--warning)' : undefined}
           />
           <KpiCard
             label="Payments Received"
             value={fmt(kpi?.paymentsReceivedMonth || 0)}
             sub="This month"
-            color={kpi?.paymentsReceivedMonth ? '#3b82f6' : undefined}
+            color={kpi?.paymentsReceivedMonth ? 'var(--color-info)' : undefined}
           />
           <KpiCard
             label="AR Aging (0–30d)"
@@ -135,19 +135,19 @@ export default function FinanceOverviewPage() {
               label="31–60 Days"
               value={fmt(aging?.bucket31to60 || 0)}
               sub="Overdue"
-              color="#f59e0b"
+              color="var(--warning)"
             />
             <KpiCard
               label="61–90 Days"
               value={fmt(aging?.bucket61to90 || 0)}
               sub="Overdue"
-              color="#ef4444"
+              color="var(--danger)"
             />
             <KpiCard
               label="90+ Days"
               value={fmt(aging?.bucket90plus || 0)}
               sub="Critical"
-              color="#ef4444"
+              color="var(--danger)"
             />
           </div>
         </section>
@@ -186,12 +186,20 @@ export default function FinanceOverviewPage() {
                     <div className="w-full flex items-end gap-0.5 h-24">
                       <div
                         className="flex-1 rounded-t transition-all"
-                        style={{ height: `${invH}%`, backgroundColor: '#3b82f6', minHeight: 2 }}
+                        style={{
+                          height: `${invH}%`,
+                          backgroundColor: 'var(--color-info)',
+                          minHeight: 2,
+                        }}
                         title={`Invoices: ${fmt(row.invoices)}`}
                       />
                       <div
                         className="flex-1 rounded-t transition-all"
-                        style={{ height: `${payH}%`, backgroundColor: '#10b981', minHeight: 2 }}
+                        style={{
+                          height: `${payH}%`,
+                          backgroundColor: 'var(--success)',
+                          minHeight: 2,
+                        }}
                         title={`Payments: ${fmt(row.payments)}`}
                       />
                     </div>
@@ -204,11 +212,11 @@ export default function FinanceOverviewPage() {
             </div>
             <div className="flex gap-4 mt-2 justify-center">
               <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
-                <span className="h-2 w-4 rounded" style={{ background: '#3b82f6' }} />
+                <span className="h-2 w-4 rounded" style={{ background: 'var(--color-info)' }} />
                 Invoices
               </span>
               <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
-                <span className="h-2 w-4 rounded" style={{ background: '#10b981' }} />
+                <span className="h-2 w-4 rounded" style={{ background: 'var(--success)' }} />
                 Payments
               </span>
             </div>
