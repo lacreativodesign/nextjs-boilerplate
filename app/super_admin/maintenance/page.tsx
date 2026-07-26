@@ -119,7 +119,7 @@ export default function SuperAdminMaintenancePage() {
                 title={
                   lastDryRun === job.key ? 'Apply the repair' : 'Run a dry run for this job first'
                 }
-                className="rounded-full bg-[var(--brand-primary,#6366f1)] px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+                className="rounded-full bg-[var(--brand-primary)] px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               >
                 {busy === `${job.key}:apply` ? 'Applying…' : 'Apply repair'}
               </button>
@@ -129,7 +129,7 @@ export default function SuperAdminMaintenancePage() {
       </section>
 
       {error && (
-        <p className="mt-6 rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+        <p className="mt-6 rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
           {error}
         </p>
       )}

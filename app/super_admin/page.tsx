@@ -28,9 +28,9 @@ type SystemHealthData = {
 
 // Subtle status color cues (also available as CSS vars in the theme, but
 // StatCard already takes inline color props, so we keep them inline here).
-const COLOR_ACTIVE = '#10b981'; // green-ish
-const COLOR_TRIAL = '#f59e0b'; // amber
-const COLOR_LOCKED = '#ef4444'; // red
+const COLOR_ACTIVE = 'var(--success)';
+const COLOR_TRIAL = 'var(--warning)';
+const COLOR_LOCKED = 'var(--danger)';
 
 function StatCard({
   label,

@@ -64,7 +64,7 @@ export default function ActivationFunnelPage() {
                   {s.count}/{data.totalTenants} ({s.pct}%)
                 </span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted,#f1f5f9)]">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
                 <div
                   className="h-full rounded-full bg-[var(--erp-blue)] transition-all"
                   style={{ width: `${s.pct}%` }}
@@ -95,7 +95,7 @@ export default function ActivationFunnelPage() {
                 {data.stages.map((s) => (
                   <td key={s.id} className="p-3 text-center">
                     {t.milestones[s.id] ? (
-                      <CheckCircle className="mx-auto h-4 w-4 text-[var(--erp-green,#16a34a)]" />
+                      <CheckCircle className="mx-auto h-4 w-4 text-[var(--color-green)]" />
                     ) : (
                       <Circle className="mx-auto h-4 w-4 text-[var(--text-muted)]" />
                     )}

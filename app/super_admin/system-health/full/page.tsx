@@ -77,20 +77,20 @@ export default function SuperAdminFullSystemHealthPage() {
     if (health.summary.failed > 0) {
       return {
         text: 'Critical Issues Detected',
-        color: '#ef4444',
+        color: 'var(--danger)',
       };
     }
 
     if (health.summary.warnings > 0) {
       return {
         text: 'Degraded',
-        color: '#f59e0b',
+        color: 'var(--warning)',
       };
     }
 
     return {
       text: 'All Systems Operational',
-      color: '#10b981',
+      color: 'var(--success)',
     };
   }, [health]);
 
@@ -131,7 +131,7 @@ export default function SuperAdminFullSystemHealthPage() {
             <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Passed
             </div>
-            <div className="mt-2 text-3xl font-semibold" style={{ color: '#10b981' }}>
+            <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--success)' }}>
               {health?.summary.passed ?? 0}
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function SuperAdminFullSystemHealthPage() {
             <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Failed
             </div>
-            <div className="mt-2 text-3xl font-semibold" style={{ color: '#ef4444' }}>
+            <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--danger)' }}>
               {health?.summary.failed ?? 0}
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function SuperAdminFullSystemHealthPage() {
             <div className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
               Warnings
             </div>
-            <div className="mt-2 text-3xl font-semibold" style={{ color: '#f59e0b' }}>
+            <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--warning)' }}>
               {health?.summary.warnings ?? 0}
             </div>
           </div>
@@ -181,10 +181,10 @@ export default function SuperAdminFullSystemHealthPage() {
               const indicator = check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '⚠';
               const color =
                 check.status === 'pass'
-                  ? '#10b981'
+                  ? 'var(--success)'
                   : check.status === 'fail'
-                    ? '#ef4444'
-                    : '#f59e0b';
+                    ? 'var(--danger)'
+                    : 'var(--warning)';
 
               return (
                 <div key={check.id} className="rounded-xl border border-[var(--border-subtle)] p-4">

@@ -164,10 +164,10 @@ export default function SuperAdminTaxPage() {
             className="card p-4 rounded-xl"
             style={{ borderColor: 'rgba(245,158,11,0.4)', background: 'rgba(254,243,199,0.5)' }}
           >
-            <div className="text-sm font-semibold" style={{ color: '#92400e' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--warning-deep)' }}>
               ⚠ Tax Compliance Notice
             </div>
-            <div className="text-sm mt-1" style={{ color: '#78350f' }}>
+            <div className="text-sm mt-1" style={{ color: 'var(--warning-deeper)' }}>
               Jurisdiction: <strong>{data.taxJurisdiction}</strong> · Filing:{' '}
               <strong>{data.filingSchedule}</strong> · Export this report each quarter and file at{' '}
               <a
