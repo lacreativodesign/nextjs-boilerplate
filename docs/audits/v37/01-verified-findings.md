@@ -456,3 +456,13 @@ Applied the P2-2 rule consistently: `var(--token, #fallback)` references render 
 so `var(--danger, #dc2626)` (which rendered #ef4444) was mapped to plain `var(--danger)`, never to
 the dead #dc2626 fallback. Where #dc2626 appeared as a real ternary value (production/resources) it
 was mapped to `--danger-strong`.
+
+## P2-4 — settings / onboarding route groups migrated to design tokens
+
+Converted four pages (10 raw-hex occurrences) across settings and onboarding to design tokens; both
+groups are now hex-free and covered by the drift guard. No rendered colour changed. Two tokens were
+formalized: `--text-on-brand` (#ffffff, the white foreground on the dark brand gradient, distinct
+from the surface-whites) and `--stripe-brand` (#635bff, Stripe's official button colour, named so it
+is obviously an external brand colour not to be reused). Existing brand tokens (`--brand-navy`,
+`--brand-blue-light`) absorbed the gradient stops; dead `var(--token,#fallback)` references were
+mapped to the plain token per the P2-2 rule.
