@@ -174,7 +174,7 @@ export default function LeadDetailPage() {
 
   if (!lead) {
     return (
-      <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+      <p className="rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
         {error}
       </p>
     );
@@ -192,7 +192,7 @@ export default function LeadDetailPage() {
       </div>
 
       {error && (
-        <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+        <p className="rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
           {error}
         </p>
       )}

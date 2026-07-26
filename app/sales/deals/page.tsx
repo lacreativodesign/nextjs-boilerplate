@@ -240,10 +240,12 @@ export default function SalesDealsPage() {
 
   const discountStatusTone = (deal: DealRecord) => {
     const status = (deal.discountStatus || 'none').toLowerCase();
-    if (status === 'pending') return { background: 'rgba(251,191,36,0.15)', color: '#b45309' };
+    if (status === 'pending')
+      return { background: 'rgba(251,191,36,0.15)', color: 'var(--warning-strong-alt)' };
     if (status === 'approved' || status === 'auto_approved')
-      return { background: 'rgba(34,197,94,0.15)', color: '#15803d' };
-    if (status === 'rejected') return { background: 'rgba(248,113,113,0.15)', color: '#b91c1c' };
+      return { background: 'rgba(34,197,94,0.15)', color: 'var(--success-strong)' };
+    if (status === 'rejected')
+      return { background: 'rgba(248,113,113,0.15)', color: 'var(--danger-deep)' };
     return { background: 'rgba(148,163,184,0.15)', color: 'var(--text-muted)' };
   };
 

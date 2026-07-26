@@ -104,7 +104,7 @@ export default function SalesAnalyticsPage() {
       <h1 className="page-title">Sales Analytics</h1>
 
       {error && (
-        <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+        <p className="rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
           {error}
         </p>
       )}
@@ -131,7 +131,12 @@ export default function SalesAnalyticsPage() {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--brand-primary)"
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </section>
@@ -146,7 +151,7 @@ export default function SalesAnalyticsPage() {
                 <XAxis dataKey="stage" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#8b5cf6" />
+                <Bar dataKey="count" fill="var(--chart-series-5)" />
               </BarChart>
             </ResponsiveContainer>
           </section>

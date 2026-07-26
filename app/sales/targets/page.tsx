@@ -10,7 +10,13 @@ type TargetData = {
 };
 
 const SCORE_COLOR = (pct: number) =>
-  pct >= 90 ? '#10b981' : pct >= 75 ? '#3b82f6' : pct >= 50 ? '#f59e0b' : '#ef4444';
+  pct >= 90
+    ? 'var(--success)'
+    : pct >= 75
+      ? 'var(--color-info)'
+      : pct >= 50
+        ? 'var(--warning)'
+        : 'var(--danger)';
 
 const SCORE_LABEL = (pct: number) =>
   pct >= 90 ? 'Exceeding' : pct >= 75 ? 'On Track' : pct >= 50 ? 'Behind' : 'At Risk';
