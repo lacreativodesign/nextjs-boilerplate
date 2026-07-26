@@ -18,7 +18,18 @@ import path from 'path';
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
 /** Files fully migrated to design tokens. Append to this as Phase 2 progresses; never remove. */
-const CLEAN_FILES: string[] = ['app/super_admin/payments/page.tsx'];
+const CLEAN_FILES: string[] = [
+  'app/super_admin/payments/page.tsx',
+  // P2-2: super_admin route group
+  'app/super_admin/page.tsx',
+  'app/super_admin/activation/page.tsx',
+  'app/super_admin/demo/page.tsx',
+  'app/super_admin/maintenance/page.tsx',
+  'app/super_admin/security/page.tsx',
+  'app/super_admin/tax/page.tsx',
+  'app/super_admin/system-health/full/page.tsx',
+  'app/super_admin/tenants/[tenantId]/page.tsx',
+];
 
 /**
  * Tokens formalized in P2-1 so no component needs raw hex for these colours. Each must exist in
@@ -31,6 +42,11 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--info-strong': '#0891b2',
   '--brand-navy': '#012167',
   '--brand-blue-light': '#6692f9',
+  // P2-2
+  '--warning-strong-alt': '#b45309',
+  '--warning-deep': '#92400e',
+  '--warning-deeper': '#78350f',
+  '--brand-primary': '#6366f1',
 };
 
 /** Matches a six-digit hex colour literal. */
