@@ -28,6 +28,13 @@
   --warning-deep: #92400e;
   --warning-deeper: #78350f;
 
+  /* P2-3: additional data/UI colours formalized from raw hex across finance/hr/production. */
+  --color-info: #3b82f6;
+  --warning-alt: #eab308;
+  --surface-inverse: #1f2937;
+  --status-success-bg: #dcfce7;
+  --status-success-text: #166534;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
