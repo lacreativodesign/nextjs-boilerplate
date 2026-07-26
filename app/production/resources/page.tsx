@@ -185,7 +185,7 @@ export default function ProductionResourcesPage() {
       </section>
 
       {workload.warnings.length > 0 && (
-        <section className="card" style={{ borderColor: '#f59e0b' }}>
+        <section className="card" style={{ borderColor: 'var(--warning)' }}>
           <h3 className="section-title mb-3">Over-allocation warnings (&gt;8h/day)</h3>
           {workload.warnings.map((warning) => (
             <div
@@ -221,7 +221,7 @@ export default function ProductionResourcesPage() {
                       <div
                         style={{
                           height: 16,
-                          background: '#1f2937',
+                          background: 'var(--surface-inverse)',
                           borderRadius: 4,
                           overflow: 'hidden',
                         }}
@@ -230,7 +230,7 @@ export default function ProductionResourcesPage() {
                           style={{
                             width: `${pct}%`,
                             height: '100%',
-                            background: ratio > 100 ? '#ef4444' : '#3b82f6',
+                            background: ratio > 100 ? 'var(--danger)' : 'var(--color-info)',
                           }}
                         />
                       </div>
@@ -331,10 +331,10 @@ export default function ProductionResourcesPage() {
                   {row.days.map((day) => {
                     const bg =
                       day.utilizationPercent <= 70
-                        ? '#16a34a'
+                        ? 'var(--color-green)'
                         : day.utilizationPercent <= 90
-                          ? '#eab308'
-                          : '#dc2626';
+                          ? 'var(--warning-alt)'
+                          : 'var(--danger-strong)';
                     return (
                       <td
                         key={day.date}

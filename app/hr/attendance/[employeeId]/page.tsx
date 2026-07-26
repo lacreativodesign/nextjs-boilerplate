@@ -246,7 +246,7 @@ export default function EmployeeAttendanceDetail() {
 
                 let status = 'Absent';
                 let badgeBg = 'rgba(239,68,68,0.12)';
-                let badgeColor = 'var(--danger, #dc2626)';
+                let badgeColor = 'var(--danger)';
 
                 if (isWeekend) {
                   status = 'Weekend';

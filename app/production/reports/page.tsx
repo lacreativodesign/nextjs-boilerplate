@@ -136,7 +136,7 @@ export default function ProductionReportsPage() {
       <h1 className="page-title">Production Reports</h1>
 
       {error && (
-        <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+        <p className="rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
           {error}
         </p>
       )}

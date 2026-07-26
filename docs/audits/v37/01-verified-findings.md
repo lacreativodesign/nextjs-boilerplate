@@ -442,3 +442,17 @@ drift guard. To honour the batch's non-negotiable "no rendered colour changed" r
 and text on each banner were instead converted to `var(--danger)` — dropping the dead #dc2626 fallback
 while preserving the exact #ef4444 render. This matches the spec's own "dead fallbacks dropped" list,
 which names `var(--danger,#dc2626)` as a no-visual-change drop.
+
+## P2-3 — finance / hr / production route groups migrated to design tokens
+
+Converted seven pages (40 raw-hex occurrences) across finance, hr and production to design tokens;
+these groups are now hex-free and covered by the drift guard. Every replaced value renders the exact
+colour it did before — no visual change. Five tokens were formalized: `--color-info` (#3b82f6),
+`--warning-alt` (#eab308), `--surface-inverse` (#1f2937), and the `--status-success-bg` (#dcfce7) /
+`--status-success-text` (#166534) pair whose token references previously resolved only via a live
+fallback.
+
+Applied the P2-2 rule consistently: `var(--token, #fallback)` references render the token's value,
+so `var(--danger, #dc2626)` (which rendered #ef4444) was mapped to plain `var(--danger)`, never to
+the dead #dc2626 fallback. Where #dc2626 appeared as a real ternary value (production/resources) it
+was mapped to `--danger-strong`.
