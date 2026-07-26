@@ -112,19 +112,19 @@ export default function SalesPage() {
           value={v(data?.activeDeals ?? 0)}
           sub="In pipeline"
           href="/sales/deals"
-          color="#3b82f6"
+          color="var(--color-info)"
         />
         <StatCard
           label="Pipeline Value"
           value={v(fmt(data?.pipelineValue ?? 0))}
           sub="Open deals total"
-          color="#10b981"
+          color="var(--success)"
         />
         <StatCard
           label="Closed Won (Month)"
           value={v(data?.closedWonThisMonth ?? 0)}
           sub="This month"
-          color="#10b981"
+          color="var(--success)"
         />
         <StatCard
           label="Conversion Rate"

@@ -42,6 +42,15 @@ const CLEAN_FILES: string[] = [
   'app/settings/preferences/page.tsx',
   'app/settings/payments/page.tsx',
   'app/onboarding/page.tsx',
+  // P2-5: sales
+  'app/sales/page.tsx',
+  'app/sales/deals/page.tsx',
+  'app/sales/analytics/page.tsx',
+  'app/sales/leads/[id]/page.tsx',
+  'app/sales/targets/page.tsx',
+  'app/sales/reports/page.tsx',
+  'app/sales/performance/page.tsx',
+  'app/sales/clients/page.tsx',
 ];
 
 /**
@@ -69,6 +78,9 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   // P2-4
   '--text-on-brand': '#ffffff',
   '--stripe-brand': '#635bff',
+  // P2-5
+  '--success-strong': '#15803d',
+  '--danger-deep': '#b91c1c',
 };
 
 /** Matches a six-digit hex colour literal. */

@@ -199,7 +199,7 @@ export default function SalesPerformancePage() {
               <YAxis {...chartAxisProps} />
               <Tooltip {...chartTooltipProps} />
               <Bar dataKey="leads" name="Leads" fill="var(--erp-blue)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="closed" name="Closed Won" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="closed" name="Closed Won" fill="var(--success)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

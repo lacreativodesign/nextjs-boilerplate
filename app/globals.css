@@ -43,6 +43,11 @@
      it is obvious this is an external brand colour and must not be reused as a generic accent. */
   --stripe-brand: #635bff;
 
+  /* P2-5: darker success/danger TEXT shades (Tailwind green-700 / red-700) used for status
+     labels on tinted backgrounds, following the -strong text-shade pattern. */
+  --success-strong: #15803d;
+  --danger-deep: #b91c1c;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;

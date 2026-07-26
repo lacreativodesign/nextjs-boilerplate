@@ -137,7 +137,7 @@ export default function SalesReportsPage() {
       </section>
 
       {error && (
-        <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+        <p className="rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
           {error}
         </p>
       )}

@@ -466,3 +466,12 @@ from the surface-whites) and `--stripe-brand` (#635bff, Stripe's official button
 is obviously an external brand colour not to be reused). Existing brand tokens (`--brand-navy`,
 `--brand-blue-light`) absorbed the gradient stops; dead `var(--token,#fallback)` references were
 mapped to the plain token per the P2-2 rule.
+
+## P2-5 — sales route group migrated to design tokens
+
+Converted eight sales pages (23 raw-hex occurrences) to design tokens; the group is now hex-free and
+covered by the drift guard. No rendered colour changed. Two tokens were formalized: `--success-strong`
+(#15803d) and `--danger-deep` (#b91c1c), the darker green-700/red-700 status-text shades. Existing
+tokens absorbed the rest, including `--chart-series-5` (#8b5cf6) and `--brand-primary` (#6366f1) for
+Recharts fill/stroke — a pattern already used in app/billing/terminal — and dead `var(--danger,#dc2626)`
+references were mapped to plain `var(--danger)` per the P2-2 rule.
