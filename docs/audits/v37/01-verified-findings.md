@@ -389,3 +389,27 @@ returns the result.
 Deferred to P1-6c: the nightly cron still reads each collection with a single unpaginated `.get()`
 and holds documents in memory (fine at current volume, needs streaming before `finance_ledger` grows
 large), and subcollections (`counters`, `messages`) are still not captured.
+
+## P2-1 — colour design tokens formalized + benchmark page migrated (Phase 2 opens)
+
+The design-token system in app/globals.css is comprehensive and good. The problem is drift: 95 of
+479 component files used raw hex instead of tokens, including token-divergent values and mixed-case
+duplicates. Phase 2 enforces the existing system rather than building a new one.
+
+P2-1 lays the foundation:
+
+- **Formalized the colours that had no token**, preserving their exact values:
+  `--danger-strong: #dc2626` and `--warning-strong: #d97706` (the darker -600 shades used for text,
+  where the -500 fills `--danger`/`--warning` lack contrast — verified: #dc2626 is used only for
+  `color:`, never fills), `--info-strong: #0891b2`, and the brand palette `--brand-navy: #012167`
+  and `--brand-blue-light: #6692f9` (used across 13 and 11 files, previously absent from :root).
+  Snapping these to nearby tokens was rejected: it would have altered brand colour and reduced text
+  contrast, with no staging to catch it.
+- **Converted the benchmark page** (super_admin/payments, the master UI reference): its five
+  hardcoded stat-card accents now use the tokens holding those exact values, joining the sixth card
+  that already used var(--erp-blue). The page renders identically.
+- **Added a drift guard** (`__tests__/ui/color-token-drift.test.ts`) with a CLEAN_FILES allowlist that
+  only grows. Each later Phase 2 batch adds the files it converts; the guard fails CI if a converted
+  file re-introduces raw hex, so cleaned files cannot regress while the remaining ~94 are migrated.
+
+No rendered colour changed in this session — every replaced hex maps to a token of the same value.
