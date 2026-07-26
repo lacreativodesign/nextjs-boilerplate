@@ -90,7 +90,7 @@ export default function OnboardingPage() {
             {/* Header bar */}     {' '}
       <div
         style={{
-          background: 'linear-gradient(135deg, #012167, #6692f9)',
+          background: 'linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light))',
           padding: '0 24px',
           height: 56,
           display: 'flex',
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
             fontWeight: 800,
             fontSize: 18,
             letterSpacing: '0.08em',
-            color: '#ffffff',
+            color: 'var(--text-on-brand)',
           }}
         >
                     BIZOSTO        {' '}
@@ -113,7 +113,11 @@ export default function OnboardingPage() {
         <button
           onClick={() => router.push('/dashboard')}
           className="btn ghost"
-          style={{ color: '#ffffff', borderColor: 'rgba(255,255,255,0.3)', fontSize: 13 }}
+          style={{
+            color: 'var(--text-on-brand)',
+            borderColor: 'rgba(255,255,255,0.3)',
+            fontSize: 13,
+          }}
         >
                     Skip for now        {' '}
         </button>
@@ -150,7 +154,7 @@ export default function OnboardingPage() {
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${progress}%`,
-                background: 'linear-gradient(90deg, #012167, #6692f9)',
+                background: 'linear-gradient(90deg, var(--brand-navy), var(--brand-blue-light))',
               }}
             />
                      {' '}
@@ -183,13 +187,15 @@ export default function OnboardingPage() {
                     style={{
                       background: step.completed
                         ? 'var(--surface-muted)'
-                        : 'linear-gradient(135deg, #012167, #6692f9)',
+                        : 'linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light))',
                     }}
                   >
                                        {' '}
                     <Icon
                       className="h-5 w-5"
-                      style={{ color: step.completed ? 'var(--text-muted)' : '#ffffff' }}
+                      style={{
+                        color: step.completed ? 'var(--text-muted)' : 'var(--text-on-brand)',
+                      }}
                     />
                                      {' '}
                   </div>

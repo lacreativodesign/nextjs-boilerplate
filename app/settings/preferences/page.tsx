@@ -133,7 +133,7 @@ export default function SettingsPreferencesPage() {
       <h1 className="page-title">Preferences</h1>
 
       {error && (
-        <p className="rounded-xl border border-[var(--danger,#dc2626)] p-4 text-sm font-semibold text-[var(--danger,#dc2626)]">
+        <p className="rounded-xl border border-[var(--danger)] p-4 text-sm font-semibold text-[var(--danger)]">
           {error}
         </p>
       )}
@@ -179,9 +179,7 @@ export default function SettingsPreferencesPage() {
                   aria-label={toggle.label}
                   onClick={() => set(toggle.key, !prefs[toggle.key] as never)}
                   className={`h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
-                    prefs[toggle.key]
-                      ? 'bg-[var(--brand-primary,#6366f1)]'
-                      : 'bg-[var(--surface-muted)]'
+                    prefs[toggle.key] ? 'bg-[var(--brand-primary)]' : 'bg-[var(--surface-muted)]'
                   }`}
                 >
                   <span

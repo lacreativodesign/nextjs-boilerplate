@@ -178,7 +178,7 @@ export default function SettingsPaymentsPage() {
         ) : (
           <>
             <div className="space-y-3">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#635BFF] text-sm font-bold text-white">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--stripe-brand)] text-sm font-bold text-white">
                 S
               </div>
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">
