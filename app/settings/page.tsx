@@ -140,7 +140,10 @@ export default function SettingsProfilePage() {
             ) : (
               <div
                 className="h-20 w-20 rounded-full flex items-center justify-center text-xl font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, #012167 0%, #6692f9 100%)' }}
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-blue-light) 100%)',
+                }}
               >
                 {initials}
               </div>

@@ -37,6 +37,11 @@ const CLEAN_FILES: string[] = [
   'app/production/resources/page.tsx',
   'app/production/reports/page.tsx',
   'app/production/files/page.tsx',
+  // P2-4: settings / onboarding
+  'app/settings/page.tsx',
+  'app/settings/preferences/page.tsx',
+  'app/settings/payments/page.tsx',
+  'app/onboarding/page.tsx',
 ];
 
 /**
@@ -61,6 +66,9 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--surface-inverse': '#1f2937',
   '--status-success-bg': '#dcfce7',
   '--status-success-text': '#166534',
+  // P2-4
+  '--text-on-brand': '#ffffff',
+  '--stripe-brand': '#635bff',
 };
 
 /** Matches a six-digit hex colour literal. */
