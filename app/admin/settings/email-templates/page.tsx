@@ -279,8 +279,7 @@ export default function EmailTemplatesSettingsPage() {
                   style={{
                     padding: 10,
                     borderRadius: 12,
-                    borderColor:
-                      selectedTemplateId === item.id ? 'var(--color-primary,#4f46e5)' : undefined,
+                    borderColor: selectedTemplateId === item.id ? 'var(--color-indigo)' : undefined,
                   }}
                   onClick={() => handlePickTemplate(item.id)}
                 >
@@ -381,7 +380,7 @@ export default function EmailTemplatesSettingsPage() {
                 contentEditable
                 suppressContentEditableWarning
                 className="mt-3 rounded-xl border p-3 min-h-[260px]"
-                style={{ background: '#ffffff' }}
+                style={{ background: 'var(--email-canvas)' }}
                 onInput={() =>
                   setDraft((p) => ({ ...p, body: editorRef.current?.innerHTML || '' }))
                 }
@@ -417,7 +416,10 @@ export default function EmailTemplatesSettingsPage() {
                 </div>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border p-3" style={{ background: '#ffffff' }}>
+                <div
+                  className="rounded-xl border p-3"
+                  style={{ background: 'var(--email-canvas)' }}
+                >
                   <div className="text-xs font-semibold mb-2">Desktop</div>
                   <div className="text-sm font-semibold mb-2">
                     {preview?.renderedSubject || 'Preview subject'}
@@ -431,7 +433,7 @@ export default function EmailTemplatesSettingsPage() {
                 </div>
                 <div
                   className="rounded-xl border p-3 max-w-[320px]"
-                  style={{ background: '#ffffff' }}
+                  style={{ background: 'var(--email-canvas)' }}
                 >
                   <div className="text-xs font-semibold mb-2">Mobile</div>
                   <div className="text-sm font-semibold mb-2">
@@ -501,7 +503,7 @@ export default function EmailTemplatesSettingsPage() {
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border p-3" style={{ background: '#ffffff' }}>
+              <div className="rounded-xl border p-3" style={{ background: 'var(--email-canvas)' }}>
                 <div className="text-xs font-semibold">
                   Version {comparedVersions.a?.version ?? '-'}
                 </div>
@@ -509,7 +511,7 @@ export default function EmailTemplatesSettingsPage() {
                   {comparedVersions.a?.body || 'No version selected'}
                 </pre>
               </div>
-              <div className="rounded-xl border p-3" style={{ background: '#ffffff' }}>
+              <div className="rounded-xl border p-3" style={{ background: 'var(--email-canvas)' }}>
                 <div className="text-xs font-semibold">
                   Version {comparedVersions.b?.version ?? '-'}
                 </div>

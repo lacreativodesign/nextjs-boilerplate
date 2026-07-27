@@ -48,7 +48,7 @@ export function ErrorCard({ message }: { message: string }) {
         padding: 16,
         border: '1px solid rgba(239,68,68,0.35)',
         background: 'rgba(254,226,226,0.6)',
-        color: '#991b1b',
+        color: 'var(--alert-error-text)',
         fontWeight: 600,
       }}
     >

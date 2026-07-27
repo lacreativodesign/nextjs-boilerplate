@@ -29,7 +29,7 @@ export default function UsageCharts({ endpointStats, realtimePoints }: UsageChar
               <XAxis dataKey="endpoint" hide />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="count" fill="#4f46e5" />
+              <Bar dataKey="count" fill="var(--color-indigo)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -43,7 +43,7 @@ export default function UsageCharts({ endpointStats, realtimePoints }: UsageChar
               <XAxis dataKey="bucket" hide />
               <YAxis />
               <Tooltip />
-              <Line dataKey="count" stroke="#16a34a" strokeWidth={2} dot={false} />
+              <Line dataKey="count" stroke="var(--color-green)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
