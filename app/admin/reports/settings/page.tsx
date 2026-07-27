@@ -115,7 +115,7 @@ export default function ReportsSettingsPage() {
             padding: 16,
             border: '1px solid rgba(16,185,129,0.35)',
             background: 'rgba(209,250,229,0.6)',
-            color: '#065f46',
+            color: 'var(--alert-success-text)',
             fontWeight: 600,
           }}
         >

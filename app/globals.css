@@ -48,6 +48,15 @@
   --success-strong: #15803d;
   --danger-deep: #b91c1c;
 
+  /* P2-6: alert status-text shades (deep red / deep green) and the indigo data accent. */
+  --alert-error-text: #991b1b;
+  --alert-success-text: #065f46;
+  --color-indigo: #4f46e5;
+
+  /* Email preview canvas — the editable email body always renders on white, matching what the
+     recipient sees, independent of the app's light/dark theme. Semantic, theme-locked. */
+  --email-canvas: #ffffff;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;

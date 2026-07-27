@@ -266,7 +266,7 @@ export default function QuickBooksIntegrationPage() {
                   {Number(log.payments?.updated || 0) + Number(log.payments?.inserted || 0)}
                 </div>
                 {log.error ? (
-                  <div style={{ fontSize: 12, color: '#ef4444', marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 6 }}>
                     {String(log.error)}
                   </div>
                 ) : null}

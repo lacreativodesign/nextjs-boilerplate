@@ -51,6 +51,16 @@ const CLEAN_FILES: string[] = [
   'app/sales/reports/page.tsx',
   'app/sales/performance/page.tsx',
   'app/sales/clients/page.tsx',
+  // P2-6: admin (settings + reports batch). Note: app/admin/settings/branding/page.tsx is
+  // deliberately NOT listed — its hex values are tenant branding CONFIG DATA (default
+  // colour-picker values fed into CSS vars), not hardcoded UI styling, so they must stay hex.
+  'app/admin/page.tsx',
+  'app/admin/reports/_components/ReportsUI.tsx',
+  'app/admin/reports/settings/page.tsx',
+  'app/admin/settings/api-usage/_components/UsageCharts.tsx',
+  'app/admin/settings/email-templates/page.tsx',
+  'app/admin/settings/integrations/quickbooks/page.tsx',
+  'app/admin/settings/integrations/xero/page.tsx',
 ];
 
 /**
@@ -81,6 +91,11 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   // P2-5
   '--success-strong': '#15803d',
   '--danger-deep': '#b91c1c',
+  // P2-6
+  '--alert-error-text': '#991b1b',
+  '--alert-success-text': '#065f46',
+  '--color-indigo': '#4f46e5',
+  '--email-canvas': '#ffffff',
 };
 
 /** Matches a six-digit hex colour literal. */

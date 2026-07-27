@@ -28,8 +28,8 @@ type OverviewData = {
   topOwners: TopOwner[];
 };
 
-const COLOR_ACTIVE = '#10b981'; // green-ish
-const COLOR_LOCKED = '#ef4444'; // red
+const COLOR_ACTIVE = 'var(--success)';
+const COLOR_LOCKED = 'var(--danger)';
 
 function StatCard({
   label,
