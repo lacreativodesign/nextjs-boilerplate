@@ -475,3 +475,21 @@ covered by the drift guard. No rendered colour changed. Two tokens were formaliz
 tokens absorbed the rest, including `--chart-series-5` (#8b5cf6) and `--brand-primary` (#6366f1) for
 Recharts fill/stroke — a pattern already used in app/billing/terminal — and dead `var(--danger,#dc2626)`
 references were mapped to plain `var(--danger)` per the P2-2 rule.
+
+## P2-6 — admin settings + reports migrated to design tokens (admin batch 1)
+
+Converted seven admin pages/components to design tokens; no rendered colour changed. Four tokens were
+formalized: `--alert-error-text` (#991b1b), `--alert-success-text` (#065f46), `--color-indigo`
+(#4f46e5), and `--email-canvas` (#ffffff — a theme-locked white for the email-preview body, which
+must render as the recipient sees it regardless of app theme).
+
+Two files under admin/settings were deliberately excluded and documented:
+
+- `branding/page.tsx` — its hex values are tenant branding CONFIG DATA (default colour-picker values
+  fed into CSS vars), i.e. the source of tokens, not styling. They must stay hex.
+- `_components/SettingsAlert.tsx` — has explicit light/dark colour pairs needing theme-aware tokens;
+  deferred to a later batch alongside admin/users.
+
+A dead `var(--color-primary,#4f46e5)` reference (token never defined) was mapped to `var(--color-indigo)`.
+Remaining admin subfolders (users, clients, hr, finance, projects, monitoring, and the deferred
+SettingsAlert) follow in subsequent batches.
