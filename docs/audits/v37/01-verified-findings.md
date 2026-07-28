@@ -504,3 +504,14 @@ error-banner background, distinct from the color-mix-based `--danger-soft`).
 `app/admin/users/roles/page.tsx` was deliberately deferred to P2-8: its 22 hex form a complete
 role-colour palette (a per-role accent map, a `<style>` block of badge backgrounds, and a purple/gray
 ramp) that warrants a coherent set of role tokens rather than mechanical mapping.
+
+## P2-8 — role/org-chart colour palette migrated to design tokens (admin batch 3)
+
+Converted app/admin/users/roles/page.tsx (22 raw-hex occurrences, 15 distinct values) to design
+tokens; the whole admin/users group is now hex-free. No rendered colour changed. Seven palette tokens
+were formalized for the role badges and org-node hierarchy — a violet ramp (`--color-violet`,
+`--color-violet-deep`, `--color-violet-deeper`), a slate pair (`--color-slate`, `--color-slate-deep`),
+`--color-emerald` (#059669) and `--color-rose` (#e11d48) — named generically to match the existing
+`--color-*` convention, since they are a display palette rather than semantic status colours. The
+`.org-node-*` backgrounds live in a `<style jsx>` block that already used var() references, so the
+token backgrounds follow the established pattern there.
