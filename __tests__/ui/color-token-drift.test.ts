@@ -66,6 +66,8 @@ const CLEAN_FILES: string[] = [
   'app/admin/users/[uid]/page.tsx',
   'app/admin/users/create/page.tsx',
   'app/admin/users/page.tsx',
+  // P2-8: admin/users/roles — the role/org-chart colour palette
+  'app/admin/users/roles/page.tsx',
 ];
 
 /**
@@ -105,6 +107,14 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--surface-neutral': '#e5e7eb',
   '--text-strong': '#111827',
   '--danger-bg': '#fee2e2',
+  // P2-8
+  '--color-violet': '#6d28d9',
+  '--color-violet-deep': '#5b21b6',
+  '--color-violet-deeper': '#4c1d95',
+  '--color-slate': '#4b5563',
+  '--color-slate-deep': '#374151',
+  '--color-emerald': '#059669',
+  '--color-rose': '#e11d48',
 };
 
 /** Matches a six-digit hex colour literal. */

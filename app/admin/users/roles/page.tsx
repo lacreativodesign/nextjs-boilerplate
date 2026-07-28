@@ -116,14 +116,14 @@ const ROLE_DEFINITIONS: RoleMeta[] = [
     label: 'Super Admin',
     level: 'top',
     description: 'Full control over the entire ERP system.',
-    accent: '#2563eb',
+    accent: 'var(--erp-blue)',
   },
   {
     id: 'admin',
     label: 'Admin',
     level: 'top',
     description: 'Manages departments, users and core operations.',
-    accent: '#1d4ed8',
+    accent: 'var(--erp-blue-hover)',
   },
 
   // LEVEL 2 — DEPARTMENT HEADS
@@ -132,49 +132,49 @@ const ROLE_DEFINITIONS: RoleMeta[] = [
     label: 'Sales Manager',
     level: 'head',
     description: 'Leads sales team & pipeline.',
-    accent: '#7c3aed',
+    accent: 'var(--color-purple)',
   },
   {
     id: 'production_manager',
     label: 'Production Manager',
     level: 'head',
     description: 'Oversees production workload and approvals.',
-    accent: '#6d28d9',
+    accent: 'var(--color-violet)',
   },
   {
     id: 'am_manager',
     label: 'AM Manager',
     level: 'head',
     description: 'Guides account health and client escalations.',
-    accent: '#8b5cf6',
+    accent: 'var(--chart-series-5)',
   },
   {
     id: 'am',
     label: 'Account Manager',
     level: 'head',
     description: 'Manages client relationships & delivery.',
-    accent: '#8b5cf6',
+    accent: 'var(--chart-series-5)',
   },
   {
     id: 'hr',
     label: 'HR',
     level: 'head',
     description: 'Oversees attendance, staff and HR operations.',
-    accent: '#6d28d9',
+    accent: 'var(--color-violet)',
   },
   {
     id: 'finance',
     label: 'Finance',
     level: 'head',
     description: 'Handles invoices, payments & financial reporting.',
-    accent: '#5b21b6',
+    accent: 'var(--color-violet-deep)',
   },
   {
     id: 'production',
     label: 'Production',
     level: 'head',
     description: 'Manages the production team and workflow.',
-    accent: '#4c1d95',
+    accent: 'var(--color-violet-deeper)',
   },
 
   // LEVEL 3 — TEAM ROLES
@@ -183,14 +183,14 @@ const ROLE_DEFINITIONS: RoleMeta[] = [
     label: 'Sales',
     level: 'team',
     description: 'Carries out outreach, follow-ups and closing.',
-    accent: '#4b5563',
+    accent: 'var(--color-slate)',
   },
   {
     id: 'client',
     label: 'Client',
     level: 'team',
     description: 'External client login with restricted access.',
-    accent: '#374151',
+    accent: 'var(--color-slate-deep)',
   },
 ];
 
@@ -525,7 +525,7 @@ function OrgNode({ role, external = false }: { role: OrgRoleNode; external?: boo
 
         .org-node-title {
           padding: 8px 12px;
-          color: #ffffff;
+          color: var(--text-on-brand);
           font-size: 13px;
           font-weight: 900;
           line-height: 1.2;
@@ -542,35 +542,35 @@ function OrgNode({ role, external = false }: { role: OrgRoleNode; external?: boo
         }
 
         .org-node-purple .org-node-title {
-          background: #7c3aed;
+          background: var(--color-purple);
         }
 
         .org-node-blue .org-node-title {
-          background: #2563eb;
+          background: var(--erp-blue);
         }
 
         .org-node-violet .org-node-title {
-          background: #6d28d9;
+          background: var(--color-violet);
         }
 
         .org-node-indigo .org-node-title {
-          background: #4f46e5;
+          background: var(--color-indigo);
         }
 
         .org-node-slate .org-node-title {
-          background: #4b5563;
+          background: var(--color-slate);
         }
 
         .org-node-emerald .org-node-title {
-          background: #059669;
+          background: var(--color-emerald);
         }
 
         .org-node-amber .org-node-title {
-          background: #d97706;
+          background: var(--warning-strong);
         }
 
         .org-node-rose .org-node-title {
-          background: #e11d48;
+          background: var(--color-rose);
         }
 
         .org-node-external {
@@ -676,7 +676,7 @@ function RoleSection({
                   marginTop: 10,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: '#2563eb',
+                  color: 'var(--erp-blue)',
                   textDecoration: 'none',
                 }}
               >
@@ -849,7 +849,7 @@ function PermissionsMatrix() {
 
 function formatCell(val: string) {
   if (val === '✓') {
-    return <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>;
+    return <span style={{ color: 'var(--color-green)', fontWeight: 700 }}>✓</span>;
   }
   if (val === '—') return '—';
   return (
