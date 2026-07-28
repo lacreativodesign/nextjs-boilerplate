@@ -33,15 +33,13 @@ function LoadingScreen() {
           width: 40,
           height: 40,
           borderRadius: '50%',
-          border: '3px solid var(--border-subtle, #e5e7eb)',
-          borderTopColor: 'var(--erp-blue, #3b82f6)',
+          border: '3px solid var(--border-subtle)',
+          borderTopColor: 'var(--erp-blue)',
           animation: 'spin 0.8s linear infinite',
         }}
       />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <p style={{ color: 'var(--text-muted, #6b7280)', fontSize: 14, margin: 0 }}>
-        Loading your workspace…
-      </p>
+      <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Loading your workspace…</p>
     </div>
   );
 }
@@ -59,7 +57,7 @@ function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: 
         gap: '16px',
       }}
     >
-      <p style={{ color: 'var(--text-primary, #111827)', fontSize: 16, margin: 0 }}>
+      <p style={{ color: 'var(--text-primary)', fontSize: 16, margin: 0 }}>
         We couldn&apos;t load your session.
       </p>
       <div style={{ display: 'flex', gap: '12px' }}>
@@ -68,9 +66,9 @@ function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: 
           style={{
             padding: '8px 20px',
             borderRadius: '8px',
-            border: '1px solid var(--input-border, #d1d5db)',
+            border: '1px solid var(--input-border)',
             background: 'transparent',
-            color: 'var(--text-primary, #111827)',
+            color: 'var(--text-primary)',
             cursor: 'pointer',
             fontSize: 14,
             fontWeight: 600,
@@ -84,7 +82,7 @@ function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: 
             padding: '8px 20px',
             borderRadius: '8px',
             border: 'none',
-            background: 'var(--erp-blue, #3b82f6)',
+            background: 'var(--erp-blue)',
             color: '#fff',
             cursor: 'pointer',
             fontSize: 14,
