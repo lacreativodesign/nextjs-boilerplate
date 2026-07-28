@@ -43,7 +43,7 @@ export function ActivationChecklist() {
         <span className="text-sm font-semibold text-[var(--erp-blue)]">{state.progress}%</span>
       </div>
 
-      <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted,#f1f5f9)]">
+      <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
         <div
           className="h-full rounded-full bg-[var(--erp-blue)] transition-all"
           style={{ width: `${state.progress}%` }}
@@ -55,10 +55,10 @@ export function ActivationChecklist() {
           <li key={m.id}>
             <a
               href={m.href}
-              className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-muted,#f1f5f9)]"
+              className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-muted)]"
             >
               {m.completed ? (
-                <CheckCircle className="h-5 w-5 flex-shrink-0 text-[var(--erp-green,#16a34a)]" />
+                <CheckCircle className="h-5 w-5 flex-shrink-0 text-[var(--color-green)]" />
               ) : (
                 <Circle className="h-5 w-5 flex-shrink-0 text-[var(--text-muted)]" />
               )}

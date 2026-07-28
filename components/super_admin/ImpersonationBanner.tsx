@@ -63,7 +63,7 @@ export default function ImpersonationBanner() {
         left: 0,
         right: 0,
         zIndex: 99999,
-        background: 'linear-gradient(90deg,#b45309,#d97706)',
+        background: 'linear-gradient(90deg,var(--warning-strong-alt),var(--warning-strong))',
         color: '#fff',
         padding: '10px 20px',
         display: 'flex',
