@@ -139,7 +139,7 @@ export default function FinanceSettingsPage() {
               Your next invoice will be [PREFIX]-[this number padded to 4 digits]
             </span>
             {!canEditOrderStartingNumber ? (
-              <span style={{ fontSize: 12, color: '#B45309' }}>
+              <span style={{ fontSize: 12, color: 'var(--warning-strong-alt)' }}>
                 Cannot change — invoices already issued.
               </span>
             ) : null}
@@ -147,8 +147,10 @@ export default function FinanceSettingsPage() {
 
           <div style={{ fontSize: 13, opacity: 0.75 }}>Preview: {prefixPreview}</div>
 
-          {error ? <div style={{ color: '#B91C1C', fontSize: 13 }}>{error}</div> : null}
-          {success ? <div style={{ color: '#166534', fontSize: 13 }}>{success}</div> : null}
+          {error ? <div style={{ color: 'var(--danger-deep)', fontSize: 13 }}>{error}</div> : null}
+          {success ? (
+            <div style={{ color: 'var(--status-success-text)', fontSize: 13 }}>{success}</div>
+          ) : null}
 
           <div>
             <button className="btn btn-primary" onClick={onSave} disabled={saving}>

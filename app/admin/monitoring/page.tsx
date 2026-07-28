@@ -133,7 +133,7 @@ export default function AdminMonitoringPage() {
                   yAxisId="left"
                   type="monotone"
                   dataKey="responseTimeP95"
-                  stroke="#2563eb"
+                  stroke="var(--erp-blue)"
                   dot={false}
                   name="Response P95 (ms)"
                 />
@@ -141,7 +141,7 @@ export default function AdminMonitoringPage() {
                   yAxisId="right"
                   type="monotone"
                   dataKey="errorRate"
-                  stroke="#dc2626"
+                  stroke="var(--danger-strong)"
                   dot={false}
                   name="Error Rate (%)"
                 />
@@ -162,9 +162,9 @@ export default function AdminMonitoringPage() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="databaseQueryP95" fill="#7c3aed" name="DB P95 (ms)" />
-                <Bar dataKey="cacheHitRate" fill="#16a34a" name="Cache Hit Rate (%)" />
-                <Bar dataKey="activeUsers" fill="#ea580c" name="Active Users" />
+                <Bar dataKey="databaseQueryP95" fill="var(--color-purple)" name="DB P95 (ms)" />
+                <Bar dataKey="cacheHitRate" fill="var(--color-green)" name="Cache Hit Rate (%)" />
+                <Bar dataKey="activeUsers" fill="var(--color-orange-deep)" name="Active Users" />
               </BarChart>
             </ResponsiveContainer>
           </div>

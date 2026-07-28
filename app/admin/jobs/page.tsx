@@ -106,7 +106,13 @@ export default function AdminJobsPage() {
       </section>
 
       {error && (
-        <div className="card" style={{ borderColor: '#f87171', color: '#fecaca' }}>
+        <div
+          className="card"
+          style={{
+            borderColor: 'var(--danger-border-soft)',
+            color: 'var(--alert-error-text-dark)',
+          }}
+        >
           {error}
         </div>
       )}
