@@ -78,6 +78,17 @@
   --color-cyan: #06b6d4;
   --color-gray: #64748b;
 
+  /* P2-8: role/org-chart display palette — a violet ramp, slate pair, emerald and rose used to
+     colour role badges and the org-node hierarchy. Named as generic palette colours, matching
+     the existing --color-* convention. */
+  --color-violet: #6d28d9;
+  --color-violet-deep: #5b21b6;
+  --color-violet-deeper: #4c1d95;
+  --color-slate: #4b5563;
+  --color-slate-deep: #374151;
+  --color-emerald: #059669;
+  --color-rose: #e11d48;
+
   --app-bg: #f5f6f8;
   --surface-card: #ffffff;
   --surface-muted: #f8fafc;
