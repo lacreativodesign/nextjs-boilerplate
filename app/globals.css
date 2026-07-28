@@ -57,6 +57,12 @@
      recipient sees, independent of the app's light/dark theme. Semantic, theme-locked. */
   --email-canvas: #ffffff;
 
+  /* P2-7: neutral surface + strong text (Tailwind gray-200 / gray-900) and a solid danger
+     banner background (red-100), formalized from raw hex used across admin. */
+  --surface-neutral: #e5e7eb;
+  --text-strong: #111827;
+  --danger-bg: #fee2e2;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
