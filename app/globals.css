@@ -81,6 +81,14 @@
      from the theme-aware --chart-series-5, which shares this light value but adapts in dark. */
   --color-violet-light: #8b5cf6;
 
+  /* P2-12: the neutral gray ramp (Tailwind gray-50..500) used for layout surfaces, borders,
+     muted text and track backgrounds across the app shell. */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
