@@ -214,7 +214,14 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
     <div style={{ display: 'grid', gap: 16 }}>
       <h1 style={{ fontSize: 24, fontWeight: 700 }}>Time Tracking & Timesheets</h1>
       {error ? (
-        <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8 }}>
+        <div
+          style={{
+            background: 'var(--danger-bg)',
+            color: 'var(--alert-error-text)',
+            padding: 12,
+            borderRadius: 8,
+          }}
+        >
           {error}
         </div>
       ) : null}
@@ -421,7 +428,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
                         Approve
                       </button>
                       <button
-                        style={{ ...buttonStyle, marginLeft: 8, background: '#b91c1c' }}
+                        style={{ ...buttonStyle, marginLeft: 8, background: 'var(--danger-deep)' }}
                         onClick={() => handleReviewTimesheet(sheet.id, false)}
                       >
                         Reject
@@ -442,11 +449,11 @@ const cardStyle: CSSProperties = {
   background: '#fff',
   borderRadius: 10,
   padding: 16,
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--surface-neutral)',
 };
 const titleStyle: CSSProperties = { fontSize: 18, fontWeight: 700, marginBottom: 10 };
 const buttonStyle: CSSProperties = {
-  background: '#2563eb',
+  background: 'var(--erp-blue)',
   color: '#fff',
   border: 'none',
   borderRadius: 8,
@@ -454,12 +461,20 @@ const buttonStyle: CSSProperties = {
   cursor: 'pointer',
 };
 const inputStyle: CSSProperties = {
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-muted)',
   borderRadius: 8,
   padding: '8px 10px',
   display: 'block',
   marginTop: 4,
   width: '100%',
 };
-const thStyle: CSSProperties = { textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' };
-const tdStyle: CSSProperties = { textAlign: 'left', padding: 8, borderBottom: '1px solid #f1f5f9' };
+const thStyle: CSSProperties = {
+  textAlign: 'left',
+  padding: 8,
+  borderBottom: '1px solid var(--surface-neutral)',
+};
+const tdStyle: CSSProperties = {
+  textAlign: 'left',
+  padding: 8,
+  borderBottom: '1px solid var(--border-faint)',
+};

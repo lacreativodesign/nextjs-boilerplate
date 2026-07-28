@@ -28,17 +28,17 @@ type HeaderProps = {
 type DayPeriod = 'morning' | 'afternoon' | 'evening';
 
 const ROLE_BADGE_STYLES: Record<string, CSSProperties> = {
-  super_admin: { backgroundColor: 'var(--color-purple)', color: '#ffffff' },
-  admin: { backgroundColor: 'var(--color-blue)', color: '#ffffff' },
-  finance: { backgroundColor: 'var(--color-green)', color: '#ffffff' },
-  hr: { backgroundColor: 'var(--color-teal)', color: '#ffffff' },
-  sales: { backgroundColor: 'var(--color-orange)', color: '#ffffff' },
-  sales_manager: { backgroundColor: 'var(--color-orange)', color: '#ffffff' },
-  production: { backgroundColor: 'var(--color-yellow)', color: '#111827' },
-  production_manager: { backgroundColor: 'var(--color-yellow)', color: '#111827' },
-  am: { backgroundColor: 'var(--color-cyan)', color: '#0f172a' },
-  am_manager: { backgroundColor: 'var(--color-cyan)', color: '#0f172a' },
-  client: { backgroundColor: 'var(--color-gray)', color: '#ffffff' },
+  super_admin: { backgroundColor: 'var(--color-purple)', color: 'var(--text-on-brand)' },
+  admin: { backgroundColor: 'var(--color-blue)', color: 'var(--text-on-brand)' },
+  finance: { backgroundColor: 'var(--color-green)', color: 'var(--text-on-brand)' },
+  hr: { backgroundColor: 'var(--color-teal)', color: 'var(--text-on-brand)' },
+  sales: { backgroundColor: 'var(--color-orange)', color: 'var(--text-on-brand)' },
+  sales_manager: { backgroundColor: 'var(--color-orange)', color: 'var(--text-on-brand)' },
+  production: { backgroundColor: 'var(--color-yellow)', color: 'var(--text-strong)' },
+  production_manager: { backgroundColor: 'var(--color-yellow)', color: 'var(--text-strong)' },
+  am: { backgroundColor: 'var(--color-cyan)', color: 'var(--text-primary)' },
+  am_manager: { backgroundColor: 'var(--color-cyan)', color: 'var(--text-primary)' },
+  client: { backgroundColor: 'var(--color-gray)', color: 'var(--text-on-brand)' },
 };
 
 function normalizeRoleKey(role?: string | null) {
