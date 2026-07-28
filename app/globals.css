@@ -68,6 +68,15 @@
   --danger-text-soft: #fca5a5;
   --color-sky: #38bdf8;
 
+  /* P2-10: alert text shades for the dark-mode palette in SettingsAlert, plus a deeper orange
+     used in the monitoring chart and a soft danger border. */
+  --alert-error-text-dark: #fecaca;
+  --alert-success-text-dark: #a7f3d0;
+  --alert-info-text: #1e3a8a;
+  --alert-info-text-dark: #e2e8f0;
+  --color-orange-deep: #ea580c;
+  --danger-border-soft: #f87171;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
