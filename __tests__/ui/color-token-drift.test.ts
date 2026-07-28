@@ -103,6 +103,11 @@ const CLEAN_FILES: string[] = [
   'components/RequireAuth.tsx',
   'components/layouts/ERPLayout.tsx',
   'components/performance/ProgressBar.tsx',
+  // P2-13: shared components (batch 3). Deferred: components/ui/BizostoSplash.tsx is a
+  // self-contained splash screen with its own light/dark decorative gradient system (its own
+  // @media prefers-color-scheme block); its one-off gradient stops are handled separately.
+  'components/layout/Header.tsx',
+  'components/hr/TimeTrackingDashboard.tsx',
 ];
 
 /**
@@ -168,6 +173,9 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--gray-300': '#d1d5db',
   '--gray-400': '#9ca3af',
   '--gray-500': '#6b7280',
+  // P2-13
+  '--border-muted': '#cbd5e1',
+  '--border-faint': '#f1f5f9',
 };
 
 /** Matches a six-digit hex colour literal. */
