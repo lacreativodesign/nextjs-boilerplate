@@ -481,7 +481,7 @@ export default function AddClientPage() {
 
     const errorText: React.CSSProperties = {
       fontSize: 14,
-      color: '#FCA5A5',
+      color: 'var(--danger-text-soft)',
       marginBottom: 12,
     };
 
@@ -633,7 +633,7 @@ export default function AddClientPage() {
             <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Company Name <span style={{ color: '#EF4444' }}>*</span>
+                  Company Name <span style={{ color: 'var(--danger)' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -874,7 +874,7 @@ export default function AddClientPage() {
             <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Contact Name <span style={{ color: '#EF4444' }}>*</span>
+                  Contact Name <span style={{ color: 'var(--danger)' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -894,7 +894,7 @@ export default function AddClientPage() {
 
               <div>
                 <div style={styles.label}>
-                  Contact Email <span style={{ color: '#EF4444' }}>*</span>
+                  Contact Email <span style={{ color: 'var(--danger)' }}>*</span>
                 </div>
                 <input
                   className="input"
@@ -923,7 +923,7 @@ export default function AddClientPage() {
             <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1">
               <div>
                 <div style={styles.label}>
-                  Sales Owner <span style={{ color: '#EF4444' }}>*</span>
+                  Sales Owner <span style={{ color: 'var(--danger)' }}>*</span>
                 </div>
                 <select
                   className="input"

@@ -655,7 +655,7 @@ export default function HrOnboardingPage() {
                       {step.description || '-'}
                     </div>
                     {step.required && (
-                      <div style={{ fontSize: 11, color: '#38bdf8' }}>Required</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-sky)' }}>Required</div>
                     )}
                   </div>
                 </label>

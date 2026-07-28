@@ -276,7 +276,7 @@ export default function KeyAccountsPage() {
           {loading ? (
             <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading key accounts...</p>
           ) : error ? (
-            <p style={{ fontSize: 14, color: '#FCA5A5' }}>{error}</p>
+            <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
           ) : keyAccountsSorted.length === 0 ? (
             <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No key accounts found.</p>
           ) : (

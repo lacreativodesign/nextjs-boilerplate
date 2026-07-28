@@ -153,7 +153,7 @@ function AlertCard({ error }: { error: ErrorState }) {
         padding: '14px 16px',
         border: '1px solid rgba(239,68,68,0.35)',
         background: 'rgba(239,68,68,0.08)',
-        color: '#991b1b',
+        color: 'var(--alert-error-text)',
         marginTop: 16,
       }}
     >
@@ -665,7 +665,7 @@ export default function GlobalFilesPage() {
                                 borderRadius: 999,
                                 fontSize: 12,
                                 background: 'rgba(239,68,68,0.12)',
-                                color: '#b91c1c',
+                                color: 'var(--danger-deep)',
                               }}
                             >
                               {deletingId === file.id ? 'Deleting...' : 'Delete'}
@@ -740,7 +740,7 @@ export default function GlobalFilesPage() {
                 style={{
                   border: '1px solid rgba(239,68,68,0.35)',
                   background: 'rgba(239,68,68,0.08)',
-                  color: '#b91c1c',
+                  color: 'var(--danger-deep)',
                   borderRadius: 12,
                   padding: '10px 12px',
                   fontSize: 13,

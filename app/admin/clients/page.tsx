@@ -471,7 +471,7 @@ export default function ClientsPage() {
               action={{ label: 'Go to Dashboard', onClick: () => router.push('/') }}
             />
           ) : error ? (
-            <p style={{ fontSize: 14, color: '#FCA5A5' }}>{error}</p>
+            <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
           ) : sorted.length === 0 ? (
             <EmptyState
               title="No clients found"

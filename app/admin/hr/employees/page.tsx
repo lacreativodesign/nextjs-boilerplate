@@ -415,7 +415,10 @@ export default function HrEmployeesPage() {
               <tbody>
                 {error ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: 24, color: '#ef4444' }}>
+                    <td
+                      colSpan={9}
+                      style={{ textAlign: 'center', padding: 24, color: 'var(--danger)' }}
+                    >
                       {error}
                     </td>
                   </tr>
@@ -644,7 +647,7 @@ export default function HrEmployeesPage() {
                       borderRadius: 12,
                       fontWeight: 600,
                       border: '1px solid rgba(248,113,113,0.35)',
-                      color: '#ef4444',
+                      color: 'var(--danger)',
                     }}
                   >
                     {formState.status === 'inactive' ? 'Reactivate' : 'Deactivate'}
