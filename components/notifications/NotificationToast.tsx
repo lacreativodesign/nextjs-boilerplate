@@ -17,11 +17,11 @@ type ToastItem = ToastNotification & { toastId: string };
 
 const TYPE_COLOR: Record<string, string> = {
   success: 'var(--success)',
-  warning: '#f59e0b',
+  warning: 'var(--warning)',
   error: 'var(--danger)',
-  approval_requested: '#f59e0b',
+  approval_requested: 'var(--warning)',
   new_lead: 'var(--erp-blue)',
-  change_request: '#8b5cf6',
+  change_request: 'var(--color-violet-light)',
   deal_paid: 'var(--success)',
   info: 'var(--erp-blue)',
   system: 'var(--text-muted)',

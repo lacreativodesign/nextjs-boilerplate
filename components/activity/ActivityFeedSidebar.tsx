@@ -393,7 +393,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
                 style={{
                   background: 'rgba(220, 38, 38, 0.08)',
                   border: '1px solid rgba(220, 38, 38, 0.25)',
-                  color: '#b91c1c',
+                  color: 'var(--danger-deep)',
                 }}
                 role="status"
               >

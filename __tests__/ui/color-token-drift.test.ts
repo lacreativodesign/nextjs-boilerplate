@@ -89,6 +89,15 @@ const CLEAN_FILES: string[] = [
   'app/admin/leads/page.tsx',
   'app/admin/monitoring/page.tsx',
   'app/admin/sales/deals/page.tsx',
+  // P2-11: shared components (batch 1). Deferred with documented reasons:
+  //   - components/files/TagManager.tsx: default colour-picker value (config data).
+  //   - components/finance/ExpenseBreakdownChart.tsx: pie palette pending a chart-theme pass.
+  //   - components/production/GanttChart.tsx: canvas fillStyle cannot resolve CSS var().
+  'components/activity/ActivityFeedSidebar.tsx',
+  'components/onboarding/ActivationChecklist.tsx',
+  'components/production/ProductionProjectDrawer.tsx',
+  'components/super_admin/ImpersonationBanner.tsx',
+  'components/notifications/NotificationToast.tsx',
 ];
 
 /**
@@ -146,6 +155,8 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--alert-info-text-dark': '#e2e8f0',
   '--color-orange-deep': '#ea580c',
   '--danger-border-soft': '#f87171',
+  // P2-11
+  '--color-violet-light': '#8b5cf6',
 };
 
 /** Matches a six-digit hex colour literal. */

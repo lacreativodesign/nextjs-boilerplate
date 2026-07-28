@@ -237,11 +237,11 @@ export default function ProductionProjectDrawer({
 
   const overrideStatusTone = () => {
     if (overrideStatus === 'pending')
-      return { background: 'rgba(251,191,36,0.15)', color: '#b45309' };
+      return { background: 'rgba(251,191,36,0.15)', color: 'var(--warning-strong-alt)' };
     if (overrideStatus === 'approved')
-      return { background: 'rgba(34,197,94,0.15)', color: '#15803d' };
+      return { background: 'rgba(34,197,94,0.15)', color: 'var(--success-strong)' };
     if (overrideStatus === 'rejected')
-      return { background: 'rgba(248,113,113,0.15)', color: '#b91c1c' };
+      return { background: 'rgba(248,113,113,0.15)', color: 'var(--danger-deep)' };
     return { background: 'rgba(148,163,184,0.15)', color: 'var(--text-muted)' };
   };
 
