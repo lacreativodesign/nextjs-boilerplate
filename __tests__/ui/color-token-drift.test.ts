@@ -98,6 +98,11 @@ const CLEAN_FILES: string[] = [
   'components/production/ProductionProjectDrawer.tsx',
   'components/super_admin/ImpersonationBanner.tsx',
   'components/notifications/NotificationToast.tsx',
+  // P2-12: shared components (batch 2) — layout/auth cluster
+  'components/DashboardLayout.tsx',
+  'components/RequireAuth.tsx',
+  'components/layouts/ERPLayout.tsx',
+  'components/performance/ProgressBar.tsx',
 ];
 
 /**
@@ -157,6 +162,12 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--danger-border-soft': '#f87171',
   // P2-11
   '--color-violet-light': '#8b5cf6',
+  // P2-12
+  '--gray-50': '#f9fafb',
+  '--gray-100': '#f3f4f6',
+  '--gray-300': '#d1d5db',
+  '--gray-400': '#9ca3af',
+  '--gray-500': '#6b7280',
 };
 
 /** Matches a six-digit hex colour literal. */
