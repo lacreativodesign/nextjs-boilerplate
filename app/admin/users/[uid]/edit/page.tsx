@@ -507,7 +507,7 @@ export default function EditUserPage() {
             }}
           >
             <div style={{ minHeight: 18, fontSize: 13 }}>
-              {error ? <span style={{ color: '#EF4444' }}>{error}</span> : null}
+              {error ? <span style={{ color: 'var(--danger)' }}>{error}</span> : null}
             </div>
 
             <button className="btn" type="submit" disabled={saving} style={{ borderRadius: 12 }}>
@@ -565,7 +565,7 @@ function Label({ text, required }: { text: string; required?: boolean }) {
       }}
     >
       <span style={{ textTransform: 'uppercase' }}>{text}</span>
-      {required ? <span style={{ color: '#EF4444' }}>*</span> : null}
+      {required ? <span style={{ color: 'var(--danger)' }}>*</span> : null}
     </div>
   );
 }

@@ -127,8 +127,8 @@ export default function EditUserPage() {
             marginBottom: 16,
             padding: 10,
             borderRadius: 8,
-            background: '#fee2e2',
-            color: '#b91c1c',
+            background: 'var(--danger-bg)',
+            color: 'var(--danger-deep)',
             fontSize: 14,
           }}
         >
@@ -200,7 +200,7 @@ export default function EditUserPage() {
           onClick={onSave}
           disabled={saving}
           style={{
-            background: '#2563eb',
+            background: 'var(--erp-blue)',
             padding: '10px 18px',
             color: 'white',
             borderRadius: 8,
@@ -215,9 +215,9 @@ export default function EditUserPage() {
         <button
           onClick={() => history.back()}
           style={{
-            background: '#e5e7eb',
+            background: 'var(--surface-neutral)',
             padding: '10px 18px',
-            color: '#111827',
+            color: 'var(--text-strong)',
             borderRadius: 8,
             border: 'none',
             cursor: 'pointer',
@@ -232,7 +232,7 @@ export default function EditUserPage() {
           disabled={deleting}
           style={{
             marginLeft: 'auto',
-            background: '#ef4444',
+            background: 'var(--danger)',
             padding: '10px 18px',
             color: 'white',
             borderRadius: 8,
