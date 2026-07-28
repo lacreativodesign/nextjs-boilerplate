@@ -79,6 +79,16 @@ const CLEAN_FILES: string[] = [
   'app/admin/hr/activity/page.tsx',
   'app/admin/projects/files/page.tsx',
   'app/admin/projects/change-requests/page.tsx',
+  // P2-10: admin finance / monitoring / singletons + SettingsAlert (completes admin).
+  // app/admin/settings/branding/page.tsx remains excluded — tenant branding config data.
+  'app/admin/settings/_components/SettingsAlert.tsx',
+  'app/admin/finance/budgets/[id]/page.tsx',
+  'app/admin/finance/reports/page.tsx',
+  'app/admin/finance/settings/page.tsx',
+  'app/admin/jobs/page.tsx',
+  'app/admin/leads/page.tsx',
+  'app/admin/monitoring/page.tsx',
+  'app/admin/sales/deals/page.tsx',
 ];
 
 /**
@@ -129,6 +139,13 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   // P2-9
   '--danger-text-soft': '#fca5a5',
   '--color-sky': '#38bdf8',
+  // P2-10
+  '--alert-error-text-dark': '#fecaca',
+  '--alert-success-text-dark': '#a7f3d0',
+  '--alert-info-text': '#1e3a8a',
+  '--alert-info-text-dark': '#e2e8f0',
+  '--color-orange-deep': '#ea580c',
+  '--danger-border-soft': '#f87171',
 };
 
 /** Matches a six-digit hex colour literal. */

@@ -522,3 +522,21 @@ Converted ten admin pages (22 raw-hex occurrences) across clients, hr and projec
 these subfolders are now hex-free. No rendered colour changed. Two tokens were formalized:
 `--danger-text-soft` (#fca5a5, the red-300 error text used on dark banners) and `--color-sky`
 (#38bdf8, the sky accent for inline "Required" labels). Everything else mapped to existing tokens.
+
+## P2-10 — admin finance / monitoring / singletons + SettingsAlert (admin complete)
+
+Converted eight admin files (SettingsAlert, finance budgets/reports/settings, jobs, leads,
+monitoring, sales/deals) to design tokens. The entire admin route group is now hex-free except
+settings/branding/page.tsx, which holds tenant branding config data by design. No rendered colour
+changed. Six tokens were formalized: the SettingsAlert dark-palette shades (`--alert-error-text-dark`
+#fecaca, `--alert-success-text-dark` #a7f3d0, `--alert-info-text` #1e3a8a, `--alert-info-text-dark`
+#e2e8f0), `--color-orange-deep` (#ea580c), and `--danger-border-soft` (#f87171).
+
+Notable correctness point: the jobs card border `#f87171` was NOT mapped to `--toast-error` — that
+token is `#ef4444` in light mode (only `#f87171` in dark), so snapping would have changed the light
+rendering. It was formalized as `--danger-border-soft` instead. A token's value can differ by theme,
+so the light `:root` value is what must match.
+
+Separately noted for a later session (not fixed here): SettingsAlert always selects its `.light`
+palette (`const palette = alertStyles[tone].light`), so its dark palette is currently dead — a
+behaviour bug outside the scope of the colour migration.
