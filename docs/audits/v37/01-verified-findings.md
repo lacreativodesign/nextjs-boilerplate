@@ -540,3 +540,21 @@ so the light `:root` value is what must match.
 Separately noted for a later session (not fixed here): SettingsAlert always selects its `.light`
 palette (`const palette = alertStyles[tone].light`), so its dark palette is currently dead — a
 behaviour bug outside the scope of the colour migration.
+
+## P2-11 — shared components migrated to design tokens (batch 1)
+
+Converted five shared components (ActivityFeedSidebar, ActivationChecklist, ProductionProjectDrawer,
+ImpersonationBanner, NotificationToast) to design tokens; no rendered colour changed. One token was
+formalized: `--color-violet-light` (#8b5cf6), a fixed violet accent for the change-request
+notification type — deliberately distinct from the theme-aware `--chart-series-5`, which shares the
+light value but adapts in dark mode. Dead `var(--surface-muted,#f1f5f9)` fallbacks and an undefined
+`var(--erp-green,#16a34a)` reference were mapped to their real tokens.
+
+Three components were deferred with documented reasons:
+
+- `files/TagManager.tsx` — `useState('#3b82f6')` is a default colour-picker value (config data).
+- `finance/ExpenseBreakdownChart.tsx` — the COLORS pie palette is pending a dedicated chart-theme
+  decision: some values match the theme-aware chart-series tokens, some match semantic tokens, and no
+  mapping is both coherent and zero-change. To be handled as one deliberate chart-theme pass.
+- `production/GanttChart.tsx` — `context.fillStyle` is a canvas 2D call that cannot resolve CSS
+  var(); needs a computed-value approach.
