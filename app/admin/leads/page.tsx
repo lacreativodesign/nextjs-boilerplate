@@ -192,7 +192,7 @@ export default function AdminLeadsPage() {
           {loading ? (
             <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading leads...</p>
           ) : error ? (
-            <p style={{ fontSize: 14, color: '#FCA5A5' }}>{error}</p>
+            <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
           ) : filtered.length === 0 ? (
             <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No leads found.</p>
           ) : (

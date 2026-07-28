@@ -6,36 +6,36 @@ const alertStyles = {
     light: {
       border: '1px solid rgba(239,68,68,0.35)',
       background: 'rgba(254,226,226,0.6)',
-      color: '#991b1b',
+      color: 'var(--alert-error-text)',
     },
     dark: {
       border: '1px solid rgba(239,68,68,0.35)',
       background: 'rgba(127,29,29,0.2)',
-      color: '#fecaca',
+      color: 'var(--alert-error-text-dark)',
     },
   },
   success: {
     light: {
       border: '1px solid rgba(16,185,129,0.35)',
       background: 'rgba(209,250,229,0.6)',
-      color: '#065f46',
+      color: 'var(--alert-success-text)',
     },
     dark: {
       border: '1px solid rgba(16,185,129,0.35)',
       background: 'rgba(6,78,59,0.35)',
-      color: '#a7f3d0',
+      color: 'var(--alert-success-text-dark)',
     },
   },
   info: {
     light: {
       border: '1px solid rgba(37,99,235,0.25)',
       background: 'rgba(219,234,254,0.5)',
-      color: '#1e3a8a',
+      color: 'var(--alert-info-text)',
     },
     dark: {
       border: '1px solid rgba(148,163,184,0.35)',
       background: 'rgba(30,41,59,0.4)',
-      color: '#e2e8f0',
+      color: 'var(--alert-info-text-dark)',
     },
   },
 };

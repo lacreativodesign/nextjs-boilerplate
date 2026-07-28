@@ -237,7 +237,7 @@ export default function FinanceReportsPage() {
                     style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}
                   >
                     <span>Revenue</span>
-                    <span style={{ color: '#16a34a' }}>
+                    <span style={{ color: 'var(--color-green)' }}>
                       {formatCurrency(profitLossReport.revenue.total)}
                     </span>
                   </div>
@@ -248,7 +248,7 @@ export default function FinanceReportsPage() {
                     style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}
                   >
                     <span>Expenses</span>
-                    <span style={{ color: '#dc2626' }}>
+                    <span style={{ color: 'var(--danger-strong)' }}>
                       {formatCurrency(profitLossReport.expenses.total)}
                     </span>
                   </div>
@@ -282,7 +282,12 @@ export default function FinanceReportsPage() {
                   >
                     <span>Net Income</span>
                     <span
-                      style={{ color: profitLossReport.netIncome >= 0 ? '#16a34a' : '#dc2626' }}
+                      style={{
+                        color:
+                          profitLossReport.netIncome >= 0
+                            ? 'var(--color-green)'
+                            : 'var(--danger-strong)',
+                      }}
                     >
                       {formatCurrency(profitLossReport.netIncome)}
                     </span>

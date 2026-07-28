@@ -175,8 +175,13 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="Budgeted" stroke="#3B82F6" strokeWidth={2} />
-                <Line type="monotone" dataKey="Actual" stroke="#10B981" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="Budgeted"
+                  stroke="var(--color-info)"
+                  strokeWidth={2}
+                />
+                <Line type="monotone" dataKey="Actual" stroke="var(--success)" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

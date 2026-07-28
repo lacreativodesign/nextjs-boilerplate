@@ -655,7 +655,7 @@ export default function SalesDealsPage() {
                       padding: '4px 10px',
                       borderRadius: 999,
                       background: 'rgba(34,197,94,0.12)',
-                      color: '#15803d',
+                      color: 'var(--success-strong)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.08em',
                     }}
