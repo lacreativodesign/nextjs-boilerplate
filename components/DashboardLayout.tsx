@@ -19,16 +19,16 @@ export default function DashboardLayout({ role, title, children }: Props) {
       style={{
         minHeight: '100vh',
         display: 'flex',
-        backgroundColor: '#f3f4f6',
+        backgroundColor: 'var(--gray-100)',
         fontFamily: 'Inter, sans-serif',
-        color: '#111827',
+        color: 'var(--text-strong)',
       }}
     >
       <aside
         style={{
           width: 260,
-          backgroundColor: '#111827',
-          color: '#e5e7eb',
+          backgroundColor: 'var(--text-strong)',
+          color: 'var(--surface-neutral)',
           display: 'flex',
           flexDirection: 'column',
           padding: '24px 20px',
@@ -41,12 +41,12 @@ export default function DashboardLayout({ role, title, children }: Props) {
               fontWeight: 700,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              color: '#f9fafb',
+              color: 'var(--gray-50)',
             }}
           >
             BIZOSTO ERP
           </div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{title}</div>
+          <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 6 }}>{title}</div>
         </div>
 
         <nav style={{ flex: 1 }}>
@@ -62,8 +62,8 @@ export default function DashboardLayout({ role, title, children }: Props) {
                 textDecoration: 'none',
                 fontSize: 14,
                 fontWeight: 500,
-                color: '#e5e7eb',
-                backgroundColor: '#1f2937',
+                color: 'var(--surface-neutral)',
+                backgroundColor: 'var(--surface-inverse)',
               }}
             >
               {link.label}

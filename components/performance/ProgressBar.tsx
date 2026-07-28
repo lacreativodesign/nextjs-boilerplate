@@ -26,10 +26,10 @@ function formatValue(value: number, unit: Unit) {
 }
 
 function getFillColor(percentage: number) {
-  if (percentage >= 100) return '#16a34a';
-  if (percentage >= 80) return '#2563eb';
-  if (percentage >= 50) return '#d97706';
-  return '#dc2626';
+  if (percentage >= 100) return 'var(--color-green)';
+  if (percentage >= 80) return 'var(--erp-blue)';
+  if (percentage >= 50) return 'var(--warning-strong)';
+  return 'var(--danger-strong)';
 }
 
 export default function ProgressBar({
@@ -64,7 +64,9 @@ export default function ProgressBar({
           {formatValue(actual, unit)} / {formatValue(target, unit)} {unit}
         </span>
       </div>
-      <div className={`w-full rounded-full bg-[#e5e7eb] overflow-hidden ${heights[size]}`}>
+      <div
+        className={`w-full rounded-full bg-[var(--surface-neutral)] overflow-hidden ${heights[size]}`}
+      >
         <div
           className="h-full rounded-full transition-[width] duration-700 ease-in-out"
           style={{ width: `${visual}%`, backgroundColor: color }}

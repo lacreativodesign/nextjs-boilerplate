@@ -49,7 +49,7 @@ export default function ERPLayout({
       style={{
         display: 'flex',
         minHeight: '100vh',
-        background: '#f9fafb',
+        background: 'var(--gray-50)',
         fontFamily: 'Inter, sans-serif',
       }}
     >
@@ -58,7 +58,7 @@ export default function ERPLayout({
         style={{
           width: sidebarOpen ? 240 : 70,
           transition: 'width 0.2s ease',
-          background: '#111827',
+          background: 'var(--text-strong)',
           color: '#fff',
           paddingTop: 20,
           boxShadow: '2px 0 5px rgba(0,0,0,0.1)',
@@ -70,7 +70,7 @@ export default function ERPLayout({
             marginLeft: 20,
             marginBottom: 20,
             padding: 10,
-            background: '#1f2937',
+            background: 'var(--surface-inverse)',
             color: '#fff',
             borderRadius: 8,
             border: 'none',
@@ -88,7 +88,7 @@ export default function ERPLayout({
               style={{
                 padding: '12px 20px',
                 cursor: 'pointer',
-                color: '#d1d5db',
+                color: 'var(--gray-300)',
                 fontWeight: 500,
               }}
             >
@@ -104,7 +104,7 @@ export default function ERPLayout({
           style={{
             background: '#fff',
             padding: '20px 30px',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--surface-neutral)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -116,7 +116,7 @@ export default function ERPLayout({
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
-              background: '#ef4444',
+              background: 'var(--danger)',
               color: '#fff',
               borderRadius: 8,
               border: 'none',

@@ -558,3 +558,15 @@ Three components were deferred with documented reasons:
   mapping is both coherent and zero-change. To be handled as one deliberate chart-theme pass.
 - `production/GanttChart.tsx` — `context.fillStyle` is a canvas 2D call that cannot resolve CSS
   var(); needs a computed-value approach.
+
+## P2-12 — shared components migrated to design tokens (batch 2, layout/auth)
+
+Converted four shell components (DashboardLayout, RequireAuth, ERPLayout, ProgressBar) to design
+tokens; no rendered colour changed. Five tokens formalized the neutral gray ramp used across the app
+shell: `--gray-50` (#f9fafb), `--gray-100` (#f3f4f6), `--gray-300` (#d1d5db), `--gray-400` (#9ca3af),
+`--gray-500` (#6b7280).
+
+All seven of RequireAuth's colours were dead `var(--token, #fallback)` references whose tokens are
+defined and differ from the fallback hexes (e.g. `--erp-blue` = #2563eb, not the #3b82f6 fallback;
+`--text-primary` = #0f172a, not #111827). They rendered the token value, so mapping to the plain
+token preserves the screen exactly; mapping to the fallback hexes would have changed five spots.
