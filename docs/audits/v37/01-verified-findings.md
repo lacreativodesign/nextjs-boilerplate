@@ -493,3 +493,14 @@ Two files under admin/settings were deliberately excluded and documented:
 A dead `var(--color-primary,#4f46e5)` reference (token never defined) was mapped to `var(--color-indigo)`.
 Remaining admin subfolders (users, clients, hr, finance, projects, monitoring, and the deferred
 SettingsAlert) follow in subsequent batches.
+
+## P2-7 — admin/users migrated to design tokens (admin batch 2)
+
+Converted four admin/users pages (11 raw-hex occurrences) to design tokens; no rendered colour
+changed. Three tokens were formalized: `--surface-neutral` (#e5e7eb, gray-200 neutral button
+background), `--text-strong` (#111827, gray-900 strong text), and `--danger-bg` (#fee2e2, a solid
+error-banner background, distinct from the color-mix-based `--danger-soft`).
+
+`app/admin/users/roles/page.tsx` was deliberately deferred to P2-8: its 22 hex form a complete
+role-colour palette (a per-role accent map, a `<style>` block of badge backgrounds, and a purple/gray
+ramp) that warrants a coherent set of role tokens rather than mechanical mapping.

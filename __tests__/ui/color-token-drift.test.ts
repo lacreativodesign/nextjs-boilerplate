@@ -61,6 +61,11 @@ const CLEAN_FILES: string[] = [
   'app/admin/settings/email-templates/page.tsx',
   'app/admin/settings/integrations/quickbooks/page.tsx',
   'app/admin/settings/integrations/xero/page.tsx',
+  // P2-7: admin/users (roles/page.tsx deferred to P2-8 — it is a full role-colour palette)
+  'app/admin/users/[uid]/edit/page.tsx',
+  'app/admin/users/[uid]/page.tsx',
+  'app/admin/users/create/page.tsx',
+  'app/admin/users/page.tsx',
 ];
 
 /**
@@ -96,6 +101,10 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--alert-success-text': '#065f46',
   '--color-indigo': '#4f46e5',
   '--email-canvas': '#ffffff',
+  // P2-7
+  '--surface-neutral': '#e5e7eb',
+  '--text-strong': '#111827',
+  '--danger-bg': '#fee2e2',
 };
 
 /** Matches a six-digit hex colour literal. */
