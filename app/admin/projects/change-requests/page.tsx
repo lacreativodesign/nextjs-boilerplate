@@ -194,7 +194,7 @@ function approvalStyles(status?: string | null) {
     return {
       ...base,
       background: 'rgba(251,191,36,0.15)',
-      color: '#b45309',
+      color: 'var(--warning-strong-alt)',
       border: '1px solid rgba(245,158,11,0.35)',
     };
   }
@@ -202,7 +202,7 @@ function approvalStyles(status?: string | null) {
     return {
       ...base,
       background: 'rgba(34,197,94,0.15)',
-      color: '#15803d',
+      color: 'var(--success-strong)',
       border: '1px solid rgba(34,197,94,0.30)',
     };
   }
@@ -210,7 +210,7 @@ function approvalStyles(status?: string | null) {
     return {
       ...base,
       background: 'rgba(248,113,113,0.15)',
-      color: '#b91c1c',
+      color: 'var(--danger-deep)',
       border: '1px solid rgba(239,68,68,0.35)',
     };
   }

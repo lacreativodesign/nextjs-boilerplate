@@ -515,3 +515,10 @@ were formalized for the role badges and org-node hierarchy — a violet ramp (`-
 `--color-*` convention, since they are a display palette rather than semantic status colours. The
 `.org-node-*` backgrounds live in a `<style jsx>` block that already used var() references, so the
 token backgrounds follow the established pattern there.
+
+## P2-9 — admin clients / hr / projects migrated to design tokens (admin batch 4)
+
+Converted ten admin pages (22 raw-hex occurrences) across clients, hr and projects to design tokens;
+these subfolders are now hex-free. No rendered colour changed. Two tokens were formalized:
+`--danger-text-soft` (#fca5a5, the red-300 error text used on dark banners) and `--color-sky`
+(#38bdf8, the sky accent for inline "Required" labels). Everything else mapped to existing tokens.

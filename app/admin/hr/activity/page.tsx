@@ -127,7 +127,10 @@ export default function HrActivityPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: 24, color: '#ef4444' }}>
+                  <td
+                    colSpan={4}
+                    style={{ textAlign: 'center', padding: 24, color: 'var(--danger)' }}
+                  >
                     {error}
                   </td>
                 </tr>

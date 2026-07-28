@@ -63,6 +63,11 @@
   --text-strong: #111827;
   --danger-bg: #fee2e2;
 
+  /* P2-9: a lighter danger text (red-300) used on dark error banners, and a sky accent
+     (sky-400) used for inline "Required" labels. */
+  --danger-text-soft: #fca5a5;
+  --color-sky: #38bdf8;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
