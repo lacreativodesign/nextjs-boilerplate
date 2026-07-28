@@ -407,7 +407,7 @@ export default function UsersPage() {
                               background: u.mfaEnabled
                                 ? 'rgba(16,185,129,0.15)'
                                 : 'rgba(148,163,184,0.2)',
-                              color: u.mfaEnabled ? '#10b981' : 'var(--text-muted)',
+                              color: u.mfaEnabled ? 'var(--success)' : 'var(--text-muted)',
                             }}
                           >
                             {u.mfaEnabled ? 'Enabled' : 'Disabled'}
