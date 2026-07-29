@@ -59,7 +59,7 @@ export default function ERPLayout({
           width: sidebarOpen ? 240 : 70,
           transition: 'width 0.2s ease',
           background: 'var(--text-strong)',
-          color: '#fff',
+          color: 'var(--text-on-brand)',
           paddingTop: 20,
           boxShadow: '2px 0 5px rgba(0,0,0,0.1)',
         }}
@@ -71,7 +71,7 @@ export default function ERPLayout({
             marginBottom: 20,
             padding: 10,
             background: 'var(--surface-inverse)',
-            color: '#fff',
+            color: 'var(--text-on-brand)',
             borderRadius: 8,
             border: 'none',
             cursor: 'pointer',
@@ -102,7 +102,7 @@ export default function ERPLayout({
       <main style={{ flex: 1 }}>
         <header
           style={{
-            background: '#fff',
+            background: 'var(--surface-card)',
             padding: '20px 30px',
             borderBottom: '1px solid var(--surface-neutral)',
             display: 'flex',
@@ -117,7 +117,7 @@ export default function ERPLayout({
             style={{
               padding: '8px 16px',
               background: 'var(--danger)',
-              color: '#fff',
+              color: 'var(--text-on-brand)',
               borderRadius: 8,
               border: 'none',
               cursor: 'pointer',

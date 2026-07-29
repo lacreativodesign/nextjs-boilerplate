@@ -106,6 +106,9 @@
   /* P2-18: slate-700 body text used on the sales-manager deals page. */
   --text-slate: #334155;
 
+  /* P2-19: dashed drop-zone border grey used by the file uploader. */
+  --border-dashed: #999999;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;

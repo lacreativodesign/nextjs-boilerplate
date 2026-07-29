@@ -301,7 +301,7 @@ export default function EmployeeAttendanceDetail() {
 const btn = {
   padding: '8px 14px',
   background: 'var(--erp-blue)',
-  color: 'var(--text-on-inverse, #fff)',
+  color: 'var(--text-on-brand)',
   border: 'none',
   borderRadius: 8,
   cursor: 'pointer',

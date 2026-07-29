@@ -268,7 +268,7 @@ export default function ActivityFeedSidebar({ open, onClose }: Props) {
                 <span
                   style={{
                     background: 'var(--danger)',
-                    color: '#fff',
+                    color: 'var(--text-on-brand)',
                     borderRadius: 999,
                     fontSize: 11,
                     fontWeight: 700,

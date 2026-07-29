@@ -446,7 +446,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 }
 
 const cardStyle: CSSProperties = {
-  background: '#fff',
+  background: 'var(--surface-card)',
   borderRadius: 10,
   padding: 16,
   border: '1px solid var(--surface-neutral)',
@@ -454,7 +454,7 @@ const cardStyle: CSSProperties = {
 const titleStyle: CSSProperties = { fontSize: 18, fontWeight: 700, marginBottom: 10 };
 const buttonStyle: CSSProperties = {
   background: 'var(--erp-blue)',
-  color: '#fff',
+  color: 'var(--text-on-brand)',
   border: 'none',
   borderRadius: 8,
   padding: '8px 12px',
