@@ -97,6 +97,12 @@
   --text-slate-deep: #1e293b;
   --brand-navy-soft: #1e3a5f;
 
+  /* P2-15: near-black heading text and a soft success banner (green-50 bg / green-200 border)
+     on the public invoice-payment page. */
+  --text-near-black: #1a1a1a;
+  --status-success-bg-soft: #f0fdf4;
+  --status-success-border: #bbf7d0;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
