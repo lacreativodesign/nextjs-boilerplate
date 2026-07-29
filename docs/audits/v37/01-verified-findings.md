@@ -570,3 +570,14 @@ All seven of RequireAuth's colours were dead `var(--token, #fallback)` reference
 defined and differ from the fallback hexes (e.g. `--erp-blue` = #2563eb, not the #3b82f6 fallback;
 `--text-primary` = #0f172a, not #111827). They rendered the token value, so mapping to the plain
 token preserves the screen exactly; mapping to the fallback hexes would have changed five spots.
+
+## P2-13 — Header + TimeTrackingDashboard migrated to design tokens (components batch 3)
+
+Converted the role-badge colour map in Header and the styles in TimeTrackingDashboard (18 raw-hex
+occurrences) to design tokens; no rendered colour changed. Two border tokens were formalized:
+`--border-muted` (#cbd5e1) and `--border-faint` (#f1f5f9), both used as 1px table/control borders.
+
+`components/ui/BizostoSplash.tsx` was deferred: it is a self-contained splash screen with its own
+light/dark decorative gradient system (including its own @media prefers-color-scheme block), so its
+one-off gradient stops are handled in a separate decorative pass rather than forced into global
+semantic tokens.
