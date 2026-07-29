@@ -600,3 +600,10 @@ Converted app/pay/[invoiceId]/page.tsx (26 raw-hex occurrences) to design tokens
 changed. Three tokens were formalized: --text-near-black (#1a1a1a) for the heading, and a soft
 success-banner pair --status-success-bg-soft (#f0fdf4) and --status-success-border (#bbf7d0). The rest
 mapped to existing brand, gray-ramp and semantic tokens.
+
+## P2-16 — legal + security pages migrated to design tokens
+
+Converted the five legal/security pages (terms, privacy, cookie-policy, refund-cancellation,
+security) to design tokens. Each had an identical brand-gradient header and white title, all mapping
+to existing tokens (--brand-navy, --brand-blue-light, --text-on-brand). No new tokens, no globals
+change, no rendered colour change.
