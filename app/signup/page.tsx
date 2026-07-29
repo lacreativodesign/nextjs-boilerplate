@@ -472,11 +472,11 @@ function SignupInner() {
   };
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-3 py-6 sm:px-4">
+    <div className="min-h-screen bg-[linear-gradient(180deg,var(--brand-navy)_0%,var(--brand-blue-light)_100%)] px-3 py-6 sm:px-4">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[480px] items-center justify-center">
         <div className="w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 text-[var(--text-primary)] shadow-2xl sm:p-8">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] text-3xl font-bold text-white">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-[linear-gradient(180deg,var(--brand-navy)_0%,var(--brand-blue-light)_100%)] text-3xl font-bold text-white">
               B
             </div>
             <p className="text-xs font-semibold tracking-[0.24em] text-[var(--text-muted)]">
@@ -493,7 +493,8 @@ function SignupInner() {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${progress}%`,
-                      background: 'linear-gradient(90deg, #012167, #6692f9)',
+                      background:
+                        'linear-gradient(90deg, var(--brand-navy), var(--brand-blue-light))',
                     }}
                   />
                 </div>
@@ -525,9 +526,9 @@ function SignupInner() {
                               className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all duration-300"
                               style={{
                                 background: isComplete
-                                  ? 'linear-gradient(135deg, #012167, #6692f9)'
+                                  ? 'linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light))'
                                   : isActive
-                                    ? 'linear-gradient(135deg, #012167, #6692f9)'
+                                    ? 'linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light))'
                                     : 'rgba(255,255,255,0.15)',
                                 color: isComplete || isActive ? '#fff' : 'rgba(255,255,255,0.5)',
                                 transform: isActive ? 'scale(1.2)' : 'scale(1)',
@@ -540,7 +541,7 @@ function SignupInner() {
                               className="text-center text-[9px] font-semibold uppercase tracking-wider transition-all"
                               style={{
                                 color: isActive
-                                  ? '#6692f9'
+                                  ? 'var(--brand-blue-light)'
                                   : isComplete
                                     ? 'rgba(255,255,255,0.6)'
                                     : 'rgba(255,255,255,0.35)',
@@ -851,7 +852,7 @@ function SignupInner() {
                     void nextStep();
                   }}
                   disabled={loading || (step === 5 && !formState.termsAccepted)}
-                  className="rounded-lg bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="rounded-lg bg-[linear-gradient(180deg,var(--brand-navy)_0%,var(--brand-blue-light)_100%)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
                   {loading
                     ? step === 2
@@ -894,7 +895,7 @@ function SignupInner() {
                   // to the dashboard.
                   router.push('/onboarding');
                 }}
-                className="mt-6 w-full rounded-lg bg-[linear-gradient(180deg,#012167_0%,#6692f9_100%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="mt-6 w-full rounded-lg bg-[linear-gradient(180deg,var(--brand-navy)_0%,var(--brand-blue-light)_100%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
                 Get started
               </button>
@@ -919,7 +920,9 @@ export default function SignupPage() {
       fallback={
         <div
           className="flex min-h-screen items-center justify-center"
-          style={{ background: 'linear-gradient(180deg,#012167 0%,#6692f9 100%)' }}
+          style={{
+            background: 'linear-gradient(180deg,var(--brand-navy) 0%,var(--brand-blue-light) 100%)',
+          }}
         >
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         </div>
