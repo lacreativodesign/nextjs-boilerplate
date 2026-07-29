@@ -116,6 +116,12 @@ const CLEAN_FILES: string[] = [
   'app/not-found.tsx',
   // P2-15: public invoice-payment page
   'app/pay/[invoiceId]/page.tsx',
+  // P2-16: legal + security pages (all existing brand tokens, no new tokens)
+  'app/terms/page.tsx',
+  'app/privacy/page.tsx',
+  'app/cookie-policy/page.tsx',
+  'app/refund-cancellation/page.tsx',
+  'app/security/page.tsx',
 ];
 
 /**

@@ -50,7 +50,7 @@ export default function SecurityPage() {
     <div className="min-h-screen bg-[var(--app-bg)]">
       <div
         style={{
-          background: 'linear-gradient(135deg, #012167, #6692f9)',
+          background: 'linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light))',
           padding: '0 24px',
           height: 56,
           display: 'flex',
@@ -64,7 +64,7 @@ export default function SecurityPage() {
             fontWeight: 800,
             fontSize: 18,
             letterSpacing: '0.08em',
-            color: '#ffffff',
+            color: 'var(--text-on-brand)',
             textDecoration: 'none',
           }}
         >
