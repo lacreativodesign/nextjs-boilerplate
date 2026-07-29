@@ -133,6 +133,9 @@ const CLEAN_FILES: string[] = [
   'app/sales_manager/deals/page.tsx',
   'app/sales_manager/leads/page.tsx',
   'app/users/page.tsx',
+  // P2-19: shorthand sweep — files whose only remaining raw colour was #fff/#999 shorthand.
+  // (hr/attendance pages were already allowlisted in an earlier batch.)
+  'components/FileUploader.tsx',
 ];
 
 /**
@@ -210,10 +213,12 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--status-success-border': '#bbf7d0',
   // P2-18
   '--text-slate': '#334155',
+  // P2-19
+  '--border-dashed': '#999999',
 };
 
 /** Matches a six-digit hex colour literal. */
-const HEX = /#[0-9a-fA-F]{6}\b/;
+const HEX = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/;
 
 describe('P2-1: the formalized tokens exist with their exact values', () => {
   const css = read('app/globals.css');

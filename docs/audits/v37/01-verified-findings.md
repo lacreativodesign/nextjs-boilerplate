@@ -628,3 +628,17 @@ users; 17 raw-hex occurrences including one `#fff` shorthand) to design tokens; 
 changed. One token was formalized: `--text-slate` (#334155). The billing plan-tier accent `#8b5cf6`
 was mapped to the fixed `--color-violet-light` (a plan-card accent, not a chart series). Everything
 else mapped to existing brand, gray-ramp and semantic tokens.
+
+## P2-19 — shorthand colour sweep (#fff / #999) and drift-guard lockdown
+
+Swept every 3-char shorthand hex across app/ and components/ (20 occurrences in 10 files, several in
+files earlier batches had converted but whose shorthand the 6-digit-only sweeps missed). No rendered
+colour changed. `#fff` was mapped by role: background uses → --surface-card (#ffffff), text uses →
+--text-on-brand (#ffffff). Two `var(--text-on-inverse, #fff)` references were dead fallbacks
+(--text-on-inverse is undefined) and were mapped to --text-on-brand. `#999` (dashed drop-zone border)
+was formalized as --border-dashed (#999999).
+
+With the repo now shorthand-free, the drift-guard HEX regex was extended to also catch 3-char
+shorthand, closing the gap that had allowed `#fff` to pass. Every allowlisted file was verified to
+pass the shorthand-aware guard. FileUploader and the two hr/attendance pages (whose only raw colour
+was shorthand) were added to the allowlist.
