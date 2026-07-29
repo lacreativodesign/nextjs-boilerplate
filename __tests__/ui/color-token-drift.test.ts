@@ -108,6 +108,12 @@ const CLEAN_FILES: string[] = [
   // @media prefers-color-scheme block); its one-off gradient stops are handled separately.
   'components/layout/Header.tsx',
   'components/hr/TimeTrackingDashboard.tsx',
+  // P2-14: auth / entry pages
+  'app/login/page.tsx',
+  'app/signup/page.tsx',
+  'app/set-password/page.tsx',
+  'app/error.tsx',
+  'app/not-found.tsx',
 ];
 
 /**
@@ -176,6 +182,9 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   // P2-13
   '--border-muted': '#cbd5e1',
   '--border-faint': '#f1f5f9',
+  // P2-14
+  '--text-slate-deep': '#1e293b',
+  '--brand-navy-soft': '#1e3a5f',
 };
 
 /** Matches a six-digit hex colour literal. */
