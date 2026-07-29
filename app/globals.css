@@ -103,6 +103,9 @@
   --status-success-bg-soft: #f0fdf4;
   --status-success-border: #bbf7d0;
 
+  /* P2-18: slate-700 body text used on the sales-manager deals page. */
+  --text-slate: #334155;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;

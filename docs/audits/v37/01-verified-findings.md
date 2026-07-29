@@ -620,3 +620,11 @@ is scheduled to find and correctly map remaining `#fff`/`#000`-style shorthands 
 surface backgrounds and on-brand text and need per-use mapping). The drift-guard HEX regex is
 intentionally left at 6-digit for now to avoid false positives on those not-yet-swept files; it will
 be extended to shorthand as part of that pass.
+
+## P2-18 — misc role/util pages migrated to design tokens
+
+Converted six pages (impersonate, billing/upgrade, am/change-requests, sales_manager deals and leads,
+users; 17 raw-hex occurrences including one `#fff` shorthand) to design tokens; no rendered colour
+changed. One token was formalized: `--text-slate` (#334155). The billing plan-tier accent `#8b5cf6`
+was mapped to the fixed `--color-violet-light` (a plan-card accent, not a chart series). Everything
+else mapped to existing brand, gray-ramp and semantic tokens.

@@ -126,6 +126,13 @@ const CLEAN_FILES: string[] = [
   'app/team/layout.tsx',
   'app/hierarchy/layout.tsx',
   'app/activity/layout.tsx',
+  // P2-18: misc role/util pages
+  'app/impersonate/page.tsx',
+  'app/billing/upgrade/page.tsx',
+  'app/am/change-requests/page.tsx',
+  'app/sales_manager/deals/page.tsx',
+  'app/sales_manager/leads/page.tsx',
+  'app/users/page.tsx',
 ];
 
 /**
@@ -201,6 +208,8 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   '--text-near-black': '#1a1a1a',
   '--status-success-bg-soft': '#f0fdf4',
   '--status-success-border': '#bbf7d0',
+  // P2-18
+  '--text-slate': '#334155',
 };
 
 /** Matches a six-digit hex colour literal. */

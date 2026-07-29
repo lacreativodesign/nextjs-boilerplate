@@ -257,11 +257,15 @@ export default function AMChangeRequestsPage() {
   const approvalBadge = (status?: string | null) => {
     const normalized = (status || '').toLowerCase();
     if (normalized === 'pending')
-      return { label: 'Pending', tone: 'rgba(251,191,36,0.15)', color: '#b45309' };
+      return {
+        label: 'Pending',
+        tone: 'rgba(251,191,36,0.15)',
+        color: 'var(--warning-strong-alt)',
+      };
     if (normalized === 'approved')
-      return { label: 'Approved', tone: 'rgba(34,197,94,0.15)', color: '#15803d' };
+      return { label: 'Approved', tone: 'rgba(34,197,94,0.15)', color: 'var(--success-strong)' };
     if (normalized === 'rejected')
-      return { label: 'Rejected', tone: 'rgba(248,113,113,0.15)', color: '#b91c1c' };
+      return { label: 'Rejected', tone: 'rgba(248,113,113,0.15)', color: 'var(--danger-deep)' };
     return { label: 'Not required', tone: 'rgba(148,163,184,0.15)', color: 'var(--text-muted)' };
   };
 

@@ -57,15 +57,17 @@ function ImpersonateInner() {
           gap: 12,
         }}
       >
-        <p style={{ fontSize: 18, fontWeight: 700, color: '#DC2626' }}>Impersonation Failed</p>
-        <p style={{ fontSize: 14, color: '#64748B' }}>{error}</p>
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--danger-strong)' }}>
+          Impersonation Failed
+        </p>
+        <p style={{ fontSize: 14, color: 'var(--color-gray)' }}>{error}</p>
         <button
           onClick={() => window.close()}
           style={{
             marginTop: 8,
             padding: '8px 20px',
-            background: '#012167',
-            color: '#fff',
+            background: 'var(--brand-navy)',
+            color: 'var(--text-on-brand)',
             border: 'none',
             borderRadius: 8,
             cursor: 'pointer',
@@ -95,12 +97,12 @@ function ImpersonateInner() {
           width: 40,
           height: 40,
           borderRadius: '50%',
-          border: '3px solid #012167',
+          border: '3px solid var(--brand-navy)',
           borderTopColor: 'transparent',
           animation: 'spin 0.8s linear infinite',
         }}
       />
-      <p style={{ fontSize: 15, color: '#64748B', fontWeight: 500 }}>
+      <p style={{ fontSize: 15, color: 'var(--color-gray)', fontWeight: 500 }}>
         Starting impersonation session...
       </p>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -126,7 +128,7 @@ export default function ImpersonatePage() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              border: '3px solid #012167',
+              border: '3px solid var(--brand-navy)',
               borderTopColor: 'transparent',
               animation: 'spin 0.8s linear infinite',
             }}
