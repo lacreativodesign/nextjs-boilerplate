@@ -24,7 +24,7 @@ export default function HierarchyLayout({ children }: { children: React.ReactNod
         style={{
           minHeight: '100vh',
           display: 'flex',
-          backgroundColor: '#f9fafb',
+          backgroundColor: 'var(--gray-50)',
           fontFamily: 'Inter, sans-serif',
         }}
       >
@@ -32,7 +32,7 @@ export default function HierarchyLayout({ children }: { children: React.ReactNod
         <aside
           style={{
             width: 250,
-            backgroundColor: '#111827',
+            backgroundColor: 'var(--text-strong)',
             color: 'white',
             padding: '30px 20px',
             display: 'flex',
@@ -53,8 +53,8 @@ export default function HierarchyLayout({ children }: { children: React.ReactNod
                 style={{
                   padding: '12px 16px',
                   borderRadius: 8,
-                  background: active ? '#1f2937' : 'transparent',
-                  color: active ? '#fff' : '#d1d5db',
+                  background: active ? 'var(--surface-inverse)' : 'transparent',
+                  color: active ? 'var(--text-on-brand)' : 'var(--gray-300)',
                   fontWeight: active ? 700 : 500,
                   textDecoration: 'none',
                   transition: '0.2s ease',
@@ -71,15 +71,15 @@ export default function HierarchyLayout({ children }: { children: React.ReactNod
           {/* HEADER */}
           <header
             style={{
-              backgroundColor: '#ffffff',
-              borderBottom: '1px solid #e5e7eb',
+              backgroundColor: 'var(--text-on-brand)',
+              borderBottom: '1px solid var(--surface-neutral)',
               padding: '20px 30px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
             }}
           >
-            <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-strong)' }}>
               Organization Hierarchy
             </h1>
 
@@ -93,8 +93,8 @@ export default function HierarchyLayout({ children }: { children: React.ReactNod
               style={{
                 padding: '10px 20px',
                 borderRadius: 8,
-                background: '#ef4444',
-                color: '#fff',
+                background: 'var(--danger)',
+                color: 'var(--text-on-brand)',
                 border: 'none',
                 cursor: 'pointer',
                 fontWeight: 600,
