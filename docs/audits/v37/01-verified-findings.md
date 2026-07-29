@@ -607,3 +607,16 @@ Converted the five legal/security pages (terms, privacy, cookie-policy, refund-c
 security) to design tokens. Each had an identical brand-gradient header and white title, all mapping
 to existing tokens (--brand-navy, --brand-blue-light, --text-on-brand). No new tokens, no globals
 change, no rendered colour change.
+
+## P2-17 — shared layouts migrated to design tokens (team / hierarchy / activity)
+
+Converted three near-identical admin-shell layouts to design tokens; no new tokens, no globals change,
+no rendered colour changed. All values mapped to existing gray-ramp, surface and semantic tokens.
+
+These layouts used the `#fff` 3-char shorthand, which the earlier 6-digit-only hex sweeps did not
+catch. Both the 6-digit hex and the shorthand were converted here. A follow-up "shorthand sweep" pass
+is scheduled to find and correctly map remaining `#fff`/`#000`-style shorthands across the codebase
+(including six in app/pay/[invoiceId]/page.tsx that P2-15's 6-digit sweep missed, whose uses mix
+surface backgrounds and on-brand text and need per-use mapping). The drift-guard HEX regex is
+intentionally left at 6-digit for now to avoid false positives on those not-yet-swept files; it will
+be extended to shorthand as part of that pass.
