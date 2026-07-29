@@ -593,3 +593,10 @@ values in gradients were left untouched.
 Scope note: a fuller scan found ~21 app/ files still carrying hex (root layout/error/not-found, legal
 pages, pay, sales_manager, am, users, billing/upgrade) beyond the route-group folders migrated so
 far. These are covered by the remaining P2 batches.
+
+## P2-15 — public invoice-payment page migrated to design tokens
+
+Converted app/pay/[invoiceId]/page.tsx (26 raw-hex occurrences) to design tokens; no rendered colour
+changed. Three tokens were formalized: --text-near-black (#1a1a1a) for the heading, and a soft
+success-banner pair --status-success-bg-soft (#f0fdf4) and --status-success-border (#bbf7d0). The rest
+mapped to existing brand, gray-ramp and semantic tokens.
