@@ -167,11 +167,11 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
         style: {
           base: {
             fontSize: '16px',
-            color: '#1a1a1a',
+            color: 'var(--text-near-black)',
             fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            '::placeholder': { color: '#9ca3af' },
+            '::placeholder': { color: 'var(--gray-400)' },
           },
-          invalid: { color: '#dc2626' },
+          invalid: { color: 'var(--danger-strong)' },
         },
       });
       card.mount('#public-invoice-card-element');
@@ -292,7 +292,9 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
         }}
       >
         <h1 style={{ fontSize: 22, marginBottom: 10 }}>Invoice Unavailable</h1>
-        <p style={{ color: '#dc2626' }}>{error || 'This invoice is no longer available.'}</p>
+        <p style={{ color: 'var(--danger-strong)' }}>
+          {error || 'This invoice is no longer available.'}
+        </p>
       </main>
     );
   }
@@ -309,7 +311,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
         }}
       >
         <div style={{ textAlign: 'center', maxWidth: 500 }}>
-          <div style={{ fontSize: 48, color: '#16a34a' }}>✓</div>
+          <div style={{ fontSize: 48, color: 'var(--color-green)' }}>✓</div>
           <h1 style={{ fontSize: 30, margin: '10px 0' }}>Invoice Already Paid</h1>
           <p>This invoice was paid on {dateValue(data.paidAt) || 'a previous date'}.</p>
           <p style={{ marginTop: 6, fontWeight: 600 }}>{tenantName}</p>
@@ -331,20 +333,25 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
           ) : (
             <div style={{ fontWeight: 800, fontSize: 24 }}>{tenantName}</div>
           )}
-          <div style={{ height: 1, background: '#e5e7eb', marginTop: 14 }} />
+          <div style={{ height: 1, background: 'var(--surface-neutral)', marginTop: 14 }} />
         </header>
 
         <section
-          style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, marginBottom: 14 }}
+          style={{
+            border: '1px solid var(--surface-neutral)',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 14,
+          }}
         >
           <h2 style={{ margin: 0, fontSize: 22 }}>Invoice {invoice.orderId}</h2>
-          <p style={{ margin: '6px 0', color: '#4b5563' }}>From: {tenantName}</p>
+          <p style={{ margin: '6px 0', color: 'var(--color-slate)' }}>From: {tenantName}</p>
           {(data.client?.companyName || data.client?.contactName) && (
-            <p style={{ margin: '6px 0', color: '#4b5563' }}>
+            <p style={{ margin: '6px 0', color: 'var(--color-slate)' }}>
               To: {data.client.companyName || data.client.contactName}
             </p>
           )}
-          <div style={{ height: 1, background: '#e5e7eb', margin: '12px 0' }} />
+          <div style={{ height: 1, background: 'var(--surface-neutral)', margin: '12px 0' }} />
 
           {invoice.lineItems.length > 0 && (
             <>
@@ -365,13 +372,13 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                       const total = Number(item.total ?? quantity * unitPrice);
                       return (
                         <tr key={`${item.description || item.name || 'item'}-${idx}`}>
-                          <td style={{ padding: '8px 0', borderTop: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '8px 0', borderTop: '1px solid var(--gray-100)' }}>
                             {item.description || item.name || 'Item'}
                           </td>
                           <td
                             style={{
                               padding: '8px 0',
-                              borderTop: '1px solid #f3f4f6',
+                              borderTop: '1px solid var(--gray-100)',
                               textAlign: 'right',
                             }}
                           >
@@ -380,7 +387,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                           <td
                             style={{
                               padding: '8px 0',
-                              borderTop: '1px solid #f3f4f6',
+                              borderTop: '1px solid var(--gray-100)',
                               textAlign: 'right',
                             }}
                           >
@@ -389,7 +396,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                           <td
                             style={{
                               padding: '8px 0',
-                              borderTop: '1px solid #f3f4f6',
+                              borderTop: '1px solid var(--gray-100)',
                               textAlign: 'right',
                             }}
                           >
@@ -401,7 +408,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                   </tbody>
                 </table>
               </div>
-              <div style={{ height: 1, background: '#e5e7eb', margin: '12px 0' }} />
+              <div style={{ height: 1, background: 'var(--surface-neutral)', margin: '12px 0' }} />
             </>
           )}
 
@@ -418,18 +425,20 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
             emphasized
           />
           {invoice.dueDate && (
-            <p style={{ marginTop: 10, color: '#4b5563' }}>Due: {dateValue(invoice.dueDate)}</p>
+            <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
+              Due: {dateValue(invoice.dueDate)}
+            </p>
           )}
         </section>
 
         {paidState === 'success' ? (
           <section
             style={{
-              border: '1px solid #bbf7d0',
+              border: '1px solid var(--status-success-border)',
               borderRadius: 12,
               padding: 18,
               textAlign: 'center',
-              background: '#f0fdf4',
+              background: 'var(--status-success-bg-soft)',
             }}
           >
             <div
@@ -437,7 +446,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                 width: 72,
                 height: 72,
                 borderRadius: '50%',
-                background: '#16a34a',
+                background: 'var(--color-green)',
                 color: '#fff',
                 display: 'grid',
                 placeItems: 'center',
@@ -453,7 +462,9 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
             <p>Thank you for your payment.</p>
           </section>
         ) : data.tenant?.acceptsPayments ? (
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
+          <section
+            style={{ border: '1px solid var(--surface-neutral)', borderRadius: 12, padding: 16 }}
+          >
             <h3 style={{ marginTop: 0 }}>Pay Securely</h3>
             <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>
               Email for receipt (optional)
@@ -465,7 +476,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
               placeholder="your@email.com"
               style={{
                 width: '100%',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--gray-300)',
                 borderRadius: 8,
                 padding: '10px 12px',
                 marginBottom: 10,
@@ -473,7 +484,12 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
             />
             <div
               id="public-invoice-card-element"
-              style={{ border: '1px solid #d1d5db', borderRadius: 8, padding: 12, minHeight: 44 }}
+              style={{
+                border: '1px solid var(--gray-300)',
+                borderRadius: 8,
+                padding: 12,
+                minHeight: 44,
+              }}
             />
             <button
               type="button"
@@ -488,19 +504,22 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                 color: '#fff',
                 fontSize: 16,
                 fontWeight: 600,
-                background: 'linear-gradient(90deg, #012167 0%, #6692f9 100%)',
+                background:
+                  'linear-gradient(90deg, var(--brand-navy) 0%, var(--brand-blue-light) 100%)',
                 opacity: processing ? 0.7 : 1,
               }}
             >
               {processing ? 'Processing...' : `Pay ${totalLabel}`}
             </button>
-            <p style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--gray-500)' }}>
               🔒 Payments are processed securely by Stripe. Your card details are never stored.
             </p>
-            {error && <p style={{ color: '#dc2626', marginTop: 8 }}>{error}</p>}
+            {error && <p style={{ color: 'var(--danger-strong)', marginTop: 8 }}>{error}</p>}
           </section>
         ) : (
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
+          <section
+            style={{ border: '1px solid var(--surface-neutral)', borderRadius: 12, padding: 16 }}
+          >
             <p style={{ fontWeight: 700, marginBottom: 8 }}>
               Online payment is not available for this invoice.
             </p>
