@@ -64,7 +64,7 @@ export default function ImpersonationBanner() {
         right: 0,
         zIndex: 99999,
         background: 'linear-gradient(90deg,var(--warning-strong-alt),var(--warning-strong))',
-        color: '#fff',
+        color: 'var(--text-on-brand)',
         padding: '10px 20px',
         display: 'flex',
         alignItems: 'center',
@@ -94,7 +94,7 @@ export default function ImpersonationBanner() {
         style={{
           background: 'rgba(255,255,255,0.2)',
           border: '1px solid rgba(255,255,255,0.4)',
-          color: '#fff',
+          color: 'var(--text-on-brand)',
           padding: '6px 14px',
           borderRadius: 6,
           cursor: 'pointer',

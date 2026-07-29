@@ -273,7 +273,9 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#fff', padding: 20 }}>Loading invoice…</div>
+      <div style={{ minHeight: '100vh', background: 'var(--surface-card)', padding: 20 }}>
+        Loading invoice…
+      </div>
     );
   }
 
@@ -285,7 +287,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       <main
         style={{
           minHeight: '100vh',
-          background: '#fff',
+          background: 'var(--surface-card)',
           padding: 20,
           maxWidth: 720,
           margin: '0 auto',
@@ -304,7 +306,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       <main
         style={{
           minHeight: '100vh',
-          background: '#fff',
+          background: 'var(--surface-card)',
           display: 'grid',
           placeItems: 'center',
           padding: 20,
@@ -321,7 +323,9 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: '#fff', padding: '20px 12px 40px' }}>
+    <main
+      style={{ minHeight: '100vh', background: 'var(--surface-card)', padding: '20px 12px 40px' }}
+    >
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: 18 }}>
           {data.tenant?.logoUrl ? (
@@ -447,7 +451,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                 height: 72,
                 borderRadius: '50%',
                 background: 'var(--color-green)',
-                color: '#fff',
+                color: 'var(--text-on-brand)',
                 display: 'grid',
                 placeItems: 'center',
                 margin: '0 auto',
@@ -501,7 +505,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                 height: 52,
                 border: 'none',
                 borderRadius: 8,
-                color: '#fff',
+                color: 'var(--text-on-brand)',
                 fontSize: 16,
                 fontWeight: 600,
                 background:

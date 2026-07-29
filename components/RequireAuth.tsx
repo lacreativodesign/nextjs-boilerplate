@@ -83,7 +83,7 @@ function RecoveryScreen({ onRetry, onSignIn }: { onRetry: () => void; onSignIn: 
             borderRadius: '8px',
             border: 'none',
             background: 'var(--erp-blue)',
-            color: '#fff',
+            color: 'var(--text-on-brand)',
             cursor: 'pointer',
             fontSize: 14,
             fontWeight: 600,

@@ -530,7 +530,10 @@ function SignupInner() {
                                   : isActive
                                     ? 'linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light))'
                                     : 'rgba(255,255,255,0.15)',
-                                color: isComplete || isActive ? '#fff' : 'rgba(255,255,255,0.5)',
+                                color:
+                                  isComplete || isActive
+                                    ? 'var(--text-on-brand)'
+                                    : 'rgba(255,255,255,0.5)',
                                 transform: isActive ? 'scale(1.2)' : 'scale(1)',
                                 boxShadow: isActive ? '0 0 0 3px rgba(102,146,249,0.3)' : 'none',
                               }}

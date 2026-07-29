@@ -148,7 +148,7 @@ export default function AttendanceDashboard() {
 const btn = {
   padding: '8px 16px',
   background: 'var(--erp-blue)',
-  color: 'var(--text-on-inverse, #fff)',
+  color: 'var(--text-on-brand)',
   border: 'none',
   borderRadius: 8,
   cursor: 'pointer',
