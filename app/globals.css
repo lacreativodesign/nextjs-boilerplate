@@ -93,6 +93,10 @@
   --border-muted: #cbd5e1;
   --border-faint: #f1f5f9;
 
+  /* P2-14: slate-800 body text and a custom deep navy used on the error / not-found screens. */
+  --text-slate-deep: #1e293b;
+  --brand-navy-soft: #1e3a5f;
+
   /* Brand palette — the deep navy and light blue used in gradients, borders and accents across
      the marketing-styled surfaces. Formalized so brand colour cannot drift into raw hex. */
   --brand-navy: #012167;
