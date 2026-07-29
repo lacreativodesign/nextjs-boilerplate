@@ -581,3 +581,15 @@ occurrences) to design tokens; no rendered colour changed. Two border tokens wer
 light/dark decorative gradient system (including its own @media prefers-color-scheme block), so its
 one-off gradient stops are handled in a separate decorative pass rather than forced into global
 semantic tokens.
+
+## P2-14 — auth / entry pages migrated to design tokens
+
+Converted five pre-dashboard pages (login, signup, set-password, error, not-found; 45 raw-hex
+occurrences) to design tokens; no rendered colour changed. login and signup were almost entirely the
+brand palette (--brand-navy / --brand-blue-light / --text-on-brand). Two tokens were formalized for
+the error/not-found screens: --text-slate-deep (#1e293b) and --brand-navy-soft (#1e3a5f). rgba()
+values in gradients were left untouched.
+
+Scope note: a fuller scan found ~21 app/ files still carrying hex (root layout/error/not-found, legal
+pages, pay, sales_manager, am, users, billing/upgrade) beyond the route-group folders migrated so
+far. These are covered by the remaining P2 batches.

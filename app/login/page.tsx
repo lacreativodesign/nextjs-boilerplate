@@ -458,8 +458,8 @@ export default function LoginPage() {
           .login-brand {
             width: 40%;
             min-height: 100vh;
-            background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
-            color: #ffffff;
+            background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-blue-light) 100%);
+            color: var(--text-on-brand);
             display: flex;
             position: relative;
             overflow: hidden;
@@ -522,7 +522,7 @@ export default function LoginPage() {
             width: 48px;
             height: 48px;
             border-radius: 10px;
-            background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
+            background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-blue-light) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -534,13 +534,13 @@ export default function LoginPage() {
             width: 40px;
             height: 40px;
             border-radius: 8px;
-            background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
+            background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-blue-light) 100%);
           }
 
           .login-logo-b {
             font-size: 1.5rem;
             font-weight: 900;
-            color: #ffffff;
+            color: var(--text-on-brand);
             letter-spacing: -0.02em;
             line-height: 1;
             font-family:
@@ -574,7 +574,7 @@ export default function LoginPage() {
             font-weight: 800;
             letter-spacing: 0.08em;
             font-size: clamp(1.1rem, 1rem + 0.6vw, 1.65rem);
-            color: #ffffff;
+            color: var(--text-on-brand);
           }
 
           .login-tagline {
@@ -669,7 +669,7 @@ export default function LoginPage() {
             border-radius: 10px;
             border: 1px solid rgba(220, 38, 38, 0.25);
             background: rgba(254, 226, 226, 0.8);
-            color: #b91c1c;
+            color: var(--danger-deep);
             font-size: 0.85rem;
             padding: 10px 12px;
           }
@@ -730,7 +730,7 @@ export default function LoginPage() {
 
           .login-input:focus,
           .login-input-wrap:focus-within {
-            border-color: #012167;
+            border-color: var(--brand-navy);
             box-shadow: 0 0 0 3px rgba(1, 33, 103, 0.1);
           }
 
@@ -770,13 +770,13 @@ export default function LoginPage() {
           .login-check input {
             width: 16px;
             height: 16px;
-            accent-color: #012167;
+            accent-color: var(--brand-navy);
           }
 
           .login-forgot {
             border: none;
             background: transparent;
-            color: #012167;
+            color: var(--brand-navy);
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
@@ -796,8 +796,8 @@ export default function LoginPage() {
             height: 44px;
             border-radius: 8px;
             border: none;
-            background: linear-gradient(135deg, #012167, #6692f9);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--brand-navy), var(--brand-blue-light));
+            color: var(--text-on-brand);
             font-weight: 600;
             transition: all 0.2s ease;
             position: relative;
@@ -861,7 +861,7 @@ export default function LoginPage() {
           }
 
           .login-signup-row a {
-            color: #012167;
+            color: var(--brand-navy);
             font-weight: 600;
             margin-left: 4px;
             background-image: linear-gradient(currentColor, currentColor);
@@ -878,7 +878,7 @@ export default function LoginPage() {
           @media (max-width: 767px) {
             .login-page {
               flex-direction: column;
-              background: #ffffff;
+              background: var(--text-on-brand);
             }
 
             .login-brand {
@@ -893,7 +893,11 @@ export default function LoginPage() {
 
             .login-mobile-header {
               height: 120px;
-              background: linear-gradient(180deg, #012167 0%, #6692f9 100%);
+              background: linear-gradient(
+                180deg,
+                var(--brand-navy) 0%,
+                var(--brand-blue-light) 100%
+              );
               display: flex;
               align-items: center;
               justify-content: center;
