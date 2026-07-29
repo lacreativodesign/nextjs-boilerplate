@@ -26,18 +26,18 @@ const PLAN_PRESENTATION: Record<
 > = {
   starter: {
     tagline: 'Perfect for small teams getting started',
-    color: '#6366f1',
+    color: 'var(--brand-primary)',
     cta: 'Get Started',
   },
   pro: {
     tagline: 'For growing businesses that need more power',
-    color: '#8b5cf6',
+    color: 'var(--color-violet-light)',
     badge: 'Most Popular',
     cta: 'Upgrade to Pro',
   },
   enterprise: {
     tagline: 'For established teams that need everything',
-    color: '#f59e0b',
+    color: 'var(--warning)',
     badge: 'Best Value',
     cta: 'Upgrade to Enterprise',
   },
@@ -306,7 +306,7 @@ export default function BillingUpgradePage() {
                 </span>
               </div>
               {isAnnual && (
-                <p className="relative mt-2 text-sm font-semibold text-[var(--success,#16a34a)]">
+                <p className="relative mt-2 text-sm font-semibold text-[var(--success,var(--color-green))]">
                   {ANNUAL_FREE_MONTHS} months free vs monthly
                 </p>
               )}
@@ -341,7 +341,7 @@ export default function BillingUpgradePage() {
                   borderRadius: 999,
                   background: isCurrent
                     ? undefined
-                    : `linear-gradient(135deg, ${plan.color}, color-mix(in srgb, ${plan.color} 68%, #111827))`,
+                    : `linear-gradient(135deg, ${plan.color}, color-mix(in srgb, ${plan.color} 68%, var(--text-strong)))`,
                   borderColor: isCurrent ? undefined : plan.color,
                   opacity: isCurrent ? 0.65 : undefined,
                 }}

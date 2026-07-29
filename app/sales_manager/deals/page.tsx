@@ -346,7 +346,7 @@ export default function SalesManagerDealsPage() {
                 <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>
                   {selected.dealName || 'Deal'}
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, color: '#334155' }}>
+                <div style={{ opacity: 0.75, fontSize: 12, color: 'var(--text-slate)' }}>
                   {selected.clientName || 'Client'} · {selected.ownerName || 'Unassigned'}
                 </div>
               </div>

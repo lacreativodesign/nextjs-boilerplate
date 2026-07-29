@@ -368,7 +368,7 @@ export default function SalesManagerLeadsPage() {
         {loading ? (
           <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>Loading leads...</p>
         ) : error ? (
-          <p style={{ fontSize: 14, color: '#FCA5A5' }}>{error}</p>
+          <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
         ) : filtered.length === 0 ? (
           <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>No leads found.</p>
         ) : (
