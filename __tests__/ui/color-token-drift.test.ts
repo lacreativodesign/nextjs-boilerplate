@@ -114,6 +114,8 @@ const CLEAN_FILES: string[] = [
   'app/set-password/page.tsx',
   'app/error.tsx',
   'app/not-found.tsx',
+  // P2-15: public invoice-payment page
+  'app/pay/[invoiceId]/page.tsx',
 ];
 
 /**
@@ -185,6 +187,10 @@ const FORMALIZED_TOKENS: Record<string, string> = {
   // P2-14
   '--text-slate-deep': '#1e293b',
   '--brand-navy-soft': '#1e3a5f',
+  // P2-15
+  '--text-near-black': '#1a1a1a',
+  '--status-success-bg-soft': '#f0fdf4',
+  '--status-success-border': '#bbf7d0',
 };
 
 /** Matches a six-digit hex colour literal. */
