@@ -24,7 +24,7 @@ export async function GET(req: Request) {
         .limit(500)
         .get(),
       adminDb
-        .collection('change_requests')
+        .collection('changeRequests')
         .where('tenantId', '==', auth.user.tenantId)
         .where('isDeleted', '==', false)
         .limit(500)

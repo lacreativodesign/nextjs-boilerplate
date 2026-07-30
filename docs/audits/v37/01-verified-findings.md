@@ -701,3 +701,21 @@ helper would lose.
 Backfill of the pre-P3-1a audit_logs collection is deliberately deferred: pre-launch volume is
 negligible and its rows used the ad-hoc shape. The old collection is retained untouched as an
 archive; a one-time backfill remains possible later if a live count shows meaningful history.
+
+## P3-2 — phantom change_requests collection fixed; real audit/change-request data now backed up
+
+changeRequests is canonical (25 refs, 13 writers); change_requests was a phantom (3 refs, 0 writers).
+Three admin report/export routes read the phantom (so change-request reports and the CSV export
+returned empty), and the backup registry listed both change_requests and a mis-cased audit_logs — so
+the backup cron (which uses registry keys as literal collection names) backed up two empty phantoms
+while the real changeRequests and the P3-1a-canonical auditLogs were never backed up.
+
+Repointed the three readers to changeRequests, renamed the two registry keys to auditLogs /
+changeRequests (so the cron now captures the real data), dropped the phantom from the
+tenant-migration list, and updated the backup-coverage test assertion. No schema changes.
+
+Note for a later pass: security-header/CSP posture was surveyed and is already strong (enforced
+nonce-based strict-dynamic CSP, HSTS+preload, COOP/CORP same-origin, reversible via CSP_ENFORCE),
+except that next.config.js still emits a weaker, stale global header set (no HSTS/COOP/CORP,
+conflicting Permissions-Policy) that applies to responses bypassing middleware — a low-risk dedup
+worth doing later.
