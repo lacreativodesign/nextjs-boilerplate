@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       session as { uid: string; tenantId: string; role?: string | null },
       {
         module: 'audit_logs',
-        collection: 'audit_logs',
+        collection: 'auditLogs',
         searchFields: ['userEmail', 'userName', 'action', 'resource', 'status', 'resourceId'],
         defaultSortBy: 'timestamp',
         csvFields: [

@@ -91,7 +91,7 @@ function buildQuery(
   },
 ) {
   let query: FirebaseFirestore.Query = adminDb
-    .collection('audit_logs')
+    .collection('auditLogs')
     .where('tenantId', '==', tenantId)
     .orderBy('timestamp', 'desc');
 

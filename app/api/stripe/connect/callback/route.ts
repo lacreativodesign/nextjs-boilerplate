@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       { merge: true },
     );
 
-    await adminDb.collection('audit_logs').add({
+    await adminDb.collection('auditLogs').add({
       tenantId,
       action: 'stripe_connect_connected',
       performedBy: userId,

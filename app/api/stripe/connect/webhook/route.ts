@@ -96,7 +96,7 @@ export async function POST(req: Request) {
             { merge: true },
           );
 
-          await adminDb.collection('audit_logs').add({
+          await adminDb.collection('auditLogs').add({
             tenantId: tenantDoc.id,
             action: 'stripe_connect_deauthorized',
             performedBy: 'system',

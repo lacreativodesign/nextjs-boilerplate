@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { tenantId: 
       { merge: true },
     );
 
-    await adminDb.collection('audit_logs').add({
+    await adminDb.collection('auditLogs').add({
       tenantId,
       action: 'roles_updated',
       performedBy: user.uid,
