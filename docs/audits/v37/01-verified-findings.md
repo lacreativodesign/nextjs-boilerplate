@@ -735,3 +735,17 @@ Found via a systematic reader-vs-writer sweep across all collection() literals. 
 surfaced a taxRates (tenant subcollection, written by admin/finance/tax-rates) vs tax_rates (top-level,
 written by finance/tax-rates) split — two full parallel tax-rate implementations rather than a naming
 bug. That is a product/architecture consolidation decision and is deferred to its own investigation.
+
+## P3-4 — security-header parity (static/public responses were missing HSTS)
+
+The strong static security headers (HSTS, COOP, CORP, aligned Permissions-Policy,
+X-DNS-Prefetch-Control) were only set by the middleware, whose config.matcher is an explicit app/API
+path allowlist. Static assets under /_next/* and public pages/files outside the matcher therefore
+shipped with only the next.config.js global headers — a weaker legacy set (deprecated
+X-XSS-Protection, defunct interest-cohort Permissions-Policy, and no HSTS/COOP/CORP).
+
+Aligned next.config.js's global /(.*) block to the middleware's static set in lib/security/headers.ts.
+The middleware sets these via .set() (replace), so matched responses keep identical values (no
+duplicate headers). Removed the deprecated X-XSS-Protection. Added a parity drift-guard test
+(`__tests__/config/security-headers-parity.test.ts`) asserting both sources carry the same static
+headers and that X-XSS-Protection is not reintroduced. The nonce-based CSP stays middleware-only.
