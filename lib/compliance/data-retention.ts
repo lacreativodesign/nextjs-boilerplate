@@ -142,7 +142,7 @@ async function collectUserData(tenantId: string, userId: string) {
   const [userDoc, auditLogs] = await Promise.all([
     adminDb.collection('users').doc(userId).get(),
     adminDb
-      .collection('audit_logs')
+      .collection('auditLogs')
       .where('tenantId', '==', tenantId)
       .where('userId', '==', userId)
       .limit(5000)
@@ -334,7 +334,7 @@ async function deleteOrAnonymizeUserData(tenantId: string, userId: string, mode:
   }
 
   const auditSnapshot = await adminDb
-    .collection('audit_logs')
+    .collection('auditLogs')
     .where('tenantId', '==', tenantId)
     .where('userId', '==', userId)
     .limit(5000)
@@ -363,7 +363,7 @@ export async function exportAuditTrail(input: {
   format?: 'json' | 'csv';
 }) {
   let query: FirebaseFirestore.Query = adminDb
-    .collection('audit_logs')
+    .collection('auditLogs')
     .where('tenantId', '==', input.tenantId)
     .orderBy('timestamp', 'desc')
     .limit(5000);

@@ -26,7 +26,7 @@ interface LogAuditParams {
 }
 
 export class AuditLogger {
-  private static readonly COLLECTION = 'audit_logs';
+  private static readonly COLLECTION = 'auditLogs';
 
   static async log(params: LogAuditParams): Promise<void> {
     try {

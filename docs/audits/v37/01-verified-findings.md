@@ -658,3 +658,26 @@ app/layout.tsx (viewport.themeColor meta tag).
 **Phase 2 is complete.** All 479 app/ + components/ .tsx files are now either driven by design tokens
 (tracked in CLEAN_FILES and enforced by the shorthand-aware drift guard) or a documented exclusion in
 EXCLUDED_FILES. No rendered colour changed across the entire migration.
+
+## P3-1a — audit-log collection unified on `auditLogs`
+
+Two parallel audit systems wrote to two collections: writeAuditLog (~18 callers) → auditLogs, and a
+second logger plus four inline .add calls → audit_logs. Compliance/retention exports, the reporting
+engine and /api/audit-logs all read audit_logs, so the real audit trail (auditLogs) was invisible to
+the enterprise-facing readers.
+
+Unified on auditLogs (the collection already holding the real history) with no change to the 18
+writer call-sites — the collection is defined once in the helper. The helper now writes superset
+fields (timestamp, userId, status) so the rich readers, which order by timestamp and filter by
+userId/status, see helper-written entries. The five stray audit_logs write sites and the reader
+collection paths (report-builder COLLECTION_MAP value, data-retention ×2, /api/audit-logs, the search
+route's collection option) were repointed. The data-retention repoint covered three reader queries
+(GDPR subject-access export, GDPR erasure/redaction, and the audit-trail export), not two — the
+subject-access export in collectUserData was an additional reader on the wrong collection.
+DataSource labels and Zod enum members reading
+'audit_logs' were deliberately left unchanged — they are public identifiers for stored reports and
+searches.
+
+Deferred to P3-1b: full schema convergence (enrich writeAuditLog toward the typed AuditLog shape,
+retire the second logger) and a one-time backfill/verification of any historical rows in the old
+audit_logs collection.

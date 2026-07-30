@@ -46,7 +46,7 @@ export async function POST() {
       { merge: true },
     );
 
-    await adminDb.collection('audit_logs').add({
+    await adminDb.collection('auditLogs').add({
       tenantId,
       action: 'stripe_connect_disconnected',
       performedBy: auth.user.uid,

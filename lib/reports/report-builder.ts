@@ -38,7 +38,7 @@ export class ReportBuilderService {
     customers: 'customers',
     products: 'products',
     users: 'users',
-    audit_logs: 'audit_logs',
+    audit_logs: 'auditLogs',
     projects: 'projects',
     deals: 'deals',
     leads: 'leads',
