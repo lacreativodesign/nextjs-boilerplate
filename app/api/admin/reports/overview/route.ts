@@ -57,7 +57,7 @@ export async function GET() {
         tenantId,
       ),
       queryWithTenant(
-        adminDb.collection('change_requests').where('isDeleted', '==', false).limit(500),
+        adminDb.collection('changeRequests').where('isDeleted', '==', false).limit(500),
         tenantId,
       ),
       queryWithTenant(
