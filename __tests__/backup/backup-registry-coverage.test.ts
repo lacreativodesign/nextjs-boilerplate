@@ -111,7 +111,7 @@ describe('P1-6a: the backed-up set is the durable + audit classes', () => {
   });
 
   it('includes the append-only audit trails', () => {
-    for (const name of ['finance_ledger', 'audit_logs', 'billing_state_audit']) {
+    for (const name of ['finance_ledger', 'auditLogs', 'billing_state_audit']) {
       expect(backed).toContain(name);
     }
   });
