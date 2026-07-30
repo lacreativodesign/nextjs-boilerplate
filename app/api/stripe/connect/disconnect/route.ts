@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { writeAuditLog } from '@/lib/tenant/audit';
 import { disconnectConnectAccount } from '@/lib/stripe/connect';
 import { requireTenantStripeConnect } from '../_utils';
 
@@ -46,12 +47,13 @@ export async function POST() {
       { merge: true },
     );
 
-    await adminDb.collection('auditLogs').add({
+    await writeAuditLog({
       tenantId,
-      action: 'stripe_connect_disconnected',
-      performedBy: auth.user.uid,
-      details: { accountId },
-      timestamp: now,
+      actorUserId: auth.user.uid,
+      actionType: 'stripe_connect_disconnected',
+      entityType: 'stripe_connect',
+      entityId: accountId,
+      metadata: { accountId },
     });
 
     return NextResponse.json({ ok: true, message: 'Stripe account disconnected' });

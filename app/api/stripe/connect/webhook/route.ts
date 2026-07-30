@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { writeAuditLog } from '@/lib/tenant/audit';
 import {
   claimWebhookEvent,
   finalizeWebhookEvent,
@@ -96,12 +97,13 @@ export async function POST(req: Request) {
             { merge: true },
           );
 
-          await adminDb.collection('auditLogs').add({
+          await writeAuditLog({
             tenantId: tenantDoc.id,
-            action: 'stripe_connect_deauthorized',
-            performedBy: 'system',
-            details: { accountId },
-            timestamp: now,
+            actorUserId: 'system',
+            actionType: 'stripe_connect_deauthorized',
+            entityType: 'stripe_connect',
+            entityId: accountId,
+            metadata: { accountId },
           });
         }
       }

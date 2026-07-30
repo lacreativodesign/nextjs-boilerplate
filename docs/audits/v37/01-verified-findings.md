@@ -681,3 +681,23 @@ searches.
 Deferred to P3-1b: full schema convergence (enrich writeAuditLog toward the typed AuditLog shape,
 retire the second logger) and a one-time backfill/verification of any historical rows in the old
 audit_logs collection.
+
+## P3-1b — audit schema convergence
+
+writeAuditLog now writes a dual-dialect superset: alongside its dialect-1 fields (actorUserId,
+actorName, actorRole, actionType, entityType, entityId, createdAt) it mirrors the dialect-2 fields
+the compliance/export/search/retention readers use (action, resource, userName, plus userId,
+timestamp, status from P3-1a). All ~18 helper callers are now fully populated in both the super_admin
+viewer and the compliance readers, with no call-site changes.
+
+The four inline Stripe/roles audit writes (Connect connect/disconnect/deauthorize, role updates) were
+routed through writeAuditLog. They previously wrote an ad-hoc performedBy/details shape that showed
+blank in the super_admin viewer; they now produce the canonical shape and are fully visible.
+
+AuditLogger (lib/audit/audit-logger.ts) is intentionally unchanged — its entries already carry the
+full dialect-2 shape plus richer fields (userEmail, typed changes[]) that routing through the simpler
+helper would lose.
+
+Backfill of the pre-P3-1a audit_logs collection is deliberately deferred: pre-launch volume is
+negligible and its rows used the ad-hoc shape. The old collection is retained untouched as an
+archive; a one-time backfill remains possible later if a live count shows meaningful history.

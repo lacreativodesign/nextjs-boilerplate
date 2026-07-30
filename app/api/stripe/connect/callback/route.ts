@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { writeAuditLog } from '@/lib/tenant/audit';
 import { exchangeConnectCode, getConnectAccount } from '@/lib/stripe/connect';
 
 export const runtime = 'nodejs';
@@ -74,15 +75,13 @@ export async function GET(req: Request) {
       { merge: true },
     );
 
-    await adminDb.collection('auditLogs').add({
+    await writeAuditLog({
       tenantId,
-      action: 'stripe_connect_connected',
-      performedBy: userId,
-      details: {
-        accountId,
-        email: account.email || null,
-      },
-      timestamp: now,
+      actorUserId: userId,
+      actionType: 'stripe_connect_connected',
+      entityType: 'stripe_connect',
+      entityId: accountId,
+      metadata: { accountId, email: account.email || null },
     });
 
     return redirectWithQuery(requestUrl, 'success');
