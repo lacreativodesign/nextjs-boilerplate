@@ -75,6 +75,19 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
           },
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://apis.google.com https://*.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: https://ucarecdn.com https://firebasestorage.googleapis.com https://imagedelivery.net https://*.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.ingest.sentry.io https://api.stripe.com https://ucarecdn.com",
+              "frame-src 'self' https://js.stripe.com https://*.firebaseapp.com",
+              "object-src 'none'",
+            ].join('; '),
+          },
         ],
       },
     ];
