@@ -159,12 +159,13 @@ async function collectUserData(tenantId: string, userId: string) {
   ];
   const tenantCollections = await Promise.all(
     scopedCollections.map(async (name) => {
-      const byUser = await tenantRef
-        .collection(name)
-        .where('userId', '==', userId)
-        .limit(2000)
-        .get();
-      const byOwner = await tenantRef
+      // P3-5a: these are top-level collections keyed by a `userId`/`ownerId` field, NOT tenant
+      // subcollections. A Firebase uid is globally unique to one user in one tenant, so filtering
+      // top-level by userId/ownerId returns exactly this subject's data (tenant-safe) and needs no
+      // composite index. The previous `tenantRef.collection(name)` read subcollections that do not
+      // exist, so DSAR exports silently returned no operational data.
+      const byUser = await adminDb.collection(name).where('userId', '==', userId).limit(2000).get();
+      const byOwner = await adminDb
         .collection(name)
         .where('ownerId', '==', userId)
         .limit(2000)

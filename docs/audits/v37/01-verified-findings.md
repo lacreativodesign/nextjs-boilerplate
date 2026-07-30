@@ -749,3 +749,18 @@ The middleware sets these via .set() (replace), so matched responses keep identi
 duplicate headers). Removed the deprecated X-XSS-Protection. Added a parity drift-guard test
 (`__tests__/config/security-headers-parity.test.ts`) asserting both sources carry the same static
 headers and that X-XSS-Protection is not reintroduced. The nonce-based CSP stays middleware-only.
+
+## P3-5a — GDPR data export read empty tenant subcollections (DSAR returned no data)
+
+The DSAR export (collectUserData) read six operational collections (invoices, expenses, projects,
+tasks, documents, notifications) as tenant subcollections, but that data is stored top-level with
+userId/ownerId fields (24–48 top-level writers each, zero subcollection writers). So subject-access
+exports returned no operational data. Repointed those six reads to the top-level collections, keeping
+the userId/ownerId equality filters (a globally-unique uid makes this tenant-safe and index-free; a
+tenantId+userId query would need composite indexes five of the six collections lack).
+
+Left correct/unchanged: the top-level auditLogs read (already tenantId+userId with an index), the
+users read, and the complianceConsentRecords read (consent IS genuinely a tenant subcollection).
+
+Same subcollection bug exists in runRetentionCleanup and the erasure path; those are P3-5b/P3-5c and
+are handled separately because they delete data and need cross-tenant guards.
