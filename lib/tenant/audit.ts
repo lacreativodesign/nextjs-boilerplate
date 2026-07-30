@@ -36,6 +36,11 @@ export async function writeAuditLog({
     entityId,
     metadata,
     createdAt: now,
+    // P3-1a: superset fields so the compliance / audit-logs readers (which query by
+    // `timestamp` and `userId` and default status) see entries written through this helper.
+    timestamp: now,
+    userId: actorUserId,
+    status: 'success',
   });
 
   return { id: ref.id };
