@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { writeAuditLog } from '@/lib/tenant/audit';
 import { requireSuperAdmin } from '../../../_utils';
 
 export const runtime = 'nodejs';
@@ -60,12 +61,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { tenantId: 
       { merge: true },
     );
 
-    await adminDb.collection('auditLogs').add({
+    await writeAuditLog({
       tenantId,
-      action: 'roles_updated',
-      performedBy: user.uid,
-      changes: rolesEnabled,
-      timestamp: now,
+      actorUserId: user.uid,
+      actionType: 'roles_updated',
+      entityType: 'tenant_roles',
+      entityId: tenantId,
+      metadata: { rolesEnabled },
     });
 
     return NextResponse.json({ ok: true, rolesEnabled });
