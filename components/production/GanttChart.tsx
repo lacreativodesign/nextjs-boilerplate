@@ -208,6 +208,8 @@ export default function GanttChart({
     const context = canvas.getContext('2d');
     if (!context) return;
 
+    // Intentional literal: PNG export background is theme-independent white (a canvas
+    // 2D fillStyle cannot resolve CSS var(), and an export should not follow dark mode).
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0);
@@ -295,14 +297,14 @@ export default function GanttChart({
                   refY="3"
                   orient="auto"
                 >
-                  <polygon points="0 0, 6 3, 0 6" fill="#6b7280" />
+                  <polygon points="0 0, 6 3, 0 6" fill="var(--gray-500)" />
                 </marker>
               </defs>
               {arrows.map((arrow) => (
                 <path
                   key={arrow.id}
                   d={arrow.path}
-                  stroke="#6b7280"
+                  stroke="var(--gray-500)"
                   strokeWidth="1.2"
                   fill="none"
                   markerEnd="url(#arrowhead)"

@@ -139,6 +139,27 @@ const CLEAN_FILES: string[] = [
 ];
 
 /**
+ * EXCLUDED_FILES intentionally retain raw colour and are NOT part of CLEAN_FILES. Each entry
+ * documents why. This makes the exclusions explicit and permanent rather than silent omissions.
+ */
+const EXCLUDED_FILES: Record<string, string> = {
+  'app/admin/settings/branding/page.tsx':
+    'Tenant branding config data — default colour-picker values fed INTO CSS vars, not styling.',
+  'components/files/TagManager.tsx':
+    'Default colour-picker value (useState seed) — config data a user edits, not styling.',
+  'components/finance/ExpenseBreakdownChart.tsx':
+    'Pie palette pending a deliberate chart-theme pass (theme-aware decision across all charts).',
+  'components/production/GanttChart.tsx':
+    'One intentional literal #ffffff: the PNG-export canvas background is theme-independent white ' +
+    '(canvas 2D fillStyle cannot resolve CSS var()). All other colour is tokenised.',
+  'components/ui/BizostoSplash.tsx':
+    'Self-contained splash with its own light/dark decorative gradient system (own @media block).',
+  'app/layout.tsx':
+    'Next.js viewport.themeColor — serialized into a <meta name="theme-color"> tag, not CSS; ' +
+    'cannot resolve CSS var(). Value equals --brand-navy.',
+};
+
+/**
  * Tokens formalized in P2-1 so no component needs raw hex for these colours. Each must exist in
  * globals.css with its exact value, because the migration relies on the token rendering
  * identically to the hex it replaced.
@@ -272,6 +293,21 @@ describe('P2-1: the clean-file allowlist only grows', () => {
   it('lists only files that exist', () => {
     for (const rel of CLEAN_FILES) {
       expect(fs.existsSync(path.join(process.cwd(), rel))).toBe(true);
+    }
+  });
+});
+
+describe('P2-19: documented colour-token exclusions', () => {
+  it('every excluded file exists and is not also in the clean allowlist', () => {
+    for (const rel of Object.keys(EXCLUDED_FILES)) {
+      expect(fs.existsSync(path.join(process.cwd(), rel))).toBe(true);
+      expect(CLEAN_FILES).not.toContain(rel);
+    }
+  });
+
+  it('each exclusion carries a non-empty reason', () => {
+    for (const reason of Object.values(EXCLUDED_FILES)) {
+      expect(reason.trim().length).toBeGreaterThan(0);
     }
   });
 });
