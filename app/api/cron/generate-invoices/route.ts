@@ -10,7 +10,8 @@ export const runtime = 'nodejs';
 type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 type RecurringTemplate = {
-  isActive?: boolean;
+  status?: 'draft' | 'active' | 'paused' | 'cancelled';
+  tenantId?: string;
   frequency: RecurrenceFrequency;
   startDate: string;
   endDate?: string | null;
@@ -106,11 +107,15 @@ async function generateRecurringInvoices() {
     const tenantId = tenantDoc.id;
     console.log(`[CRON] Processing tenant ${tenantId}`);
 
+    // P3-3: recurring templates are stored in the top-level `recurring_invoice_templates`
+    // collection (with a tenantId field), which is where every CRUD route writes them.
+    // The previous read of a per-tenant `recurringInvoiceTemplates` subcollection with an
+    // `isActive` flag targeted a collection nothing writes, so no recurring invoices were
+    // ever generated. Read the canonical collection, filtered by tenant and active status.
     const templatesSnapshot = await adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('recurringInvoiceTemplates')
-      .where('isActive', '==', true)
+      .collection('recurring_invoice_templates')
+      .where('tenantId', '==', tenantId)
+      .where('status', '==', 'active')
       .get();
 
     for (const templateDoc of templatesSnapshot.docs) {
