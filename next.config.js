@@ -66,15 +66,30 @@ const nextConfig = {
       },
       {
         source: '/(.*)',
+        // P3-4: these mirror the STATIC (non-CSP) security headers in
+        // lib/security/headers.ts (getSecurityHeaders), which is the source of truth. The
+        // middleware sets those on matched app/API paths via .set() (replace), so matched
+        // responses keep identical values (no duplicate/conflicting headers). This block is
+        // what covers responses the middleware matcher does NOT run on — static assets under
+        // /_next/*, and public pages/files not in the matcher — so it must carry the same
+        // strong set (notably HSTS, COOP, CORP) rather than a weaker legacy one. The nonce-based
+        // CSP is intentionally NOT here; it is per-request and lives only in the middleware.
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+            value:
+              'camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)',
           },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+          { key: 'X-DNS-Prefetch-Control', value: 'off' },
         ],
       },
     ];
