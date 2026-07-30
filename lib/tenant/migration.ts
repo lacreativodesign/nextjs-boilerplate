@@ -8,7 +8,6 @@ const MIGRATION_COLLECTIONS = [
   'projects',
   'files',
   'changeRequests',
-  'change_requests',
   'events',
   'eventsQueue',
   'notifications',
