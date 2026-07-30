@@ -41,6 +41,11 @@ export async function writeAuditLog({
     timestamp: now,
     userId: actorUserId,
     status: 'success',
+    // P3-1b: dialect-2 mirrors so entries are fully populated in the compliance/export/search
+    // readers too (which read `action`, `resource`, `userName`), not just the super_admin viewer.
+    action: actionType,
+    resource: entityType,
+    userName: actorName,
   });
 
   return { id: ref.id };
