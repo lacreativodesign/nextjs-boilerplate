@@ -642,3 +642,19 @@ With the repo now shorthand-free, the drift-guard HEX regex was extended to also
 shorthand, closing the gap that had allowed `#fff` to pass. Every allowlisted file was verified to
 pass the shorthand-aware guard. FileUploader and the two hr/attendance pages (whose only raw colour
 was shorthand) were added to the allowlist.
+
+## P2-20 — Phase 2 closeout: GanttChart SVG tokenised + exclusions formalized
+
+Tokenised the GanttChart arrowhead SVG (fill/stroke → --gray-500); its canvas export background
+remains an intentional literal #ffffff (theme-independent PNG background; a canvas 2D fillStyle cannot
+resolve CSS var()), now annotated in code.
+
+Added an EXCLUDED_FILES registry to the drift guard documenting the six files that legitimately retain
+raw colour, each with a reason and a test asserting it exists and is not also in the clean allowlist:
+branding (config data), TagManager (picker seed), ExpenseBreakdownChart (pending chart-theme pass),
+GanttChart (canvas export background), BizostoSplash (self-contained decorative gradients), and
+app/layout.tsx (viewport.themeColor meta tag).
+
+**Phase 2 is complete.** All 479 app/ + components/ .tsx files are now either driven by design tokens
+(tracked in CLEAN_FILES and enforced by the shorthand-aware drift guard) or a documented exclusion in
+EXCLUDED_FILES. No rendered colour changed across the entire migration.
