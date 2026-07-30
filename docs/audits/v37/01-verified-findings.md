@@ -719,3 +719,19 @@ nonce-based strict-dynamic CSP, HSTS+preload, COOP/CORP same-origin, reversible 
 except that next.config.js still emits a weaker, stale global header set (no HSTS/COOP/CORP,
 conflicting Permissions-Policy) that applies to responses bypassing middleware — a low-risk dedup
 worth doing later.
+
+## P3-3 — recurring-invoice cron read a collection nothing writes (no invoices generated)
+
+The generate-invoices cron read per-tenant `tenants/{id}/recurringInvoiceTemplates` subcollections
+filtered by `isActive == true`, but all six recurring-invoice CRUD routes write to the top-level
+`recurring_invoice_templates` collection (tenantId field, `status` enum, no `isActive`). The cron
+therefore read an empty location and never generated any recurring invoices. Repointed the read to
+`recurring_invoice_templates` filtered by `tenantId` and `status == 'active'`, and corrected the stale
+`RecurringTemplate` type (`isActive?` → `status?` + `tenantId?`). The per-template ref.update() is
+unchanged — it follows the document's real location. No new index needed (the finance list route
+already queries this collection by tenantId/status).
+
+Found via a systematic reader-vs-writer sweep across all collection() literals. The same sweep
+surfaced a taxRates (tenant subcollection, written by admin/finance/tax-rates) vs tax_rates (top-level,
+written by finance/tax-rates) split — two full parallel tax-rate implementations rather than a naming
+bug. That is a product/architecture consolidation decision and is deferred to its own investigation.
