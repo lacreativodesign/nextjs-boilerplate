@@ -130,6 +130,10 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
     class: 'durable',
     reason: 'Platform-wide bug/support tickets (top-level, keyed by tenantId field).',
   },
+  help_feedback: {
+    class: 'ephemeral',
+    reason: 'Help-center helpfulness votes and ticket-deflection signals; derived telemetry.',
+  },
 
   // ---- audit: append-only compliance / forensic records ----
   finance_ledger: {

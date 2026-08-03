@@ -18,7 +18,7 @@ Notes:
   or delimiter (e.g. `audit_logs` vs `auditLogs`) reflect real naming drift to
   reconcile, not generator noise.
 
-## Collections (194)
+## Collections (195)
 
 - `abandoned_signup_deletions`
 - `abandoned_signup_reminders`
@@ -104,6 +104,7 @@ Notes:
 - `generated_invoices`
 - `gmailTracking`
 - `googleWorkspace`
+- `help_feedback`
 - `hr_employees`
 - `hr_leave_accrual_history`
 - `hr_leave_balances`

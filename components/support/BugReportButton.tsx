@@ -1,8 +1,9 @@
 'use client';
-import { useRef, useState } from 'react';
-import { Bug, X, CheckCircle, Camera, Loader2 } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Bug, X, CheckCircle, Camera, Loader2, Lightbulb, ExternalLink } from 'lucide-react';
 import * as Sentry from '@sentry/nextjs';
 import { apiFetch } from '@/lib/api/client';
+import { searchArticles } from '@/lib/help-center/data';
 
 /**
  * Screenshots are stored inline on the ticket document, which Firestore caps at
@@ -34,7 +35,19 @@ export default function BugReportButton() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Deflection: match the typed description against the help center in-memory.
+  // This runs entirely client-side (zero API cost) and only once the user has
+  // written enough to match on. Showing a relevant article BEFORE a ticket is
+  // filed is the cheapest possible support: it deflects the question without any
+  // human or AI touching it.
+  const suggestions = useMemo(() => {
+    const q = description.trim();
+    if (q.length < 12 || suggestionsDismissed) return [];
+    return searchArticles(q).slice(0, 3);
+  }, [description, suggestionsDismissed]);
 
   const reset = () => {
     setName('');
@@ -44,6 +57,7 @@ export default function BugReportButton() {
     setScreenshotName('');
     setError('');
     setSubmitted(false);
+    setSuggestionsDismissed(false);
   };
 
   const close = () => {
@@ -97,6 +111,24 @@ export default function BugReportButton() {
     } catch {
       setError('Could not read that image. Please try another file.');
     }
+  };
+
+  // The user clicked "This solved it" on a suggested article: log a deflection
+  // (best-effort) and close without creating a ticket.
+  const markDeflected = (slug: string, categoryId: string) => {
+    void apiFetch('/api/support/help-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'deflection',
+        slug,
+        categoryId,
+        query: description.trim().slice(0, 300),
+      }),
+    }).catch(() => {
+      // Best-effort telemetry; never block the user.
+    });
+    close();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -265,6 +297,42 @@ export default function BugReportButton() {
                       required
                     />
                   </div>
+
+                  {/* Deflection: help articles that may already answer this,
+                      shown before a ticket is created. */}
+                  {suggestions.length > 0 && (
+                    <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3">
+                      <div className="mb-2 flex items-center gap-1.5">
+                        <Lightbulb className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                        <p className="text-xs font-semibold text-[var(--text-primary)]">
+                          These might help — before you send
+                        </p>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {suggestions.map((article) => (
+                          <li key={`${article.categoryId}/${article.slug}`}>
+                            <a
+                              href={`/help/${article.categoryId}/${article.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => markDeflected(article.slug, article.categoryId)}
+                              className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs text-[var(--text-primary)] hover:bg-[var(--surface-card)] transition-colors"
+                            >
+                              <span className="truncate">{article.title}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0 text-[var(--text-muted)]" />
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => setSuggestionsDismissed(true)}
+                        className="mt-2 text-xs text-[var(--text-muted)] underline hover:text-[var(--text-primary)]"
+                      >
+                        None of these — continue reporting
+                      </button>
+                    </div>
+                  )}
 
                   {/* Screenshot section */}
                   <div>
