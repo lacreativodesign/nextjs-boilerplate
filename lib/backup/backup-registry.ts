@@ -126,6 +126,10 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
   },
   events: { class: 'durable', reason: 'Domain event stream referenced by finance/sales flows.' },
   support_tickets: { class: 'durable', reason: 'Support ticket records.' },
+  platform_tickets: {
+    class: 'durable',
+    reason: 'Platform-wide bug/support tickets (top-level, keyed by tenantId field).',
+  },
 
   // ---- audit: append-only compliance / forensic records ----
   finance_ledger: {

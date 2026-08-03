@@ -18,7 +18,7 @@ Notes:
   or delimiter (e.g. `audit_logs` vs `auditLogs`) reflect real naming drift to
   reconcile, not generator noise.
 
-## Collections (195)
+## Collections (194)
 
 - `abandoned_signup_deletions`
 - `abandoned_signup_reminders`
@@ -37,7 +37,6 @@ Notes:
 - `approvals`
 - `attendance`
 - `attendance_logs`
-- `audit_logs`
 - `audit_trail`
 - `auditLogs`
 - `automation_approvals`
@@ -54,7 +53,6 @@ Notes:
 - `calendarSyncMap`
 - `calendlyMeetings`
 - `campaigns`
-- `change_requests`
 - `changeRequests`
 - `chartOfAccounts`
 - `checklist`
@@ -91,6 +89,7 @@ Notes:
 - `emails`
 - `employeeDocuments`
 - `employees`
+- `erp_files`
 - `events`
 - `eventsQueue`
 - `exchange_rate_history`
@@ -149,6 +148,7 @@ Notes:
 - `permission_roles`
 - `pipelines`
 - `platform`
+- `platform_tickets`
 - `production_jobs`
 - `productionDefects`
 - `productionResourceAssignments`
@@ -161,7 +161,6 @@ Notes:
 - `purchase_orders`
 - `rate_limit_rules`
 - `recurring_invoice_templates`
-- `recurringInvoiceTemplates`
 - `report_cache`
 - `report_executions`
 - `report_schedules`
