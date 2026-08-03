@@ -25,11 +25,27 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Tenant subcollections (e.g. activity_feed): internal staff only, read-only.
-    // Client role excluded. All writes go through the server (Admin SDK).
-    match /tenants/{tenantId}/{subcollection=**} {
+    // Tenant activity feed: the ONLY tenant subcollection read directly from the
+    // browser (app/activity, components/activity/ActivityFeed via onSnapshot).
+    // Internal staff only; client role excluded. Writes go through the Admin SDK.
+    //
+    // NOTE: this deliberately replaces the previous blanket
+    // `/tenants/{tenantId}/{subcollection=**}` read rule. That wildcard exposed
+    // EVERY tenant subcollection to the client SDK — including
+    // support_tickets/** (internal notes flagged isInternal, reporter emails,
+    // and base64 screenshots). Support tickets are served exclusively through
+    // Admin SDK API routes, so no legitimate browser reader is lost by denying
+    // client-SDK access here. Any future subcollection that genuinely needs
+    // browser reads must be given its own explicit match block below.
+    match /tenants/{tenantId}/activity_feed/{docId} {
       allow read: if belongsToTenant(tenantId) && !isClientRole();
       allow write: if false;
+    }
+
+    // All other tenant subcollections (support_tickets, support_meta, and every
+    // future subcollection): server SDK only. Super admin still covered above.
+    match /tenants/{tenantId}/{subcollection}/{docId=**} {
+      allow read, write: if false;
     }
 
     // users: a user may read ONLY their own document. Writes server-only.
