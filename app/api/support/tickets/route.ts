@@ -4,23 +4,29 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { normalizeTenantId } from '@/lib/tenant';
 import { isAppError, resolveErrorResponse } from '@/lib/errors';
 import { checkRateLimit } from '@/lib/security/rate-limit';
+import {
+  PLATFORM_TICKETS_COLLECTION,
+  normalizeTicketCategory,
+  normalizeTicketPriority,
+  type TicketPriority,
+  type TicketStatus,
+} from '@/lib/support/types';
+import {
+  parseScreenshotDataUrl,
+  ticketContentHash,
+  uploadTicketScreenshot,
+} from '@/lib/support/storage';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
-type TicketCategory = 'bug' | 'feature' | 'question' | 'billing';
-
 /**
- * Screenshots are stored inline on the ticket document. Firestore caps a single
- * document at 1 MiB, so the base64 payload is bounded well below that to leave
- * room for the rest of the ticket fields. The client downscales before upload;
- * this is the server-side backstop.
+ * A repeat of the exact same (tenant, reporter, title, description) within this
+ * window is treated as a duplicate submit and linked to the original rather than
+ * creating a new ticket. Bounds accidental double-taps and automated floods.
  */
-const MAX_SCREENSHOT_CHARS = 700_000;
-const SCREENSHOT_DATA_URL = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/;
+const DEDUP_WINDOW_MS = 10 * 60 * 1000;
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
@@ -35,17 +41,6 @@ function toIso(value: unknown): string | null {
     return date instanceof Date ? date.toISOString() : null;
   }
   return null;
-}
-
-function parsePriority(value: unknown): TicketPriority {
-  if (value === 'low' || value === 'medium' || value === 'high' || value === 'urgent') return value;
-  return 'medium';
-}
-
-function parseCategory(value: unknown): TicketCategory {
-  if (value === 'bug' || value === 'feature' || value === 'question' || value === 'billing')
-    return value;
-  return 'question';
 }
 
 /**
@@ -143,11 +138,14 @@ export async function GET() {
 
     const tenantId = normalizeTenantId(current.tenantId);
 
+    // Tenant-scoped read of the top-level platform_tickets collection. Admins
+    // see their own tenant's tickets; the cross-tenant super-admin queue is a
+    // separate surface (S8).
     const tickets = await adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('support_tickets')
+      .collection(PLATFORM_TICKETS_COLLECTION)
+      .where('tenantId', '==', tenantId)
       .orderBy('createdAt', 'desc')
+      .limit(200)
       .get();
 
     return NextResponse.json({
@@ -176,12 +174,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Bounded per user + IP. Bug reports fan out to email, so an unbounded
-    // POST is an inbox-flood and storage-cost vector.
+    // Bounded per user + IP. Bug reports fan out to email and Storage, so an
+    // unbounded POST is an inbox-flood and storage-cost vector.
     await checkRateLimit(req, 'strict', current.uid);
 
+    // tenantId is ALWAYS derived from the authenticated session, never the body.
     const tenantId = normalizeTenantId(current.tenantId);
     const data = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+
+    // Honeypot: a hidden field no human fills in. A non-empty value is a bot;
+    // return 200 so the bot cannot distinguish acceptance from rejection, but
+    // write nothing.
+    if (typeof data?.website === 'string' && data.website.trim() !== '') {
+      return NextResponse.json({ ok: true, deduped: true });
+    }
 
     const title = typeof data?.title === 'string' ? data.title.trim() : '';
     const description = typeof data?.description === 'string' ? data.description.trim() : '';
@@ -189,42 +195,81 @@ export async function POST(req: Request) {
     const reporterName = typeof data?.reporterName === 'string' ? data.reporterName.trim() : null;
     const reporterEmail =
       typeof data?.reporterEmail === 'string' ? data.reporterEmail.trim() : null;
-    const screenshot = typeof data?.screenshot === 'string' ? data.screenshot : null;
-    const screenshotName = typeof data?.screenshotName === 'string' ? data.screenshotName : null;
 
     if (title.length < 3 || description.length < 10) {
       return NextResponse.json({ error: 'Title and description are required.' }, { status: 400 });
     }
 
-    if (screenshot) {
-      if (!SCREENSHOT_DATA_URL.test(screenshot)) {
-        return NextResponse.json(
-          { error: 'Screenshot must be a PNG, JPEG, or WebP image.' },
-          { status: 400 },
-        );
-      }
-      if (screenshot.length > MAX_SCREENSHOT_CHARS) {
-        return NextResponse.json(
-          { error: 'Screenshot is too large. Please attach a smaller image.' },
-          { status: 413 },
-        );
-      }
+    // Decode + validate the screenshot before touching Firestore. Throws a
+    // user-safe message on an invalid or oversized payload.
+    let screenshot;
+    try {
+      screenshot = parseScreenshotDataUrl(data?.screenshot);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Screenshot must be a PNG, JPEG, or WebP image.';
+      const status = err instanceof Error && err.name === 'ScreenshotTooLarge' ? 413 : 400;
+      return NextResponse.json({ error: message }, { status });
     }
 
-    const priority = parsePriority(data?.priority);
-    const category = parseCategory(data?.category);
+    const priority = normalizeTicketPriority(data?.priority);
+    const category = normalizeTicketCategory(data?.category);
+
+    const contentHash = ticketContentHash({
+      tenantId,
+      reporterUid: current.uid,
+      title,
+      description,
+    });
+
+    // Dedup: link an identical repeat submitted within the window to the
+    // original instead of creating a second ticket.
+    const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_MS);
+    const existing = await adminDb
+      .collection(PLATFORM_TICKETS_COLLECTION)
+      .where('tenantId', '==', tenantId)
+      .where('contentHash', '==', contentHash)
+      .where('createdAt', '>=', dedupCutoff)
+      .limit(1)
+      .get();
+
+    if (!existing.empty) {
+      const doc = existing.docs[0];
+      const existingData = doc.data();
+      return NextResponse.json({
+        id: doc.id,
+        ticketNumber: existingData.ticketNumber,
+        deduped: true,
+        createdAt: toIso(existingData.createdAt),
+        updatedAt: toIso(existingData.updatedAt),
+      });
+    }
 
     const now = new Date();
-    const ticketCollection = adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('support_tickets');
+    const ticketRef = adminDb.collection(PLATFORM_TICKETS_COLLECTION).doc();
     const counterRef = adminDb
       .collection('tenants')
       .doc(tenantId)
       .collection('support_meta')
       .doc('ticket_counter');
-    const newTicketRef = ticketCollection.doc();
+
+    // Upload the screenshot BEFORE the transaction — Storage writes cannot run
+    // inside a Firestore transaction, and the URL must be part of the committed doc.
+    let screenshotUrl: string | null = null;
+    if (screenshot) {
+      try {
+        const uploaded = await uploadTicketScreenshot({
+          tenantId,
+          ticketId: ticketRef.id,
+          screenshot,
+        });
+        screenshotUrl = uploaded.url;
+      } catch (err) {
+        // A screenshot failure must not lose the whole report. Proceed without it.
+        console.error('SUPPORT_SCREENSHOT_UPLOAD_ERROR', err);
+        screenshotUrl = null;
+      }
+    }
 
     const result = await adminDb.runTransaction(async (tx) => {
       const counterSnap = await tx.get(counterRef);
@@ -233,18 +278,19 @@ export async function POST(req: Request) {
       const ticketNumber = `TKT-${String(nextNumber).padStart(4, '0')}`;
 
       const payload = {
+        tenantId,
         ticketNumber,
         title,
         description,
         pageUrl: pageUrl || null,
         reporterName: reporterName || null,
         reporterEmail: reporterEmail || null,
-        screenshot: screenshot || null,
-        screenshotName: screenshotName || null,
-        hasScreenshot: Boolean(screenshot),
+        screenshotUrl,
+        hasScreenshot: Boolean(screenshotUrl),
         status: 'open' as TicketStatus,
         priority,
         category,
+        contentHash,
         tags: Array.isArray(data?.tags)
           ? (data.tags as unknown[])
               .filter((tag): tag is string => typeof tag === 'string')
@@ -254,15 +300,15 @@ export async function POST(req: Request) {
           : [],
         // Triage is performed super-admin-side on demand, never on the tenant
         // write path. No platform AI key is reachable from this route.
-        aiAnalysis: null,
         triageStatus: 'untriaged' as const,
-        createdBy: {
+        triage: null,
+        reporter: {
           uid: current.uid,
           name:
             typeof current.name === 'string' && current.name.trim()
               ? current.name.trim()
-              : 'Unknown',
-          email: typeof current.email === 'string' ? current.email : '',
+              : reporterName || 'Unknown',
+          email: typeof current.email === 'string' ? current.email : reporterEmail || '',
           role: typeof current.role === 'string' ? current.role : '',
         },
         assignedTo: null,
@@ -271,9 +317,9 @@ export async function POST(req: Request) {
       };
 
       tx.set(counterRef, { lastNumber: nextNumber, updatedAt: now }, { merge: true });
-      tx.set(newTicketRef, payload);
+      tx.set(ticketRef, payload);
 
-      return { id: newTicketRef.id, ...payload };
+      return { id: ticketRef.id, ...payload };
     });
 
     // Notify super admin — non-blocking
@@ -286,7 +332,7 @@ export async function POST(req: Request) {
       priority,
       reporterName,
       reporterEmail,
-      hasScreenshot: Boolean(screenshot),
+      hasScreenshot: Boolean(screenshotUrl),
     }).catch((err) => console.error('SUPPORT_NOTIFY_SUPER_ADMIN_ERROR', err));
 
     return NextResponse.json({
