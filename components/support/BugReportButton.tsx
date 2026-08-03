@@ -4,6 +4,25 @@ import { Bug, X, CheckCircle, Camera, Loader2 } from 'lucide-react';
 import * as Sentry from '@sentry/nextjs';
 import { apiFetch } from '@/lib/api/client';
 
+/**
+ * Screenshots are stored inline on the ticket document, which Firestore caps at
+ * 1 MiB. Full-resolution PNG captures blow through that limit and the write
+ * fails, so every image is downscaled and re-encoded as JPEG before upload.
+ */
+const MAX_SCREENSHOT_DIMENSION = 1280;
+const SCREENSHOT_JPEG_QUALITY = 0.7;
+
+function compressToDataUrl(source: CanvasImageSource, width: number, height: number): string {
+  const scale = Math.min(1, MAX_SCREENSHOT_DIMENSION / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is unavailable.');
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY);
+}
+
 export default function BugReportButton() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -36,24 +55,19 @@ export default function BugReportButton() {
     setCapturing(true);
     setError('');
     try {
-      // Use html2canvas-style approach via MediaDevices API
       const stream = await (navigator.mediaDevices as any).getDisplayMedia({
         video: { mediaSource: 'screen' },
       });
       const track = stream.getVideoTracks()[0];
       const imageCapture = new (window as any).ImageCapture(track);
-      const bitmap = await imageCapture.grabFrame();
+      const bitmap = (await imageCapture.grabFrame()) as ImageBitmap;
       track.stop();
       stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
 
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(bitmap, 0, 0);
-      const dataUrl = canvas.toDataURL('image/png');
+      const dataUrl = compressToDataUrl(bitmap, bitmap.width, bitmap.height);
+      bitmap.close();
       setScreenshot(dataUrl);
-      setScreenshotName('screenshot.png');
+      setScreenshotName('screenshot.jpg');
     } catch {
       // User cancelled or browser doesn't support — fall back silently
       setError('');
@@ -62,23 +76,27 @@ export default function BugReportButton() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB.');
+    if (file.size > 15 * 1024 * 1024) {
+      setError('Image must be under 15MB.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setScreenshot(ev.target?.result as string);
+    try {
+      const bitmap = await createImageBitmap(file);
+      const dataUrl = compressToDataUrl(bitmap, bitmap.width, bitmap.height);
+      bitmap.close();
+      setScreenshot(dataUrl);
       setScreenshotName(file.name);
-    };
-    reader.readAsDataURL(file);
+      setError('');
+    } catch {
+      setError('Could not read that image. Please try another file.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,6 +108,41 @@ export default function BugReportButton() {
     try {
       setSubmitting(true);
       setError('');
+
+      const response = await apiFetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `Bug: ${description.slice(0, 60)}`,
+          description,
+          priority: 'medium',
+          category: 'bug',
+          tags: ['bug-report'],
+          reporterName: name || null,
+          reporterEmail: email || null,
+          screenshot: screenshot || null,
+          screenshotName: screenshotName || null,
+          pageUrl: window.location.href,
+        }),
+      });
+
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+      } | null;
+
+      // The submission is only reported as successful when the server actually
+      // stored the ticket. Swallowing the failure here silently loses reports.
+      if (!response.ok) {
+        setError(
+          body?.message ||
+            body?.error ||
+            (response.status === 429
+              ? 'Too many reports sent. Please wait a moment and try again.'
+              : 'Failed to submit. Please try again.'),
+        );
+        return;
+      }
 
       const client = Sentry.getClient();
       if (client) {
@@ -105,23 +158,6 @@ export default function BugReportButton() {
           },
         });
       }
-
-      await apiFetch('/api/support/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `Bug: ${description.slice(0, 60)}`,
-          description,
-          priority: 'medium',
-          category: 'bug',
-          tags: ['bug-report'],
-          reporterName: name || null,
-          reporterEmail: email || null,
-          screenshot: screenshot || null,
-          screenshotName: screenshotName || null,
-          pageUrl: window.location.href,
-        }),
-      }).catch(() => {});
 
       setSubmitted(true);
     } catch {

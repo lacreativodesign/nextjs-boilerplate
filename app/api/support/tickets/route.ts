@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { normalizeTenantId } from '@/lib/tenant';
+import { isAppError, resolveErrorResponse } from '@/lib/errors';
+import { checkRateLimit } from '@/lib/security/rate-limit';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -11,14 +13,14 @@ type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 type TicketCategory = 'bug' | 'feature' | 'question' | 'billing';
 
-type AiAnalysis = {
-  category: TicketCategory;
-  priority: TicketPriority;
-  summary: string;
-  suggestedFix: string;
-  isAutoFixable: boolean;
-  manualWorkRequired: string | null;
-};
+/**
+ * Screenshots are stored inline on the ticket document. Firestore caps a single
+ * document at 1 MiB, so the base64 payload is bounded well below that to leave
+ * room for the rest of the ticket fields. The client downscales before upload;
+ * this is the server-side backstop.
+ */
+const MAX_SCREENSHOT_CHARS = 700_000;
+const SCREENSHOT_DATA_URL = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/;
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
@@ -46,99 +48,57 @@ function parseCategory(value: unknown): TicketCategory {
   return 'question';
 }
 
-async function classifyWithAI(
-  title: string,
-  description: string,
-  pageUrl: string,
-  tenantId: string,
-): Promise<AiAnalysis | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        messages: [
-          {
-            role: 'user',
-            content: `You are a SaaS support AI for Bizosto. Analyze this bug report and respond ONLY with a JSON object, no markdown, no explanation.
-
-Title: ${title}
-Description: ${description}
-Page URL: ${pageUrl}
-Tenant: ${tenantId}
-
-Respond with exactly this JSON structure:
-{
-  "category": "bug" | "feature" | "question" | "billing",
-  "priority": "low" | "medium" | "high" | "urgent",
-  "summary": "one sentence summary of the issue",
-  "suggestedFix": "specific actionable fix suggestion in 1-2 sentences",
-  "isAutoFixable": false,
-  "manualWorkRequired": "what the super admin needs to do manually, or null if not needed"
-}`,
-          },
-        ],
-      }),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text = data?.content?.[0]?.text || '';
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean) as AiAnalysis;
-  } catch {
-    return null;
-  }
+/**
+ * Ticket fields are attacker-controlled free text. They are interpolated into an
+ * HTML email that a super admin opens, so every value must be escaped before it
+ * reaches the template.
+ */
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-async function notifySuperAdmin(
-  ticket: {
-    ticketNumber: string;
-    title: string;
-    description: string;
-    pageUrl: string;
-    tenantId: string;
-    reporterName: string | null;
-    reporterEmail: string | null;
-    hasScreenshot: boolean;
-  },
-  ai: AiAnalysis | null,
-): Promise<void> {
+async function notifySuperAdmin(ticket: {
+  ticketNumber: string;
+  title: string;
+  description: string;
+  pageUrl: string;
+  tenantId: string;
+  priority: TicketPriority;
+  reporterName: string | null;
+  reporterEmail: string | null;
+  hasScreenshot: boolean;
+}): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
-  const from = process.env.ONBOARDING_FROM_EMAIL || 'Bizosto <welcome@bizosto.com>';
+  const from = process.env.ONBOARDING_FROM_EMAIL || 'Bizosto <hello@bizosto.com>';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com';
   const superAdminEmail = 'admin@bizosto.com';
 
   const resend = new Resend(apiKey);
 
-  const priorityColor: Record<string, string> = {
+  const priorityColor: Record<TicketPriority, string> = {
     urgent: '#dc2626',
     high: '#ea580c',
     medium: '#d97706',
     low: '#16a34a',
   };
 
-  const pColor = priorityColor[ai?.priority || 'medium'] || '#d97706';
+  const pColor = priorityColor[ticket.priority] || '#d97706';
 
-  const aiSection = ai
-    ? `
-      <div style="background:#f0f4ff;border-left:4px solid #012167;padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
-        <p style="font-weight:700;margin:0 0 8px;color:#012167">🤖 AI Analysis</p>
-        <p style="margin:0 0 6px"><strong>Summary:</strong> ${ai.summary}</p>
-        <p style="margin:0 0 6px"><strong>Suggested Fix:</strong> ${ai.suggestedFix}</p>
-        ${ai.manualWorkRequired ? `<p style="margin:0;color:#dc2626"><strong>⚠ Manual Action Required:</strong> ${ai.manualWorkRequired}</p>` : '<p style="margin:0;color:#16a34a"><strong>✓ No manual action required</strong></p>'}
-      </div>`
+  const safeTicketNumber = escapeHtml(ticket.ticketNumber);
+  const safeTitle = escapeHtml(ticket.title);
+  const safeDescription = escapeHtml(ticket.description);
+  const safeTenantId = escapeHtml(ticket.tenantId);
+  const safePageUrl = ticket.pageUrl ? escapeHtml(ticket.pageUrl) : 'Not provided';
+  const safeReporter = ticket.reporterName ? escapeHtml(ticket.reporterName) : 'Anonymous';
+  const safeReporterEmail = ticket.reporterEmail
+    ? ` &lt;${escapeHtml(ticket.reporterEmail)}&gt;`
     : '';
 
   await resend.emails.send({
@@ -153,20 +113,18 @@ async function notifySuperAdmin(
           <p style="margin:0 0 20px;color:#6b7280;font-size:14px">A user has reported an issue that needs your attention.</p>
 
           <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280;width:140px">Ticket</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600">${ticket.ticketNumber}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Tenant</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600">${ticket.tenantId}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Reporter</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${ticket.reporterName || 'Anonymous'}${ticket.reporterEmail ? ` &lt;${ticket.reporterEmail}&gt;` : ''}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Priority</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:700;color:${pColor}">${(ai?.priority || 'medium').toUpperCase()}</td></tr>
-            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Page</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${ticket.pageUrl || 'Not provided'}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280;width:140px">Ticket</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600">${safeTicketNumber}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Tenant</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:600">${safeTenantId}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Reporter</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${safeReporter}${safeReporterEmail}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Priority</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:700;color:${pColor}">${ticket.priority.toUpperCase()}</td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280">Page</td><td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px">${safePageUrl}</td></tr>
             <tr><td style="padding:10px 0;font-size:14px;color:#6b7280">Screenshot</td><td style="padding:10px 0;font-size:14px">${ticket.hasScreenshot ? '✓ Attached in ticket' : 'None'}</td></tr>
           </table>
 
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:20px">
-            <p style="font-weight:600;margin:0 0 8px">${ticket.title}</p>
-            <p style="margin:0;font-size:14px;color:#374151;white-space:pre-wrap">${ticket.description}</p>
+            <p style="font-weight:600;margin:0 0 8px">${safeTitle}</p>
+            <p style="margin:0;font-size:14px;color:#374151;white-space:pre-wrap">${safeDescription}</p>
           </div>
-
-          ${aiSection}
 
           <p style="margin:24px 0 0">
             <a href="${appUrl}/admin/support" style="display:inline-block;padding:12px 24px;background:#012167;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">View Ticket →</a>
@@ -211,10 +169,16 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    // Any authenticated user in any role may file a bug report. Reading the
+    // queue stays restricted to admin/super_admin on GET.
     const current = await getCurrentUser();
-    if (!current || !isAdminRole(current.role)) {
+    if (!current) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Bounded per user + IP. Bug reports fan out to email, so an unbounded
+    // POST is an inbox-flood and storage-cost vector.
+    await checkRateLimit(req, 'strict', current.uid);
 
     const tenantId = normalizeTenantId(current.tenantId);
     const data = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -232,8 +196,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Title and description are required.' }, { status: 400 });
     }
 
-    // Run AI classification in parallel with ticket creation prep
-    const aiPromise = classifyWithAI(title, description, pageUrl, tenantId);
+    if (screenshot) {
+      if (!SCREENSHOT_DATA_URL.test(screenshot)) {
+        return NextResponse.json(
+          { error: 'Screenshot must be a PNG, JPEG, or WebP image.' },
+          { status: 400 },
+        );
+      }
+      if (screenshot.length > MAX_SCREENSHOT_CHARS) {
+        return NextResponse.json(
+          { error: 'Screenshot is too large. Please attach a smaller image.' },
+          { status: 413 },
+        );
+      }
+    }
+
+    const priority = parsePriority(data?.priority);
+    const category = parseCategory(data?.category);
 
     const now = new Date();
     const ticketCollection = adminDb
@@ -246,8 +225,6 @@ export async function POST(req: Request) {
       .collection('support_meta')
       .doc('ticket_counter');
     const newTicketRef = ticketCollection.doc();
-
-    const ai = await aiPromise;
 
     const result = await adminDb.runTransaction(async (tx) => {
       const counterSnap = await tx.get(counterRef);
@@ -266,8 +243,8 @@ export async function POST(req: Request) {
         screenshotName: screenshotName || null,
         hasScreenshot: Boolean(screenshot),
         status: 'open' as TicketStatus,
-        priority: ai?.priority || parsePriority(data?.priority),
-        category: ai?.category || parseCategory(data?.category),
+        priority,
+        category,
         tags: Array.isArray(data?.tags)
           ? (data.tags as unknown[])
               .filter((tag): tag is string => typeof tag === 'string')
@@ -275,7 +252,10 @@ export async function POST(req: Request) {
               .filter(Boolean)
               .slice(0, 10)
           : [],
-        aiAnalysis: ai || null,
+        // Triage is performed super-admin-side on demand, never on the tenant
+        // write path. No platform AI key is reachable from this route.
+        aiAnalysis: null,
+        triageStatus: 'untriaged' as const,
         createdBy: {
           uid: current.uid,
           name:
@@ -283,6 +263,7 @@ export async function POST(req: Request) {
               ? current.name.trim()
               : 'Unknown',
           email: typeof current.email === 'string' ? current.email : '',
+          role: typeof current.role === 'string' ? current.role : '',
         },
         assignedTo: null,
         createdAt: now,
@@ -296,19 +277,17 @@ export async function POST(req: Request) {
     });
 
     // Notify super admin — non-blocking
-    notifySuperAdmin(
-      {
-        ticketNumber: result.ticketNumber,
-        title,
-        description,
-        pageUrl,
-        tenantId,
-        reporterName,
-        reporterEmail,
-        hasScreenshot: Boolean(screenshot),
-      },
-      ai,
-    ).catch((err) => console.error('SUPPORT_NOTIFY_SUPER_ADMIN_ERROR', err));
+    notifySuperAdmin({
+      ticketNumber: result.ticketNumber,
+      title,
+      description,
+      pageUrl,
+      tenantId,
+      priority,
+      reporterName,
+      reporterEmail,
+      hasScreenshot: Boolean(screenshot),
+    }).catch((err) => console.error('SUPPORT_NOTIFY_SUPER_ADMIN_ERROR', err));
 
     return NextResponse.json({
       ...result,
@@ -316,6 +295,10 @@ export async function POST(req: Request) {
       updatedAt: result.updatedAt.toISOString(),
     });
   } catch (error) {
+    if (isAppError(error)) {
+      const { status, body, headers } = resolveErrorResponse(error);
+      return NextResponse.json(body, { status, headers });
+    }
     console.error('SUPPORT_TICKETS_POST_ERROR', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
