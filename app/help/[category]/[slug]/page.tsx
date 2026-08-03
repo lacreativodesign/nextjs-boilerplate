@@ -175,7 +175,7 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
             ))}
           </div>
 
-          <ArticleFeedback />
+          <ArticleFeedback categoryId={params.category} slug={params.slug} />
 
           <section className="mt-8 card p-6">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Related articles</h2>
