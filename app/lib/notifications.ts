@@ -18,7 +18,8 @@ export type NotificationType =
   | 'info'
   | 'warning'
   | 'success'
-  | 'system';
+  | 'system'
+  | 'support_ticket';
 
 export type NotificationEntityType =
   | 'lead'
@@ -33,7 +34,8 @@ export type NotificationEntityType =
   | 'invoice'
   | 'payment'
   | 'hr'
-  | 'payroll';
+  | 'payroll'
+  | 'support_ticket';
 
 export type NotificationRecipient = {
   uid: string;
