@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { normalizeTenantId } from '@/lib/tenant';
+import { normalizeTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant';
 import { isAppError, resolveErrorResponse } from '@/lib/errors';
 import { checkRateLimit } from '@/lib/security/rate-limit';
+import { createRoleNotifications } from '@/app/lib/notifications';
 import {
   PLATFORM_TICKETS_COLLECTION,
   normalizeTicketCategory,
@@ -334,6 +335,26 @@ export async function POST(req: Request) {
       reporterEmail,
       hasScreenshot: Boolean(screenshotUrl),
     }).catch((err) => console.error('SUPPORT_NOTIFY_SUPER_ADMIN_ERROR', err));
+
+    // Real-time in-app bell for the super admin. The notification is tagged with
+    // the super admin's OWN tenant (DEFAULT_TENANT_ID) so their NotificationBell
+    // — which filters by userId + their tenantId — actually surfaces it; the
+    // originating tenant is carried in the body and metadata. Recipients are
+    // found in that same tenant. Non-blocking: a notification failure must not
+    // fail the ticket write.
+    createRoleNotifications({
+      roles: ['super_admin'],
+      tenantId: DEFAULT_TENANT_ID,
+      recipientTenantId: DEFAULT_TENANT_ID,
+      type: 'support_ticket',
+      entityType: 'support_ticket',
+      entityId: result.id,
+      title: `New bug report: ${result.ticketNumber}`,
+      body: `${title} — from tenant ${tenantId}`,
+      deepLink: '/super_admin/tickets',
+      priority: priority === 'urgent' || priority === 'high' ? 'high' : 'normal',
+      metadata: { originTenantId: tenantId, ticketNumber: result.ticketNumber, priority },
+    }).catch((err) => console.error('SUPPORT_NOTIFY_BELL_ERROR', err));
 
     return NextResponse.json({
       ...result,
