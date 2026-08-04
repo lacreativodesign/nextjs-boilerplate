@@ -22,6 +22,7 @@ import {
   FolderOpen,
   GitPullRequest,
   UserPlus,
+  LifeBuoy,
   type LucideProps,
 } from 'lucide-react';
 import type { ForwardRefExoticComponent, RefAttributes } from 'react';
@@ -52,6 +53,7 @@ const ICON_MAP: Record<string, IconComponent> = {
   FolderOpen,
   GitPullRequest,
   UserPlus,
+  LifeBuoy,
 };
 
 type SidebarProps = {

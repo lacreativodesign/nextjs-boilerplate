@@ -87,6 +87,11 @@ function ErrorLine({ message }: { message: string }) {
 
 const ACTION_LINKS = [
   {
+    title: 'Support Tickets',
+    href: '/super_admin/tickets',
+    desc: 'Bug reports across all tenants. Triage with AI and get a copy-paste fix prompt.',
+  },
+  {
     title: 'Tenant Management',
     href: '/super_admin/tenants',
     desc: 'View, create, and manage tenant workspaces.',

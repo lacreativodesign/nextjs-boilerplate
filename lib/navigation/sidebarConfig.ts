@@ -124,6 +124,15 @@ export const sidebarNavigation: NavItem[] = [
     module: null,
   },
   {
+    id: 'sa-tickets',
+    label: 'Support Tickets',
+    labelKey: 'navigation.supportTickets',
+    href: '/super_admin/tickets',
+    icon: 'LifeBuoy',
+    roles: ['super_admin'],
+    module: null,
+  },
+  {
     id: 'sa-platform',
     label: 'Platform',
     labelKey: 'navigation.platform',
