@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import type { ReportResult } from '@/app/api/ai/natural-language-report/route';
 import { CHART_COLORS } from '@/lib/charts/palette';
+import { apiFetch } from '@/lib/api/client';
 
 const EXAMPLES = [
   'Show me revenue by client',
@@ -169,7 +170,7 @@ export default function AIReportsPage() {
     if (q) setQuestion(q);
 
     try {
-      const res = await fetch('/api/ai/natural-language-report', {
+      const res = await apiFetch('/api/ai/natural-language-report', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

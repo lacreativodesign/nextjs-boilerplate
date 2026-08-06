@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 type PlatformSettings = {
   allowPublicSignup: boolean;
@@ -55,7 +56,7 @@ export default function SuperAdminSettingsPage() {
     try {
       setSaving(true);
       setError(null);
-      const res = await fetch('/api/super_admin/settings', {
+      const res = await apiFetch('/api/super_admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -76,7 +77,7 @@ export default function SuperAdminSettingsPage() {
     try {
       setBackfilling(true);
       setBackfillMessage(null);
-      const res = await fetch('/api/super_admin/backfill-manager-ids?tenantId=bizosto', {
+      const res = await apiFetch('/api/super_admin/backfill-manager-ids?tenantId=bizosto', {
         method: 'POST',
         credentials: 'include',
       });

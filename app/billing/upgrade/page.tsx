@@ -11,6 +11,7 @@ import {
   type BillingCycle,
   type PurchasablePlanKey,
 } from '@/lib/billing/plans';
+import { apiFetch } from '@/lib/api/client';
 
 // S7: plan names, prices, limits and features are read from the canonical catalog in
 // lib/billing/plans.ts. This page previously hardcoded its own copy, which contradicted
@@ -132,7 +133,7 @@ export default function BillingUpgradePage() {
       setCheckoutError(null);
 
       try {
-        const response = await fetch('/api/stripe/checkout', {
+        const response = await apiFetch('/api/stripe/checkout', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

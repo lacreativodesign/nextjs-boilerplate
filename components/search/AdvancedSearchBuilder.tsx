@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FILTER_TEMPLATES } from '@/lib/search/filter-templates';
+import { apiFetch } from '@/lib/api/client';
 
 type Operator =
   | 'equals'
@@ -127,7 +128,7 @@ export default function AdvancedSearchBuilder() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch('/api/search/advanced', {
+      const res = await apiFetch('/api/search/advanced', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -236,7 +237,7 @@ export default function AdvancedSearchBuilder() {
       return;
     }
 
-    const res = await fetch('/api/search/save', {
+    const res = await apiFetch('/api/search/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -282,7 +283,7 @@ export default function AdvancedSearchBuilder() {
   };
 
   const deleteSaved = async (id: string) => {
-    const res = await fetch(`/api/search/saved/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/search/saved/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setSavedSearches((prev) => prev.filter((item) => item.id !== id));
     }
