@@ -85,3 +85,43 @@ describe('S27: CSP enforcement', () => {
     expect(h['X-Content-Type-Options']).toBe('nosniff');
   });
 });
+
+describe('S4: CSP and Permissions-Policy permit Stripe on the public payment page', () => {
+  // app/pay/[invoiceId] loads https://js.stripe.com/v3/ and mounts Stripe Elements (an
+  // iframe from js.stripe.com that tokenizes cards against api.stripe.com). The strict CSP
+  // applies to that route, so js/api/hooks.stripe.com and payment=(self) must be permitted
+  // or card entry is blocked the moment Stripe Connect goes live.
+  function loadHeaders() {
+    let mod!: typeof import('@/lib/security/headers');
+    jest.isolateModules(() => {
+      mod = require('@/lib/security/headers');
+    });
+    return mod;
+  }
+
+  it('the enforced strict policy allows Stripe script, connect and frame origins', () => {
+    const { getSecurityHeaders } = loadHeaders();
+    const h = getSecurityHeaders('nonce-abc');
+    const csp = h['Content-Security-Policy'];
+    expect(csp).toContain('https://js.stripe.com');
+    expect(csp).toContain('connect-src');
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/api\.stripe\.com/);
+    expect(csp).toMatch(/frame-src[^;]*https:\/\/js\.stripe\.com/);
+    expect(csp).toMatch(/frame-src[^;]*https:\/\/hooks\.stripe\.com/);
+  });
+
+  it('the permissive (nonce-less) policy also allows Stripe origins', () => {
+    const { getSecurityHeaders } = loadHeaders();
+    const h = getSecurityHeaders();
+    const csp = h['Content-Security-Policy'];
+    expect(csp).toContain('https://js.stripe.com');
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/api\.stripe\.com/);
+  });
+
+  it('Permissions-Policy enables the Payment Request API for self and Stripe', () => {
+    const { getSecurityHeaders } = loadHeaders();
+    const h = getSecurityHeaders('nonce-abc');
+    expect(h['Permissions-Policy']).toContain('payment=(self "https://js.stripe.com")');
+    expect(h['Permissions-Policy']).not.toContain('payment=()');
+  });
+});

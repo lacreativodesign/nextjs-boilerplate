@@ -10,6 +10,7 @@ function buildCsp(nonce?: string) {
     'https://apis.google.com',
     'https://*.firebaseio.com',
     'https://*.googleapis.com',
+    'https://js.stripe.com',
   ]
     .filter(Boolean)
     .join(' ');
@@ -20,9 +21,9 @@ function buildCsp(nonce?: string) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com",
-    "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://api.upstash.com",
+    "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://api.upstash.com https://api.stripe.com https://js.stripe.com",
     "frame-ancestors 'none'",
-    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
+    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://js.stripe.com https://hooks.stripe.com",
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
@@ -63,6 +64,9 @@ export function buildStrictCsp(nonce: string, reportUri: string) {
     'https://apis.google.com',
     'https://*.firebaseio.com',
     'https://*.googleapis.com',
+    // Stripe.js is loaded with strict-dynamic via a script this page injects, so it is
+    // permitted by propagation; js.stripe.com is listed explicitly as a defensive backstop.
+    'https://js.stripe.com',
   ]
     .filter(Boolean)
     .join(' ');
@@ -73,9 +77,9 @@ export function buildStrictCsp(nonce: string, reportUri: string) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com",
-    "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://api.upstash.com",
+    "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://api.upstash.com https://api.stripe.com https://js.stripe.com",
     "frame-ancestors 'none'",
-    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
+    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://js.stripe.com https://hooks.stripe.com",
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
@@ -120,7 +124,7 @@ export function getSecurityHeaders(nonce?: string): Record<string, string> {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy':
-      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)',
+      'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com"), usb=(), fullscreen=(self)',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
