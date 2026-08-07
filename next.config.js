@@ -81,7 +81,7 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value:
-              'camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)',
+              'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com"), usb=(), fullscreen=(self)',
           },
           {
             key: 'Strict-Transport-Security',
