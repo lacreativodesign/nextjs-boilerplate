@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { FieldMapper } from '@/components/import-export/FieldMapper';
+import { apiFetch } from '@/lib/api/client';
 
 type ImportEntity = 'clients' | 'invoices' | 'projects' | 'employees';
 
@@ -80,7 +81,7 @@ export default function ImportPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const response = await fetch('/api/import/parse', {
+      const response = await apiFetch('/api/import/parse', {
         method: 'POST',
         body: formData,
       });
@@ -107,7 +108,7 @@ export default function ImportPage() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch('/api/import/execute', {
+      const response = await apiFetch('/api/import/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -146,7 +147,7 @@ export default function ImportPage() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch('/api/import/execute', {
+      const response = await apiFetch('/api/import/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

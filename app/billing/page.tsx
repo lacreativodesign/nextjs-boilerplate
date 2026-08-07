@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BillingTerminalContent } from './terminal/BillingTerminalContent';
 import { plans, type BillingPlanKey } from '@/lib/billing/plans';
+import { apiFetch } from '@/lib/api/client';
 
 type BillingTab = 'subscription' | 'invoices' | 'payment-methods' | 'referrals' | 'terminal';
 type SubscriptionState = 'trial' | 'active' | 'grace' | 'canceled' | 'past_due' | string;
@@ -264,7 +265,7 @@ export default function BillingOverviewPage() {
     setPortalLoading(true);
     setFetchError(null);
     try {
-      const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
+      const res = await apiFetch('/api/billing/portal', { method: 'POST' });
       const body = (await res.json()) as { ok?: boolean; url?: string; error?: string };
       if (!res.ok || !body.url) throw new Error(body.error ?? 'Failed to open billing portal');
       window.location.href = body.url;
@@ -279,10 +280,7 @@ export default function BillingOverviewPage() {
     setCancelLoading(true);
     setCancelError(null);
     try {
-      const res = await fetch('/api/billing/subscription/cancel', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/billing/subscription/cancel', { method: 'POST' });
       const body = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !body.ok) throw new Error(body.error ?? 'Unable to cancel subscription');
       setIsCancelModalOpen(false);

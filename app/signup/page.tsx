@@ -13,6 +13,7 @@ import {
   toCheckoutPlanKey,
   type BillingCycle,
 } from '@/lib/billing/plans';
+import { apiFetch } from '@/lib/api/client';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type PlanKey = 'starter' | 'pro' | 'enterprise';
@@ -410,7 +411,7 @@ function SignupInner() {
           );
         }
 
-        const checkoutResponse = await fetch('/api/stripe/checkout', {
+        const checkoutResponse = await apiFetch('/api/stripe/checkout', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

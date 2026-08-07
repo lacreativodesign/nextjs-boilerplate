@@ -12,6 +12,7 @@ import {
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
 import { getRoleRoute } from '@/lib/roleRouting';
 import { TOUR_COMPLETED_STORAGE_KEY } from '@/components/onboarding/PlatformTour';
+import { apiFetch } from '@/lib/api/client';
 
 const HELP_ROLE_TOPIC_ACCESS: Record<
   string,
@@ -175,9 +176,7 @@ export function HelpCenterPageContent() {
   const handleRetakeTour = () => {
     localStorage.removeItem(TOUR_COMPLETED_STORAGE_KEY);
     // ONB-02: also reset the server-side completion so replay works across devices.
-    void fetch('/api/users/tour-state', { method: 'DELETE', credentials: 'include' }).catch(
-      () => {},
-    );
+    void apiFetch('/api/users/tour-state', { method: 'DELETE' }).catch(() => {});
     // ONB-04: replay must return the user to their own role home, not /dashboard (which the
     // middleware rejects for the nine non-admin roles).
     router.push(getRoleRoute(currentRole));

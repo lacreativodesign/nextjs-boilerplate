@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { apiFetch } from '@/lib/api/client';
 
 const TOUR_COMPLETED_STORAGE_KEY = 'bizosto_tour_complete';
 
@@ -164,7 +165,7 @@ export function PlatformTour({ role, companyName, onClose }: PlatformTourProps) 
     // ONB-02: cache locally for an instant no-flash re-render, and persist server-side (per user +
     // tour version) so completion follows the user across devices. The POST is fire-and-forget.
     localStorage.setItem(TOUR_COMPLETED_STORAGE_KEY, 'true');
-    void fetch('/api/users/tour-state', { method: 'POST', credentials: 'include' }).catch(() => {});
+    void apiFetch('/api/users/tour-state', { method: 'POST' }).catch(() => {});
     onClose?.();
   }, [onClose]);
 
