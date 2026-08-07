@@ -134,15 +134,8 @@ export function normalizePlanKey(value: unknown): BillingPlanKey {
   return 'starter';
 }
 
-export function getStripePriceId(plan: BillingPlanKey): string {
-  const envKey = plans[plan].stripePriceIdEnv;
-  if (!envKey) {
-    throw new Error(`Plan ${plan} does not map to a Stripe price id.`);
-  }
-
-  const priceId = process.env[envKey];
-  if (!priceId) {
-    throw new Error(`Missing Stripe price id env: ${envKey}`);
-  }
-  return priceId;
-}
+// NOTE: plan → Stripe price resolution now lives solely in lib/billing/stripe-prices.ts,
+// which is billing-cycle aware. The former monthly-only getStripePriceId that lived here
+// silently billed annual subscribers at the monthly price on every plan change and has
+// been removed. The stripePriceIdEnv / annualStripePriceIdEnv fields below are retained as
+// human-readable documentation of which env var backs each plan+cycle.

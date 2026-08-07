@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
-import { getStripePriceId } from '@/lib/billing/plans';
+import { getStripePriceIdForCycle, getSubscriptionBillingCycle } from '@/lib/billing/stripe-prices';
 import {
   applySubscriptionState,
   clearPendingDowngrade,
@@ -46,6 +46,8 @@ export async function executePendingDowngradeForTenant(
 
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  // Keep the subscription on its existing billing cycle when re-asserting the price.
+  const billingCycle = getSubscriptionBillingCycle(subscription);
 
   if (subscription.status === 'canceled') {
     // Subscription ended before the downgrade date; nothing to apply.
@@ -65,7 +67,7 @@ export async function executePendingDowngradeForTenant(
   // Price was already swapped at scheduling time; re-assert it defensively and
   // move bizosto_plan metadata to the new tier so webhook-driven state agrees.
   const updated = await stripe.subscriptions.update(subscriptionId, {
-    items: [{ id: itemId, price: getStripePriceId(plan as PaidTier) }],
+    items: [{ id: itemId, price: getStripePriceIdForCycle(plan as PaidTier, billingCycle) }],
     proration_behavior: 'none',
     metadata: { tenantId, bizosto_plan: plan, bizosto_pending_plan: '' },
   });
