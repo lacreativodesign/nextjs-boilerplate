@@ -298,9 +298,19 @@ export class StorageService {
     if (endpoint) {
       return this.scanFileWithEndpoint({ endpoint, file, fileName, mimeType });
     }
+    // No HTTP scanner endpoint. If a local ClamAV binary is enabled (DOCUMENT_VIRUS_SCAN_CLAMAV
+    // = '1'/'true'), scan with it instead — useful for self-hosted/worker deployments where
+    // clamscan is on the PATH. A scan error surfaces as 'failed' (blocked at upload), never a
+    // false 'clean'.
+    const clamavEnabled = ['1', 'true', 'yes'].includes(
+      (process.env.DOCUMENT_VIRUS_SCAN_CLAMAV || '').toLowerCase(),
+    );
+    if (clamavEnabled) {
+      return this.scanFileWithClamAv(file, fileName);
+    }
     // No scanner configured: report the truth ('unscanned'), never a false 'clean'. The upload
     // is still allowed (see uploadDocument), but the stored record honestly reflects that the
-    // file was not scanned, so a download-time gate or later async scan can act on it.
+    // file was not scanned, so the download-time gate or a later async scan can act on it.
     return 'unscanned';
   }
 
