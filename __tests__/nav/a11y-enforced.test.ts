@@ -18,11 +18,17 @@ import * as path from 'path';
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
 describe('S31: accessibility', () => {
-  it('the language buttons have an accessible name, not just a flag emoji', () => {
+  it('the header no longer renders the in-app language selector (EN-only launch)', () => {
+    // The translator UI was removed for launch: only ~60 keys were translated and only the
+    // nav consumed them, so a switcher left 95% of the product in English. The i18n
+    // infrastructure (I18nProvider, message catalogs) is retained for a later, complete
+    // rollout; only the Header entry point is gone. This pins that the flag-button dropdown
+    // and its locale wiring are not present, so it cannot be reintroduced by accident.
     const header = read('components/layout/Header.tsx');
-    expect(header).toContain('aria-label={`${item.language} (${item.nativeName})`}');
-    // The decorative flag is hidden from assistive tech.
-    expect(header).toContain('<span aria-hidden="true">{item.flag}</span>');
+    expect(header).not.toContain('common.language');
+    expect(header).not.toContain('SUPPORTED_LOCALES');
+    expect(header).not.toContain('setLocale');
+    expect(header).not.toContain('{item.flag}');
   });
 
   it('the core jsx-a11y rules are enforced at error level, not warn', () => {

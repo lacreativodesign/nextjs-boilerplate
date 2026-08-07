@@ -6,7 +6,6 @@ import { Bell, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { SUPPORTED_LOCALES, type SupportedLocale } from '@/lib/i18n/config';
 import { apiFetch } from '@/lib/api/client';
 import type { CSSProperties, ReactNode } from 'react';
 
@@ -86,13 +85,11 @@ function getUserInitials(name?: string | null, email?: string | null) {
 
 export default function Header({ currentUser, activityTrigger, notificationBell }: HeaderProps) {
   const router = useRouter();
-  const { locale, setLocale, t } = useI18n();
+  const { t } = useI18n();
   const { isDark, toggle } = useTheme();
-  const [langOpen, setLangOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const [dayPeriod, setDayPeriod] = useState<DayPeriod>(() => getDayPeriod(new Date()));
-  const langRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const roleKey = normalizeRoleKey(currentUser.role);
   const roleBadgeStyle = ROLE_BADGE_STYLES[roleKey] || ROLE_BADGE_STYLES.admin;
@@ -107,23 +104,11 @@ export default function Header({ currentUser, activityTrigger, notificationBell 
   const profileSettingsPath =
     roleKey === 'admin' || roleKey === 'super_admin' ? '/admin/settings' : '/settings';
 
-  const currentLocale = SUPPORTED_LOCALES.find((l) => l.code === locale) ?? SUPPORTED_LOCALES[0];
-
   useEffect(() => {
     const updateDayPeriod = () => setDayPeriod(getDayPeriod(new Date()));
     updateDayPeriod();
     const intervalId = window.setInterval(updateDayPeriod, 60_000);
     return () => window.clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) {
-        setLangOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
@@ -302,46 +287,6 @@ export default function Header({ currentUser, activityTrigger, notificationBell 
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-
-            <div className="relative" ref={langRef}>
-              <button
-                type="button"
-                onClick={() => setLangOpen((p) => !p)}
-                className={`${iconBtn} text-base`}
-                aria-label={t('common.language')}
-              >
-                {currentLocale.flag}
-              </button>
-
-              {langOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-14 overflow-hidden rounded-xl
-                border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-lg z-50"
-                >
-                  {SUPPORTED_LOCALES.map((item) => (
-                    <button
-                      key={item.code}
-                      type="button"
-                      onClick={() => {
-                        setLocale(item.code as SupportedLocale);
-                        setLangOpen(false);
-                      }}
-                      className={[
-                        'flex w-full items-center justify-center py-2.5 text-base',
-                        'hover:bg-[var(--surface-muted)] transition-colors',
-                        locale === item.code ? 'bg-[var(--erp-blue-soft)]' : '',
-                      ].join(' ')}
-                      // S31: the flag emoji alone is not an accessible name. Give the button a
-                      // real label and hide the decorative flag from the accessibility tree.
-                      aria-label={`${item.language} (${item.nativeName})`}
-                      aria-current={locale === item.code ? 'true' : undefined}
-                    >
-                      <span aria-hidden="true">{item.flag}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             <button
               type="button"
