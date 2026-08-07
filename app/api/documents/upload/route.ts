@@ -3,7 +3,7 @@ import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import { StorageService } from '@/lib/storage/storage-service';
 import { adminDb } from '@/lib/firebaseAdmin';
 import type { DocumentCategory, DocumentVisibility } from '@/types/documents';
-import { validateFile } from '@/lib/files/validation';
+import { validateFile, validateAssembledFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
 
@@ -82,6 +82,15 @@ export async function POST(request: Request) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // Content validation on the ASSEMBLED bytes: magic-byte signature must match the
+    // claimed extension, and the real length must match the declared size. validateFile
+    // above only saw the client-declared name and size; this is the gate that a renamed
+    // executable or a size-spoofed upload cannot pass.
+    const assembledCheck = validateAssembledFile(buffer, file.name, file.size);
+    if (!assembledCheck.valid) {
+      return NextResponse.json({ error: assembledCheck.error }, { status: 400 });
+    }
 
     const tags = tagsRaw
       ? tagsRaw

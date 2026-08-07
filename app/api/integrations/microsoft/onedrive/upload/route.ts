@@ -6,7 +6,7 @@ import {
   shareOneDriveFile,
   uploadFileToOneDrive,
 } from '@/lib/integrations/onedrive';
-import { validateFile } from '@/lib/files/validation';
+import { validateAssembledFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
 
@@ -39,10 +39,12 @@ export async function POST(request: Request) {
         );
       }
 
-      const sizeBytes = Math.ceil((String(body.base64Content).length * 3) / 4);
-      const fileValidation = validateFile(String(body.fileName), sizeBytes);
-      if (!fileValidation.valid) {
-        return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
+      // Decode and validate the real bytes (signature + length), not the caller's
+      // declared filename or the base64-estimated size.
+      const decoded = Buffer.from(String(body.base64Content), 'base64');
+      const assembledCheck = validateAssembledFile(decoded, String(body.fileName), decoded.length);
+      if (!assembledCheck.valid) {
+        return NextResponse.json({ ok: false, error: assembledCheck.error }, { status: 400 });
       }
 
       const uploaded = await uploadFileToOneDrive({

@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import { StorageService } from '@/lib/storage/storage-service';
 import type { Document } from '@/types/documents';
-import { validateFile } from '@/lib/files/validation';
+import { validateFile, validateAssembledFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
 
@@ -42,6 +42,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Validate the assembled bytes (signature + real length) before storing a new version.
+    const assembledCheck = validateAssembledFile(buffer, file.name, file.size);
+    if (!assembledCheck.valid) {
+      return NextResponse.json({ error: assembledCheck.error }, { status: 400 });
+    }
 
     const newDocumentId = await StorageService.createVersion({
       tenantId: session.tenantId,
