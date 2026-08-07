@@ -38,7 +38,7 @@ describe('SEC-02: truthful upload virus-scan status', () => {
     // scanFile's no-scanner branch now returns 'unscanned'.
     const idx = service.indexOf('DOCUMENT_VIRUS_SCAN_ENDPOINT');
     expect(idx).toBeGreaterThan(-1);
-    const block = service.slice(idx, idx + 600);
+    const block = service.slice(idx, idx + 1200);
     expect(block).toContain("return 'unscanned'");
     expect(block).not.toMatch(/return 'clean'/);
   });
