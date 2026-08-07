@@ -14,7 +14,6 @@ type PortalInviteResult = {
   uid: string;
   email: string;
   emailSent: boolean;
-  setPasswordLink?: string;
   emailError?: string;
   alreadyInvited?: boolean;
 };
@@ -108,7 +107,6 @@ export async function ensureClientPortalAccess({
     uid: portalUserUid,
     email,
     emailSent: emailResult.sent,
-    setPasswordLink: emailResult.sent ? undefined : tokenData.link,
     emailError: emailResult.sent ? undefined : emailResult.error,
   };
 }

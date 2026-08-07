@@ -289,7 +289,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       uid: userRecord.uid,
-      setPasswordLink: emailResult.sent ? undefined : tokenData.link,
+      // The set-password link is a live credential and is delivered by email only.
+      // It is never returned in an HTTP response (S-1).
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.error,
     });

@@ -171,7 +171,6 @@ export const AUTHENTICATED_ROUTES: Record<string, string> = {
   'auth/sessions': "Lists the caller's own sessions.",
   'auth/sessions/[id]': "Revokes one of the caller's own sessions.",
   'auth/sessions/invalidate-all': "Invalidates all of the caller's own sessions.",
-  'auth/create-set-password-token': 'Issues a set-password token for the caller.',
   'auth/sso/status': 'Returns SSO status for the caller; no tenant data.',
   'auth/sso/[provider]/authorize':
     'Builds an OAuth authorize URL; tenantId is a query param, not tenant-scoped data access.',

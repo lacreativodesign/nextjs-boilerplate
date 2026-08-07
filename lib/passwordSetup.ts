@@ -82,8 +82,11 @@ export async function sendSetPasswordEmail({
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.log('[set-password] Resend not configured. Link:', link);
-    return { sent: false, error: 'RESEND_API_KEY missing', link };
+    // The link is a live single-use credential. Never write it to logs and never
+    // return it to the caller — Vercel logs are readable by anyone with project
+    // access, and no caller uses this value.
+    console.error('[set-password] Resend is not configured; set-password email not sent.');
+    return { sent: false, error: 'RESEND_API_KEY missing' };
   }
 
   const resend = new Resend(apiKey);
