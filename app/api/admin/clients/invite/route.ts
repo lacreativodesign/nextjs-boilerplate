@@ -56,7 +56,6 @@ export async function POST(req: Request) {
       uid: inviteResult.uid,
       email: inviteResult.email,
       emailSent: inviteResult.emailSent,
-      setPasswordLink: inviteResult.setPasswordLink,
       emailError: inviteResult.emailError,
     });
   } catch (err: any) {
