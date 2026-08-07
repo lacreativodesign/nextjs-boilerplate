@@ -177,3 +177,46 @@ describe('P0-2: the upload route reports caller errors as 4xx', () => {
     expect(src).not.toContain("error?.message || 'Upload failed'");
   });
 });
+
+describe('S3: buffer-in-hand upload routes validate the assembled bytes', () => {
+  // Every route below receives the real file bytes on the server (multipart buffer or
+  // decoded base64) and must run validateAssembledFile on that buffer — not on the
+  // client-declared name/size — so a renamed executable or a size-spoofed payload is
+  // rejected before it is stored or forwarded to an integration.
+  const routes: Array<[string, string]> = [
+    ['documents/upload', 'app/api/documents/upload/route.ts'],
+    ['documents/[id]/version', 'app/api/documents/[id]/version/route.ts'],
+    ['google drive upload', 'app/api/integrations/google/drive/upload/route.ts'],
+    ['onedrive upload', 'app/api/integrations/microsoft/onedrive/upload/route.ts'],
+  ];
+
+  it.each(routes)('%s imports and calls validateAssembledFile', (_label, rel) => {
+    const src = read(rel);
+    expect(src).toContain("validateAssembledFile } from '@/lib/files/validation'");
+    expect(src).toContain('validateAssembledFile(');
+  });
+
+  it('the base64 integration routes validate the DECODED buffer, not the raw string', () => {
+    for (const rel of [
+      'app/api/integrations/google/drive/upload/route.ts',
+      'app/api/integrations/microsoft/onedrive/upload/route.ts',
+    ]) {
+      const src = read(rel);
+      expect(src).toContain("Buffer.from(String(body.base64Content), 'base64')");
+      expect(src).toContain('validateAssembledFile(decoded,');
+    }
+  });
+
+  it('the multipart document routes validate the assembled buffer before storing', () => {
+    for (const rel of [
+      'app/api/documents/upload/route.ts',
+      'app/api/documents/[id]/version/route.ts',
+    ]) {
+      const src = read(rel);
+      expect(src.indexOf('validateAssembledFile(buffer')).toBeGreaterThan(-1);
+      expect(src.indexOf('validateAssembledFile(buffer')).toBeLessThan(
+        src.indexOf('StorageService.'),
+      );
+    }
+  });
+});

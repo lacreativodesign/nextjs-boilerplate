@@ -6,7 +6,7 @@ import {
   shareDriveFile,
   uploadFileToGoogleDrive,
 } from '@/lib/integrations/google-drive';
-import { validateFile } from '@/lib/files/validation';
+import { validateAssembledFile } from '@/lib/files/validation';
 
 export const runtime = 'nodejs';
 
@@ -27,10 +27,13 @@ export async function POST(request: Request) {
         );
       }
 
-      const sizeBytes = Math.ceil((String(body.base64Content).length * 3) / 4);
-      const fileValidation = validateFile(String(body.fileName), sizeBytes);
-      if (!fileValidation.valid) {
-        return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
+      // Decode the payload and validate the ACTUAL bytes: the base64 length only yields
+      // an estimated size, and the filename/MIME the caller sends are not evidence of
+      // content. A magic-byte check on the decoded buffer blocks a renamed executable.
+      const decoded = Buffer.from(String(body.base64Content), 'base64');
+      const assembledCheck = validateAssembledFile(decoded, String(body.fileName), decoded.length);
+      if (!assembledCheck.valid) {
+        return NextResponse.json({ ok: false, error: assembledCheck.error }, { status: 400 });
       }
 
       const uploaded = await uploadFileToGoogleDrive({
