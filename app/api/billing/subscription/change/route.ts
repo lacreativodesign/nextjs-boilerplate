@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { getStripePriceId } from '@/lib/billing/plans';
+import { getStripePriceIdForCycle, getSubscriptionBillingCycle } from '@/lib/billing/stripe-prices';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import {
@@ -58,6 +58,9 @@ async function handlePlanChange(req: Request) {
     const stripe = getStripeClient();
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     const itemId = subscription.items.data[0]?.id;
+    // Preserve the subscription's existing billing cycle across the plan change so an
+    // annual subscriber is never silently switched to monthly pricing (and vice versa).
+    const billingCycle = getSubscriptionBillingCycle(subscription);
     if (!itemId) {
       return NextResponse.json(
         { ok: false, error: 'No active subscription found' },
@@ -71,7 +74,7 @@ async function handlePlanChange(req: Request) {
         // restore the current plan's Stripe price (it was swapped at scheduling
         // time) and clear the pending marker through the canonical service.
         await stripe.subscriptions.update(subscriptionId, {
-          items: [{ id: itemId, price: getStripePriceId(newPlan) }],
+          items: [{ id: itemId, price: getStripePriceIdForCycle(newPlan, billingCycle) }],
           proration_behavior: 'none',
           metadata: { tenantId, bizosto_plan: newPlan, bizosto_pending_plan: '' },
         });
@@ -89,7 +92,7 @@ async function handlePlanChange(req: Request) {
       return NextResponse.json({ ok: false, error: 'Already on this plan' }, { status: 400 });
     }
 
-    const newPriceId = getStripePriceId(newPlan);
+    const newPriceId = getStripePriceIdForCycle(newPlan, billingCycle);
     const currentRank = isKnownPaidTier(currentPlan) ? PLAN_RANK[currentPlan] : 0;
     const isUpgrade = PLAN_RANK[newPlan] > currentRank;
 

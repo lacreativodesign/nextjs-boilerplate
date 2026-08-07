@@ -37,11 +37,13 @@ jest.mock('@/lib/payments/stripe', () => ({
   }),
 }));
 
-jest.mock('@/lib/billing/plans', () => {
-  const actual = jest.requireActual('@/lib/billing/plans');
+jest.mock('@/lib/billing/stripe-prices', () => {
+  const actual = jest.requireActual('@/lib/billing/stripe-prices');
   return {
     ...actual,
-    getStripePriceId: (plan: string) => `price_${plan}`,
+    // Deterministic price ids keyed by plan + cycle so the test can assert that the
+    // subscription's existing billing cycle is honoured.
+    getStripePriceIdForCycle: (plan: string, cycle: string) => `price_${plan}_${cycle}`,
   };
 });
 
@@ -113,7 +115,7 @@ describe('pending downgrade lifecycle (P0-1 billing single-writer)', () => {
   it('executePendingDowngradeForTenant applies entitlement through the canonical service and clears pending', async () => {
     stripeRetrieve.mockResolvedValue({
       status: 'active',
-      items: { data: [{ id: 'si_1' }] },
+      items: { data: [{ id: 'si_1', price: { recurring: { interval: 'year' } } }] },
     });
     stripeUpdate.mockResolvedValue({
       status: 'active',
@@ -130,6 +132,8 @@ describe('pending downgrade lifecycle (P0-1 billing single-writer)', () => {
       'sub_123',
       expect.objectContaining({
         proration_behavior: 'none',
+        // Annual subscription must be re-priced with the ANNUAL price, never monthly.
+        items: [{ id: 'si_1', price: 'price_starter_annual' }],
         metadata: expect.objectContaining({
           bizosto_plan: 'starter',
           bizosto_pending_plan: '',
@@ -146,7 +150,10 @@ describe('pending downgrade lifecycle (P0-1 billing single-writer)', () => {
   });
 
   it('executePendingDowngradeForTenant clears without applying when the subscription is canceled', async () => {
-    stripeRetrieve.mockResolvedValue({ status: 'canceled', items: { data: [{ id: 'si_1' }] } });
+    stripeRetrieve.mockResolvedValue({
+      status: 'canceled',
+      items: { data: [{ id: 'si_1', price: { recurring: { interval: 'month' } } }] },
+    });
 
     const result = await executePendingDowngradeForTenant('tenant_a');
     expect(result.applied).toBe(false);

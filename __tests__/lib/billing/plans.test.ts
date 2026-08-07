@@ -1,4 +1,5 @@
-import { plans, normalizePlanKey, getStripePriceId } from '@/lib/billing/plans';
+import { plans, normalizePlanKey } from '@/lib/billing/plans';
+import { getStripePriceId, getStripePriceIdForCycle } from '@/lib/billing/stripe-prices';
 
 describe('lib/billing/plans', () => {
   describe('plans object', () => {
@@ -99,32 +100,43 @@ describe('lib/billing/plans', () => {
     });
   });
 
-  describe('getStripePriceId', () => {
-    it('throws for trial plan (no price id)', () => {
+  describe('getStripePriceId (stripe-prices, cycle-keyed)', () => {
+    it('throws for an unknown plan key', () => {
       expect(() => getStripePriceId('trial')).toThrow();
-    });
-
-    it('throws when env var is missing for starter', () => {
-      delete process.env.STRIPE_PRICE_STARTER_MONTHLY;
       expect(() => getStripePriceId('starter')).toThrow();
     });
 
-    it('returns env var value for starter when set', () => {
-      process.env.STRIPE_PRICE_STARTER_MONTHLY = 'price_test_starter';
-      expect(getStripePriceId('starter')).toBe('price_test_starter');
+    it('throws when the env var is missing for a valid key', () => {
+      delete process.env.STRIPE_PRICE_STARTER_MONTHLY;
+      expect(() => getStripePriceId('starter_monthly')).toThrow();
+    });
+
+    it('returns the env value for the monthly key when set', () => {
+      process.env.STRIPE_PRICE_STARTER_MONTHLY = 'price_test_starter_m';
+      expect(getStripePriceId('starter_monthly')).toBe('price_test_starter_m');
       delete process.env.STRIPE_PRICE_STARTER_MONTHLY;
     });
 
-    it('returns env var value for pro when set', () => {
-      process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_test_pro';
-      expect(getStripePriceId('pro')).toBe('price_test_pro');
-      delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+    it('returns the env value for the annual key when set', () => {
+      process.env.STRIPE_PRICE_PRO_ANNUAL = 'price_test_pro_a';
+      expect(getStripePriceId('pro_annual')).toBe('price_test_pro_a');
+      delete process.env.STRIPE_PRICE_PRO_ANNUAL;
+    });
+  });
+
+  describe('getStripePriceIdForCycle', () => {
+    it('resolves the monthly price for a plan + monthly cycle', () => {
+      process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY = 'price_ent_m';
+      expect(getStripePriceIdForCycle('enterprise', 'monthly')).toBe('price_ent_m');
+      delete process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY;
     });
 
-    it('returns env var value for enterprise when set', () => {
-      process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY = 'price_test_enterprise';
-      expect(getStripePriceId('enterprise')).toBe('price_test_enterprise');
-      delete process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY;
+    it('resolves the ANNUAL price for a plan + annual cycle (regression: annual must not fall back to monthly)', () => {
+      process.env.STRIPE_PRICE_STARTER_MONTHLY = 'price_starter_m';
+      process.env.STRIPE_PRICE_STARTER_ANNUAL = 'price_starter_a';
+      expect(getStripePriceIdForCycle('starter', 'annual')).toBe('price_starter_a');
+      delete process.env.STRIPE_PRICE_STARTER_MONTHLY;
+      delete process.env.STRIPE_PRICE_STARTER_ANNUAL;
     });
   });
 });
