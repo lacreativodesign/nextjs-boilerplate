@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { getCurrentUser } from '@/app/api/admin/_utils';
+import { requireBulkDataAccess } from '@/lib/api/bulk-data-guard';
 
 export const runtime = 'nodejs';
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
-    const me = await getCurrentUser();
-    if (!me?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireBulkDataAccess();
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const me = auth.user;
 
     const doc = await adminDb.collection('importJobs').doc(params.id).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
