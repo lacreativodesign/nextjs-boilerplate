@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getCurrentUser } from '@/app/api/admin/_utils';
+import { requireBulkDataAccess } from '@/lib/api/bulk-data-guard';
 import { BulkImportService } from '@/lib/import/bulk-import';
 
 const schema = z.object({
@@ -21,8 +21,9 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await getCurrentUser();
-    if (!me?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireBulkDataAccess();
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const me = auth.user;
 
     const payload = schema.parse(await request.json());
     const result = await BulkImportService.validateJob({

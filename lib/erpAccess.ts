@@ -94,5 +94,12 @@ export function rolesAllowedForApi(pathname: string): ErpRole[] | null {
   if (pathname.startsWith('/api/client')) return ['client', 'admin', 'super_admin'];
   if (pathname.startsWith('/api/crm'))
     return ['sales', 'sales_manager', 'am', 'am_manager', 'admin', 'super_admin'];
+  // F-2: bulk data movement. /api/import/* and /api/export/* move whole entity
+  // collections in and out of a tenant, so they are administrative operations and
+  // must be gated at the edge as well as in the handler. Before this, both
+  // namespaces fell through to `null` — no middleware layer at all — which is how
+  // three unguarded import routes and the export route shipped.
+  if (pathname.startsWith('/api/import')) return ['admin', 'super_admin'];
+  if (pathname.startsWith('/api/export')) return ['admin', 'super_admin'];
   return null;
 }
