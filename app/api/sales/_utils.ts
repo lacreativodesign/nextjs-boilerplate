@@ -7,6 +7,7 @@ import {
   type NotificationEntityType,
 } from '@/lib/notifications';
 import { getCurrentUser, isAdminOrSuper, isSalesManager, normalizeRole } from '../admin/_utils';
+import { checkModuleAccess } from '@/app/lib/plan-enforcement';
 
 export const runtime = 'nodejs';
 
@@ -65,6 +66,11 @@ export async function requireSalesRead() {
   if (!canReadSales(me.role)) {
     return { ok: false as const, status: 403, error: 'Forbidden' };
   }
+  // P-1: enforce the plan on the API, not just in the UI.
+  const planAccess = await checkModuleAccess(me.tenantId, 'sales', me.role);
+  if (!planAccess.ok) {
+    return { ok: false as const, status: planAccess.status, error: planAccess.error };
+  }
   return { ok: true as const, user: me };
 }
 
@@ -75,6 +81,11 @@ export async function requireSalesWrite() {
   }
   if (!canWriteSales(me.role)) {
     return { ok: false as const, status: 403, error: 'Forbidden' };
+  }
+  // P-1: enforce the plan on the API, not just in the UI.
+  const planAccess = await checkModuleAccess(me.tenantId, 'sales', me.role);
+  if (!planAccess.ok) {
+    return { ok: false as const, status: planAccess.status, error: planAccess.error };
   }
   return { ok: true as const, user: me };
 }

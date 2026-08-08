@@ -1,4 +1,5 @@
 import { getCurrentUser, isProduction } from '../admin/_utils';
+import { checkModuleAccess } from '@/app/lib/plan-enforcement';
 
 export type ProductionUser = {
   uid: string;
@@ -20,6 +21,18 @@ export async function getProductionUser(): Promise<ProductionUser | null> {
   if (!me) return null;
   const role = (me.role || '').toLowerCase().replace(/-/g, '_');
   if (!['production', 'production_manager', 'admin', 'super_admin'].includes(role)) return null;
+  // P-1: plan entitlement. `production` is disabled on the trial and Starter tiers,
+  // and middleware skips module checks for /api, so without this a Starter tenant
+  // blocked from /production in the browser could still drive every
+  // /api/production/* route directly.
+  //
+  // This guard returns `ProductionUser | null`, so a plan denial surfaces to callers
+  // as the same 401/403 they already return. Distinguishing "wrong role" from
+  // "upgrade required" here would mean changing the return shape across all 8 callers,
+  // which is a separate refactor; blocking correctly matters more than the status code
+  // on a defence-in-depth layer the UI already gates.
+  const planAccess = await checkModuleAccess(me.tenantId, 'production', me.role);
+  if (!planAccess.ok) return null;
   return me as ProductionUser;
 }
 
