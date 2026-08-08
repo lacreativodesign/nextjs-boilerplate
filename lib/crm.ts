@@ -4,6 +4,7 @@ import { logEvent } from '@/lib/audit';
 import { queueClientActivationInvite } from '@/lib/clientActivation';
 import { DEFAULT_TENANT_ID, docTenantId, normalizeTenantId } from '@/lib/tenant';
 import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { checkModuleAccess } from '@/app/lib/plan-enforcement';
 
 export const DEAL_STAGES = [
   'new',
@@ -56,10 +57,18 @@ export async function requireCrmUser() {
   if (!isCrmRole(me.role)) {
     return { ok: false as const, status: 403, error: 'Forbidden' };
   }
+  const tenantId = normalizeTenantId(me.tenantId || DEFAULT_TENANT_ID);
+  // P-1: enforce the plan on the API, not just in the UI. `crm` is enabled on every
+  // current tier, so this is a no-op today — but it is the layer that keeps the
+  // guarantee true if a tier changes or an operator disables the module on a tenant.
+  const planAccess = await checkModuleAccess(tenantId, 'crm', me.role);
+  if (!planAccess.ok) {
+    return { ok: false as const, status: planAccess.status, error: planAccess.error };
+  }
   return {
     ok: true as const,
     user: me,
-    tenantId: normalizeTenantId(me.tenantId || DEFAULT_TENANT_ID),
+    tenantId,
   };
 }
 

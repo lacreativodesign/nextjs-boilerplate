@@ -4,6 +4,7 @@ import {
   isProduction,
   isProductionManager,
 } from '@/app/api/admin/_utils';
+import { checkModuleAccess } from '@/app/lib/plan-enforcement';
 
 export async function getResourcePlannerUser() {
   const me = await getCurrentUser();
@@ -13,6 +14,13 @@ export async function getResourcePlannerUser() {
 
   if (!isAdminOrSuper(me.role) && !isProduction(me.role) && !isProductionManager(me.role)) {
     return { ok: false as const, status: 403, error: 'Forbidden' };
+  }
+
+  // P-1: the resource planner is part of the Production module, which trial and
+  // Starter tenants do not have.
+  const planAccess = await checkModuleAccess(me.tenantId, 'production', me.role);
+  if (!planAccess.ok) {
+    return { ok: false as const, status: planAccess.status, error: planAccess.error };
   }
 
   return { ok: true as const, user: me };

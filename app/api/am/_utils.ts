@@ -1,4 +1,5 @@
 import { getCurrentUser, isAccountManager } from '../admin/_utils';
+import { checkModuleAccess } from '@/app/lib/plan-enforcement';
 
 export type AMUser = {
   uid: string;
@@ -13,6 +14,11 @@ export async function getAmUser(): Promise<AMUser | null> {
   const me = await getCurrentUser();
   if (!me) return null;
   if (!isAccountManager(me.role)) return null;
+  // P-1: account management is gated by the `sales` module, matching PATH_TO_MODULE
+  // where both /am and /am_manager map to 'sales'. Returns null on denial for the
+  // same reason as getProductionUser — see the note there.
+  const planAccess = await checkModuleAccess(me.tenantId, 'sales', me.role);
+  if (!planAccess.ok) return null;
   return me as AMUser;
 }
 
