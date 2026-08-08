@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     const { q, module, status, dateFrom, dateTo, limit, saveRecent } = parsed.data;
     const results = await globalSearch({
       tenantId: session.tenantId,
+      role: session.role,
       query: q,
       filters: {
         module: module as never,

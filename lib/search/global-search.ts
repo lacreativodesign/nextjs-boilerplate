@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { canSearchDomain } from '@/lib/search/search-access';
 
 export type GlobalSearchModule =
   | 'users'
@@ -237,20 +238,27 @@ function isInDateRange(value: unknown, dateFrom?: string, dateTo?: string) {
 
 export async function globalSearch(params: {
   tenantId: string;
+  role: string | null | undefined;
   query: string;
   filters?: GlobalSearchFilters;
   limit?: number;
 }) {
-  const { tenantId, query, filters = {}, limit = 30 } = params;
+  const { tenantId, role, query, filters = {}, limit = 30 } = params;
   const queryTokens = tokenize(query);
   if (queryTokens.length === 0) {
     return [] as GlobalSearchResult[];
   }
 
-  const configs =
+  const requested =
     filters.module && filters.module !== 'all'
       ? MODULE_CONFIGS.filter((config) => config.module === filters.module)
       : MODULE_CONFIGS;
+
+  // F-1: global search fans out across nine collections. Without this filter it
+  // returned invoices, payments, expenses and the staff directory to every role,
+  // which defeated the module boundaries enforced everywhere else in the app.
+  // `role` is required rather than optional so a caller cannot silently opt out.
+  const configs = requested.filter((config) => canSearchDomain(role, config.module));
 
   const records: GlobalSearchResult[] = [];
 

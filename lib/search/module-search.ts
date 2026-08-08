@@ -12,6 +12,7 @@ import {
 } from '@/lib/search/search-api';
 import type { SearchFilter } from '@/types/search';
 import { CACHE_TTL_SECONDS, cacheKeys, rememberCached } from '@/lib/cache/redis-client';
+import { canSearchDomain } from '@/lib/search/search-access';
 
 export type SearchSession = {
   uid: string;
@@ -24,6 +25,15 @@ export async function handleModuleSearch(
   session: SearchSession,
   config: SearchModuleConfig,
 ) {
+  // F-1: authorization. `session.role` was declared on SearchSession and never read,
+  // so every module search was scoped by tenantId alone and returned finance, staff
+  // and CRM data to any authenticated role — including `client`. Enforcing here
+  // covers every route that delegates to this handler, so the rule cannot be present
+  // on one search route and missing on its siblings.
+  if (!canSearchDomain(session.role, config.module)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const body = await request.json();
   const params = searchSchema.parse(body);
 
