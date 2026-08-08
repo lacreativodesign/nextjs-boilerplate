@@ -101,6 +101,11 @@ export default function SuperAdminSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Platform Settings</h1>
+        <p className="page-subtitle">Access controls, defaults, and platform-wide configuration.</p>
+      </div>
+
       {/* Section 1 — Access Controls */}
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6">
         <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Access Controls</h2>

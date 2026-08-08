@@ -230,6 +230,13 @@ export default function SuperAdminPage() {
 
   return (
     <div className="space-y-8">
+      <div>
+        <h1 className="page-title">Platform Overview</h1>
+        <p className="page-subtitle">
+          Revenue, tenants, and system health across every tenant on Bizosto.
+        </p>
+      </div>
+
       {/* SECTION 1 — Revenue */}
       <section className="space-y-3">
         <SectionHeader title="Revenue" />
