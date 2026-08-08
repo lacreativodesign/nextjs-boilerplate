@@ -75,10 +75,10 @@ export default function SuperAdminSecurityPage() {
   const isClean = violations !== null && violations.length === 0;
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Content Security Policy</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
+        <h1 className="page-title">Content Security Policy</h1>
+        <p className="page-subtitle mt-2">
           A strict, nonce-based CSP is running in <strong>report-only</strong> mode: it records what
           it would block, but blocks nothing. Everything listed below is something the strict policy{' '}
           <em>would</em> have blocked if enforcement were switched on.
@@ -146,6 +146,6 @@ export default function SuperAdminSecurityPage() {
           ))}
         </section>
       )}
-    </main>
+    </div>
   );
 }

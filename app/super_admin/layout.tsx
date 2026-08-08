@@ -37,6 +37,7 @@ const TABS = [
   { href: '/super_admin/tax', label: 'Tax Filing' },
   { href: '/super_admin/monitoring', label: 'Monitoring' },
   { href: '/super_admin/system-health', label: 'System Health' },
+  { href: '/super_admin/tickets', label: 'Support Tickets' },
   { href: '/super_admin/audit', label: 'Audit Logs' },
   { href: '/super_admin/backups', label: 'Backups' },
   { href: '/super_admin/demo', label: 'Demo' },
@@ -54,12 +55,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       <ModuleErrorBoundary moduleName="Super Admin">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Super Admin</h1>
-              <p className="page-subtitle">
-                Platform management, tenants, system health, and audit logs.
-              </p>
-            </div>
+            {/* The tab bar is the section identity. Every child page renders its own
+                page-title, so a generic "Super Admin" heading here stacked a second
+                h1 above the real one on 14 of 19 pages. Navigation chrome lives in
+                the layout; the heading belongs to the page. */}
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =
@@ -76,7 +75,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 );
               })}
             </div>
-            <div className="mt-6">{children}</div>
+            <div className="mt-8">{children}</div>
           </div>
         </AppShell>
       </ModuleErrorBoundary>

@@ -85,10 +85,10 @@ export default function SuperAdminMaintenancePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Maintenance</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
+        <h1 className="page-title">Maintenance</h1>
+        <p className="page-subtitle mt-2">
           One-off data repairs. Always run a dry run first — it reports exactly what would change
           and writes nothing. These jobs are idempotent and safe to re-run.
         </p>
@@ -212,6 +212,6 @@ export default function SuperAdminMaintenancePage() {
           })()}
         </section>
       )}
-    </main>
+    </div>
   );
 }

@@ -157,12 +157,17 @@ export default function SuperAdminTicketsPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Status filters use the shared .tab-pill component, the same control the
+          section tab bar and the Finance module use. They were previously
+          `btn subtle` with an inline borderColor, which rendered as a visibly
+          different control from every other filter row in the app. */}
+      <div className="tabs-bar" role="tablist" aria-label="Filter tickets by status">
         <button
           type="button"
+          role="tab"
+          aria-selected={statusFilter === ''}
           onClick={() => setStatusFilter('')}
-          className="btn subtle"
-          style={statusFilter === '' ? { borderColor: 'var(--erp-blue)' } : undefined}
+          className={`tab-pill ${statusFilter === '' ? 'active' : ''}`}
         >
           All
         </button>
@@ -170,9 +175,10 @@ export default function SuperAdminTicketsPage() {
           <button
             key={s}
             type="button"
+            role="tab"
+            aria-selected={statusFilter === s}
             onClick={() => setStatusFilter(s)}
-            className="btn subtle capitalize"
-            style={statusFilter === s ? { borderColor: 'var(--erp-blue)' } : undefined}
+            className={`tab-pill capitalize ${statusFilter === s ? 'active' : ''}`}
           >
             {statusLabel(s)}
           </button>
