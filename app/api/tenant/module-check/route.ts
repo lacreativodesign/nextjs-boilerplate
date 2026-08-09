@@ -7,16 +7,14 @@ import {
   resolveTenantModules,
   type PlanModuleKey,
 } from '@/lib/tenant/plan-access';
+import { verifyInternalSecret } from '@/lib/api/internal-secret';
 
 export const runtime = 'nodejs';
 
 // Internal-only endpoint: called solely by middleware (server-to-server), which holds
 // the signing secret. Prevents unauthenticated tenant enumeration / module probing.
-function verifyInternalSecret(req: NextRequest): boolean {
-  const secret = req.headers.get('x-internal-secret');
-  const expected = process.env.INTERNAL_REQUEST_SIGNING_SECRET;
-  return Boolean(expected && secret && secret === expected);
-}
+// A-1: the comparison is constant-time — the previous `===` leaked the secret's prefix
+// through response timing on an endpoint reachable by anyone.
 
 export async function GET(req: NextRequest) {
   try {

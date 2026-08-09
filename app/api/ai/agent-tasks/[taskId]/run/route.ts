@@ -16,6 +16,7 @@ import {
   validateToolCall,
 } from '@/lib/ai/tool-registry';
 import { checkAiPlan, aiPlanLockedBody } from '@/lib/ai/plan-gate';
+import { getAiToolBusSecret } from '@/lib/api/internal-secret';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 55; // Vercel max for hobby/pro
@@ -88,7 +89,7 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
         result = await runAnthropicAgent(
           keyConfig.apiKey,
           task.prompt,
-          user.tenantId,
+          taskId,
           aiPlan.plan,
           tools,
           toolCalls,
@@ -101,7 +102,7 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
         result = await runOpenAIAgent(
           keyConfig.apiKey,
           task.prompt,
-          user.tenantId,
+          taskId,
           aiPlan.plan,
           tools,
           toolCalls,
@@ -137,7 +138,7 @@ export async function POST(_req: NextRequest, { params }: { params: { taskId: st
 async function runAnthropicAgent(
   apiKey: string,
   prompt: string,
-  tenantId: string,
+  taskId: string,
   tenantPlan: string,
   tools: ReturnType<typeof getReadOnlyTools>,
   toolCalls: AgentToolCall[],
@@ -191,7 +192,7 @@ async function runAnthropicAgent(
         if (!validation.valid) {
           toolOutput = { error: validation.error };
         } else {
-          toolOutput = await executeToolCall(block.name, tenantId, block.input || {});
+          toolOutput = await executeToolCall(block.name, taskId, block.input || {});
           toolCalls.push({
             toolName: block.name,
             input: block.input || {},
@@ -222,7 +223,7 @@ async function runAnthropicAgent(
 async function runOpenAIAgent(
   apiKey: string,
   prompt: string,
-  tenantId: string,
+  taskId: string,
   tenantPlan: string,
   tools: ReturnType<typeof getReadOnlyTools>,
   toolCalls: AgentToolCall[],
@@ -277,7 +278,7 @@ async function runOpenAIAgent(
         if (!validation.valid) {
           toolOutput = { error: validation.error };
         } else {
-          toolOutput = await executeToolCall(toolName, tenantId, toolInput);
+          toolOutput = await executeToolCall(toolName, taskId, toolInput);
           toolCalls.push({
             toolName,
             input: toolInput,
@@ -303,9 +304,11 @@ async function runOpenAIAgent(
 
 // ─── Tool Executor ────────────────────────────────────────────────────────────
 
+// A-1: the bus authenticates with its own derived secret, and resolves the tenant from
+// this task's document rather than trusting a tenantId we put in the body.
 async function executeToolCall(
   toolName: string,
-  tenantId: string,
+  taskId: string,
   input: Record<string, unknown>,
 ): Promise<unknown> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com';
@@ -313,9 +316,9 @@ async function executeToolCall(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-internal-secret': process.env.INTERNAL_REQUEST_SIGNING_SECRET || '',
+      'x-internal-secret': getAiToolBusSecret() || '',
     },
-    body: JSON.stringify({ tool: toolName, tenantId, input }),
+    body: JSON.stringify({ tool: toolName, taskId, input }),
   });
 
   const json = await res.json().catch(() => ({}));
