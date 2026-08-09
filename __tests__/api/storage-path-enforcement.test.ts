@@ -73,8 +73,13 @@ describe('S5: storage.rules', () => {
   });
 
   it('scopes access by the tenant segment of the path', () => {
-    expect(rules).toContain('match /tenants/{tenantId}/{allPaths=**}');
+    // STOR-1: `match /tenants/{tenantId}/{allPaths=**}` is now the DENY-ALL for tenant
+    // prefixes with no explicit grant, not the grant itself. Access is granted per
+    // prefix to specific roles; __tests__/config/storage-rules-guard.test.ts pins that
+    // matrix and is re-run inside the deploy workflow before the ruleset is published.
     expect(rules).toContain('callerTenant() == tenantId');
+    expect(rules).toContain('match /tenants/{tenantId}/projects/{allPaths=**}');
+    expect(rules).toContain('match /tenants/{tenantId}/client-files/{allPaths=**}');
   });
 
   it('fails closed on a missing or blank tenant claim', () => {
