@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../../../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
+import { invalidateTenantPlanCache } from '@/app/lib/plan-enforcement';
 import { createRoleNotifications } from '@/lib/notifications';
 
 type ModuleMap = Record<string, boolean>;
@@ -52,6 +53,10 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
       },
       { merge: true },
     );
+
+    // S9: modulesEnabled feeds resolveTenantModules, so the cached plan state is now
+    // stale on this instance. Best-effort — other warm instances converge on the TTL.
+    invalidateTenantPlanCache(tenantId);
 
     await writeAuditLog({
       tenantId,
