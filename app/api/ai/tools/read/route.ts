@@ -1,19 +1,29 @@
 /**
  * AI Tool Read Endpoint
  * Handles all read-only tool calls from the agent runner.
- * Secured with INTERNAL_REQUEST_SIGNING_SECRET.
  * Only callable server-side by the agent runner — never from the browser.
+ *
+ * A-1: this bus used to authenticate with a `===` comparison against
+ * INTERNAL_REQUEST_SIGNING_SECRET, and then read the tenant to query straight out of
+ * the request body. Anyone who recovered that header — which was also the OTP HMAC key
+ * — could name any tenantId and read that workspace's invoices, leads, projects, team
+ * and audit trail. The comparison is now constant-time against a bus-specific secret,
+ * and the caller no longer asserts a tenant: it cites an agent task, and the tenant is
+ * read from that task's server-side document.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { verifyAiToolBusSecret } from '@/lib/api/internal-secret';
 
 export const dynamic = 'force-dynamic';
 
-function verifySecret(req: NextRequest): boolean {
-  const secret = req.headers.get('x-internal-secret');
-  const expected = process.env.INTERNAL_REQUEST_SIGNING_SECRET;
-  return Boolean(expected && secret && secret === expected);
+/** Resolves the tenant from the agent task, never from the caller. */
+async function resolveTenantId(taskId: string): Promise<string | null> {
+  const snap = await adminDb.collection('agent_tasks').doc(taskId).get();
+  if (!snap.exists) return null;
+  const tenantId = snap.data()?.tenantId;
+  return typeof tenantId === 'string' && tenantId ? tenantId : null;
 }
 
 function toISO(val: any): string | null {
@@ -28,15 +38,22 @@ function toISO(val: any): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifySecret(req)) {
+  if (!verifyAiToolBusSecret(req)) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = await req.json().catch(() => ({}));
-  const { tool, tenantId, input = {} } = body;
+  const tool = typeof body?.tool === 'string' ? body.tool : '';
+  const taskId = typeof body?.taskId === 'string' ? body.taskId.trim() : '';
+  const input = body?.input && typeof body.input === 'object' ? body.input : {};
 
-  if (!tool || !tenantId) {
-    return NextResponse.json({ ok: false, error: 'tool and tenantId required' }, { status: 400 });
+  if (!tool || !taskId) {
+    return NextResponse.json({ ok: false, error: 'tool and taskId required' }, { status: 400 });
+  }
+
+  const tenantId = await resolveTenantId(taskId);
+  if (!tenantId) {
+    return NextResponse.json({ ok: false, error: 'Task not found' }, { status: 404 });
   }
 
   try {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { normalizeTenantId } from '@/lib/tenant';
 import { writeAuditLog } from '@/lib/tenant/audit';
+import { verifyInternalSecret } from '@/lib/api/internal-secret';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +20,10 @@ const PROTECTED_COLLECTIONS = new Set([
   'stripe_webhooks',
 ]);
 
-function verifyInternalSecret(req: NextRequest): boolean {
-  const secret = req.headers.get('x-internal-secret');
-  const expected = process.env.INTERNAL_REQUEST_SIGNING_SECRET;
-  if (!expected || !secret) return false;
-  return secret === expected;
-}
+// A-1: authentication is constant-time; the previous `===` leaked the secret's prefix
+// through response timing. The tenant still arrives in the body because the only caller
+// is the server-side workflow engine acting for the workflow's own tenant — that is
+// recorded in REQUEST_TENANT_ROUTES and enforced by the tenant-scope source guard.
 
 export async function POST(req: NextRequest) {
   if (!verifyInternalSecret(req)) {

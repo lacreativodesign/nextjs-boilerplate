@@ -20,6 +20,7 @@ import {
   TOOL_REGISTRY,
 } from '@/lib/ai/tool-registry';
 import { checkAiPlan } from '@/lib/ai/plan-gate';
+import { getAiToolBusSecret } from '@/lib/api/internal-secret';
 
 export type SalesProposedAction = {
   id: string;
@@ -93,7 +94,9 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com';
-    const internalSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || '';
+    // A-1: the bus authenticates with its own derived secret, and resolves the tenant
+    // from this task's document rather than trusting a tenantId we put in the body.
+    const internalSecret = getAiToolBusSecret() || '';
 
     const executeReadTool = async (
       toolName: string,
@@ -105,7 +108,7 @@ export async function runSalesAgent(taskId: string, tenantId: string): Promise<v
           'Content-Type': 'application/json',
           'x-internal-secret': internalSecret,
         },
-        body: JSON.stringify({ tool: toolName, tenantId, input }),
+        body: JSON.stringify({ tool: toolName, taskId, input }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) throw new Error(json?.error || `Tool ${toolName} failed`);

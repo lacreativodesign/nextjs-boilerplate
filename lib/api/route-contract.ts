@@ -54,6 +54,10 @@ const INTERNAL_EVIDENCE = [
   /INTERNAL_REQUEST_SIGNING_SECRET/,
   /INTERNAL_USAGE_LOG_KEY/,
   /x-internal-secret/,
+  // A-1: the header read and the comparison now live in lib/api/internal-secret.ts, so
+  // the shared helpers are the evidence of an internal contract, not the raw literals.
+  /verifyInternalSecret/,
+  /verifyAiToolBusSecret/,
   /x-internal-usage-key/,
   /authenticateIngest/,
   /x-api-key/,
@@ -211,6 +215,9 @@ export const REQUEST_TENANT_ROUTES: Record<string, string> = {
     'Pre-login OAuth initiation; the tenant being signed into is named in the query.',
   'tenant/module-check':
     'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); middleware passes the tenant.',
+  'internal/workflow-mutation':
+    'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); the automation workflow ' +
+    'engine passes the tenant of the workflow it is executing.',
 };
 
 /**
@@ -223,6 +230,10 @@ const REQUEST_TENANT_EVIDENCE = [
   /\bbody\s*\??\.\s*tenantId\b/,
   /\bparams\s*\??\.\s*tenantId\b/,
   /const\s*\{[^}]*\btenantId\b[^}]*\}\s*=\s*(?:await\s*)?(?:req|request)\.(?:json|nextUrl)/,
+  // A-1: the AI tool bus destructured tenantId from an already-awaited `body` local, which
+  // none of the patterns above saw — so the most sensitive request-sourced tenantId in the
+  // codebase was invisible to this guard. Two-step parsing is now evidence too.
+  /const\s*\{[^}]*\btenantId\b[^}]*\}\s*=\s*body\b/,
 ];
 
 /**

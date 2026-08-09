@@ -22,6 +22,7 @@ import {
   type AgentTool,
 } from '@/lib/ai/tool-registry';
 import { checkAiPlan } from '@/lib/ai/plan-gate';
+import { getAiToolBusSecret } from '@/lib/api/internal-secret';
 
 export type ProposedAction = {
   id: string;
@@ -148,13 +149,15 @@ export async function runFinanceAgent(taskId: string, tenantId: string): Promise
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com';
-    const internalSecret = process.env.INTERNAL_REQUEST_SIGNING_SECRET || '';
+    // A-1: the bus authenticates with its own derived secret, and resolves the tenant
+    // from this task's document rather than trusting a tenantId we put in the body.
+    const internalSecret = getAiToolBusSecret() || '';
 
     const executeReadTool = async (toolName: string, input: JsonObject): Promise<unknown> => {
       const res = await fetch(`${baseUrl}/api/ai/tools/read`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': internalSecret },
-        body: JSON.stringify({ tool: toolName, tenantId, input }),
+        body: JSON.stringify({ tool: toolName, taskId, input }),
       });
       const json: unknown = await res.json().catch(() => ({}));
       const body =
