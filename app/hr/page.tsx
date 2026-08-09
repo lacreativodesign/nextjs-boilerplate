@@ -80,7 +80,7 @@ export default function HrOverviewPage() {
       <FirstRunHint
         show={isFirstRun}
         title="No employees added yet"
-        description="Attendance, leave, onboarding and payroll all build on your employee list. Add your first employee to get started."
+        description="Leave, onboarding and performance all build on your employee list. Add your first employee to get started."
         action={{ label: 'Add an employee', href: '/hr/employees' }}
       />
 
@@ -117,17 +117,7 @@ export default function HrOverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[
           { title: 'Employees', href: '/hr/employees', desc: 'View and manage all team members.' },
-          {
-            title: 'Attendance',
-            href: '/hr/attendance',
-            desc: 'Track daily attendance and absences.',
-          },
           { title: 'Leave', href: '/hr/leave', desc: 'Manage leave requests and approvals.' },
-          {
-            title: 'Payroll',
-            href: '/hr/payroll',
-            desc: 'Salaries, commissions, and payroll runs.',
-          },
           {
             title: 'Performance',
             href: '/hr/performance',

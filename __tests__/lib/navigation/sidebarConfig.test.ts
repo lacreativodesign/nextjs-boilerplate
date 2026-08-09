@@ -28,7 +28,8 @@ const EXPECTED_HREFS: Record<string, string[]> = {
     '/finance/tax',
     '/finance/settings',
   ],
-  hr: ['/hr', '/hr/employees', '/hr/attendance', '/hr/leave', '/hr/payroll', '/hr/performance'],
+  // T-1: /hr/attendance and /hr/payroll are deliberately unlinked while the feature is deferred.
+  hr: ['/hr', '/hr/employees', '/hr/leave', '/hr/performance'],
   sales: [
     '/sales',
     '/sales/leads',

@@ -2,13 +2,24 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { getCurrentUser } from '@/app/api/admin/_utils';
+import { requireHrAccess } from '../_utils';
 import dayjs from 'dayjs';
+
+// T-1: attendance is a DEFERRED feature. Its only writer was the unreferenced /api/login-stamp
+// route (removed in this change), so the collection has never held a document and the
+// employees-doc-id <-> auth-uid join can never match. These caps are cost ceilings so that a
+// future writer cannot silently turn this reader into an unbounded tenant-wide scan.
+const MAX_EMPLOYEES = 500;
+const MAX_ATTENDANCE_EVENTS = 5000;
 
 export async function GET(request: Request) {
   try {
-    const me = await getCurrentUser();
-    if (!me) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    const hrAuth = await requireHrAccess();
+    if (!hrAuth.ok)
+      return NextResponse.json(
+        { success: false, message: hrAuth.error },
+        { status: hrAuth.status },
+      );
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
 
@@ -21,7 +32,8 @@ export async function GET(request: Request) {
 
     const employeesSnap = await adminDb
       .collection('employees')
-      .where('tenantId', '==', me.tenantId)
+      .where('tenantId', '==', hrAuth.user.tenantId)
+      .limit(MAX_EMPLOYEES)
       .get();
     const employees = employeesSnap.docs.map((d) => ({
       id: d.id,
@@ -30,9 +42,10 @@ export async function GET(request: Request) {
 
     const attendanceSnap = await adminDb
       .collection('attendance')
-      .where('tenantId', '==', me.tenantId)
+      .where('tenantId', '==', hrAuth.user.tenantId)
       .where('date', '>=', start.format('YYYY-MM-DD'))
       .where('date', '<=', end.format('YYYY-MM-DD'))
+      .limit(MAX_ATTENDANCE_EVENTS)
       .get();
 
     const attendance = attendanceSnap.docs.map((d) => d.data());
