@@ -2,14 +2,35 @@ rules_version = '2';
 
 // Bizosto Firebase Storage rules.
 //
-// Until now NO Storage rules were deployed, so the bucket ran on Firebase's default
-// policy: any signed-in user could read and write ANY object. Combined with flat,
-// global object paths, that meant a user in one tenant could read every other
-// tenant's project deliverables, client files and HR documents.
+// History. Originally NO rules were deployed, so the bucket ran on Firebase's default
+// policy: any signed-in user could read and write ANY object. S4/S5 moved every object
+// under tenants/{tenantId}/... and added a single blanket rule granting the whole tenant
+// subtree to anyone holding that tenant's claim.
 //
-// Every object now lives under tenants/{tenantId}/..., so the tenant segment of the
-// path can be authorized against the caller's tenantId custom claim. Anything that
-// does not match a tenant prefix — including all legacy flat paths — is denied.
+// STOR-1. That blanket rule was tenant-scoped but neither role- nor path-scoped, so
+// inside one workspace every signed-in principal reached every object. A tenant's
+// EXTERNAL client could read employee contracts and ID documents under employees/** and
+// employee-documents/**, and every other client's deliverables under projects/**; any
+// user could delete any object in the tenant; and prefixes only ever written by the
+// Admin SDK (exports/**, imports/**, support/**, documents/**, docusign/**, files/**,
+// branding/**) were reachable from the browser.
+//
+// Access is now granted per prefix to the roles that actually upload there, mirroring
+// the RequireAuth guards on the pages that call ref()/uploadBytes():
+//
+//   projects/**            admin, am, production, production_manager, super_admin
+//   client-files/**        client
+//   employees/**           admin, super_admin
+//   employee-documents/**  hr, admin, super_admin
+//   brand/**               super_admin (cross-tenant, tenant branding)
+//
+// Anything else — inside a tenant prefix or outside it — is denied to the client SDK and
+// reachable only through the Admin SDK at an authenticated API route. Multiple matching
+// rules are OR'd in Firebase Security Rules, so the absence of a grant IS the denial;
+// the explicit `if false` blocks below document that intent.
+//
+// Deletes are denied outright: nothing in the app calls deleteObject() from the browser,
+// so every removal goes through the Admin SDK where tenant and role are re-checked.
 //
 // Note: these rules govern direct object access. Files already shared through a
 // getDownloadURL() token remain reachable via that token; rotating those is tracked
@@ -31,7 +52,7 @@ service firebase.storage {
 
     // Platform-level operator. Super Admin manages tenant branding across tenants.
     function isSuperAdmin() {
-      return isSignedIn() && callerRole() == 'super_admin';
+      return isSignedIn() && callerRole() is string && callerRole() == 'super_admin';
     }
 
     // Fails closed: a session with no tenant claim, a blank claim, or a claim that
@@ -43,18 +64,84 @@ service firebase.storage {
         && callerTenant() == tenantId;
     }
 
+    // Caller is inside this tenant AND holds one of the roles allowed on this prefix.
+    // A missing role claim is not a string, so it can never satisfy the membership test.
+    function tenantRole(tenantId, roles) {
+      return inCallerTenant(tenantId)
+        && callerRole() is string
+        && callerRole() in roles;
+    }
+
     // Backstop ceiling. The application enforces its own stricter per-type limits.
     function withinSizeLimit() {
       return request.resource.size < 50 * 1024 * 1024;
     }
 
-    match /tenants/{tenantId}/{allPaths=**} {
-      allow read: if inCallerTenant(tenantId) || isSuperAdmin();
-      allow create, update: if (inCallerTenant(tenantId) || isSuperAdmin()) && withinSizeLimit();
-      allow delete: if inCallerTenant(tenantId) || isSuperAdmin();
+    // Project deliverables and briefs: /admin/projects/files, /am/files,
+    // /production/files, and the AM and Production project drawers.
+    function canProjectFiles(tenantId) {
+      return tenantRole(tenantId, ['admin', 'am', 'production', 'production_manager'])
+        || isSuperAdmin();
     }
 
-    // Explicit deny for everything outside a tenant prefix, including legacy paths
+    // Files uploaded by the tenant's own external clients from /client/files. Internal
+    // staff read these through the stored download URL, never by addressing the object,
+    // so no internal role needs a grant.
+    function canClientFiles(tenantId) {
+      return tenantRole(tenantId, ['client']);
+    }
+
+    // HR employee files uploaded from /admin/hr/documents (admin layout).
+    function canEmployeeFiles(tenantId) {
+      return tenantRole(tenantId, ['admin']) || isSuperAdmin();
+    }
+
+    // HR employee documents uploaded from /hr/documents (hr, admin, super_admin).
+    function canEmployeeDocuments(tenantId) {
+      return tenantRole(tenantId, ['hr', 'admin']) || isSuperAdmin();
+    }
+
+    match /tenants/{tenantId}/projects/{allPaths=**} {
+      allow read: if canProjectFiles(tenantId);
+      allow create, update: if canProjectFiles(tenantId) && withinSizeLimit();
+      allow delete: if false;
+    }
+
+    match /tenants/{tenantId}/client-files/{allPaths=**} {
+      allow read: if canClientFiles(tenantId);
+      allow create, update: if canClientFiles(tenantId) && withinSizeLimit();
+      allow delete: if false;
+    }
+
+    match /tenants/{tenantId}/employees/{allPaths=**} {
+      allow read: if canEmployeeFiles(tenantId);
+      allow create, update: if canEmployeeFiles(tenantId) && withinSizeLimit();
+      allow delete: if false;
+    }
+
+    match /tenants/{tenantId}/employee-documents/{allPaths=**} {
+      allow read: if canEmployeeDocuments(tenantId);
+      allow create, update: if canEmployeeDocuments(tenantId) && withinSizeLimit();
+      allow delete: if false;
+    }
+
+    // Tenant logo, written to a fixed path from the Super Admin tenant screen. Update is
+    // required because the object name never changes when a logo is replaced.
+    match /tenants/{tenantId}/brand/{allPaths=**} {
+      allow read: if inCallerTenant(tenantId) || isSuperAdmin();
+      allow create, update: if isSuperAdmin() && withinSizeLimit();
+      allow delete: if false;
+    }
+
+    // Every other tenant prefix is written only by the Admin SDK: exports/**, imports/**,
+    // support/**, documents/**, docusign/**, files/** and branding/**. The Admin SDK
+    // bypasses these rules, so denying the client SDK costs nothing and removes the
+    // browser's reach into export dumps, import payloads and support screenshots.
+    match /tenants/{tenantId}/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Explicit deny for everything outside a tenant prefix, including legacy flat paths
     // such as projects/**, employees/**, employee-documents/** and client-files/**.
     match /{allPaths=**} {
       allow read, write: if false;
