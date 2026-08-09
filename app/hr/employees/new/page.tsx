@@ -4,6 +4,27 @@ import React, { useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { showToast } from '@/lib/utils/toast';
 
+/**
+ * S10: an employee IS a tenant user. Creating one provisions a Firebase Auth account,
+ * stamps { role, tenantId } claims and emails a set-password invitation, so the role
+ * field has to be a real ERP role rather than free text — the API rejects anything else,
+ * and it previously accepted any string straight into an orphan collection.
+ *
+ * `admin`, `super_admin` and `client` are absent on purpose: HR must not be able to mint
+ * an account more privileged than its own, and client portal identities are created
+ * through the client invite flow.
+ */
+const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'sales', label: 'Sales' },
+  { value: 'sales_manager', label: 'Sales Manager' },
+  { value: 'am', label: 'Account Manager' },
+  { value: 'am_manager', label: 'AM Manager' },
+  { value: 'production', label: 'Production' },
+  { value: 'production_manager', label: 'Production Manager' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'hr', label: 'HR' },
+];
+
 export default function AddEmployeePage() {
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +52,11 @@ export default function AddEmployeePage() {
       const json = await res.json();
 
       if (json.success) {
-        showToast.success('Employee created!');
+        showToast.success(
+          json.emailSent
+            ? 'Employee created. Invitation emailed.'
+            : 'Employee created, but the invitation email could not be sent.',
+        );
         window.location.href = '/hr/employees';
       } else {
         showToast.error('Failed: ' + (json.message || 'Unknown error'));
@@ -48,7 +73,8 @@ export default function AddEmployeePage() {
       <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>Add New Employee</h2>
 
       <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 30 }}>
-        Fill in the details below to create a new employee profile.
+        This creates their account and emails them an invitation to set a password. They will appear
+        on the team roster straight away.
       </p>
 
       {/* Form Container */}
@@ -87,7 +113,16 @@ export default function AddEmployeePage() {
           {/* Role */}
           <div>
             <label style={labelStyle}>Role</label>
-            <input name="role" required style={inputStyle} />
+            <select name="role" required defaultValue="" style={inputStyle}>
+              <option value="" disabled>
+                Select a role
+              </option>
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Department */}

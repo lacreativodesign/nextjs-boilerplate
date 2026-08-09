@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminRole } from '../_utils';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
@@ -187,32 +186,11 @@ export async function POST(req: Request) {
         createdBy: current.uid,
       });
 
-    const staffRoles = [
-      'sales',
-      'finance',
-      'hr',
-      'production',
-      'am',
-      'sales_manager',
-      'am_manager',
-      'production_manager',
-    ];
-    if (staffRoles.includes(role)) {
-      await adminDb.collection('hr_employees').add({
-        tenantId,
-        userId: userRecord.uid,
-        name: displayName || email,
-        email,
-        role,
-        managerId,
-        department: body?.department || role,
-        status: 'active',
-        joinedAt: admin.firestore.FieldValue.serverTimestamp(),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        monthlySalaryPkr: body?.monthlySalaryPkr || 0,
-      });
-    }
+    // S10: the `hr_employees` mirror document written here has been removed. It had one
+    // writer — this block — and ZERO readers anywhere in the codebase, so every staff
+    // user creation paid a Firestore write into a collection no screen, report, export
+    // or query has ever opened. `users` is the identity model; a second copy of a subset
+    // of the same fields could only drift out of date.
 
     const tokenData = await createPasswordSetupToken({
       uid: userRecord.uid,
