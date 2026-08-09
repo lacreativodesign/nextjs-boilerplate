@@ -108,7 +108,6 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'auth/consume-set-password-token': 'Pre-auth: HMAC set-password token is the credential.',
   signup: 'Pre-auth signup; requires verified OTP before any tenant is created.',
   'session-login': 'Login entrypoint; verifies Firebase idToken with checkRevoked.',
-  'login-stamp': 'Login telemetry stamp during pre-session login flow.',
   logout: 'Clears session cookies; no data access.',
   'client/invites/complete': 'Client activation; hashed invite token is the credential.',
   'client/invites/validate': 'Validates hashed invite token before activation UI.',

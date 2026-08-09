@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireHrAccess } from '../../_utils';
 
+// T-1: attendance is a DEFERRED feature; this reader has no UI consumer and the collection has
+// never held a document. The caps are cost ceilings — the `attendance` query has no date filter,
+// so without a limit a future writer would make this a full tenant-lifetime scan on every call.
+const MAX_USERS = 500;
+const MAX_ATTENDANCE_EVENTS = 5000;
+
 export async function GET() {
   const access = await requireHrAccess();
   if (!access.ok)
@@ -11,10 +17,12 @@ export async function GET() {
     const usersSnap = await adminDb
       .collection('users')
       .where('tenantId', '==', access.user.tenantId)
+      .limit(MAX_USERS)
       .get();
     const attendanceSnap = await adminDb
       .collection('attendance')
       .where('tenantId', '==', access.user.tenantId)
+      .limit(MAX_ATTENDANCE_EVENTS)
       .get();
 
     const today = new Date();

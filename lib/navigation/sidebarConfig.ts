@@ -628,30 +628,15 @@ export const sidebarNavigation: NavItem[] = [
     roles: ['hr'],
     module: null,
   },
-  {
-    id: 'hr-attendance',
-    label: 'Attendance',
-    labelKey: 'navigation.attendance',
-    href: '/hr/attendance',
-    icon: 'CalendarDays',
-    roles: ['hr'],
-    module: null,
-  },
+  // T-1: 'hr-attendance' and 'hr-payroll' are intentionally absent. Both screens render from the
+  // `attendance` collection, which has no writer and has never held a document, so they showed an
+  // empty grid and $0 payroll. The feature is deferred; the pages stay on disk but are unlinked.
   {
     id: 'hr-leave',
     label: 'Leave',
     labelKey: 'navigation.leave',
     href: '/hr/leave',
     icon: 'CalendarDays',
-    roles: ['hr'],
-    module: null,
-  },
-  {
-    id: 'hr-payroll',
-    label: 'Payroll',
-    labelKey: 'navigation.payroll',
-    href: '/hr/payroll',
-    icon: 'DollarSign',
     roles: ['hr'],
     module: null,
   },

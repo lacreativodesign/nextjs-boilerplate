@@ -4,12 +4,12 @@ import { usePathname } from 'next/navigation';
 import RequireAuth from '@/components/RequireAuth';
 import AppShell from '@/components/layout/AppShell';
 import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
+// T-1: Attendance and Payroll are deliberately not tabs here. They render from the `attendance`
+// collection, which has no writer, so both screens were permanently empty. Deferred, not deleted.
 const TABS = [
   { href: '/hr', label: 'Overview' },
   { href: '/hr/employees', label: 'Employees' },
-  { href: '/hr/attendance', label: 'Attendance' },
   { href: '/hr/leave', label: 'Leave' },
-  { href: '/hr/payroll', label: 'Payroll' },
   { href: '/hr/performance', label: 'Performance' },
 ];
 export default function HrLayout({ children }: { children: React.ReactNode }) {
@@ -22,7 +22,7 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
             <div className="mb-6">
               <h1 className="page-title">HR & People</h1>
               <p className="page-subtitle">
-                Workforce management, attendance, payroll, and performance.
+                Workforce management, leave, onboarding, and performance.
               </p>
             </div>
             <div className="tabs-bar">
