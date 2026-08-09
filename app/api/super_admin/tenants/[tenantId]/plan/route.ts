@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../../../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import {
+  invalidateTenantPlanCache,
   normalizePlan,
   resolvePlanModules,
   resolveTenantModules,
@@ -90,6 +91,11 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     };
 
     await tenantRef.set(updates, { merge: true });
+
+    // S9: entitlement just changed, so drop this instance's cached plan rather than
+    // serving the old one for the rest of the TTL. Best-effort — other warm instances
+    // converge on the 30s TTL.
+    invalidateTenantPlanCache(tenantId);
 
     await writeAuditLog({
       tenantId,
