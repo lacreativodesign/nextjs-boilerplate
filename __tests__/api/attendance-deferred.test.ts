@@ -69,6 +69,17 @@ const READERS = [
   'app/api/hr/payroll/route.ts',
 ];
 
+/**
+ * S11: the ONE sanctioned writer.
+ *
+ * This guard originally asserted that nothing wrote to `attendance` at all, which was
+ * right while the feature had no writer. The rebuild adds one, so the invariant tightens
+ * rather than relaxes: exactly one file may write, it is this one, and no route may
+ * address the collection for writing again. The readers stay deferred and unlinked until
+ * they are rebuilt on this shape.
+ */
+const WRITER = 'lib/attendance/record.ts';
+
 /** The three readers that scanned a whole collection with no bound. */
 const BOUNDED_READERS = [
   'app/api/hr/attendance/route.ts',
@@ -86,16 +97,62 @@ describe('T-1: the dead attendance writer is gone', () => {
     expect(PUBLIC_ROUTES['login-stamp']).toBeUndefined();
   });
 
-  it('leaves no code path that writes to the attendance collection', () => {
-    expect(attendanceFiles()).toEqual([...READERS].sort());
+  it('routes every write through the single sanctioned writer', () => {
+    expect(attendanceFiles()).toEqual([...READERS, WRITER].sort());
+    expect(exists(WRITER)).toBe(true);
 
+    // No ROUTE may write to the collection — routes call the writer instead, so the
+    // document shape is decided in exactly one place.
     const writers = READERS.filter((rel) => /\.(set|add|update)\(/.test(read(rel)));
     expect(writers).toEqual([]);
   });
 
-  it('leaves no unbounded arrayUnion on an attendance document', () => {
-    const offenders = READERS.filter((rel) => read(rel).includes('arrayUnion'));
+  it('keys the writer on the auth uid, not on an employees document id', () => {
+    // The deleted writer keyed events on an `employees` auto-id no session ever carried,
+    // so the join to a signed-in user could never match. S10 settled `users` as the
+    // identity model, and the uid is what a session actually holds.
+    const src = read(WRITER);
+    expect(src).toContain('userId');
+    expect(src).not.toMatch(/\.collection\(\s*(['"`])employees\1/);
+  });
+
+  it('is wired into both ends of a session', () => {
+    for (const rel of ['app/api/session-login/route.ts', 'app/api/logout/route.ts']) {
+      expect(read(rel)).toContain("from '@/lib/attendance/record'");
+    }
+    expect(read('app/api/session-login/route.ts')).toContain("type: 'login'");
+    expect(read('app/api/logout/route.ts')).toContain("type: 'logout'");
+  });
+
+  it('stamps the logout before the session is invalidated', () => {
+    // Afterwards the cookie no longer resolves to anyone and there is nothing to stamp.
+    const src = read('app/api/logout/route.ts');
+    const stamp = src.indexOf('recordAttendanceEvent(');
+    const invalidate = src.indexOf('invalidateSession(');
+    expect(stamp).toBeGreaterThan(-1);
+    expect(stamp).toBeLessThan(invalidate);
+  });
+
+  it('leaves no unbounded array on an attendance document', () => {
+    // The 1 MB document ceiling is reached at roughly ten thousand appends, after which
+    // that user's writes fail permanently. The writer keys one document per user per day
+    // instead, so nothing accumulates inside a single document.
+    const offenders = [...READERS, WRITER].filter((rel) => read(rel).includes('arrayUnion'));
     expect(offenders).toEqual([]);
+  });
+
+  it('has the composite indexes its own queries will need', () => {
+    const indexes = JSON.parse(read('firestore.indexes.json')).indexes as Array<{
+      collectionGroup: string;
+      fields: Array<{ fieldPath: string }>;
+    }>;
+    const shapes = indexes
+      .filter((index) => index.collectionGroup === 'attendance')
+      .map((index) => index.fields.map((field) => field.fieldPath).join(','))
+      .sort();
+
+    // Without these, the reader rebuild fails at runtime rather than at review.
+    expect(shapes).toEqual(['tenantId,date', 'tenantId,userId,date']);
   });
 });
 

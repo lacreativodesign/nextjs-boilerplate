@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { createSession } from '@/lib/auth/session';
+import { recordAttendanceEvent } from '@/lib/attendance/record';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,16 @@ export async function POST(req: NextRequest) {
         .doc(tenantId)
         .set({ lastActiveAt: new Date().toISOString() }, { merge: true })
         .catch((err: any) => console.error('session-login: lastActiveAt stamp failed', err));
+
+      // S11: the attendance clock-in. Awaited rather than fired and forgotten, because a
+      // serverless instance can be frozen the moment the response is returned and a
+      // dropped write would silently lose a day's attendance. recordAttendanceEvent never
+      // throws, so a Firestore failure here still cannot stop anyone signing in.
+      await recordAttendanceEvent({
+        tenantId,
+        userId: decodedToken.uid,
+        type: 'login',
+      });
     }
 
     // Also set role cookie for client-side role caching
