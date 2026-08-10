@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/security';
 import { invalidateSession } from '@/lib/auth/session';
 import { resolveErrorResponse } from '@/lib/errors';
+import { getCurrentUser } from '@/app/api/admin/_utils';
+import { recordAttendanceEvent } from '@/lib/attendance/record';
 
 const COOKIE_NAME = 'lac_session';
 function getCookieDomain(hostname: string): string | undefined {
@@ -16,6 +18,22 @@ export async function POST(request: Request) {
   try {
     await checkRateLimit(request, 'strict');
     const sessionCookie = cookies().get(COOKIE_NAME)?.value;
+
+    // S11: closes the day's attendance record. Read BEFORE the session is invalidated —
+    // afterwards the cookie no longer resolves to anyone and there is nothing to stamp.
+    // getCurrentUser() already returns null rather than throwing on a bad cookie, and
+    // recordAttendanceEvent never throws, so signing out cannot fail because of this.
+    if (sessionCookie) {
+      const me = await getCurrentUser();
+      if (me) {
+        await recordAttendanceEvent({
+          tenantId: me.tenantId,
+          userId: me.uid,
+          type: 'logout',
+        });
+      }
+    }
+
     if (sessionCookie) {
       await invalidateSession(sessionCookie);
     }
