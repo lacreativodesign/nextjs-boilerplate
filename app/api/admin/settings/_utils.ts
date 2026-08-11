@@ -154,8 +154,28 @@ export function canEditSection(role: string, section: string) {
   return false;
 }
 
-export async function getWorkflowSettings() {
-  const snap = await adminDb.collection('settings').doc('workflows').get();
+/**
+ * SET-1: tenantId is REQUIRED, and the document read is the one the UI writes.
+ *
+ * This read `settings/workflows` — a single global document — while
+ * /api/admin/settings/workflows has always SAVED to `settings/{tenantId}_workflows`. The
+ * two never met. Every tenant's SLA days, at-risk threshold and overdue threshold were
+ * therefore stored correctly, displayed correctly on the settings page, and then ignored
+ * by every screen that computes project health: production overview and queue, AM
+ * overview, pipeline and project list, and all five move-stage/assign/QA routes.
+ *
+ * Worse than ignored — the global document is shared, so whichever tenant last wrote it
+ * (through some earlier code path) would have set thresholds for everyone.
+ *
+ * A blank tenantId throws rather than silently falling back to a global document, which
+ * is the same fail-closed rule getUsersByRoles() already follows for recipients.
+ */
+export async function getWorkflowSettings(tenantId: string) {
+  const scopedTenantId = String(tenantId || '').trim();
+  if (!scopedTenantId) {
+    throw new Error('getWorkflowSettings: tenantId is required and must be non-empty.');
+  }
+  const snap = await adminDb.collection('settings').doc(`${scopedTenantId}_workflows`).get();
   const data = snap.exists ? snap.data() : {};
   const slaDaysPerStage =
     typeof data?.slaDaysPerStage === 'object' && data?.slaDaysPerStage
@@ -203,8 +223,20 @@ export async function getFinanceSettings(tenantId?: string) {
   };
 }
 
-export async function getNotificationSettings() {
-  const snap = await adminDb.collection('settings').doc('notifications').get();
+/**
+ * SET-1: tenantId is REQUIRED, and the document read is the one the UI writes.
+ *
+ * Same defect as getWorkflowSettings: this read the global `settings/notifications` while
+ * /api/admin/settings/notifications saves to `settings/{tenantId}_notifications` and its
+ * own GET reads the tenant document. So the settings page showed a tenant its real saved
+ * preferences while the one server-side consumer applied somebody else's.
+ */
+export async function getNotificationSettings(tenantId: string) {
+  const scopedTenantId = String(tenantId || '').trim();
+  if (!scopedTenantId) {
+    throw new Error('getNotificationSettings: tenantId is required and must be non-empty.');
+  }
+  const snap = await adminDb.collection('settings').doc(`${scopedTenantId}_notifications`).get();
   const data = snap.exists ? snap.data() : {};
   const eventToggles =
     typeof data?.eventToggles === 'object' && data?.eventToggles
@@ -278,7 +310,7 @@ export async function logSettingsChange({
   const notifications =
     typeof notificationsEnabled === 'boolean'
       ? notificationsEnabled
-      : (await getNotificationSettings()).enableInApp;
+      : (await getNotificationSettings(user.tenantId || DEFAULT_TENANT_ID)).enableInApp;
 
   if (notifications) {
     await createNotification({

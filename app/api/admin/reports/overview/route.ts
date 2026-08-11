@@ -26,7 +26,7 @@ export async function GET() {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const settings = await getReportSettings();
+    const settings = await getReportSettings(tenantId);
     const now = new Date();
     const startMs = getStartOfMonth(now).getTime();
 

@@ -119,7 +119,10 @@ export async function POST(req: Request) {
       { merge: true },
     );
 
-    const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
+    const [updatedSnap, workflowSettings] = await Promise.all([
+      ref.get(),
+      getWorkflowSettings(me.tenantId),
+    ]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO((updated as any)?.dueDate);
     const health = computeHealth(

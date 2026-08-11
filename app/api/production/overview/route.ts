@@ -80,7 +80,7 @@ export async function GET() {
         .where('isDeleted', '==', false)
         .limit(500)
         .get(),
-      getWorkflowSettings(),
+      getWorkflowSettings(me.tenantId),
     ]);
 
     const projects = snap.docs

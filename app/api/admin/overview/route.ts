@@ -68,7 +68,7 @@ export async function GET() {
     }
     const tenantId = normalizeTenantId(auth.user.tenantId);
     const [settings, financeSettings] = await Promise.all([
-      getReportSettings(),
+      getReportSettings(tenantId),
       getFinanceSettings(tenantId),
     ]);
     const now = new Date();

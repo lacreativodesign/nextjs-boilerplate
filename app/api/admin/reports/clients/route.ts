@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const settings = await getReportSettings();
+    const settings = await getReportSettings(tenantId);
     const { searchParams } = new URL(req.url);
     const segmentType = String(searchParams.get('segmentType') || '').trim();
     const segmentValue = String(searchParams.get('segmentValue') || '').trim();

@@ -223,7 +223,10 @@ export async function POST(req: Request) {
       });
     }
 
-    const [updatedSnap, workflowSettings] = await Promise.all([ref.get(), getWorkflowSettings()]);
+    const [updatedSnap, workflowSettings] = await Promise.all([
+      ref.get(),
+      getWorkflowSettings(me.tenantId),
+    ]);
     const updated = updatedSnap.data() as ProjectDoc;
     const dueDate = toISO(updated.dueDate);
     const actorName = me.name || me.fullName || me.displayName || '';

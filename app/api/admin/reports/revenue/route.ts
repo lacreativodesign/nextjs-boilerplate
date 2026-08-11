@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     }
 
     const tenantId = normalizeTenantId(auth.user.tenantId);
-    const settings = await getReportSettings();
+    const settings = await getReportSettings(tenantId);
     const { searchParams } = new URL(req.url);
     const dateFrom = parseDate(searchParams.get('dateFrom'));
     const dateTo = parseDate(searchParams.get('dateTo'), true);

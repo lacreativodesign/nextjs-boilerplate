@@ -93,7 +93,7 @@ export async function GET() {
         adminDb.collection('projects').where('isDeleted', '==', false).limit(500),
         tenantId,
       ),
-      getWorkflowSettings(),
+      getWorkflowSettings(tenantId),
     ]);
 
     const projects = docs.map((doc) => {

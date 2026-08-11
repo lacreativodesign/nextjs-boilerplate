@@ -84,10 +84,17 @@ export async function requireReportsAccess() {
   return auth;
 }
 
-export async function getReportSettings() {
+/**
+ * SET-1: reports read the reporting tenant's own thresholds.
+ *
+ * getWorkflowSettings() now requires a tenant, so this does too. Finance keeps its own
+ * legacy-document fallback for now — that one is handled separately, because unlike
+ * workflows it does read the tenant document first.
+ */
+export async function getReportSettings(tenantId: string) {
   const [workflowSettings, financeSettings] = await Promise.all([
-    getWorkflowSettings(),
-    getFinanceSettings(),
+    getWorkflowSettings(tenantId),
+    getFinanceSettings(tenantId),
   ]);
   const buckets = Array.isArray(financeSettings.arBuckets)
     ? financeSettings.arBuckets
