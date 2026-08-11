@@ -18,7 +18,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const settings = await getReportSettings();
+    const settings = await getReportSettings(auth.user.tenantId);
 
     return NextResponse.json({ ok: true, settings });
   } catch (err) {
