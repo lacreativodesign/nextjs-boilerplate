@@ -66,9 +66,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid JSON.' }, { status: 400 });
     }
 
-    const auth = await authenticateIngest(req, {
-      fallbackApiKey: normalizeOptionalString(body.apiKey),
-    });
+    // KEY-1: the API key is read from the x-api-key header only. This used to also accept
+    // body.apiKey, which put a live credential into any request-body logging or error
+    // capture the payload passed through.
+    const auth = await authenticateIngest(req);
     if (!auth.ok) {
       return NextResponse.json(
         { ok: false, error: 'Invalid credentials.' },
