@@ -197,14 +197,27 @@ export async function getWorkflowSettings(tenantId: string) {
   };
 }
 
-export async function getFinanceSettings(tenantId?: string) {
-  // Tenant-scoped doc with read-only fallback to the legacy global doc.
-  let snap = tenantId
-    ? await adminDb.collection('settings').doc(`${tenantId}_finance`).get()
-    : null;
-  if (!snap || !snap.exists) {
-    snap = await adminDb.collection('settings').doc('finance').get();
+/**
+ * SET-2: tenantId is REQUIRED, and there is no cross-tenant fallback.
+ *
+ * This was the least-broken of the three settings readers — it did check the tenant
+ * document first — but its fallback was a shared global `settings/finance`. So a tenant
+ * that had never opened the finance settings page inherited whatever invoice prefix,
+ * AR buckets, FX rate and late-fee policy happened to be in that document, which belongs
+ * to no tenant in particular. Invoice numbering and currency conversion are not things to
+ * inherit from a stranger.
+ *
+ * A tenant with no saved settings now gets the product defaults, which is what
+ * DEFAULT_FINANCE_SETTINGS is for. The optional parameter is gone for the same reason it
+ * went on the other two: an omitted tenant must be a compile error, not a silent read of
+ * somebody else's configuration.
+ */
+export async function getFinanceSettings(tenantId: string) {
+  const scopedTenantId = String(tenantId || '').trim();
+  if (!scopedTenantId) {
+    throw new Error('getFinanceSettings: tenantId is required and must be non-empty.');
   }
+  const snap = await adminDb.collection('settings').doc(`${scopedTenantId}_finance`).get();
   const data = snap.exists ? snap.data() : {};
   return {
     invoicePrefix: parseString(data?.invoicePrefix, DEFAULT_FINANCE_SETTINGS.invoicePrefix),

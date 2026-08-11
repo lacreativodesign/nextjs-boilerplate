@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { PLAN_MODULES } from '@/app/config/plans';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { plans, type BillingPlanKey } from '@/lib/billing/plans';
 import { DEFAULT_MODULES } from '@/lib/tenant/constants';
 import { scheduleOnboardingEmails, sendWelcomeEmail } from '@/lib/email/onboarding-emails';
 
@@ -38,17 +39,22 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
 
   // S6: an unrecognized plan previously fell through to 'trial', which granted every
   // paid module. Unknown input now provisions the least-privilege tier.
-  const planKey =
+  const planKey: BillingPlanKey =
     plan === 'professional'
       ? 'pro'
       : plan === 'enterprise'
         ? 'enterprise'
         : plan === 'trial'
           ? 'trial'
-          : 'starter';
+          : plan === 'pro'
+            ? 'pro'
+            : 'starter';
+
+  const planLimits = plans[planKey].limits;
 
   await adminDb.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
     const nowIso = new Date().toISOString();
+
     const tenantSnap = await tx.get(tenantRef);
     if (tenantSnap.exists) {
       throw new Error('TENANT_ALREADY_EXISTS');
@@ -60,7 +66,15 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
       slug: tenantId,
       ownerId: ownerId || null,
       status: plan === 'trial' ? 'trial' : 'active',
-      plan: 'trial',
+      // PLAN-1: persist the plan the customer actually chose.
+      //
+      // This wrote the literal 'trial' for EVERY workspace, whatever was selected and paid
+      // for at signup. `plan` is the live entitlement field — checkModuleAccess() and every
+      // module guard resolve capability from it — so a customer who bought Pro or
+      // Enterprise was provisioned with trial modules and trial limits, and the `modules`
+      // map written on the next line disagreed with the `plan` field beside it from the
+      // moment the document was created.
+      plan: planKey,
       modules: PLAN_MODULES[planKey],
       trialEndsAt: trialEndsAt || null,
       createdAt: nowIso,
@@ -71,17 +85,20 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
         dateFormat: 'MM/DD/YYYY',
         language: 'en',
       },
+      // PLAN-1: limits come from the catalog, not from a second hard-coded copy.
+      //
+      // The numbers written here disagreed with lib/billing/plans.ts on every tier: 50
+      // users for Pro against a real limit of 20, 200 for Enterprise which is actually
+      // unlimited, 5GB storage for Starter against 20GB. They were never load-bearing —
+      // checkUserLimit() and the storage guard both read the catalog — so this was stale
+      // data that only misled anyone inspecting a tenant document. Writing the catalog
+      // values keeps the snapshot honest and makes the drift impossible.
       limits: {
-        users:
-          plan === 'trial' || plan === 'starter'
-            ? 10
-            : plan === 'professional' || plan === 'pro'
-              ? 50
-              : 200,
-        storage: plan === 'enterprise' ? 107374182400 : 5368709120,
-        apiCalls: plan === 'enterprise' ? 250000 : 10000,
+        users: planLimits.users,
+        storage: planLimits.storage,
+        apiCalls: planLimits.api_calls,
       },
-      modulesEnabled: getModulesForPlan(plan),
+      modulesEnabled: getModulesForPlan(planKey),
       onboarding: {
         status: 'pending',
         startedAt: nowIso,
@@ -121,9 +138,15 @@ export async function createTenantWorkspace(data: CreateTenantWorkspaceInput) {
   return { success: true, tenantId, notifications };
 }
 
-function getModulesForPlan(plan: TenantPlan) {
-  const planKey =
-    plan === 'professional' ? 'pro' : plan === 'enterprise' ? 'enterprise' : 'starter';
+/**
+ * PLAN-1: takes the already-resolved plan key.
+ *
+ * It used to re-derive its own key from the raw input, and derive it DIFFERENTLY — it had
+ * no 'trial' branch, so a trial workspace silently received starter modules here while
+ * `modules` above received trial modules. Two maps describing the same entitlement,
+ * computed two ways, written in the same document.
+ */
+function getModulesForPlan(planKey: BillingPlanKey) {
   const selectedPlan = PLAN_MODULES[planKey];
 
   return {
