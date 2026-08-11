@@ -26,12 +26,14 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    // Tenant-scoped settings doc. Falls back to the legacy global "finance" doc
-    // (read-only) for tenants whose settings have not yet been migrated.
+    // SET-2: tenant-scoped only. The legacy global "finance" document was a read-only
+    // fallback shared by every unmigrated tenant, so a workspace that had never saved
+    // finance settings displayed — and then used — another party's invoice prefix, AR
+    // buckets, FX rate and late-fee policy. A tenant with nothing saved gets the product
+    // defaults instead.
     const financeDocId = `${auth.user.tenantId}_finance`;
-    const [snap, legacySnap, tenantSnap, invoiceCounterSnap] = await Promise.all([
+    const [snap, tenantSnap, invoiceCounterSnap] = await Promise.all([
       adminDb.collection('settings').doc(financeDocId).get(),
-      adminDb.collection('settings').doc('finance').get(),
       adminDb.collection('tenants').doc(auth.user.tenantId).get(),
       adminDb
         .collection('tenants')
@@ -40,7 +42,7 @@ export async function GET() {
         .doc('invoices')
         .get(),
     ]);
-    const data = snap.exists ? snap.data() : legacySnap.exists ? legacySnap.data() : {};
+    const data = snap.exists ? snap.data() : {};
     const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
     const invoiceCounter = Number(invoiceCounterSnap.data()?.value || 0);
 
