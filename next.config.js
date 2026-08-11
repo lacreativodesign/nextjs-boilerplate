@@ -18,6 +18,17 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
+  // BUILD-01: `next build` re-runs ESLint and a full tsc program after webpack finishes.
+  // Both already run as their own required steps in .github/workflows/test.yml — "Run lint"
+  // (next lint) and "Type check" (tsc --noEmit) — on the same commit, before that workflow
+  // also runs `npm run build`. Repeating them inside every build bought nothing and cost a
+  // second full type-check of 1,700 files plus 657 generated route validators on Vercel's
+  // 2-core / 8 GB builder, where it exceeded the 45-minute ceiling and the deployment was
+  // killed with no error output. Nothing is unchecked: a commit that fails lint or tsc
+  // fails Quality Gates and never reaches main. __tests__/config/build-gates.test.ts pins
+  // that CI still runs both, so these flags can never become a blind spot.
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   images: {
     domains: ['ucarecdn.com', 'firebasestorage.googleapis.com', 'imagedelivery.net'],
     formats: ['image/avif', 'image/webp'],

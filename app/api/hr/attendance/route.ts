@@ -1,17 +1,18 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebaseAdmin';
 import { requireHrAccess } from '../_utils';
-import dayjs from 'dayjs';
+import { fetchAttendanceRange, fetchRoster, monthRange } from '@/lib/attendance/query';
 
-// T-1: attendance is a DEFERRED feature. Its only writer was the unreferenced /api/login-stamp
-// route (removed in this change), so the collection has never held a document and the
-// employees-doc-id <-> auth-uid join can never match. These caps are cost ceilings so that a
-// future writer cannot silently turn this reader into an unbounded tenant-wide scan.
-const MAX_EMPLOYEES = 500;
-const MAX_ATTENDANCE_EVENTS = 5000;
-
+/**
+ * Monthly attendance grid.
+ *
+ * S12: the roster comes from `users`, not the `employees` collection S10 retired, so the
+ * uid the S11 writer stamps is the same id the grid renders rows for — the join that
+ * could never match now always does. The per-day arithmetic is done server-side in
+ * lib/attendance/query so the grid, the per-employee view and the absentee list cannot
+ * compute "hours" three different ways.
+ */
 export async function GET(request: Request) {
   try {
     const hrAuth = await requireHrAccess();
@@ -20,43 +21,30 @@ export async function GET(request: Request) {
         { success: false, message: hrAuth.error },
         { status: hrAuth.status },
       );
+
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
+    const range = monthRange(month);
 
-    if (!month) {
-      return NextResponse.json({ success: false, message: 'Missing month' }, { status: 400 });
+    if (!range) {
+      return NextResponse.json(
+        { success: false, message: 'A month in YYYY-MM format is required.' },
+        { status: 400 },
+      );
     }
 
-    const start = dayjs(month + '-01').startOf('month');
-    const end = start.endOf('month');
+    const tenantId = hrAuth.user.tenantId;
+    const [employees, days] = await Promise.all([
+      fetchRoster(tenantId),
+      fetchAttendanceRange({ tenantId, from: range.from, to: range.to }),
+    ]);
 
-    const employeesSnap = await adminDb
-      .collection('employees')
-      .where('tenantId', '==', hrAuth.user.tenantId)
-      .limit(MAX_EMPLOYEES)
-      .get();
-    const employees = employeesSnap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    }));
-
-    const attendanceSnap = await adminDb
-      .collection('attendance')
-      .where('tenantId', '==', hrAuth.user.tenantId)
-      .where('date', '>=', start.format('YYYY-MM-DD'))
-      .where('date', '<=', end.format('YYYY-MM-DD'))
-      .limit(MAX_ATTENDANCE_EVENTS)
-      .get();
-
-    const attendance = attendanceSnap.docs.map((d) => d.data());
-
-    return NextResponse.json({
-      success: true,
-      employees,
-      attendance,
-    });
+    return NextResponse.json({ success: true, month, employees, days });
   } catch (err: any) {
     console.error('Attendance load error:', err);
-    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: 'Unable to load attendance.' },
+      { status: 500 },
+    );
   }
 }
