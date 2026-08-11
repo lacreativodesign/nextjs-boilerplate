@@ -249,7 +249,7 @@ export default function SuperAdminPage() {
             <StatCard
               label="Monthly Recurring Revenue"
               value={formatCurrency(metrics.mrr)}
-              sub="MRR from active subscriptions"
+              sub="Billed Stripe subscriptions only"
               color="var(--erp-blue)"
             />
             <StatCard
