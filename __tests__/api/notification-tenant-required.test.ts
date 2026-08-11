@@ -54,8 +54,21 @@ describe('S3: no API route omits the tenant argument', () => {
   it('every getUserIdsByRoles/getUsersByRoles call passes a second argument', () => {
     const offenders: string[] = [];
 
+    /**
+     * Blanks comments before scanning.
+     *
+     * A comment cannot call anything, so matching one is a false positive, not extra
+     * safety — a doc block that merely NAMES getUsersByRoles() was reported as a route
+     * omitting its tenant argument. Comment characters are replaced with spaces rather
+     * than removed so every reported line number still points at the real line.
+     */
+    const blankComments = (source: string) =>
+      source
+        .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+        .replace(/\/\/[^\n]*/g, (line) => ' '.repeat(line.length));
+
     for (const file of walk(API_ROOT)) {
-      const src = fs.readFileSync(file, 'utf8');
+      const src = blankComments(fs.readFileSync(file, 'utf8'));
       const re = /get(?:User|Users)IdsByRoles\(|getUsersByRoles\(/g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(src)) !== null) {
