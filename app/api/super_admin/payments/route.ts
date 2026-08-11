@@ -135,6 +135,8 @@ export async function GET(req: NextRequest) {
     let totalActiveTenants = 0;
     let totalTrialTenants = 0;
     let totalLockedTenants = 0;
+    let totalPayingTenants = 0;
+    let unbilledActiveTenants = 0;
 
     const tenants: PaymentTenant[] = tenantsSnap.docs
       .map((tenantDoc) => {
@@ -149,9 +151,28 @@ export async function GET(req: NextRequest) {
           byState[subscriptionState] = (byState[subscriptionState] || 0) + 1;
         }
 
+        // MRR-1: revenue requires a subscription, not just an unlocked workspace.
+        //
+        // This counted list price for every tenant whose subscriptionState was 'active',
+        // with no check that money changes hands. Bizosto's own workspace, any tenant a
+        // Super Admin activates by hand, and every internally comped account were all
+        // reported as paying customers — so the headline MRR on the Super Admin dashboard
+        // was the plan price times the number of unlocked workspaces.
+        //
+        // A Stripe subscription id is the evidence of an external paying relationship:
+        // it is written only by applySubscriptionState from a Stripe webhook. Active
+        // workspaces without one are counted separately as `unbilledActiveTenants` rather
+        // than dropped, so the number stays visible instead of silently vanishing.
+        const hasStripeSubscription = Boolean(String(data.stripeSubscriptionId || '').trim());
+
         if (subscriptionState === 'active') {
-          mrr += plans[plan].price;
           totalActiveTenants += 1;
+          if (hasStripeSubscription) {
+            mrr += plans[plan].price;
+            totalPayingTenants += 1;
+          } else {
+            unbilledActiveTenants += 1;
+          }
         }
         if (plan === 'trial') {
           totalTrialTenants += 1;
@@ -173,7 +194,9 @@ export async function GET(req: NextRequest) {
           plan,
           subscriptionState,
           billingStatus,
-          mrr: plans[plan].price,
+          // Per-row MRR follows the same rule as the total: an unbilled workspace
+          // contributes nothing, so the column sums to the headline figure.
+          mrr: hasStripeSubscription && subscriptionState === 'active' ? plans[plan].price : 0,
           currentPeriodEnd: data.currentPeriodEnd || null,
           cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
           lastPaymentAt: data.lastPaymentAt || null,
@@ -207,6 +230,9 @@ export async function GET(req: NextRequest) {
         totalActiveTenants,
         totalTrialTenants,
         totalLockedTenants,
+        /** Active workspaces with no Stripe subscription — real usage, zero revenue. */
+        totalPayingTenants,
+        unbilledActiveTenants,
       },
       breakdown: {
         byPlan,

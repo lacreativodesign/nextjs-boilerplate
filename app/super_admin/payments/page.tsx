@@ -7,6 +7,8 @@ import { smartMatch } from '@/lib/search/smartMatch';
 
 type Metrics = {
   mrr: number;
+  totalPayingTenants: number;
+  unbilledActiveTenants: number;
   platformFeeRevenue: number;
   taxCollectedThisMonth: number;
   totalActiveTenants: number;
@@ -266,14 +268,23 @@ export default function PaymentTerminalPage() {
           {
             label: 'Monthly Recurring Revenue',
             value: formatUsd(data?.metrics.mrr || 0),
-            sub: 'Active subscriptions',
+            // MRR-1: only workspaces with a real Stripe subscription contribute.
+            sub: 'Billed subscriptions only',
             color: 'var(--color-green)',
           },
           {
             label: 'Active Tenants',
             value: data?.metrics.totalActiveTenants || 0,
-            sub: 'Paying subscribers',
+            // This counts every unlocked workspace, billed or not — which is why it can
+            // legitimately exceed the paying count below.
+            sub: `${data?.metrics.totalPayingTenants || 0} billed`,
             color: 'var(--erp-blue)',
+          },
+          {
+            label: 'Unbilled Active',
+            value: data?.metrics.unbilledActiveTenants || 0,
+            sub: 'Active, no subscription',
+            color: 'var(--warning-strong)',
           },
           {
             label: 'Trial Tenants',
