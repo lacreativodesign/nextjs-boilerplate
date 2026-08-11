@@ -4,10 +4,18 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 
-type Log = {
-  type: 'login' | 'logout';
-  timestamp: string;
+/**
+ * S12: one summarised record per day, as /api/hr/attendance/employee returns it. This
+ * page used to receive a stream of { type: 'login' | 'logout' } events and pair them up
+ * here — a shape the S11 writer does not produce — so every day would have read Absent
+ * even once real attendance was being recorded.
+ */
+type DaySummary = {
   date: string;
+  firstLoginAt: string | null;
+  lastLogoutAt: string | null;
+  loginCount: number;
+  hours: number | null;
 };
 
 type Employee = {
@@ -23,7 +31,8 @@ export default function EmployeeAttendanceDetail() {
   const params = useParams() as { employeeId: string };
   const router = useRouter();
   const [month, setMonth] = useState(dayjs());
-  const [logs, setLogs] = useState<Log[]>([]);
+  const [days, setDays] = useState<Record<string, DaySummary>>({});
+  const [summary, setSummary] = useState({ daysPresent: 0, totalHours: 0 });
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +55,8 @@ export default function EmployeeAttendanceDetail() {
       const data = await res.json();
 
       if (data.success) {
-        setLogs(data.logs || []);
+        setDays(data.days || {});
+        setSummary(data.summary || { daysPresent: 0, totalHours: 0 });
         setEmployee(data.employee || null);
       }
     } catch (err) {
@@ -56,60 +66,9 @@ export default function EmployeeAttendanceDetail() {
     }
   }
 
-  function computeDayInfo(day: number) {
-    const dateStr = month.date(day).format('YYYY-MM-DD');
-    const dayLogs = logs.filter((l) => l.date === dateStr);
-
-    if (!dayLogs.length) return null;
-
-    // sort by time
-    dayLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    const firstLogin = dayLogs.find((l) => l.type === 'login');
-    const lastLogout = [...dayLogs].reverse().find((l) => l.type === 'logout');
-
-    let totalMs = 0;
-    for (let i = 0; i < dayLogs.length; i++) {
-      if (dayLogs[i].type === 'login') {
-        const logoutEvent = dayLogs.find(
-          (l) => l.type === 'logout' && new Date(l.timestamp) > new Date(dayLogs[i].timestamp),
-        );
-        if (logoutEvent) {
-          totalMs +=
-            new Date(logoutEvent.timestamp).getTime() - new Date(dayLogs[i].timestamp).getTime();
-        }
-      }
-    }
-
-    const hrs = totalMs / (1000 * 60 * 60);
-
-    return {
-      firstLogin,
-      lastLogout,
-      hours: hrs > 0 ? hrs.toFixed(2) : '',
-    };
+  function computeDayInfo(day: number): DaySummary | null {
+    return days[month.date(day).format('YYYY-MM-DD')] || null;
   }
-
-  function getSummary() {
-    let totalHours = 0;
-    let daysPresent = 0;
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const info = computeDayInfo(d);
-      if (info && info.hours) {
-        daysPresent += 1;
-        totalHours += parseFloat(info.hours);
-      }
-    }
-
-    return {
-      daysPresent,
-      totalHours: totalHours.toFixed(1),
-    };
-  }
-
-  const summary = getSummary();
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -210,7 +169,7 @@ export default function EmployeeAttendanceDetail() {
           </div>
           <div style={statCard}>
             <span style={statLabel}>Total Hours</span>
-            <span style={statValue}>{summary.totalHours}</span>
+            <span style={statValue}>{summary.totalHours.toFixed(1)}</span>
           </div>
         </div>
       </div>
@@ -254,7 +213,9 @@ export default function EmployeeAttendanceDetail() {
                   badgeColor = 'var(--text-muted)';
                 }
 
-                if (info && info.hours) {
+                // Present is a recorded sign-in. Hours only exist once a sign-out has
+                // closed the day, so someone still working reads as present.
+                if (info?.firstLoginAt) {
                   status = 'Present';
                   badgeBg = 'rgba(34,197,94,0.12)';
                   badgeColor = 'var(--success)';
@@ -281,12 +242,12 @@ export default function EmployeeAttendanceDetail() {
                       </span>
                     </td>
                     <td style={td}>
-                      {info?.firstLogin ? dayjs(info.firstLogin.timestamp).format('HH:mm') : '-'}
+                      {info?.firstLoginAt ? dayjs(info.firstLoginAt).format('HH:mm') : '-'}
                     </td>
                     <td style={td}>
-                      {info?.lastLogout ? dayjs(info.lastLogout.timestamp).format('HH:mm') : '-'}
+                      {info?.lastLogoutAt ? dayjs(info.lastLogoutAt).format('HH:mm') : '-'}
                     </td>
-                    <td style={td}>{info?.hours || '-'}</td>
+                    <td style={td}>{info?.hours != null ? info.hours.toFixed(2) : '-'}</td>
                   </tr>
                 );
               })}

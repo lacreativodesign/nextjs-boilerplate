@@ -60,14 +60,27 @@ function attendanceFiles(): string[] {
     .sort();
 }
 
-/** The five read-only routes that survive the deferral. */
+/**
+ * The rebuilt readers. Each authorises, validates input and DELEGATES: none of them
+ * addresses the collection itself any more.
+ *
+ * S12 removed /api/hr/attendance/list. It had no UI consumer, ran an unbounded `users`
+ * scan followed by one subcollection query PER USER, and those queries addressed
+ * `attendance/{userId}/logs` — a subcollection no writer has ever created, so every one
+ * returned empty. The monthly grid supersedes it in a single bounded query.
+ */
 const READERS = [
   'app/api/hr/attendance/absentees/route.ts',
   'app/api/hr/attendance/employee/route.ts',
-  'app/api/hr/attendance/list/route.ts',
   'app/api/hr/attendance/route.ts',
-  'app/api/hr/payroll/route.ts',
 ];
+
+/**
+ * Still on the pre-S11 shape: joins the retired `employees` collection against a per-event
+ * document that no longer exists. It has no UI consumer — the payroll screen reads
+ * /api/finance/payroll/list — and stays unlinked until it is rebuilt or removed.
+ */
+const LEGACY_READERS = ['app/api/hr/payroll/route.ts'];
 
 /**
  * S11: the ONE sanctioned writer.
@@ -80,12 +93,8 @@ const READERS = [
  */
 const WRITER = 'lib/attendance/record.ts';
 
-/** The three readers that scanned a whole collection with no bound. */
-const BOUNDED_READERS = [
-  'app/api/hr/attendance/route.ts',
-  'app/api/hr/payroll/route.ts',
-  'app/api/hr/attendance/absentees/route.ts',
-];
+/** S12: the shared reader. The join, the caps and the per-day arithmetic live here. */
+const QUERY = 'lib/attendance/query.ts';
 
 describe('T-1: the dead attendance writer is gone', () => {
   it('removes /api/login-stamp entirely', () => {
@@ -97,14 +106,21 @@ describe('T-1: the dead attendance writer is gone', () => {
     expect(PUBLIC_ROUTES['login-stamp']).toBeUndefined();
   });
 
-  it('routes every write through the single sanctioned writer', () => {
-    expect(attendanceFiles()).toEqual([...READERS, WRITER].sort());
+  it('confines the collection to the writer, the reader and the legacy holdout', () => {
+    // A route that addressed `attendance` directly could reintroduce an unbounded scan or
+    // a second document shape without this guard noticing.
+    expect(attendanceFiles()).toEqual([...LEGACY_READERS, QUERY, WRITER].sort());
     expect(exists(WRITER)).toBe(true);
+    expect(exists(QUERY)).toBe(true);
+  });
 
-    // No ROUTE may write to the collection — routes call the writer instead, so the
-    // document shape is decided in exactly one place.
-    const writers = READERS.filter((rel) => /\.(set|add|update)\(/.test(read(rel)));
-    expect(writers).toEqual([]);
+  it('keeps the shared reader read-only, so writes cannot bypass the writer', () => {
+    expect(read(QUERY)).not.toMatch(/\.(set|add|update|delete)\(/);
+  });
+
+  it('removes the N+1 subcollection reader', () => {
+    expect(exists('app/api/hr/attendance/list/route.ts')).toBe(false);
+    expect(exists('app/api/hr/attendance/list')).toBe(false);
   });
 
   it('keys the writer on the auth uid, not on an employees document id', () => {
@@ -137,7 +153,9 @@ describe('T-1: the dead attendance writer is gone', () => {
     // The 1 MB document ceiling is reached at roughly ten thousand appends, after which
     // that user's writes fail permanently. The writer keys one document per user per day
     // instead, so nothing accumulates inside a single document.
-    const offenders = [...READERS, WRITER].filter((rel) => read(rel).includes('arrayUnion'));
+    const offenders = [...READERS, ...LEGACY_READERS, WRITER, QUERY].filter((rel) =>
+      read(rel).includes('arrayUnion'),
+    );
     expect(offenders).toEqual([]);
   });
 
@@ -157,7 +175,7 @@ describe('T-1: the dead attendance writer is gone', () => {
 });
 
 describe('T-1: the attendance readers are guarded and bounded', () => {
-  it.each(['app/api/hr/attendance/route.ts', 'app/api/hr/payroll/route.ts'])(
+  it.each([...READERS, ...LEGACY_READERS])(
     '%s enforces requireHrAccess, not a bare getCurrentUser call',
     (rel) => {
       const src = read(rel);
@@ -168,19 +186,28 @@ describe('T-1: the attendance readers are guarded and bounded', () => {
     },
   );
 
-  it('every attendance reader is behind the HR guard', () => {
+  it('delegates to the shared reader instead of querying directly', () => {
     for (const rel of READERS) {
-      expect(read(rel)).toContain('requireHrAccess');
+      expect(read(rel)).toContain("from '@/lib/attendance/query'");
     }
   });
 
-  it('every whole-collection scan is capped', () => {
-    const unbounded = BOUNDED_READERS.filter((rel) => !read(rel).includes('.limit('));
+  it('caps every query the shared reader issues', () => {
+    // The caps moved out of the routes and into the reader when the queries did.
+    const src = read(QUERY);
+    const queries = src.match(/\.collection\(/g) || [];
+    const limits = src.match(/\.limit\(/g) || [];
+    expect(queries.length).toBeGreaterThan(0);
+    expect(limits.length).toBe(queries.length);
+  });
+
+  it('keeps the legacy reader capped until it is rebuilt', () => {
+    const unbounded = LEGACY_READERS.filter((rel) => !read(rel).includes('.limit('));
     expect(unbounded).toEqual([]);
   });
 
   it('reads tenantId off the authenticated principal, never the request', () => {
-    for (const rel of READERS) {
+    for (const rel of [...READERS, ...LEGACY_READERS]) {
       const src = read(rel);
       expect(src).toContain('.user.tenantId');
       expect(src).not.toMatch(/searchParams\.get\(\s*['"]tenantId['"]/);

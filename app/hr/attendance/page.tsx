@@ -3,11 +3,31 @@
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 
+type DaySummary = {
+  date: string;
+  firstLoginAt: string | null;
+  lastLogoutAt: string | null;
+  loginCount: number;
+  hours: number | null;
+};
+
+/** userId -> date -> summary, exactly as /api/hr/attendance returns it. */
+type AttendanceByUser = Record<string, Record<string, DaySummary>>;
+
+type RosterMember = { id: string; name: string; role?: string; department?: string };
+
+/**
+ * S12: the API returns one summarised record per person per day. This page used to
+ * receive a stream of { type: 'login' | 'logout' } events and pair them up here — a shape
+ * the S11 writer does not produce — so the grid would have stayed blank even once real
+ * attendance was being recorded. The arithmetic now lives server-side in
+ * lib/attendance/query, and this is a lookup.
+ */
 export default function AttendanceDashboard() {
-  const [attendance, setAttendance] = useState<any[]>([]);
+  const [days, setDays] = useState<AttendanceByUser>({});
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(dayjs());
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<RosterMember[]>([]);
 
   const start = month.startOf('month');
   const end = month.endOf('month');
@@ -24,8 +44,8 @@ export default function AttendanceDashboard() {
       const data = await res.json();
 
       if (data.success) {
-        setAttendance(data.attendance);
-        setEmployees(data.employees);
+        setDays(data.days || {});
+        setEmployees(data.employees || []);
       }
     } catch (e) {
       console.error(e);
@@ -33,24 +53,8 @@ export default function AttendanceDashboard() {
     setLoading(false);
   }
 
-  function getDayAttendance(empId: string, day: number) {
-    const dateStr = month.date(day).format('YYYY-MM-DD');
-
-    const logs = attendance.filter((a) => a.userId === empId && a.date === dateStr);
-
-    if (logs.length === 0) return null;
-
-    const login = logs.find((l) => l.type === 'login');
-    const logout = logs.find((l) => l.type === 'logout');
-
-    let total = 0;
-    if (login && logout) {
-      total = new Date(logout.timestamp).getTime() - new Date(login.timestamp).getTime();
-    }
-
-    const hrs = (total / (1000 * 60 * 60)).toFixed(1);
-
-    return { login, logout, hrs };
+  function getDayAttendance(empId: string, day: number): DaySummary | null {
+    return days[empId]?.[month.date(day).format('YYYY-MM-DD')] || null;
   }
 
   if (loading) {
@@ -125,14 +129,17 @@ export default function AttendanceDashboard() {
                     bg = 'var(--surface-muted)';
                   }
 
-                  if (info?.hrs) {
+                  // Present is a recorded sign-in. Hours only exist once a sign-out has
+                  // closed the day, so someone still working shows as present with a dot
+                  // rather than vanishing from the grid.
+                  if (info?.firstLoginAt) {
                     bg = 'var(--status-success-bg)';
                     text = 'var(--status-success-text)';
                   }
 
                   return (
                     <td key={dayIndex} style={{ ...td, background: bg, color: text }}>
-                      {info?.hrs || ''}
+                      {info?.hours != null ? info.hours.toFixed(1) : info?.firstLoginAt ? '•' : ''}
                     </td>
                   );
                 })}
