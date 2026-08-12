@@ -10,6 +10,7 @@ import {
   optimizeImageForUpload,
 } from '@/lib/images/client-image-optimizer';
 import { apiFetch } from '@/lib/api/client';
+import type { CompedType } from '@/lib/billing/billing-mode';
 
 type Tenant = {
   id: string;
@@ -23,6 +24,15 @@ type Tenant = {
   modules?: Record<string, boolean>;
   planSetBy?: { uid: string; role: 'super_admin' } | null;
   planUpdatedAt?: string | null;
+  billingMode?: 'stripe' | 'comped';
+  comped?: {
+    type: 'internal' | 'promotional' | 'partner' | 'support';
+    reason: string;
+    grantedByUid: string;
+    grantedAt: string;
+    expiresAt: string | null;
+  } | null;
+  compExpired?: boolean;
   stripeConnectAccountId?: string | null;
   stripeConnectStatus?: string | null;
   stripeConnectEmail?: string | null;
@@ -121,6 +131,11 @@ export default function TenantDetailPage() {
   const [savingPlanModules, setSavingPlanModules] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'pro' | 'enterprise'>('pro');
   const [rolesEnabled, setRolesEnabled] = useState<Record<string, boolean>>({});
+  const [savingBillingMode, setSavingBillingMode] = useState(false);
+  const [billingModeError, setBillingModeError] = useState<string | null>(null);
+  const [compType, setCompType] = useState<CompedType>('internal');
+  const [compReason, setCompReason] = useState('');
+  const [compExpiresAt, setCompExpiresAt] = useState('');
 
   const loadTenant = async () => {
     const res = await apiFetch(`/api/super_admin/tenants/${tenantId}`, {
@@ -132,6 +147,13 @@ export default function TenantDetailPage() {
       setBrandName(json.tenant?.brand?.name || json.tenant?.name || '');
       if (json.tenant?.plan) {
         setSelectedPlan(json.tenant.plan);
+      }
+      // Hydrate the comp form from what is stored, so re-saving an existing comp does not
+      // silently blank its reason or expiry.
+      if (json.tenant?.comped) {
+        setCompType(json.tenant.comped.type || 'internal');
+        setCompReason(json.tenant.comped.reason || '');
+        setCompExpiresAt((json.tenant.comped.expiresAt || '').slice(0, 10));
       }
     }
   };
@@ -247,6 +269,43 @@ export default function TenantDetailPage() {
       await loadTenant();
     } finally {
       setSavingPlan(false);
+    }
+  };
+
+  /**
+   * COMP-1 UI: converting a workspace between paying and comped.
+   *
+   * The server validates the grant and is the only thing that can write it; this form
+   * exists so the decision is made with the reason in front of the operator rather than
+   * through a console edit. A rejection is surfaced verbatim — a comp that fails
+   * validation must not look like it saved.
+   */
+  const updateBillingMode = async (nextMode: 'stripe' | 'comped') => {
+    if (!tenant) return;
+    setSavingBillingMode(true);
+    setBillingModeError(null);
+    try {
+      const payload: Record<string, unknown> = { billingMode: nextMode };
+      if (nextMode === 'comped') {
+        payload.comped = {
+          type: compType,
+          reason: compReason,
+          expiresAt: compExpiresAt ? new Date(compExpiresAt).toISOString() : null,
+        };
+      }
+      const res = await apiFetch(`/api/super_admin/tenants/${tenant.id}/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => null);
+      if (!json?.ok) {
+        setBillingModeError(json?.error || 'Unable to update billing mode.');
+        return;
+      }
+      await loadTenant();
+    } finally {
+      setSavingBillingMode(false);
     }
   };
 
@@ -563,6 +622,125 @@ export default function TenantDetailPage() {
           >
             {savingPlan ? 'Saving...' : 'Update Plan'}
           </button>
+        </div>
+
+        {/*
+          COMP-1: who pays, set next to what they get, because "Enterprise, internally
+          managed" is one decision. Plan stays the answer to what the workspace can do.
+        */}
+        <div className="rounded-2xl border border-[var(--border-subtle)] p-4 space-y-3">
+          <div>
+            <div className="text-sm font-semibold">Billing Mode</div>
+            <p className="text-xs text-[var(--text-muted)]">
+              A comped workspace is never charged, never dunned, never emailed about billing, and
+              contributes nothing to MRR.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="rounded-full px-3 py-1 text-xs font-semibold"
+              style={{
+                background:
+                  tenant.billingMode === 'comped'
+                    ? 'rgba(168,85,247,0.12)'
+                    : 'rgba(34,197,94,0.12)',
+                color:
+                  tenant.billingMode === 'comped' ? 'var(--color-purple)' : 'var(--color-green)',
+              }}
+            >
+              {tenant.billingMode === 'comped' ? 'Comped — $0' : 'Stripe billing'}
+            </span>
+            {tenant.compExpired ? (
+              <span className="text-xs font-semibold" style={{ color: 'var(--warning-strong)' }}>
+                Comp expired — still free until converted
+              </span>
+            ) : null}
+          </div>
+
+          {tenant.comped ? (
+            <div className="rounded-xl border border-[var(--border-subtle)] p-3 text-xs space-y-1">
+              <div>
+                <span className="text-[var(--text-muted)]">Reason: </span>
+                {tenant.comped.reason}
+              </div>
+              <div>
+                <span className="text-[var(--text-muted)]">Type: </span>
+                {tenant.comped.type}
+                <span className="text-[var(--text-muted)]"> • Expires: </span>
+                {tenant.comped.expiresAt
+                  ? new Date(tenant.comped.expiresAt).toLocaleDateString()
+                  : 'never'}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Comp type
+              </label>
+              <select
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm"
+                value={compType}
+                onChange={(e) => setCompType(e.target.value as CompedType)}
+                disabled={savingBillingMode}
+              >
+                <option value="internal">Internal</option>
+                <option value="promotional">Promotional</option>
+                <option value="partner">Partner</option>
+                <option value="support">Support</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Reason (required)
+              </label>
+              <input
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm"
+                value={compReason}
+                onChange={(e) => setCompReason(e.target.value)}
+                placeholder="Bizosto's own workspace"
+                maxLength={500}
+                disabled={savingBillingMode}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Expires (blank = never)
+              </label>
+              <input
+                type="date"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 text-sm"
+                value={compExpiresAt}
+                onChange={(e) => setCompExpiresAt(e.target.value)}
+                disabled={savingBillingMode}
+              />
+            </div>
+          </div>
+
+          {billingModeError ? (
+            <p className="text-xs font-semibold" style={{ color: 'var(--danger-strong)' }}>
+              {billingModeError}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              className="rounded-xl bg-[var(--color-purple)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              onClick={() => updateBillingMode('comped')}
+              disabled={savingBillingMode || !compReason.trim()}
+            >
+              {savingBillingMode ? 'Saving...' : 'Mark as comped'}
+            </button>
+            <button
+              className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              onClick={() => updateBillingMode('stripe')}
+              disabled={savingBillingMode || tenant.billingMode !== 'comped'}
+            >
+              Convert to Stripe billing
+            </button>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-[var(--border-subtle)] p-4">

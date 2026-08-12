@@ -53,17 +53,30 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     const user = await requireSuperAdmin(req);
     const tenantId = params.tenantId;
 
-    if (user.tenantId === tenantId) {
+    const body = await req.json().catch(() => ({}));
+    const planProvided = body?.plan !== undefined;
+    const modulesProvided = body?.modules !== undefined;
+    const billingModeProvided = body?.billingMode !== undefined;
+
+    // A Super Admin must not grant their own workspace more capability than it has paid
+    // for — that is the self-dealing this guard exists to prevent. Billing MODE is the
+    // opposite case: marking your own workspace comped REMOVES it from revenue and takes
+    // capability away from nobody, and Bizosto's own tenant is precisely the workspace
+    // that most needs marking. Blocking it forced the field to be set by hand in the
+    // Firebase console, which is neither audited nor validated.
+    const isSelfTenant = user.tenantId === tenantId;
+    if (isSelfTenant && (planProvided || modulesProvided)) {
       return NextResponse.json(
         { ok: false, error: 'Cannot modify your own tenant plan.' },
         { status: 403 },
       );
     }
-
-    const body = await req.json().catch(() => ({}));
-    const planProvided = body?.plan !== undefined;
-    const modulesProvided = body?.modules !== undefined;
-    const billingModeProvided = body?.billingMode !== undefined;
+    if (isSelfTenant && billingModeProvided && resolveBillingMode(body?.billingMode) !== 'comped') {
+      return NextResponse.json(
+        { ok: false, error: 'Cannot move your own tenant onto Stripe billing.' },
+        { status: 403 },
+      );
+    }
 
     if (!planProvided && !modulesProvided && !billingModeProvided) {
       return NextResponse.json({ ok: false, error: 'No plan updates provided.' }, { status: 400 });
