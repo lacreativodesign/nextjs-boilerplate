@@ -4818,18 +4818,6 @@ paths:
           description: Unauthorized or invalid session.
         '403':
           description: Forbidden for current tenant or role.
-  /api/hr/attendance/list:
-    get:
-      summary: GET /api/hr/attendance/list
-      tags:
-        - Core
-      responses:
-        '200':
-          description: Request completed successfully.
-        '401':
-          description: Unauthorized or invalid session.
-        '403':
-          description: Forbidden for current tenant or role.
   /api/hr/documents/delete:
     post:
       summary: POST /api/hr/documents/delete
@@ -6198,18 +6186,6 @@ paths:
   /api/leads/convert-to-deal:
     post:
       summary: POST /api/leads/convert-to-deal
-      tags:
-        - Core
-      responses:
-        '200':
-          description: Request completed successfully.
-        '401':
-          description: Unauthorized or invalid session.
-        '403':
-          description: Forbidden for current tenant or role.
-  /api/login-stamp:
-    post:
-      summary: POST /api/login-stamp
       tags:
         - Core
       responses:
@@ -8299,6 +8275,53 @@ paths:
           description: Unauthorized or invalid session.
         '403':
           description: Forbidden for current tenant or role.
+  /api/super_admin/tickets:
+    get:
+      summary: GET /api/super_admin/tickets
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tickets/{ticketId}:
+    get:
+      summary: GET /api/super_admin/tickets/{ticketId}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    patch:
+      summary: PATCH /api/super_admin/tickets/{ticketId}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/super_admin/tickets/{ticketId}/analyze:
+    post:
+      summary: POST /api/super_admin/tickets/{ticketId}/analyze
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
   /api/super_admin/users:
     get:
       summary: GET /api/super_admin/users
@@ -8325,6 +8348,18 @@ paths:
   /api/super_admin/users/{uid}:
     patch:
       summary: PATCH /api/super_admin/users/{uid}
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+  /api/support/help-feedback:
+    post:
+      summary: POST /api/support/help-feedback
       tags:
         - Core
       responses:
