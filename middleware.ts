@@ -276,10 +276,34 @@ function isPublicApiPath(pathname: string) {
   return Object.prototype.hasOwnProperty.call(PUBLIC_ROUTES, relPath);
 }
 
+/**
+ * Routes gated by the PLATFORM's rotating key plus an HMAC signature.
+ *
+ * INGEST-1: `/api/ingest` was in this list, and that made the tenant ingest endpoints
+ * impossible to call. The gate reads `x-api-key` and compares it against the platform's
+ * own rotating keys — but a tenant website sends its TENANT key in that same header, so
+ * verifyRotatingApiKey() rejected it and the request was answered with 401 before the
+ * route ever ran. It then required an HMAC signed with INTERNAL_REQUEST_SIGNING_SECRET,
+ * a platform secret no tenant has or should have. Two conditions, both unsatisfiable.
+ *
+ * The result was a documented feature that could not work: Settings → API Key tells a
+ * tenant to "POST to /api/ingest/leads with the header x-api-key", and every such request
+ * was rejected by middleware.
+ *
+ * Ingest is not unauthenticated now — it is authenticated at the ROUTE, which is the only
+ * layer that can tell one tenant's key from another's. All four ingest routes call
+ * authenticateIngest(), which resolves the key to exactly one tenant against a stored
+ * hash, in constant time, header-only (KEY-1). That is strictly stronger than a shared
+ * platform key, which identifies no tenant at all.
+ *
+ * Everything else in this list stays: cron and super_admin are genuinely platform-internal
+ * and have no tenant-scoped credential to present.
+ *
+ * What ingest keeps: rate limiting, which runs earlier in this middleware and is unchanged.
+ */
 function isSensitiveApiPath(pathname: string) {
   return (
     pathname.startsWith('/api/cron') ||
-    pathname.startsWith('/api/ingest') ||
     pathname.startsWith('/api/super-admin') ||
     pathname.startsWith('/api/super_admin')
   );
