@@ -11,16 +11,22 @@ export async function GET() {
   }
 
   try {
-    const snap = await adminDb
-      .collection('api_usage_logs')
-      .orderBy('createdAt', 'desc')
-      .limit(1000)
-      .get();
-    const rows = (
-      snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, any>) })) as Array<
-        { id: string } & Record<string, any>
-      >
-    ).filter((row) => current.role === 'super_admin' || row.tenantId === current.tenantId);
+    // USAGE-1: same defect as /usage/logs, and here it produces wrong NUMBERS rather than
+    // a short list. The stats were computed from whichever portion of the newest 1,000
+    // platform-wide rows happened to belong to the caller — so a tenant's endpoint
+    // breakdown, hourly chart and consumer totals were all a slice of someone else's
+    // traffic, presented as their own. Scoping the query means the 1,000-row budget is
+    // spent entirely on rows that count.
+    let query = adminDb.collection('api_usage_logs').orderBy('createdAt', 'desc');
+    if (current.role !== 'super_admin') {
+      query = query.where('tenantId', '==', current.tenantId);
+    }
+
+    const snap = await query.limit(1000).get();
+    const rows = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Record<string, any>),
+    })) as Array<{ id: string } & Record<string, any>>;
 
     const byEndpoint: Record<string, number> = {};
     const byHour: Record<string, number> = {};
