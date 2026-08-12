@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { applyLockAdvance, classifyLockAdvance } from '@/lib/billing/apply-subscription-state';
 import { executeDuePendingDowngrades } from '@/lib/billing/pending-downgrade';
+import { isComped } from '@/lib/billing/billing-mode';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
   const errors: string[] = [];
   let softLocked = 0;
   let hardLocked = 0;
+  let compedSkipped = 0;
   const nowMs = Date.now();
 
   try {
@@ -46,6 +48,16 @@ export async function GET(request: NextRequest) {
       const tenantId = tenantDoc.id;
       try {
         const data = tenantDoc.data() as Record<string, unknown>;
+
+        // COMP-1: the dunning ladder exists to chase a failed payment. A comped workspace
+        // has no payment to fail, so a stale past_due flag left over from a previous paid
+        // period would otherwise soft-lock and then hard-lock an account Bizosto has
+        // deliberately chosen not to bill.
+        if (isComped(data)) {
+          compedSkipped += 1;
+          continue;
+        }
+
         const advance = classifyLockAdvance(
           {
             tenantId,
@@ -77,6 +89,7 @@ export async function GET(request: NextRequest) {
       ok: true,
       softLocked,
       hardLocked,
+      compedSkipped,
       downgradesApplied: downgrades.applied,
       errors,
     });

@@ -8,6 +8,7 @@ import {
   sendTrialGracePeriodEndingEmail,
 } from '@/lib/email/onboarding-emails';
 import { PLAN_MODULES } from '@/app/config/plans';
+import { isComped } from '@/lib/billing/billing-mode';
 
 export const runtime = 'nodejs';
 
@@ -82,7 +83,16 @@ export async function GET(request: NextRequest) {
           plan?: string;
           name?: string;
           ownerId?: string;
+          billingMode?: string;
         };
+
+        // COMP-1: trial and dunning email asks a customer to pay. A comped workspace is
+        // not going to, so "your trial ends in 3 days — add a card" is both wrong and
+        // alarming for an internal or partner account that has been granted access
+        // indefinitely.
+        if (isComped(tenantData)) {
+          continue;
+        }
 
         if (!tenantData.trialEndsAt) {
           continue;
