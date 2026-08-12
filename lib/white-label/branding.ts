@@ -34,6 +34,9 @@ export type TenantBrandingSettings = {
     fromEmail: string;
     emailFooter: string;
     status: 'pending' | 'verified';
+    /** MAIL-1: proof the tenant controls the domain. This is what `status` reflects. */
+    domainOwned: boolean;
+    /** Deliverability signals. Advisory — never evidence of ownership. */
     spfValid: boolean;
     dkimValid: boolean;
     verifiedAt: string | null;
@@ -60,6 +63,7 @@ const DEFAULT_BRANDING: TenantBrandingSettings = {
     fromEmail: '',
     emailFooter: 'Thanks,\nBIZOSTO ERP Team',
     status: 'pending',
+    domainOwned: false,
     spfValid: false,
     dkimValid: false,
     verifiedAt: null,
@@ -192,7 +196,27 @@ export async function verifyCustomDomain(domain: string, verificationToken: stri
   };
 }
 
-export async function verifyEmailSender(fromEmail: string) {
+/**
+ * MAIL-1: verifying a sender address means proving the tenant controls its domain.
+ *
+ * This used to return `verified: spfValid && dkimValid` — an SPF record exists on the
+ * domain, and something answers at `default._domainkey`. Neither fact says anything about
+ * the tenant. Every domain on Google Workspace or Microsoft 365 publishes SPF, and
+ * `default` is the stock DKIM selector, so a tenant could type `billing@some-other-
+ * company.com`, click Verify, and be told the address was verified. The check proved that
+ * SOMEBODY had configured mail for that domain — not that this tenant had, and not that
+ * Bizosto was authorised to send as it.
+ *
+ * The correct pattern was already twenty lines above: verifyCustomDomain() asks for a
+ * per-tenant token in a `_bizosto-verify` TXT record, which only someone with control of
+ * the domain's DNS can publish. Sender verification now uses the same proof, with the
+ * same token derivation, so a tenant cannot claim an address on a domain it does not run.
+ *
+ * SPF and DKIM are still reported, because they genuinely matter — but as DELIVERABILITY
+ * signals, advisory information about whether mail will reach an inbox. They are no
+ * longer treated as evidence of ownership, because they are not.
+ */
+export async function verifyEmailSender(fromEmail: string, verificationToken: string) {
   const cleanEmail = String(fromEmail || '')
     .trim()
     .toLowerCase();
@@ -201,6 +225,16 @@ export async function verifyEmailSender(fromEmail: string) {
   }
 
   const domain = cleanEmail.split('@')[1];
+
+  // Ownership: the same challenge the custom-domain flow uses. Only someone who controls
+  // this domain's DNS can publish a record containing this tenant's token.
+  const recordName = `_bizosto-verify.${domain}`;
+  const ownershipRecords = await dns.resolveTxt(recordName).catch(() => [] as string[][]);
+  const flattenedOwnership = ownershipRecords.map((entry) => entry.join('').trim());
+  const expected = `bizosto-verification=${verificationToken}`;
+  const domainOwned = flattenedOwnership.includes(expected);
+
+  // Deliverability: advisory only. Useful to show a tenant, never proof of anything.
   const spfRecords = await dns.resolveTxt(domain).catch(() => [] as string[][]);
   const flattenedSpf = spfRecords.map((entry) => entry.join(''));
   const spfValid = flattenedSpf.some((record) => record.toLowerCase().startsWith('v=spf1'));
@@ -213,9 +247,15 @@ export async function verifyEmailSender(fromEmail: string) {
   );
 
   return {
+    domainOwned,
     spfValid,
     dkimValid,
-    verified: spfValid && dkimValid,
+    // Ownership alone decides this. A domain with perfect SPF and DKIM that the tenant
+    // does not control is not verified, and never was.
+    verified: domainOwned,
+    recordName,
+    expected,
+    ownershipRecords: flattenedOwnership,
     spfRecords: flattenedSpf,
     dkimRecords: flattenedDkim,
   };

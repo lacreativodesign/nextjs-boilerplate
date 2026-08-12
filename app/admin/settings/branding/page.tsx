@@ -174,8 +174,13 @@ export default function BrandingSettingsPage() {
       setError(data?.error || 'Email verification failed.');
       return;
     }
+    // MAIL-1: the message must say what actually failed. "SPF/DKIM incomplete" pointed a
+    // tenant at the wrong problem entirely — the check that matters is whether they have
+    // published the ownership record, and the record to publish is shown here.
     setSuccess(
-      data.verification.verified ? 'Email sender verified.' : 'SPF/DKIM records are incomplete.',
+      data.verification.verified
+        ? 'Sender verified — you control this domain.'
+        : `Add a TXT record at ${data.verification.recordName} with the value ${data.verification.expected}, then retry.`,
     );
     void load();
   };
