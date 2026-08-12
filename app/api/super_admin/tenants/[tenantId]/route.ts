@@ -6,6 +6,7 @@ import { requireSuperAdmin } from '../../_utils';
 import { DEFAULT_MODULES, DEFAULT_ROLES } from '@/lib/tenant/constants';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { normalizePlan, resolveTenantModules } from '@/app/lib/plan-enforcement';
+import { isCompExpired, resolveBillingMode, type CompedGrant } from '@/lib/billing/billing-mode';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,12 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
         }),
         planSetBy: data.planSetBy || null,
         planUpdatedAt: data.planUpdatedAt || null,
+        // COMP-1 UI: without these the billing-mode control has nothing to read, so the
+        // form would open on the default every time and an operator editing anything else
+        // could silently convert a comped workspace back to Stripe billing.
+        billingMode: resolveBillingMode(data.billingMode),
+        comped: (data.comped as CompedGrant | undefined) || null,
+        compExpired: isCompExpired((data.comped as CompedGrant | undefined) || null),
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       },
