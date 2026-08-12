@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../_utils';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { plans, type BillingPlanKey } from '@/lib/billing/plans';
+import { isComped } from '@/lib/billing/billing-mode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ type TenantData = {
   stripeSubscriptionId?: string | null;
   trialEndsAt?: string | null;
   status?: string;
+  billingMode?: string;
 };
 
 type PaymentTenant = {
@@ -43,6 +45,7 @@ type PaymentTenant = {
   stripeSubscriptionId: string | null;
   trialEndsAt: string | null;
   status: string;
+  billingMode: 'stripe' | 'comped';
 };
 
 function normalizePlan(value: unknown): BillingPlanKey {
@@ -137,6 +140,7 @@ export async function GET(req: NextRequest) {
     let totalLockedTenants = 0;
     let totalPayingTenants = 0;
     let unbilledActiveTenants = 0;
+    let compedTenants = 0;
 
     const tenants: PaymentTenant[] = tenantsSnap.docs
       .map((tenantDoc) => {
@@ -165,11 +169,20 @@ export async function GET(req: NextRequest) {
         // than dropped, so the number stays visible instead of silently vanishing.
         const hasStripeSubscription = Boolean(String(data.stripeSubscriptionId || '').trim());
 
+        // COMP-1: a comped workspace is a deliberate decision, not an anomaly. MRR-1
+        // correctly excluded it from revenue but lumped it in with `unbilledActiveTenants`
+        // alongside genuine problems — a tenant that should be paying and somehow is not.
+        // Counting them separately keeps that column meaningful: anything left in it is
+        // worth investigating.
+        const tenantIsComped = isComped(data);
+
         if (subscriptionState === 'active') {
           totalActiveTenants += 1;
           if (hasStripeSubscription) {
             mrr += plans[plan].price;
             totalPayingTenants += 1;
+          } else if (tenantIsComped) {
+            compedTenants += 1;
           } else {
             unbilledActiveTenants += 1;
           }
@@ -197,6 +210,7 @@ export async function GET(req: NextRequest) {
           // Per-row MRR follows the same rule as the total: an unbilled workspace
           // contributes nothing, so the column sums to the headline figure.
           mrr: hasStripeSubscription && subscriptionState === 'active' ? plans[plan].price : 0,
+          billingMode: tenantIsComped ? ('comped' as const) : ('stripe' as const),
           currentPeriodEnd: data.currentPeriodEnd || null,
           cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
           lastPaymentAt: data.lastPaymentAt || null,
@@ -233,6 +247,8 @@ export async function GET(req: NextRequest) {
         /** Active workspaces with no Stripe subscription — real usage, zero revenue. */
         totalPayingTenants,
         unbilledActiveTenants,
+        /** Deliberately free workspaces: internal, partner, promotional, support. */
+        compedTenants,
       },
       breakdown: {
         byPlan,

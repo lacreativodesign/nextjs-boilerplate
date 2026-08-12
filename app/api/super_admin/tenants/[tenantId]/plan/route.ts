@@ -11,6 +11,12 @@ import {
   resolveTenantModules,
 } from '@/app/lib/plan-enforcement';
 import { createRoleNotifications } from '@/lib/notifications';
+import {
+  isComped,
+  resolveBillingMode,
+  validateCompedGrant,
+  type BillingMode,
+} from '@/lib/billing/billing-mode';
 
 type ModuleMap = Record<string, boolean>;
 
@@ -57,8 +63,9 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     const body = await req.json().catch(() => ({}));
     const planProvided = body?.plan !== undefined;
     const modulesProvided = body?.modules !== undefined;
+    const billingModeProvided = body?.billingMode !== undefined;
 
-    if (!planProvided && !modulesProvided) {
+    if (!planProvided && !modulesProvided && !billingModeProvided) {
       return NextResponse.json({ ok: false, error: 'No plan updates provided.' }, { status: 400 });
     }
 
@@ -90,6 +97,32 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
       updatedBy: user.uid,
     };
 
+    // COMP-1: who pays is set here, alongside what they get, because the two decisions
+    // are made together — "Enterprise, internally managed" is one thought, not two.
+    // `plan` stays the answer to what the workspace can do; `billingMode` answers who
+    // pays for it. Neither field has to lie about the other.
+    const currentBillingMode = resolveBillingMode(data.billingMode);
+    let nextBillingMode: BillingMode = currentBillingMode;
+
+    if (billingModeProvided) {
+      nextBillingMode = resolveBillingMode(body?.billingMode);
+
+      if (nextBillingMode === 'comped') {
+        const grant = validateCompedGrant(body?.comped, user.uid);
+        if (!grant.ok) {
+          return NextResponse.json({ ok: false, error: grant.error }, { status: 400 });
+        }
+        updates.billingMode = 'comped';
+        updates.comped = grant.grant;
+      } else {
+        // Converting back to Stripe billing clears the grant but keeps the history: the
+        // audit record below carries the comp that was revoked, so the period a workspace
+        // paid nothing stays answerable.
+        updates.billingMode = 'stripe';
+        updates.comped = admin.firestore.FieldValue.delete();
+      }
+    }
+
     await tenantRef.set(updates, { merge: true });
 
     // S9: entitlement just changed, so drop this instance's cached plan rather than
@@ -111,6 +144,12 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
         oldModules: currentModules,
         newModules: nextModules,
         actorRole: user.role,
+        // Forgoing revenue is a commercial decision; it is recorded with a reason and an
+        // actor so it stays answerable long after whoever made it has moved on.
+        oldBillingMode: currentBillingMode,
+        newBillingMode: nextBillingMode,
+        oldComped: isComped(data) ? data.comped || null : null,
+        newComped: nextBillingMode === 'comped' ? updates.comped || data.comped || null : null,
       },
     });
 
@@ -172,7 +211,12 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
       ]);
     }
 
-    return NextResponse.json({ ok: true, plan: nextPlan, modules: nextModules });
+    return NextResponse.json({
+      ok: true,
+      plan: nextPlan,
+      modules: nextModules,
+      billingMode: nextBillingMode,
+    });
   } catch (err: any) {
     const message = err?.message || 'Server error';
     const status = message === 'Forbidden' ? 403 : 500;

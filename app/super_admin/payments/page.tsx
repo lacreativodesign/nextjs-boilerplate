@@ -9,6 +9,7 @@ type Metrics = {
   mrr: number;
   totalPayingTenants: number;
   unbilledActiveTenants: number;
+  compedTenants: number;
   platformFeeRevenue: number;
   taxCollectedThisMonth: number;
   totalActiveTenants: number;
@@ -281,10 +282,18 @@ export default function PaymentTerminalPage() {
             color: 'var(--erp-blue)',
           },
           {
+            // COMP-1: anything left here is a genuine anomaly worth investigating —
+            // deliberately free workspaces are counted separately below.
             label: 'Unbilled Active',
             value: data?.metrics.unbilledActiveTenants || 0,
             sub: 'Active, no subscription',
             color: 'var(--warning-strong)',
+          },
+          {
+            label: 'Comped',
+            value: data?.metrics.compedTenants || 0,
+            sub: 'Internally managed, $0',
+            color: 'var(--color-purple)',
           },
           {
             label: 'Trial Tenants',

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { isComped } from '@/lib/billing/billing-mode';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import { getStripePriceId } from '@/lib/billing/stripe-prices';
 
@@ -122,6 +123,24 @@ export async function POST(req: Request) {
     // (billingStatus 'canceled'); trial conversion has no subscription yet so it passes.
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantSnap.data() || {};
+
+    // COMP-1: a comped workspace has no external payment relationship, so opening a
+    // Checkout session for one would start charging a customer Bizosto has decided not to
+    // charge — and would then contradict its own billingMode the moment the webhook
+    // landed. Converting to paid billing is a Super Admin decision made on the tenant,
+    // not something an admin can trigger by finding the upgrade button.
+    if (isComped(tenantData)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'This workspace is managed by Bizosto and is not billed through Stripe. Contact support to change your billing arrangement.',
+          code: 'billing_comped',
+        },
+        { status: 409 },
+      );
+    }
+
     const existingSubscriptionId = String(tenantData.stripeSubscriptionId || '').trim();
     const billingStatus = String(tenantData.billingStatus || '').toLowerCase();
     if (existingSubscriptionId && billingStatus !== 'canceled') {
