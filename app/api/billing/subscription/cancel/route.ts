@@ -5,6 +5,7 @@ import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import { applySubscriptionState } from '@/lib/billing/apply-subscription-state';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
+import { isComped } from '@/lib/billing/billing-mode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,22 @@ export async function POST() {
     }
 
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+
+    // COMP-3: a comped workspace is not billed through Stripe, so there is no subscription
+    // for a tenant admin to cancel or change here. A workspace converted from paying keeps
+    // its stripeSubscriptionId, which is exactly the case this catches.
+    if (isComped(tenantSnap.data())) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'This workspace is managed by Bizosto and is not billed through Stripe. Contact support to change your billing arrangement.',
+          code: 'billing_comped',
+        },
+        { status: 409 },
+      );
+    }
+
     const subscriptionId = String(tenantSnap.data()?.stripeSubscriptionId || '').trim();
     if (!subscriptionId) {
       return NextResponse.json(

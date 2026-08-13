@@ -125,6 +125,33 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
         if (!grant.ok) {
           return NextResponse.json({ ok: false, error: grant.error }, { status: 400 });
         }
+
+        // COMP-3: comping a workspace does not stop Stripe charging it.
+        //
+        // COMP-1 promises that a comped workspace is never charged, and for a workspace
+        // that never had a subscription that is true. Converting an EXISTING paying
+        // customer is different: this endpoint sets billingMode and nothing else, so the
+        // Stripe subscription stays live and the customer's card keeps being charged every
+        // month while the tenant screen reads "Comped — $0". The revenue report compounds
+        // it — MRR counts any tenant holding a subscription id as paying, so the workspace
+        // does not even appear in the comped column.
+        //
+        // Cancelling the subscription from here would hide a money-moving action behind a
+        // plan edit, which is worse. The operator is told to cancel it first, deliberately
+        // and where cancellation is visible, and then mark the workspace comped.
+        const liveSubscriptionId = String(data.stripeSubscriptionId || '').trim();
+        if (liveSubscriptionId) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                'This workspace still has an active Stripe subscription. Cancel it in Stripe first — marking it comped here would not stop the charges.',
+              code: 'comp_blocked_active_subscription',
+            },
+            { status: 409 },
+          );
+        }
+
         updates.billingMode = 'comped';
         updates.comped = grant.grant;
       } else {
