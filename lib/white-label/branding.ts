@@ -99,12 +99,33 @@ export async function updateTenantBranding(
   updatedBy: string,
 ) {
   const current = await getTenantBranding(tenantId);
+
+  // MAIL-2: changing the sender identity resets its verification.
+  //
+  // This spread the incoming emailBranding over the current one, which carried `status`,
+  // `domainOwned` and `verifiedAt` across a change of address. So a tenant could verify
+  // hello@their-own-domain.com, publishing the ownership record MAIL-1 requires, then edit
+  // the address to billing@some-other-company.com and keep the verified badge — and with
+  // it every downstream check that trusts the badge. Proof of control over one domain is
+  // not proof of control over another.
+  const nextFromEmail = String(input.emailBranding?.fromEmail ?? current.emailBranding.fromEmail)
+    .trim()
+    .toLowerCase();
+  const senderChanged =
+    nextFromEmail !==
+    String(current.emailBranding.fromEmail || '')
+      .trim()
+      .toLowerCase();
+
   const next: TenantBrandingSettings = {
     ...current,
     ...input,
     emailBranding: {
       ...current.emailBranding,
       ...(input.emailBranding || {}),
+      ...(senderChanged
+        ? { status: 'pending' as const, domainOwned: false, verifiedAt: null }
+        : {}),
     },
     customDomains: Array.isArray(input.customDomains) ? input.customDomains : current.customDomains,
     updatedAt: new Date().toISOString(),
