@@ -57,13 +57,43 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const branding = await getTenantBranding(tenantId);
     const brandedHtml = buildEmailBrandingTemplate({ branding, html: rendered.renderedHtml });
 
+    // MAIL-2: an unverified sender is never handed to the provider.
+    //
+    // This passed `emailBranding.fromEmail` straight into sendEmail() with no check on its
+    // status, and the branding endpoint accepts any well-formed address — it validates
+    // z.string().email() and nothing more. So a tenant admin could type
+    // billing@some-other-company.com, click send, and Bizosto's own Resend account would
+    // deliver mail claiming to be from it. MAIL-1 made the `verified` flag mean something;
+    // this is the check that makes it matter.
+    //
+    // Refusing rather than quietly sending from the Bizosto address: a tenant asked to
+    // send AS THEMSELVES, and silently substituting a different sender would misrepresent
+    // the message to its recipient and hide the problem from the tenant. The error names
+    // the fix.
+    const senderVerified =
+      branding.emailBranding.status === 'verified' && branding.emailBranding.domainOwned;
+
+    if (branding.emailBranding.fromEmail && !senderVerified) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Your sender address is not verified yet. Verify it under Settings → Branding, then send again.',
+          code: 'sender_unverified',
+        },
+        { status: 409 },
+      );
+    }
+
     await sendEmail({
       to: parsed.data.to,
       subject: rendered.renderedSubject,
       html: brandedHtml,
       text: rendered.renderedText,
-      fromName: branding.emailBranding.fromName || undefined,
-      fromEmail: branding.emailBranding.fromEmail || undefined,
+      // Only a verified identity reaches the provider. With none set, sendEmail falls back
+      // to the platform sender, which is correct for a Bizosto-operated test send.
+      fromName: senderVerified ? branding.emailBranding.fromName || undefined : undefined,
+      fromEmail: senderVerified ? branding.emailBranding.fromEmail || undefined : undefined,
     });
 
     await adminDb.collection('email_template_usage').add({
