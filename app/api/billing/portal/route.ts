@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { isComped } from '@/lib/billing/billing-mode';
 import { getAppUrl } from '@/lib/urls';
 
 export const runtime = 'nodejs';
@@ -21,6 +22,22 @@ export async function POST() {
 
     const snap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenant = snap.data();
+
+    // COMP-3: a comped workspace has no billing relationship to manage. A tenant that was
+    // converted from paying keeps its stripeCustomerId, so without this the Stripe portal
+    // still opens and an admin can change payment details or cancel a subscription that
+    // Bizosto is no longer treating as billable.
+    if (isComped(tenant)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'This workspace is managed by Bizosto and is not billed through Stripe. Contact support to change your billing arrangement.',
+          code: 'billing_comped',
+        },
+        { status: 409 },
+      );
+    }
 
     if (!tenant?.stripeCustomerId) {
       return NextResponse.json(

@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripePriceIdForCycle, getSubscriptionBillingCycle } from '@/lib/billing/stripe-prices';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { isComped } from '@/lib/billing/billing-mode';
 import {
   applySubscriptionState,
   clearPendingDowngrade,
@@ -42,6 +43,22 @@ async function handlePlanChange(req: Request) {
 
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantSnap.data() || {};
+
+    // COMP-3: a comped workspace is not billed through Stripe, so there is no subscription
+    // for a tenant admin to cancel or change here. A workspace converted from paying keeps
+    // its stripeSubscriptionId, which is exactly the case this catches.
+    if (isComped(tenantData)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'This workspace is managed by Bizosto and is not billed through Stripe. Contact support to change your billing arrangement.',
+          code: 'billing_comped',
+        },
+        { status: 409 },
+      );
+    }
+
     const subscriptionId = String(tenantData.stripeSubscriptionId || '').trim();
     const currentPlan = String(tenantData.plan || '')
       .trim()
