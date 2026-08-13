@@ -34,10 +34,15 @@ const active = (rel: string) =>
 
 const AUTH_MODULE = 'lib/ingest/auth.ts';
 
-/** Every route that authenticates an inbound ingest request. */
+/**
+ * Every route that authenticates an inbound ingest request.
+ *
+ * INGEST-2 retired /api/ingest/lead (singular). It authenticates nothing now — it answers
+ * 410 and names the canonical endpoint — so it is deliberately absent here rather than
+ * asserted against. __tests__/api/ingest-lead-sunset.test.ts covers it instead.
+ */
 const INGEST_ROUTES = [
   'app/api/ingest/leads/route.ts',
-  'app/api/ingest/lead/route.ts',
   'app/api/ingest/briefs/route.ts',
   'app/api/ingest/orders/route.ts',
 ];
