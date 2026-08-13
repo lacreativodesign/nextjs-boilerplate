@@ -35,7 +35,13 @@ const active = (rel: string) =>
 
 const MIDDLEWARE = 'middleware.ts';
 
-/** Every route under /api/ingest. Each must authenticate itself. */
+/**
+ * Routes retired by INGEST-2. They answer 410 and authenticate nothing, so the
+ * "authenticates the caller" assertion below must not apply to them.
+ */
+const SUNSET_ROUTES = ['app/api/ingest/lead/route.ts'];
+
+/** Every live route under /api/ingest. Each must authenticate itself. */
 function ingestRoutes(): string[] {
   const out: string[] = [];
   const walk = (dir: string) => {
@@ -46,7 +52,7 @@ function ingestRoutes(): string[] {
     }
   };
   walk(path.join(ROOT, 'app', 'api', 'ingest'));
-  return out.sort();
+  return out.filter((rel) => !SUNSET_ROUTES.includes(rel)).sort();
 }
 
 /** The body of isSensitiveApiPath, which decides who faces the platform-key gate. */
@@ -82,7 +88,7 @@ describe('INGEST-1: what protects ingest instead', () => {
   const routes = ingestRoutes();
 
   it('finds the ingest routes, so a rename cannot empty this suite', () => {
-    expect(routes.length).toBeGreaterThanOrEqual(4);
+    expect(routes.length).toBeGreaterThanOrEqual(3);
     expect(routes).toContain('app/api/ingest/leads/route.ts');
   });
 
