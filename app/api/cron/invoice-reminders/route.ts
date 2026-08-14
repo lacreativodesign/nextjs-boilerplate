@@ -1,8 +1,7 @@
 import admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { sendEmail } from '@/lib/email/email-service';
-import { resolveTenantSender } from '@/lib/email/tenant-sender';
+import { enqueueTenantEmail } from '@/lib/email/outbox';
 import { mutateFinanceInTransaction } from '@/lib/finance/ledger';
 import {
   REMINDABLE_STATUSES,
@@ -353,9 +352,16 @@ async function sendReminderEmail(params: {
   //     is honest about which service sent it.
   // MAIL-4: the same decision now serves every customer-facing send site, so the three
   // copies of it cannot drift apart.
-  await sendEmail({
+  // MAIL-5: queued rather than sent inline. A throw used to leave `lastReminderSent`
+  // unwritten so the next daily run tried again — a retry with a 24-hour interval, no
+  // attempt limit and no record of why it failed. The outbox retries in minutes, bounds
+  // the attempts, and keeps the reason where an operator can read it.
+  await enqueueTenantEmail({
+    tenantId: invoice.tenantId,
+    tenant,
+    messageClass: `invoice.reminder.${reminderType}`,
+    entityId: invoice.id,
     to: client.email,
-    ...resolveTenantSender(tenant),
     subject: subjects[reminderType],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827;">

@@ -1,5 +1,5 @@
 {
-  "_comment": "Firestore Composite Indexes — Total: 154 indexes. Deploy with: firebase deploy --only firestore:indexes. Note: indexes take 1-5 minutes to build after deployment.",
+  "_comment": "Firestore Composite Indexes — Total: 155 indexes. Deploy with: firebase deploy --only firestore:indexes. Note: indexes take 1-5 minutes to build after deployment.",
   "indexes": [
     {
       "collectionGroup": "users",
@@ -2973,6 +2973,14 @@
       "fields": [
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "email_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "nextAttemptAt", "order": "ASCENDING" }
       ]
     }
   ],

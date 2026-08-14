@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { invoiceEmailHtml, invoiceEmailSubject } from '@/lib/email/html-templates';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { sendEmail } from '@/lib/email/email-service';
-import { resolveTenantSender, type TenantSenderSource } from '@/lib/email/tenant-sender';
+import { enqueueTenantEmail } from '@/lib/email/outbox';
+import { type TenantSenderSource } from '@/lib/email/tenant-sender';
 import { invoicePaymentUrl } from '@/lib/urls';
 
 export const runtime = 'nodejs';
@@ -142,7 +142,12 @@ async function generateRecurringInvoices() {
         const clientEmail = await resolveClientEmail(tenantId, template);
 
         if (clientEmail) {
-          await sendInvoiceEmail(invoice, clientEmail, tenantDoc.data() as TenantSenderSource);
+          await sendInvoiceEmail(
+            invoice,
+            clientEmail,
+            tenantId,
+            tenantDoc.data() as TenantSenderSource,
+          );
         } else {
           console.warn(
             `[EMAIL] Client email missing for tenant=${tenantId}, template=${templateId}`,
@@ -310,6 +315,7 @@ async function resolveClientEmail(
 async function sendInvoiceEmail(
   invoice: GeneratedInvoice,
   clientEmail: string,
+  tenantId: string,
   tenant: TenantSenderSource,
 ) {
   const invoiceData = {
@@ -328,16 +334,23 @@ async function sendInvoiceEmail(
 
   try {
     // MAIL-4: an invoice is the TENANT billing its own customer, and it is the first
-    // message that customer receives about the money owed. Sending it as
-    // `Bizosto <invoices@bizosto.com>` meant a company the recipient has never heard of
-    // asking them to pay an invoice issued by a company they have — which reads as fraud,
-    // discloses the tenant's supplier, and sent any reply to an inbox the tenant cannot
-    // read. MAIL-3 fixed the reminder; this is the invoice the reminder is chasing.
-    await sendEmail({
+    // message that customer receives about the money owed, so it is addressed as the
+    // tenant rather than as Bizosto.
+    //
+    // MAIL-5: and it goes through the outbox, because this is the send with the worst
+    // failure mode in the product. The invoice is already created and owed; if the
+    // provider is down for the minute this job runs, the old code logged a line and moved
+    // on — the customer never received the bill, nothing retried, and the finance screen
+    // showed an invoice sent. A brief outage at 01:00 on the first of the month silently
+    // un-billed a month of recurring revenue for every tenant at once.
+    await enqueueTenantEmail({
+      tenantId,
       to: clientEmail,
-      ...resolveTenantSender(tenant),
       subject: invoiceEmailSubject(invoiceData),
       html: invoiceEmailHtml(invoiceData),
+      messageClass: 'invoice.issued',
+      entityId: invoice.id,
+      tenant,
     });
 
     // S23: never log the recipient's email address. invoice.id is a non-PII identifier

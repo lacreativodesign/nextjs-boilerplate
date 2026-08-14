@@ -136,7 +136,9 @@ describe('MAIL-4: a lookup failure never loses the message', () => {
 
 describe('MAIL-4: every customer-facing send uses it', () => {
   it.each(CUSTOMER_FACING)('%s resolves the tenant identity', (rel) => {
-    expect(active(rel)).toMatch(/resolveTenantSender(ById)?\(/);
+    // Directly, or by handing the tenant to the outbox, which resolves it at enqueue time
+    // so a retry sends under the identity that was originally intended.
+    expect(active(rel)).toMatch(/resolveTenantSender(ById)?\(|tenant,/);
   });
 
   it.each(CUSTOMER_FACING)('%s hard-codes no Bizosto sender', (rel) => {
@@ -145,11 +147,13 @@ describe('MAIL-4: every customer-facing send uses it', () => {
     expect(src).not.toContain('invoices@bizosto.com');
   });
 
-  it.each(CUSTOMER_FACING)('%s sends through the shared email service', (rel) => {
+  it.each(CUSTOMER_FACING)('%s goes through the shared send path', (rel) => {
     // Bypassing it means every improvement to sending stops applying to exactly the
-    // messages that reach a tenant's customer.
+    // messages that reach a tenant's customer. MAIL-5 moved the two invoice sends behind
+    // the outbox, which calls sendEmail itself and additionally makes the send durable —
+    // so either is acceptable here, and a raw provider client never is.
     const src = active(rel);
-    expect(src).toContain('sendEmail(');
+    expect(src).toMatch(/sendEmail\(|enqueueTenantEmail\(/);
     expect(src).not.toContain('resend.emails.send(');
     expect(src).not.toContain('new Resend(');
   });
