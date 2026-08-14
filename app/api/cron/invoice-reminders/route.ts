@@ -2,6 +2,7 @@ import admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendEmail } from '@/lib/email/email-service';
+import { resolveTenantSender } from '@/lib/email/tenant-sender';
 import { mutateFinanceInTransaction } from '@/lib/finance/ledger';
 import {
   REMINDABLE_STATUSES,
@@ -350,16 +351,11 @@ async function sendReminderEmail(params: {
   //     the right company. This claims no domain the tenant has not proven, so it is not
   //     the silent Bizosto-sender fallback MAIL-2 forbids — the identity on the envelope
   //     is honest about which service sent it.
-  const branding = tenant.whiteLabel?.emailBranding;
-  const senderVerified = branding?.status === 'verified' && branding?.domainOwned === true;
-  const tenantReplyTo = String(branding?.fromEmail || '').trim();
-
+  // MAIL-4: the same decision now serves every customer-facing send site, so the three
+  // copies of it cannot drift apart.
   await sendEmail({
     to: client.email,
-    ...(senderVerified
-      ? { fromEmail: tenantReplyTo, fromName: branding?.fromName || tenant.name || undefined }
-      : { fromName: tenant.name || undefined }),
-    ...(tenantReplyTo ? { replyTo: tenantReplyTo } : {}),
+    ...resolveTenantSender(tenant),
     subject: subjects[reminderType],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827;">

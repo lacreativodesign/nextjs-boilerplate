@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoiceEmailHtml, invoiceEmailSubject } from '@/lib/email/html-templates';
 import admin from 'firebase-admin';
-import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { sendEmail } from '@/lib/email/email-service';
+import { resolveTenantSender, type TenantSenderSource } from '@/lib/email/tenant-sender';
 import { invoicePaymentUrl } from '@/lib/urls';
 
 export const runtime = 'nodejs';
@@ -30,8 +31,6 @@ type GeneratedInvoice = {
 };
 
 const CRON_SECRET = process.env.CRON_SECRET;
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,7 +142,7 @@ async function generateRecurringInvoices() {
         const clientEmail = await resolveClientEmail(tenantId, template);
 
         if (clientEmail) {
-          await sendInvoiceEmail(invoice, clientEmail);
+          await sendInvoiceEmail(invoice, clientEmail, tenantDoc.data() as TenantSenderSource);
         } else {
           console.warn(
             `[EMAIL] Client email missing for tenant=${tenantId}, template=${templateId}`,
@@ -308,12 +307,11 @@ async function resolveClientEmail(
   return typeof email === 'string' && email.length > 0 ? email : null;
 }
 
-async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) {
-  if (!resend) {
-    console.warn('[EMAIL] RESEND_API_KEY is not configured. Skipping invoice email.');
-    return;
-  }
-
+async function sendInvoiceEmail(
+  invoice: GeneratedInvoice,
+  clientEmail: string,
+  tenant: TenantSenderSource,
+) {
   const invoiceData = {
     clientName: clientEmail,
     invoiceNumber: invoice.invoiceNumber,
@@ -329,9 +327,15 @@ async function sendInvoiceEmail(invoice: GeneratedInvoice, clientEmail: string) 
   };
 
   try {
-    await resend.emails.send({
-      from: 'Bizosto <invoices@bizosto.com>',
+    // MAIL-4: an invoice is the TENANT billing its own customer, and it is the first
+    // message that customer receives about the money owed. Sending it as
+    // `Bizosto <invoices@bizosto.com>` meant a company the recipient has never heard of
+    // asking them to pay an invoice issued by a company they have — which reads as fraud,
+    // discloses the tenant's supplier, and sent any reply to an inbox the tenant cannot
+    // read. MAIL-3 fixed the reminder; this is the invoice the reminder is chasing.
+    await sendEmail({
       to: clientEmail,
+      ...resolveTenantSender(tenant),
       subject: invoiceEmailSubject(invoiceData),
       html: invoiceEmailHtml(invoiceData),
     });
