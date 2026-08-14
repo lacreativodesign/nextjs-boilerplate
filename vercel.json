@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/cron/email-outbox",
-      "schedule": "*/15 * * * *"
+      "schedule": "30 9 * * *"
     }
   ]
 }

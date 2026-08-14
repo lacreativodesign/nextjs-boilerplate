@@ -151,7 +151,12 @@ describe('MAIL-5: the worker exists and is scheduled', () => {
     };
     const cron = cfg.crons.find((c) => c.path === '/api/cron/email-outbox');
     expect(cron).toBeDefined();
-    expect(cron?.schedule).toBe('*/15 * * * *');
+    // Vercel Hobby rejects anything more frequent than daily at deployment time, so a
+    // sub-daily schedule here does not merely run less often — it stops the build.
+    // 09:30 is thirty minutes after /api/cron/invoice-reminders, so a failed reminder
+    // gets a same-day retry instead of waiting until tomorrow.
+    expect(cron?.schedule).toBe('30 9 * * *');
+    expect(cron?.schedule).not.toMatch(/^\*\//);
   });
 
   it('bounds a single run, so one bad batch cannot starve the rest', () => {
