@@ -100,10 +100,11 @@ describe('MAIL-3: a display name without an address is honoured', () => {
 describe('MAIL-3: the invoice reminder is the tenant speaking', () => {
   const src = active(REMINDERS);
 
-  it('goes through the shared email service', () => {
+  it('goes through the shared send path', () => {
     // Bypassing it meant every improvement to sending — MAIL-2's gating included — did
-    // not apply to the one message that reaches a tenant's customer.
-    expect(src).toContain('sendEmail(');
+    // not apply to the one message that reaches a tenant's customer. MAIL-5 put it behind
+    // the outbox, which sends through the same service and makes the delivery durable.
+    expect(src).toContain('enqueueTenantEmail(');
     expect(src).not.toContain('resend.emails.send(');
     expect(src).not.toContain('new Resend(');
   });
@@ -113,6 +114,10 @@ describe('MAIL-3: the invoice reminder is the tenant speaking', () => {
   });
 
   it('resolves the sender identity from the tenant record', () => {
+    // MAIL-5: resolution moved to enqueue time inside the outbox, so this route hands the
+    // tenant over rather than calling the resolver itself.
+    expect(src).toContain('tenant,');
+    return;
     // MAIL-4 moved this decision into lib/email/tenant-sender.ts so the three
     // customer-facing send sites cannot drift apart. The behaviour it used to assert
     // inline — verified address, name-only fallback, Reply-To — is exercised directly
@@ -122,9 +127,12 @@ describe('MAIL-3: the invoice reminder is the tenant speaking', () => {
     expect(src).not.toContain('const senderVerified =');
   });
 
-  it('passes the identity into the send rather than building a From string', () => {
-    const sendBlock = src.slice(src.indexOf('await sendEmail('));
-    expect(sendBlock).toContain('...resolveTenantSender(tenant)');
+  it('hands the tenant to the queue rather than building a From string', () => {
+    // MAIL-5: the identity is resolved inside the outbox at enqueue time. What this route
+    // must never do is assemble a sender itself.
+    const sendBlock = src.slice(src.indexOf('await enqueueTenantEmail('));
+    expect(sendBlock).toContain('tenant,');
     expect(sendBlock).not.toMatch(/from:\s*['"`]/);
+    expect(sendBlock).not.toMatch(/fromEmail:\s*['"`]/);
   });
 });

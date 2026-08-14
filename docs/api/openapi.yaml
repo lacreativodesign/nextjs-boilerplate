@@ -3662,6 +3662,18 @@ paths:
           description: Unauthorized or invalid session.
         '403':
           description: Forbidden for current tenant or role.
+  /api/cron/email-outbox:
+    get:
+      summary: GET /api/cron/email-outbox
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
   /api/cron/generate-invoices:
     get:
       summary: GET /api/cron/generate-invoices
