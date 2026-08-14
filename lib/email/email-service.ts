@@ -25,6 +25,18 @@ type EmailParams = {
   text?: string;
   fromEmail?: string;
   fromName?: string;
+  /**
+   * MAIL-3: where a reply should go.
+   *
+   * Declared but never sent — every provider call omitted it, so a recipient hitting Reply
+   * landed on whatever `from` happened to be. For tenant-to-customer mail that meant
+   * replies to an invoice reminder went to a Bizosto inbox the tenant cannot read.
+   *
+   * Reply-To does not assert an identity the way `from` does: it routes replies and makes
+   * no claim about who sent the message. That is why it can carry a tenant's own address
+   * before their sending domain is verified, while `from` cannot (MAIL-2).
+   */
+  replyTo?: string;
 };
 
 function hasResendConfig() {
@@ -39,16 +51,43 @@ function hasSesConfig() {
   return Boolean(SES_ACCESS_KEY_ID && SES_SECRET_ACCESS_KEY && SES_REGION && SES_FROM_EMAIL);
 }
 
+/**
+ * MAIL-3: the bare address inside a configured sender.
+ *
+ * ONBOARDING_FROM_EMAIL is stored display-name form — `Bizosto <hello@bizosto.com>` — so
+ * anything that needs the address alone has to pull it out of the angle brackets.
+ */
+function addressOf(configured: string) {
+  const match = configured.match(/<([^>]+)>/);
+  return (match ? match[1] : configured).trim();
+}
+
+/**
+ * MAIL-3: composes the From header.
+ *
+ * A display name WITHOUT an address used to be dropped on the floor — the old expression
+ * only honoured `fromName` when `fromEmail` was also set, and otherwise fell straight back
+ * to the platform sender. That is exactly the case that matters for tenant-to-customer
+ * mail whose domain is not verified yet: the message must go out from the platform address
+ * (the only domain Bizosto may send from) while showing the TENANT's name, so the
+ * recipient knows who is writing to them. Claiming a name is not claiming a domain.
+ */
+function composeFrom(params: EmailParams, configuredFrom: string) {
+  if (params.fromEmail) {
+    return params.fromName ? `${params.fromName} <${params.fromEmail}>` : params.fromEmail;
+  }
+  if (params.fromName) {
+    return `${params.fromName} <${addressOf(configuredFrom)}>`;
+  }
+  return configuredFrom;
+}
+
 async function sendWithResend(params: EmailParams) {
   if (!RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured.');
   }
   const resend = new Resend(RESEND_API_KEY);
-  const from = params.fromEmail
-    ? params.fromName
-      ? `${params.fromName} <${params.fromEmail}>`
-      : params.fromEmail
-    : RESEND_FROM;
+  const from = composeFrom(params, RESEND_FROM);
 
   const { error } = await resend.emails.send({
     from,
@@ -56,6 +95,7 @@ async function sendWithResend(params: EmailParams) {
     subject: params.subject,
     html: params.html,
     text: params.text,
+    ...(params.replyTo ? { replyTo: params.replyTo } : {}),
   });
 
   if (error) {
@@ -74,6 +114,7 @@ async function sendWithSendGrid(params: EmailParams) {
     body: JSON.stringify({
       personalizations: [{ to: [{ email: params.to }] }],
       from: { email: fromEmail, name: params.fromName || SENDGRID_FROM_NAME || undefined },
+      ...(params.replyTo ? { reply_to: { email: params.replyTo } } : {}),
       subject: params.subject,
       content: [
         { type: 'text/plain', value: params.text || params.html.replace(/<[^>]*>/g, '') },
@@ -137,11 +178,14 @@ async function sendWithSes(params: EmailParams) {
   if (!hasSesConfig()) throw new Error('SES is not configured.');
   const fromEmail = params.fromEmail || SES_FROM_EMAIL;
   if (!fromEmail) throw new Error('SES from email is not configured.');
+  // MAIL-3: SES takes the display name inline in the same header.
+  const fromHeader = params.fromName ? `${params.fromName} <${fromEmail}>` : fromEmail;
   const host = `email.${SES_REGION}.amazonaws.com`;
   const path = '/v2/email/outbound-emails';
   const payload = {
-    FromEmailAddress: fromEmail,
+    FromEmailAddress: fromHeader,
     Destination: { ToAddresses: [params.to] },
+    ...(params.replyTo ? { ReplyToAddresses: [params.replyTo] } : {}),
     Content: {
       Simple: {
         Subject: { Data: params.subject },

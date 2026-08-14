@@ -1,7 +1,7 @@
 import admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { sendEmail } from '@/lib/email/email-service';
 import { mutateFinanceInTransaction } from '@/lib/finance/ledger';
 import {
   REMINDABLE_STATUSES,
@@ -39,6 +39,14 @@ import {
 type TenantRecord = {
   name?: string;
   lateFeesSettings?: Partial<LateFeeSettings>;
+  whiteLabel?: {
+    emailBranding?: {
+      fromName?: string;
+      fromEmail?: string;
+      status?: string;
+      domainOwned?: boolean;
+    };
+  };
 };
 
 type ClientRecord = {
@@ -49,8 +57,6 @@ type ClientRecord = {
 export const runtime = 'nodejs';
 
 const CRON_SECRET = process.env.CRON_SECRET;
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 /**
  * Late fees mutate invoice totals. This code path has never successfully executed against
@@ -297,11 +303,6 @@ async function sendReminderEmail(params: {
 }): Promise<boolean> {
   const { tenant, invoice, reminderType, paymentToken, currencySymbol, clientCache } = params;
 
-  if (!resend) {
-    console.warn('[CRON] RESEND_API_KEY is missing; skipping reminder email send.');
-    return false;
-  }
-
   const client = await loadClient(invoice.tenantId, invoice.clientId, clientCache);
   if (!client?.email) return false;
 
@@ -332,9 +333,33 @@ async function sendReminderEmail(params: {
     ? `${APP_URL}/pay/${invoice.id}?token=${encodeURIComponent(paymentToken)}`
     : `${APP_URL}/pay/${invoice.id}`;
 
-  await resend.emails.send({
-    from: 'Bizosto <invoices@bizosto.com>',
+  // MAIL-3: this is the TENANT's message to the TENANT's customer.
+  //
+  // It went out hard-coded as `Bizosto <invoices@bizosto.com>`, straight through the raw
+  // Resend client, bypassing sendEmail() entirely. So a client of Website Design Dogs
+  // received a payment chase from a company they have never heard of, about an invoice
+  // issued by a company they have. That reads as a phishing attempt, it discloses the
+  // tenant's supplier — which Enterprise customers pay for white-label precisely to
+  // avoid — and any reply landed in a Bizosto inbox the tenant cannot read.
+  //
+  // Resolution, in order:
+  //   - A verified tenant sender (MAIL-1/MAIL-2) is used as-is. Full white-label.
+  //   - Otherwise the platform ADDRESS is kept, because it is the only domain Bizosto is
+  //     authorised to send from, but the tenant's NAME is the display name and Reply-To
+  //     points at the tenant. The recipient sees who is chasing them and a reply reaches
+  //     the right company. This claims no domain the tenant has not proven, so it is not
+  //     the silent Bizosto-sender fallback MAIL-2 forbids — the identity on the envelope
+  //     is honest about which service sent it.
+  const branding = tenant.whiteLabel?.emailBranding;
+  const senderVerified = branding?.status === 'verified' && branding?.domainOwned === true;
+  const tenantReplyTo = String(branding?.fromEmail || '').trim();
+
+  await sendEmail({
     to: client.email,
+    ...(senderVerified
+      ? { fromEmail: tenantReplyTo, fromName: branding?.fromName || tenant.name || undefined }
+      : { fromName: tenant.name || undefined }),
+    ...(tenantReplyTo ? { replyTo: tenantReplyTo } : {}),
     subject: subjects[reminderType],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827;">
