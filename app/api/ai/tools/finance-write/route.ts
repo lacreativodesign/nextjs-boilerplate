@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { sendEmail } from '@/lib/email/email-service';
+import { resolveTenantSenderById } from '@/lib/email/tenant-sender';
 import type { ProposedAction } from '@/lib/ai/finance-agent';
 
 export const dynamic = 'force-dynamic';
@@ -167,8 +168,12 @@ export async function POST(req: NextRequest) {
       const rawCustomMessage = String(input?.message || proposedAction.input.message || '').trim();
       const customMessage = rawCustomMessage ? escapeHtml(rawCustomMessage) : '';
 
+      // MAIL-4: the AI agent's payment reminder goes to the TENANT's customer, so it is
+      // addressed as the tenant rather than as Bizosto — same rule as the cron reminder
+      // and the invoice itself.
       await sendEmail({
         to: clientEmail,
+        ...(await resolveTenantSenderById(user.tenantId)),
         subject: `Payment Reminder — ${orderId}`,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">

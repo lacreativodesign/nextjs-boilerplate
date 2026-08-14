@@ -112,24 +112,19 @@ describe('MAIL-3: the invoice reminder is the tenant speaking', () => {
     expect(src).not.toContain("from: 'Bizosto <invoices@bizosto.com>'");
   });
 
-  it('uses a verified tenant sender when there is one', () => {
-    expect(src).toContain('senderVerified');
-    expect(src).toContain("branding?.status === 'verified'");
-    expect(src).toContain('branding?.domainOwned === true');
+  it('resolves the sender identity from the tenant record', () => {
+    // MAIL-4 moved this decision into lib/email/tenant-sender.ts so the three
+    // customer-facing send sites cannot drift apart. The behaviour it used to assert
+    // inline — verified address, name-only fallback, Reply-To — is exercised directly
+    // against the helper in __tests__/api/tenant-sender-identity.test.ts. What matters
+    // here is that this route delegates rather than deciding for itself.
+    expect(src).toContain('resolveTenantSender(tenant)');
+    expect(src).not.toContain('const senderVerified =');
   });
 
-  it('falls back to the tenant NAME, never to a tenant domain it cannot prove', () => {
-    // The unverified branch must set a name and no address.
-    expect(src).toMatch(/:\s*\{ fromName: tenant\.name \|\| undefined \}/);
-  });
-
-  it('points replies at the tenant', () => {
-    expect(src).toContain('replyTo: tenantReplyTo');
-  });
-
-  it('reads the branding from the tenant record, not from the invoice', () => {
-    // An invoice is client-supplied data in parts; the sender identity is not negotiable
-    // per message.
-    expect(src).toContain('tenant.whiteLabel?.emailBranding');
+  it('passes the identity into the send rather than building a From string', () => {
+    const sendBlock = src.slice(src.indexOf('await sendEmail('));
+    expect(sendBlock).toContain('...resolveTenantSender(tenant)');
+    expect(sendBlock).not.toMatch(/from:\s*['"`]/);
   });
 });
