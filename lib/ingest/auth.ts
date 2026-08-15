@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { findActiveApiKey, findActiveApiKeyForTenant, touchApiKey } from '@/lib/ingest/api-keys';
 
 export type IngestAuthSuccess = {
   ok: true;
@@ -65,20 +66,49 @@ export async function authenticateIngest(req: Request): Promise<IngestAuthResult
 
   const keyHash = hashKey(apiKey);
 
-  // 1) Explicit tenant header -> validate key against that tenant doc.
+  // 1) Explicit tenant header -> validate key against that tenant.
   if (headerTenantId) {
     const tenantSnap = await adminDb.doc(`tenants/${headerTenantId}`).get();
     if (!tenantSnap.exists) {
       return { ok: false, status: 401, error: 'invalid_tenant' };
     }
     const tenantData = tenantSnap.data() || {};
-    if (!hashesMatch(tenantData.apiKeyHash, keyHash)) {
-      return { ok: false, status: 401, error: 'invalid_api_key' };
+
+    // KEY-2: a workspace may hold several active keys, so rotation does not need a window
+    // where neither the old nor the new one works.
+    const scoped = await findActiveApiKeyForTenant(headerTenantId, keyHash);
+    if (scoped) {
+      void touchApiKey(scoped.tenantId, scoped.keyId);
+      return { ok: true, tenantId: headerTenantId, tenantData, via: 'tenant-header' };
     }
-    return { ok: true, tenantId: headerTenantId, tenantData, via: 'tenant-header' };
+
+    // Legacy single key on the tenant root. Every tenant created before KEY-2 has one, and
+    // breaking a live integration to tidy a schema would be the wrong trade. Migrated on
+    // the next rotation and never written again.
+    if (hashesMatch(tenantData.apiKeyHash, keyHash)) {
+      return { ok: true, tenantId: headerTenantId, tenantData, via: 'tenant-header' };
+    }
+
+    return { ok: false, status: 401, error: 'invalid_api_key' };
   }
 
-  // 2) Resolve tenant by apiKeyHash (key bound to one workspace).
+  // 2) Resolve the workspace from the key alone.
+  const found = await findActiveApiKey(keyHash);
+  if (found) {
+    const tenantSnap = await adminDb.doc(`tenants/${found.tenantId}`).get();
+    if (!tenantSnap.exists) {
+      // A key outliving its workspace is not a usable credential.
+      return { ok: false, status: 401, error: 'invalid_tenant' };
+    }
+    void touchApiKey(found.tenantId, found.keyId);
+    return {
+      ok: true,
+      tenantId: found.tenantId,
+      tenantData: tenantSnap.data() || {},
+      via: 'key-lookup',
+    };
+  }
+
   const byHash = await adminDb
     .collection('tenants')
     .where('apiKeyHash', '==', keyHash)
