@@ -111,6 +111,18 @@ describe('KEY-1: authentication still binds a request to exactly one tenant', ()
     tenant_legacy: { apiKey: 'plaintext-legacy-key', name: 'Legacy' },
   };
 
+  /**
+   * KEY-2 extended this double with subcollection support. These tenants deliberately hold
+   * only the LEGACY root hash and no api_keys records, which is what every tenant created
+   * before KEY-2 looks like — so this suite doubles as the regression test that the legacy
+   * path still authenticates.
+   */
+  const emptyQuery = {
+    where: () => emptyQuery,
+    limit: () => emptyQuery,
+    get: async () => ({ empty: true, docs: [] as unknown[] }),
+  };
+
   jest.doMock('@/lib/firebaseAdmin', () => ({
     adminDb: {
       doc: (docPath: string) => {
@@ -119,7 +131,15 @@ describe('KEY-1: authentication still binds a request to exactly one tenant', ()
           get: async () => ({ exists: Boolean(TENANTS[id]), data: () => TENANTS[id] }),
         };
       },
+      // No api_keys records exist for these tenants, so every subcollection query is empty
+      // and authentication must fall through to the legacy root hash.
+      collectionGroup: () => emptyQuery,
       collection: () => ({
+        doc: (id: string) => ({
+          get: async () => ({ exists: Boolean(TENANTS[id]), data: () => TENANTS[id] }),
+          collection: () => emptyQuery,
+          update: async () => undefined,
+        }),
         where: (_field: string, _op: string, value: unknown) => ({
           limit: () => ({
             get: async () => {

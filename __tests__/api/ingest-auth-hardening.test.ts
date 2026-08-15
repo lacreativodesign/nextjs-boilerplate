@@ -15,6 +15,15 @@ jest.mock('@/lib/firebaseAdmin', () => {
     tenant_a: { apiKeyHash: hash('key-for-a'), name: 'A' },
     tenant_b: { apiKeyHash: hash('key-for-b'), name: 'B' },
   };
+  // KEY-2 added per-key records in a `api_keys` subcollection. These two tenants hold only
+  // the LEGACY root hash and no key records — which is exactly what every tenant created
+  // before KEY-2 looks like — so this suite now also proves the legacy path still works.
+  const emptyQuery: any = {
+    where: () => emptyQuery,
+    limit: () => emptyQuery,
+    get: async () => ({ empty: true, docs: [] }),
+  };
+
   return {
     adminDb: {
       doc(path: string) {
@@ -23,8 +32,18 @@ jest.mock('@/lib/firebaseAdmin', () => {
           get: async () => ({ exists: Boolean(TENANTS[id]), data: () => TENANTS[id] }),
         };
       },
+      collectionGroup() {
+        return emptyQuery;
+      },
       collection() {
         return {
+          doc(id: string) {
+            return {
+              get: async () => ({ exists: Boolean(TENANTS[id]), data: () => TENANTS[id] }),
+              collection: () => emptyQuery,
+              update: async () => undefined,
+            };
+          },
           where(_field: string, _op: string, value: unknown) {
             return {
               limit() {
