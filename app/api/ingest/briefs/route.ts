@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 import { logEvent } from '@/lib/audit';
 import { authenticateIngest } from '@/lib/ingest/auth';
+import { recordIngestUsage } from '@/lib/ingest/usage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +71,12 @@ export async function POST(req: Request) {
       );
     }
     const tenantId = auth.tenantId;
+
+    // USAGE-2: attribute this call now that the key has resolved to a workspace.
+    // Middleware already logged it under tenantId 'unknown' — it reads the tenant from the
+    // `tenant_id` cookie, which a server-to-server request from a tenant's website does
+    // not carry. Not awaited: a recorded lead must never fail over a metrics write.
+    void recordIngestUsage({ tenantId, endpoint: 'ingest/briefs', method: 'POST' });
 
     const serviceType = normalizeOptionalString(body.serviceType);
     const clientEmailRaw = normalizeOptionalString(body.clientEmail);
