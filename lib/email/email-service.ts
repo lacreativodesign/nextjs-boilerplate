@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { Resend } from 'resend';
+import { resolveTenantEmailProvider } from '@/lib/email/tenant-provider';
 
 // ─── Resend (primary provider) ────────────────────────────────────────────
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -37,6 +38,15 @@ type EmailParams = {
    * before their sending domain is verified, while `from` cannot (MAIL-2).
    */
   replyTo?: string;
+  /**
+   * MAIL-6: whose provider should carry this message.
+   *
+   * Set for tenant business mail — an invoice, a reminder, a lead acknowledgement — so it
+   * leaves through that tenant's own provider account when they have configured one. Left
+   * unset for platform mail (OTP, password setup, subscription billing), which is Bizosto
+   * speaking and must always leave through Bizosto's account.
+   */
+  tenantId?: string;
 };
 
 function hasResendConfig() {
@@ -82,11 +92,12 @@ function composeFrom(params: EmailParams, configuredFrom: string) {
   return configuredFrom;
 }
 
-async function sendWithResend(params: EmailParams) {
-  if (!RESEND_API_KEY) {
+async function sendWithResend(params: EmailParams, apiKey?: string) {
+  if (!apiKey && !RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured.');
   }
-  const resend = new Resend(RESEND_API_KEY);
+
+  const resend = new Resend(apiKey || RESEND_API_KEY);
   const from = composeFrom(params, RESEND_FROM);
 
   const { error } = await resend.emails.send({
@@ -103,14 +114,15 @@ async function sendWithResend(params: EmailParams) {
   }
 }
 
-async function sendWithSendGrid(params: EmailParams) {
-  if (!SENDGRID_API_KEY) throw new Error('SendGrid API key is not configured.');
+async function sendWithSendGrid(params: EmailParams, apiKey?: string) {
+  const sendGridKey = apiKey || SENDGRID_API_KEY;
+  if (!sendGridKey) throw new Error('SendGrid API key is not configured.');
   const fromEmail = params.fromEmail || SENDGRID_FROM_EMAIL;
   if (!fromEmail) throw new Error('SendGrid from email is not configured.');
 
   const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${sendGridKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: params.to }] }],
       from: { email: fromEmail, name: params.fromName || SENDGRID_FROM_NAME || undefined },
@@ -223,6 +235,38 @@ async function sendWithSes(params: EmailParams) {
 }
 
 export async function sendEmail(params: EmailParams) {
+  // MAIL-6: a tenant's own provider carries their own mail.
+  //
+  // Until now every message left through Bizosto's Resend account, including mail a tenant
+  // sends to its own customers. That means shared deliverability reputation — one tenant
+  // sending badly hurts everyone, and a careful tenant cannot build a reputation of their
+  // own — and it means bounce and complaint data lands in Bizosto's dashboard rather than
+  // where the tenant can act on it.
+  //
+  // Only mail carrying a tenantId is eligible. Platform mail (OTP, password setup,
+  // subscription billing) deliberately passes none: Bizosto is genuinely the sender there,
+  // and routing a password reset through a tenant's account would put a Bizosto security
+  // message in a third party's sending logs.
+  //
+  // A tenant with no provider configured, or whose credential cannot be decrypted, falls
+  // through to the platform path. A worse envelope is better than an undelivered invoice.
+  if (params.tenantId) {
+    const tenantProvider = await resolveTenantEmailProvider(params.tenantId);
+    if (tenantProvider) {
+      if (tenantProvider.provider === 'resend') {
+        await sendWithResend(params, tenantProvider.apiKey);
+        return;
+      }
+      if (tenantProvider.provider === 'sendgrid') {
+        await sendWithSendGrid(params, tenantProvider.apiKey);
+        return;
+      }
+      // SES needs an access key pair and a region rather than a single token, so a tenant
+      // SES account is stored but not yet used to send. Falling through is honest: the
+      // message goes out under the platform provider rather than silently failing.
+    }
+  }
+
   const provider = DEFAULT_PROVIDER.toLowerCase();
 
   if (provider === 'resend') {

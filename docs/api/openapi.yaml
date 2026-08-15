@@ -1822,6 +1822,40 @@ paths:
           description: Unauthorized or invalid session.
         '403':
           description: Forbidden for current tenant or role.
+  /api/admin/settings/email-provider:
+    get:
+      summary: GET /api/admin/settings/email-provider
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    post:
+      summary: POST /api/admin/settings/email-provider
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
+    delete:
+      summary: DELETE /api/admin/settings/email-provider
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
   /api/admin/settings/finance:
     get:
       summary: GET /api/admin/settings/finance

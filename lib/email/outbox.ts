@@ -132,7 +132,13 @@ export async function enqueueTenantEmail(input: TenantEmailInput): Promise<Enque
     // than losing the record of it.
     console.error('[OUTBOX] failed to persist message:', safeErrorSummary(error));
     try {
-      await sendEmail({ to: input.to, subject: input.subject, html: input.html, ...identity });
+      await sendEmail({
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        ...identity,
+        tenantId: input.tenantId,
+      });
       return { id: '', status: 'sent' };
     } catch {
       return { id: '', status: 'failed' };
@@ -150,6 +156,8 @@ type OutboxRecord = {
   text?: string | null;
   identity?: { fromEmail?: string; fromName?: string; replyTo?: string };
   attempts: number;
+  /** MAIL-6: whose provider carries this message. Read back on every retry. */
+  tenantId?: string;
 };
 
 /**
@@ -167,6 +175,11 @@ async function attemptDelivery(id: string, record: OutboxRecord, now: Date): Pro
       html: record.html,
       ...(record.text ? { text: record.text } : {}),
       ...(record.identity || {}),
+      // MAIL-6: every message in this queue is tenant business mail by definition, so it
+      // leaves through that tenant's own provider when they have configured one. Read from
+      // the stored record rather than passed in, so a retry routes the same way the
+      // original attempt did.
+      ...(record.tenantId ? { tenantId: record.tenantId } : {}),
     });
 
     await ref.update({
