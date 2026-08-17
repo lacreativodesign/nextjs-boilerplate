@@ -12,6 +12,9 @@ const tabs = [
   { label: 'Sales', path: '/admin/settings/sales' },
   { label: 'Notifications', path: '/admin/settings/notifications' },
   { label: 'Email Templates', path: '/admin/settings/email-templates' },
+  // MAIL-7: sits next to Email Templates because both answer "how does mail leave this
+  // workspace" — one the content, the other the account it goes out through.
+  { label: 'Email Delivery', path: '/admin/settings/email-delivery' },
   { label: 'Branding', path: '/admin/settings/branding' },
   { label: 'Workflows', path: '/admin/settings/workflows' },
   { label: 'Integrations', path: '/admin/settings/integrations' },
