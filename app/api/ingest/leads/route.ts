@@ -7,6 +7,7 @@ import { logEvent } from '@/lib/audit';
 import { docTenantId } from '@/lib/tenant';
 import { authenticateIngest } from '@/lib/ingest/auth';
 import { recordIngestUsage } from '@/lib/ingest/usage';
+import { parseAttribution, parseConsent } from '@/lib/ingest/lead-intake';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,20 @@ const IDEMPOTENCY_TTL_DAYS = 30;
  */
 const DEDUPE_WINDOW_MS = 60_000;
 
+/**
+ * INTAKE-1: the largest body this endpoint will read.
+ *
+ * This is the one route deliberately exposed to the public internet, and it had no size
+ * limit at all. A caller could post an arbitrarily large JSON document, which either bloats
+ * every lead beyond what a Firestore document can hold — the cap is 1 MB — or fails the
+ * write AFTER the visitor has been told their enquiry was received.
+ *
+ * 64 KB is far more than a contact form needs and far less than anything that could cause
+ * harm. The body is measured after reading rather than trusting Content-Length, which a
+ * caller controls and can simply understate.
+ */
+const MAX_BODY_BYTES = 64 * 1024;
+
 /** Deterministic, collision-free anchor for one submission from one tenant. */
 function idempotencyDocId(tenantId: string, key: string) {
   const digest = crypto.createHash('sha256').update(`${tenantId}:${key}`).digest('hex');
@@ -78,8 +93,33 @@ async function queryWithTenant(query: FirebaseFirestore.Query, tenantId: string)
 export async function POST(req: Request) {
   let claimRef: FirebaseFirestore.DocumentReference | null = null;
   try {
-    const body = (await req.json().catch(() => null)) as Record<string, any> | null;
-    if (!body) {
+    // INTAKE-1: a JSON body, and one small enough to store.
+    //
+    // Content-Type is checked because this endpoint only ever accepts JSON, and a mismatch
+    // is far more likely to be a misconfigured integration than an attack — saying so
+    // plainly saves a tenant an afternoon.
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      return NextResponse.json(
+        { ok: false, error: 'Content-Type must be application/json.' },
+        { status: 415 },
+      );
+    }
+
+    // Read as text first so the SIZE is measured from what actually arrived, rather than
+    // from a Content-Length header the caller controls.
+    const rawBody = await req.text().catch(() => '');
+    if (Buffer.byteLength(rawBody, 'utf8') > MAX_BODY_BYTES) {
+      return NextResponse.json({ ok: false, error: 'Request body is too large.' }, { status: 413 });
+    }
+
+    let body: Record<string, any> | null = null;
+    try {
+      body = rawBody ? (JSON.parse(rawBody) as Record<string, any>) : null;
+    } catch {
+      body = null;
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return NextResponse.json({ ok: false, error: 'Invalid JSON.' }, { status: 400 });
     }
 
@@ -102,6 +142,8 @@ export async function POST(req: Request) {
     void recordIngestUsage({ tenantId, endpoint: 'ingest/leads', method: 'POST' });
 
     const lead = (body.lead || {}) as Record<string, any>;
+    const attribution = parseAttribution(body);
+    const consent = parseConsent(body);
     const name = normalizeOptionalString(lead.name) || '';
     const email = normalizeOptionalString(lead.email) || '';
     const source = normalizeOptionalString(lead.source) || 'website';
@@ -188,7 +230,15 @@ export async function POST(req: Request) {
       company: normalizeOptionalString(lead.company),
       message: normalizeOptionalString(lead.message),
       pageUrl: normalizeOptionalString(lead.pageUrl),
-      utm: lead.utm || null,
+      // INTAKE-1: attribution is now a known set of trimmed strings rather than whatever
+      // object arrived. `utm` stays at the top level so anything already reading it keeps
+      // working; the fuller picture — landing page, referrer, ad click ids — sits beside
+      // it and is what makes "which campaign produced this lead" answerable.
+      utm: attribution.utm,
+      attribution,
+      // Recorded explicitly, including its absence: a null means the form never asked,
+      // which is a different fact from someone declining.
+      consent,
       status: 'new',
       ownerUid: null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
