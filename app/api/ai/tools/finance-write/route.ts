@@ -7,6 +7,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { sendEmail } from '@/lib/email/email-service';
 import { resolveTenantSenderById } from '@/lib/email/tenant-sender';
+import { tenantBrand } from '@/lib/email/html-templates';
 import type { ProposedAction } from '@/lib/ai/finance-agent';
 
 export const dynamic = 'force-dynamic';
@@ -171,6 +172,16 @@ export async function POST(req: NextRequest) {
       // MAIL-4: the AI agent's payment reminder goes to the TENANT's customer, so it is
       // addressed as the tenant rather than as Bizosto — same rule as the cron reminder
       // and the invoice itself.
+      //
+      // MAIL-8: and the BODY says so too. This rendered a hard-coded "B / Bizosto" header
+      // block to the customer, so a chase for money owed to the tenant arrived branded as
+      // a company the recipient has never dealt with.
+      const tenantSnap = await adminDb
+        .collection('tenants')
+        .doc(String(user.tenantId || ''))
+        .get();
+      const senderBrand = tenantBrand(String(tenantSnap.data()?.name || ''));
+
       await sendEmail({
         to: clientEmail,
         ...(await resolveTenantSenderById(user.tenantId)),
@@ -178,8 +189,8 @@ export async function POST(req: NextRequest) {
         html: `
           <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">
             <div style="background:linear-gradient(135deg,#012167,#6692f9);padding:24px 32px;border-radius:12px 12px 0 0;text-align:center;">
-              <span style="font-size:28px;font-weight:800;color:#fff;letter-spacing:-0.5px;">B</span>
-              <p style="color:rgba(255,255,255,0.8);font-size:11px;letter-spacing:0.2em;margin:4px 0 0;text-transform:uppercase;">Bizosto</p>
+              <span style="font-size:28px;font-weight:800;color:#fff;letter-spacing:-0.5px;">${senderBrand.initial}</span>
+              <p style="color:rgba(255,255,255,0.8);font-size:11px;letter-spacing:0.2em;margin:4px 0 0;text-transform:uppercase;">${senderBrand.name}</p>
             </div>
             <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:32px;">
               <p style="margin:0 0 16px;font-size:15px;color:#374151;">Hi ${clientName},</p>

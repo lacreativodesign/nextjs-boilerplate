@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { invoiceEmailHtml, invoiceEmailSubject } from '@/lib/email/html-templates';
+import { invoiceEmailHtml, invoiceEmailSubject, tenantBrand } from '@/lib/email/html-templates';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { enqueueTenantEmail } from '@/lib/email/outbox';
@@ -347,7 +347,11 @@ async function sendInvoiceEmail(
       tenantId,
       to: clientEmail,
       subject: invoiceEmailSubject(invoiceData),
-      html: invoiceEmailHtml(invoiceData),
+      // MAIL-8: the body carries the tenant's identity too, not just the envelope. Without
+      // this the invoice still rendered a BIZOSTO header, "Invoice from Bizosto", and a
+      // footer linking to bizosto.com — four announcements of a company the recipient has
+      // never heard of, on a document asking them for money.
+      html: invoiceEmailHtml(invoiceData, tenantBrand(tenant.name || '')),
       messageClass: 'invoice.issued',
       entityId: invoice.id,
       tenant,

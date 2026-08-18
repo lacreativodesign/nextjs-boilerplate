@@ -1,7 +1,63 @@
-function shell(body: string): string {
+/**
+ * Who an email presents itself as (MAIL-8).
+ *
+ * MAIL-3, MAIL-4 and MAIL-6 fixed the envelope — the From address, the display name, the
+ * Reply-To, and eventually the sending account itself. The BODY was never touched, so an
+ * invoice a tenant sent to its own customer still rendered a "BIZOSTO / Business
+ * Management Platform" header, said "Invoice from Bizosto", closed with "This invoice was
+ * sent via Bizosto", and carried a footer linking to bizosto.com and bizosto.com/support.
+ *
+ * Four announcements of a company the recipient has never heard of, on a document asking
+ * them for money. For an Enterprise tenant paying for white-label it is precisely the
+ * thing they are paying to avoid, and for everyone else it makes a legitimate invoice look
+ * like it came from the wrong party.
+ *
+ * The default stays Bizosto because most templates here ARE Bizosto speaking — the welcome
+ * email, the trial reminders, the password reset. Those must keep saying Bizosto; a
+ * password reset branded as somebody else would be a phishing lesson. Only mail addressed
+ * to a tenant's own customer overrides it.
+ */
+export type EmailBrand = {
+  /** Shown in the header block and the document title. */
+  name: string;
+  /** Small line under the name. Empty for a tenant, which has no Bizosto tagline. */
+  tagline: string;
+  /** Single letter in the logo tile. */
+  initial: string;
+  /**
+   * Footer links. Deliberately empty for a tenant: a customer chasing an invoice should
+   * not be sent to bizosto.com/support, which knows nothing about their order and would
+   * disclose the tenant's supplier at exactly the wrong moment.
+   */
+  showPlatformLinks: boolean;
+};
+
+export const PLATFORM_BRAND: EmailBrand = {
+  name: 'BIZOSTO',
+  tagline: 'Business Management Platform',
+  initial: 'B',
+  showPlatformLinks: true,
+};
+
+/** Presents a tenant to its own customers. Never links back to Bizosto. */
+export function tenantBrand(name: string): EmailBrand {
+  const clean = String(name || '').trim() || 'Your supplier';
+  return {
+    name: clean.toUpperCase(),
+    tagline: '',
+    initial: clean.charAt(0).toUpperCase() || '•',
+    showPlatformLinks: false,
+  };
+}
+
+function shell(body: string, brand: EmailBrand = PLATFORM_BRAND): string {
+  const footer = brand.showPlatformLinks
+    ? `© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#2563EB;text-decoration:none;">bizosto.com</a> · <a href="https://bizosto.com/support" style="color:#2563EB;text-decoration:none;">Support</a>`
+    : `© ${new Date().getFullYear()} ${brand.name}`;
+
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bizosto</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${brand.name}</title></head>
 <body style="margin:0;padding:0;background-color:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;padding:32px 16px;">
 <tr><td align="center">
@@ -9,17 +65,17 @@ function shell(body: string): string {
 <tr><td style="background:linear-gradient(135deg,#012167,#6692f9);padding:24px 32px;">
 <table cellpadding="0" cellspacing="0" border="0"><tr>
 <td style="padding-right:14px;vertical-align:middle;">
-<div style="background:rgba(255,255,255,0.18);border-radius:10px;width:44px;height:44px;text-align:center;line-height:44px;font-size:26px;font-weight:900;color:#ffffff;font-family:Arial,sans-serif;">B</div>
+<div style="background:rgba(255,255,255,0.18);border-radius:10px;width:44px;height:44px;text-align:center;line-height:44px;font-size:26px;font-weight:900;color:#ffffff;font-family:Arial,sans-serif;">${brand.initial}</div>
 </td>
 <td style="vertical-align:middle;">
-<div style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:0.1em;font-family:Arial,sans-serif;">BIZOSTO</div>
-<div style="color:rgba(255,255,255,0.72);font-size:12px;margin-top:3px;font-family:Arial,sans-serif;">Business Management Platform</div>
+<div style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:0.1em;font-family:Arial,sans-serif;">${brand.name}</div>
+${brand.tagline ? `<div style="color:rgba(255,255,255,0.72);font-size:12px;margin-top:3px;font-family:Arial,sans-serif;">${brand.tagline}</div>` : ''}
 </td>
 </tr></table>
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">${body}</td></tr>
 <tr><td style="background:#F1F5F9;padding:20px 32px;border-top:1px solid #E2E8F0;">
-<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">© ${new Date().getFullYear()} Bizosto · <a href="https://bizosto.com" style="color:#2563EB;text-decoration:none;">bizosto.com</a> · <a href="https://bizosto.com/support" style="color:#2563EB;text-decoration:none;">Support</a></p>
+<p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;">${footer}</p>
 </td></tr>
 </table>
 </td></tr>
@@ -155,17 +211,21 @@ export type InvoiceEmailData = {
   senderName?: string;
 };
 
-export function invoiceEmailHtml(data: InvoiceEmailData): string {
-  const {
-    clientName,
-    invoiceNumber,
-    amount,
-    currency,
-    dueDate,
-    viewUrl,
-    senderName = 'Bizosto',
-  } = data;
-  return shell(`
+/**
+ * MAIL-8: an invoice is the TENANT billing its own customer.
+ *
+ * `senderName` defaulted to 'Bizosto' and the recurring-invoice cron never passed one, so
+ * every generated invoice announced "Invoice from Bizosto" to a customer who has never
+ * heard of Bizosto — about money owed to somebody else.
+ */
+export function invoiceEmailHtml(
+  data: InvoiceEmailData,
+  brand: EmailBrand = PLATFORM_BRAND,
+): string {
+  const { clientName, invoiceNumber, amount, currency, dueDate, viewUrl } = data;
+  const senderName = data.senderName || brand.name;
+  return shell(
+    `
     <h1 style="margin:0 0 20px;font-size:22px;font-weight:700;color:#1E3A5F;">Invoice from ${senderName}</h1>
     <p>Hi ${clientName},</p>
     <p>Please find your invoice details below.</p>
@@ -175,8 +235,14 @@ export function invoiceEmailHtml(data: InvoiceEmailData): string {
     <tr><td style="color:#64748B;font-size:13px;border-top:1px solid #F1F5F9;">Due Date</td><td style="font-weight:600;color:#DC2626;text-align:right;border-top:1px solid #F1F5F9;">${dueDate}</td></tr>
     </table>
     ${btn('View & Pay Invoice', viewUrl)}
-    <p style="font-size:13px;color:#94A3B8;">This invoice was sent via Bizosto. If you have questions, contact the sender directly.</p>
-  `);
+    ${
+      brand.showPlatformLinks
+        ? '<p style="font-size:13px;color:#94A3B8;">This invoice was sent via Bizosto. If you have questions, contact the sender directly.</p>'
+        : `<p style="font-size:13px;color:#94A3B8;">If you have questions about this invoice, reply to this email and ${senderName} will help.</p>`
+    }
+  `,
+    brand,
+  );
 }
 
 export function invoiceEmailSubject(data: InvoiceEmailData): string {
