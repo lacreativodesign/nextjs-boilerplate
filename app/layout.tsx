@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
 import type { Metadata, Viewport } from 'next';
 import ToastProvider from '@/components/providers/ToastProvider';
+import { ConfirmProvider } from '@/components/providers/ConfirmProvider';
 import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 import { PageErrorFallback } from '@/components/errors/ErrorFallback';
 import PWAInitializer from '@/components/pwa/PWAInitializer';
@@ -58,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ToastProvider />
             <PWAInitializer />
             <ClientMonitoring />
-            {children}
+            <ConfirmProvider>{children}</ConfirmProvider>
           </ErrorBoundary>
         </ThemeProvider>
       </body>

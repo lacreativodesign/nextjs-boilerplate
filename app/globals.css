@@ -705,6 +705,9 @@ table tbody tr:hover {
 }
 .table-cell-right {
   text-align: right;
+  /* DS-2: proportional digits made every currency column ragged. tabular-nums was
+     used zero times repo-wide before this. */
+  font-variant-numeric: tabular-nums;
 }
 .table-empty {
   padding: 32px 24px;
