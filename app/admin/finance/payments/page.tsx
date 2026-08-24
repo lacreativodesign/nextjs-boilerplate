@@ -506,7 +506,7 @@ function PaymentDrawer({
             disabled={actionLoading}
             style={{ borderRadius: 999 }}
           >
-            Refund (stub)
+            Refund
           </button>
         </div>
       </div>

@@ -191,6 +191,18 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
     reason: 'Only ever written as a subcollection; no top-level docs.',
   },
   backups: { class: 'ephemeral', reason: 'Backup run metadata; backing up backups is circular.' },
+  backup_coordination: {
+    class: 'ephemeral',
+    reason: 'Daily backup coordination status; the next run safely recreates it.',
+  },
+  cron_job_cursors: {
+    class: 'ephemeral',
+    reason: 'Bounded-job progress cursors; losing one causes a safe restart, not data loss.',
+  },
+  cron_owner_blocks: {
+    class: 'ephemeral',
+    reason: 'Operational owner-block telemetry; durable business records remain authoritative.',
+  },
   restore_jobs: { class: 'ephemeral', reason: 'Transient restore job state.' },
   system: { class: 'ephemeral', reason: 'System/platform state; not tenant business data.' },
   system_health: { class: 'ephemeral', reason: 'Health snapshots; regenerable.' },

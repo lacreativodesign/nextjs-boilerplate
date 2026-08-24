@@ -122,7 +122,6 @@ export async function GET(req: NextRequest) {
           'RESEND_API_KEY',
           'STRIPE_SECRET_KEY',
           'STRIPE_INVOICE_WEBHOOK_SECRET',
-          'NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY',
           'EXCHANGE_RATE_API_KEY',
           'NEXT_PUBLIC_DEFAULT_TENANT_ID',
           'NEXT_PUBLIC_SENTRY_DSN',

@@ -11,6 +11,7 @@ export type BillingPlanDefinition = {
   features: string[];
   limits: {
     users: number;
+    clientPortalUsers: number;
     storage: number;
     api_calls: number;
   };
@@ -50,7 +51,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
       'Card required at signup',
       "You won't be charged until day 15",
     ],
-    limits: { users: 10, storage: 21474836480, api_calls: 15000 },
+    limits: { users: 10, clientPortalUsers: 10, storage: 21474836480, api_calls: 15000 },
     stripePriceIdEnv: '',
     annualStripePriceIdEnv: '',
     taxBehavior: 'exclusive',
@@ -68,7 +69,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
       '10 client portal seats',
       'Email support (48h)',
     ],
-    limits: { users: 10, storage: 21474836480, api_calls: 15000 },
+    limits: { users: 10, clientPortalUsers: 10, storage: 21474836480, api_calls: 15000 },
     stripePriceIdEnv: 'STRIPE_PRICE_STARTER_MONTHLY',
     annualStripePriceIdEnv: 'STRIPE_PRICE_STARTER_ANNUAL',
     taxBehavior: 'exclusive',
@@ -90,7 +91,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
       'Website embed integration',
       'Priority support + live chat',
     ],
-    limits: { users: 20, storage: 80530636800, api_calls: 100000 },
+    limits: { users: 20, clientPortalUsers: -1, storage: 80530636800, api_calls: 100000 },
     stripePriceIdEnv: 'STRIPE_PRICE_PRO_MONTHLY',
     annualStripePriceIdEnv: 'STRIPE_PRICE_PRO_ANNUAL',
     taxBehavior: 'exclusive',
@@ -112,7 +113,7 @@ export const plans: Record<BillingPlanKey, BillingPlanDefinition> = {
       'AI Workforce — all 4 agents + AI Reports',
       'Website embed integration',
     ],
-    limits: { users: -1, storage: 268435456000, api_calls: -1 },
+    limits: { users: -1, clientPortalUsers: -1, storage: 268435456000, api_calls: -1 },
     stripePriceIdEnv: 'STRIPE_PRICE_ENTERPRISE_MONTHLY',
     annualStripePriceIdEnv: 'STRIPE_PRICE_ENTERPRISE_ANNUAL',
     taxBehavior: 'exclusive',

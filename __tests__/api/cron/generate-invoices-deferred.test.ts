@@ -8,7 +8,7 @@
  * ERP_ENABLE_RECURRING_INVOICES=true. These tests prove the guard.
  */
 
-const CRON_SECRET = 'test-secret';
+const CRON_SECRET = '12345678901234567890123456789012';
 
 const listCalls: string[] = [];
 
@@ -16,7 +16,7 @@ const listCalls: string[] = [];
 // route module captures it at load time (it reads process.env.CRON_SECRET into
 // a module-level const at import).
 jest.mock('@/lib/firebaseAdmin', () => {
-  process.env.CRON_SECRET = 'test-secret';
+  process.env.CRON_SECRET = '12345678901234567890123456789012';
   return {
     adminDb: {
       collection(name: string) {

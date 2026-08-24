@@ -11,7 +11,7 @@ import {
   normalizeManualCheckId,
   REQUIRED_ENV_VARS,
 } from '@/lib/launch-checklist';
-import { requireAdminOrSuperAdmin } from '../_utils';
+import { requireLaunchChecklistSuperAdmin } from './_utils';
 
 type AutomatedCheckStatus = {
   key: (typeof AUTOMATED_CHECKS)[number]['key'];
@@ -216,7 +216,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
-    const auth = await requireAdminOrSuperAdmin();
+    const auth = await requireLaunchChecklistSuperAdmin();
     if (!auth.ok)
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
@@ -254,7 +254,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const auth = await requireAdminOrSuperAdmin();
+    const auth = await requireLaunchChecklistSuperAdmin();
     if (!auth.ok)
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 

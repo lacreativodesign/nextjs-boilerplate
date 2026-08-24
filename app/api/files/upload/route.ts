@@ -64,6 +64,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: fileValidation.error }, { status: 400 });
     }
 
+    if (payload.fileId) {
+      const file = await FileManager.getManageableFileById(payload.fileId, {
+        tenantId: session.tenantId,
+        uid: session.uid,
+        role: session.role,
+      });
+      if (!file) return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
+
     const result = await FileManager.initOrAppendChunk({
       tenantId: session.tenantId,
       uploadId: payload.uploadId,

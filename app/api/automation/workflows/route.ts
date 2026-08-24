@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { WORKFLOW_TEMPLATES } from '@/lib/automation/workflow-templates';
 import type { WorkflowDefinition } from '@/lib/automation/workflow-types';
 import { requireAutomationAdmin } from '../_utils';
+import { validateWorkflowDefinition } from '@/lib/automation/workflow-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,10 @@ export async function POST(request: Request) {
         { ok: false, error: 'Missing required workflow fields.' },
         { status: 400 },
       );
+    }
+    const validation = validateWorkflowDefinition(workflow);
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: 400 });
     }
 
     const now = new Date().toISOString();

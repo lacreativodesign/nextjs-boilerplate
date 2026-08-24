@@ -36,6 +36,8 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
         id: invoiceId,
         orderId: validation.payload.orderId,
         amount: validation.payload.amount,
+        totalAmount: validation.payload.totalAmount,
+        totalPaid: validation.payload.totalPaid,
         subtotal: validation.payload.subtotal,
         taxAmount: validation.payload.taxAmount,
         currency: validation.payload.currency,

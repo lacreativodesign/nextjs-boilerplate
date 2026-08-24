@@ -9,6 +9,7 @@ import {
 } from '@/lib/stripe/webhook-idempotency';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
+import { assertConnectInvoicePaymentIntent } from '@/lib/payments/connect-invoice-integrity';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 
   if (!signature) {
     console.error('[STRIPE_CONNECT] Missing webhook signature.');
-    return NextResponse.json({ ok: false, received: true });
+    return NextResponse.json({ ok: false, error: 'missing signature' }, { status: 400 });
   }
 
   let event: Stripe.Event;
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(body, signature, getConnectWebhookSecret());
   } catch (error) {
     console.error('[STRIPE_CONNECT] Webhook signature verification failed', error);
-    return NextResponse.json({ ok: false, received: true });
+    return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 400 });
   }
 
   const claim = await claimWebhookEvent(event.id, event.type);
@@ -112,19 +113,63 @@ export async function POST(req: Request) {
       // path failed to record it (e.g. the customer's browser closed mid-redirect).
       const pi = event.data.object as Stripe.PaymentIntent;
       const invoiceId = String(pi.metadata?.invoiceId || '').trim();
-      const tenantId = String(pi.metadata?.tenantId || '').trim();
+      const metadataTenantId = String(pi.metadata?.tenantId || '').trim();
+      const connectedAccountId = String(event.account || '').trim();
 
-      if (pi.metadata?.source === 'client_payment_page' && invoiceId && tenantId) {
+      if (pi.metadata?.source === 'client_payment_page' && invoiceId && metadataTenantId) {
+        // A Connect PaymentIntent is authoritative only for the connected account
+        // that emitted the event. Metadata is caller-controlled context and must
+        // never select the tenant by itself.
+        if (!connectedAccountId) {
+          throw new Error('Connect payment event is missing its account binding.');
+        }
+        const tenantDoc = await findTenantByAccountId(connectedAccountId);
+        if (!tenantDoc || tenantDoc.id !== metadataTenantId) {
+          throw new Error('Connect account does not match payment tenant metadata.');
+        }
+        const tenantId = tenantDoc.id;
         const invoiceRef = adminDb.collection('invoices').doc(invoiceId);
         const invoiceSnap = await invoiceRef.get();
+        const invoice = (invoiceSnap.data() || {}) as Record<string, unknown>;
+        if (!invoiceSnap.exists || String(invoice.tenantId || '').trim() !== tenantId) {
+          throw new Error('Invoice does not belong to the connected account tenant.');
+        }
+
+        const metadataClientId = String(pi.metadata?.clientId || '').trim();
+        const invoiceClientId = String(invoice.clientId || '').trim();
+        if (metadataClientId && invoiceClientId && metadataClientId !== invoiceClientId) {
+          throw new Error('Payment client metadata does not match the invoice.');
+        }
+
+        const expectedAmount = Number(
+          invoice.balanceDue ??
+            invoice.amount ??
+            invoice.totalAmount ??
+            invoice.amountTotal ??
+            invoice.amountTotalUsd ??
+            0,
+        );
+        const expectedAmountCents = Math.round(expectedAmount * 100);
+        if (!Number.isFinite(expectedAmountCents) || expectedAmountCents <= 0) {
+          throw new Error('Payment amount does not match the invoice balance.');
+        }
+        assertConnectInvoicePaymentIntent(pi, {
+          invoiceId,
+          tenantId,
+          clientId: invoiceClientId || undefined,
+          orderId: String(invoice.orderId || invoiceId),
+          amountCents: expectedAmountCents,
+          currency: String(invoice.currency || 'USD'),
+        });
         const alreadyPaid =
-          invoiceSnap.exists &&
           String((invoiceSnap.data() as { status?: string }).status || '').toLowerCase() === 'paid';
 
-        if (invoiceSnap.exists && !alreadyPaid) {
+        if (!alreadyPaid) {
           const nowIso = new Date().toISOString();
           const amountUsd = (pi.amount_received ?? pi.amount ?? 0) / 100;
           const platformFeeUsd = (pi.application_fee_amount ?? 0) / 100;
+          const currentTotalPaid = Number(invoice.totalPaid ?? invoice.paidAmount ?? 0);
+          const totalPaid = Math.max(0, currentTotalPaid) + amountUsd;
           // Deterministic id = PaymentIntent id, identical shape to the pay/confirm
           // routes, so this backstop converges on a single record without duplicates.
           const paymentRef = adminDb.collection('payments').doc(pi.id);
@@ -133,7 +178,9 @@ export async function POST(req: Request) {
           batch.update(invoiceRef, {
             status: 'paid',
             paidAt: nowIso,
-            paidAmount: amountUsd,
+            paidAmount: totalPaid,
+            totalPaid,
+            balanceDue: 0,
             paymentMethod: 'stripe',
             stripePaymentIntentId: pi.id,
             updatedAt: nowIso,
@@ -158,7 +205,7 @@ export async function POST(req: Request) {
           // backstop converges on exactly one payment.succeeded and one
           // invoice.mark_paid entry per PaymentIntent — no duplicates on replay,
           // and no payment can be recorded without its ledger trail.
-          const previousStatus = String((invoiceSnap.data() as { status?: string }).status || '');
+          const previousStatus = String(invoice.status || '');
           batch.set(
             adminDb.collection('finance_ledger').doc(`payment_succeeded_${pi.id}`),
             buildFinanceLedgerEntry({

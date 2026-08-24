@@ -3,7 +3,6 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import {
   DEFAULT_SECURITY_SETTINGS,
   canEditSection,
-  parseBoolean,
   parseNumber,
   parseString,
   requireAdmin,
@@ -35,7 +34,6 @@ export async function GET() {
         data?.activityRetentionDays,
         DEFAULT_SECURITY_SETTINGS.activityRetentionDays,
       ),
-      forceLogoutAll: parseBoolean(data?.forceLogoutAll, DEFAULT_SECURITY_SETTINGS.forceLogoutAll),
       updatedAt: toISO(data?.updatedAt),
       updatedBy: data?.updatedBy || null,
     };
@@ -74,7 +72,6 @@ export async function PUT(req: Request) {
         body?.activityRetentionDays,
         DEFAULT_SECURITY_SETTINGS.activityRetentionDays,
       ),
-      forceLogoutAll: parseBoolean(body?.forceLogoutAll, DEFAULT_SECURITY_SETTINGS.forceLogoutAll),
       updatedAt: serverTimestamp(),
       updatedBy: auth.user.uid,
     };

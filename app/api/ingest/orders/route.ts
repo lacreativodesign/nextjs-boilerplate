@@ -215,6 +215,7 @@ export async function POST(req: Request) {
 
       try {
         await queueClientActivationInvite({
+          tenantId,
           clientId,
           clientData: {
             primaryContactEmail: customerEmail,

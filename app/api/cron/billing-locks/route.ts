@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { applyLockAdvance, classifyLockAdvance } from '@/lib/billing/apply-subscription-state';
 import { executeDuePendingDowngrades } from '@/lib/billing/pending-downgrade';
 import { isComped } from '@/lib/billing/billing-mode';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
+
+const configuredTenantBatchSize = Number(process.env.DAILY_BILLING_TENANT_BATCH_SIZE || 25);
+const TENANT_BATCH_SIZE = Number.isFinite(configuredTenantBatchSize)
+  ? Math.min(100, Math.max(1, Math.floor(configuredTenantBatchSize)))
+  : 25;
 
 /**
  * Daily dunning lock-ladder cron. applyPaymentFailed stamps softLockAt (day 8)
@@ -15,20 +22,13 @@ export const runtime = 'nodejs';
  * payment that succeeds between read and write can never be overwritten.
  */
 
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isCronFromVercel =
-    process.env.VERCEL === '1' && request.headers.get('x-vercel-cron') === '1';
-
-  if (isCronFromVercel) return true;
-  if (!secret) return false;
-  return authHeader === `Bearer ${secret}`;
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+  if (!authorization.ok) {
+    return NextResponse.json(
+      { ok: false, error: authorization.code },
+      { status: authorization.status },
+    );
   }
 
   const errors: string[] = [];
@@ -38,16 +38,25 @@ export async function GET(request: NextRequest) {
   const nowMs = Date.now();
 
   try {
-    const snap = await adminDb
-      .collection('tenants')
-      .where('billingStatus', '==', 'past_due')
-      .limit(500)
-      .get();
+    const cursorRef = adminDb.collection('cron_job_cursors').doc('billing-locks');
+    const cursorSnapshot = await cursorRef.get();
+    const lastTenantId = String(cursorSnapshot.data()?.lastTenantId || '');
+    const baseQuery = adminDb.collection('tenants').orderBy(admin.firestore.FieldPath.documentId());
+    let query = baseQuery.limit(TENANT_BATCH_SIZE + 1);
+    if (lastTenantId) query = baseQuery.startAfter(lastTenantId).limit(TENANT_BATCH_SIZE + 1);
+    let tenantPage = await query.get();
+    if (tenantPage.empty && lastTenantId) {
+      await cursorRef.delete().catch(() => undefined);
+      tenantPage = await baseQuery.limit(TENANT_BATCH_SIZE + 1).get();
+    }
+    const tenants = tenantPage.docs.slice(0, TENANT_BATCH_SIZE);
+    const truncated = tenantPage.size > TENANT_BATCH_SIZE;
 
-    for (const tenantDoc of snap.docs) {
+    for (const tenantDoc of tenants) {
       const tenantId = tenantDoc.id;
       try {
         const data = tenantDoc.data() as Record<string, unknown>;
+        if (data.billingStatus !== 'past_due') continue;
 
         // COMP-1: the dunning ladder exists to chase a failed payment. A comped workspace
         // has no payment to fail, so a stale past_due flag left over from a previous paid
@@ -85,14 +94,31 @@ export async function GET(request: NextRequest) {
     const downgrades = await executeDuePendingDowngrades();
     errors.push(...downgrades.errors);
 
-    return NextResponse.json({
-      ok: true,
-      softLocked,
-      hardLocked,
-      compedSkipped,
-      downgradesApplied: downgrades.applied,
-      errors,
-    });
+    if (errors.length === 0) {
+      if (truncated && tenants.length > 0) {
+        await cursorRef.set({
+          lastTenantId: tenants[tenants.length - 1].id,
+          updatedAt: new Date(),
+        });
+      } else {
+        await cursorRef.delete().catch(() => undefined);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ok: errors.length === 0,
+        blocked: errors.length === 0 && truncated,
+        scanned: tenants.length,
+        softLocked,
+        hardLocked,
+        compedSkipped,
+        downgradesApplied: downgrades.applied,
+        errors,
+        truncated,
+      },
+      { status: errors.length === 0 ? 200 : 500 },
+    );
   } catch (err: any) {
     console.error('billing-locks cron error:', err?.message || err);
     return NextResponse.json(

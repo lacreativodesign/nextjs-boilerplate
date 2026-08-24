@@ -8,6 +8,8 @@ import type {
   WorkflowRunLog,
   WorkflowRunStatus,
 } from './workflow-types';
+import { executeWorkflowMutation } from './workflow-mutation';
+import { validateWorkflowDefinition } from './workflow-validation';
 
 const DEFAULT_RETRY_DELAY_MS = 300;
 
@@ -142,6 +144,10 @@ async function executeAction(
   context: WorkflowExecutionContext,
   runId: string,
 ): Promise<{ awaitingApproval?: boolean }> {
+  // The UI's test action is a simulation. It must never write Firestore data,
+  // send email, call third-party URLs, or create approval records.
+  if (context.triggerSource === 'test') return {};
+
   switch (action.type) {
     case 'create_record': {
       const payload = Object.entries(action.payload || {}).reduce<Record<string, unknown>>(
@@ -151,70 +157,32 @@ async function executeAction(
         },
         {},
       );
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/workflow-mutation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.INTERNAL_REQUEST_SIGNING_SECRET || '',
-        },
-        body: JSON.stringify({
-          action: 'create_record',
-          entity: action.entity,
-          tenantId: context.tenantId,
-          payload,
-          workflowId: context.workflowId,
-          runId,
-        }),
+      await executeWorkflowMutation({
+        action,
+        tenantId: context.tenantId,
+        payload,
+        workflowId: context.workflowId,
+        runId,
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) throw new Error(json?.error || 'create_record mutation failed');
       return {};
     }
     case 'update_field': {
       const recordId = String(getValue(context.record, 'id') || '');
       if (!recordId) throw new Error('Missing record id for update_field action.');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/workflow-mutation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.INTERNAL_REQUEST_SIGNING_SECRET || '',
-        },
-        body: JSON.stringify({
-          action: 'update_field',
-          entity: action.entity,
-          tenantId: context.tenantId,
-          recordId,
-          field: action.field,
-          value: interpolate(action.value, context),
-          workflowId: context.workflowId,
-          runId,
-        }),
+      await executeWorkflowMutation({
+        action,
+        tenantId: context.tenantId,
+        recordId,
+        value: interpolate(action.value, context),
+        workflowId: context.workflowId,
+        runId,
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) throw new Error(json?.error || 'update_field mutation failed');
       return {};
     }
     case 'delete_record': {
-      const recordId = String(getValue(context.record, action.recordIdField) || '');
-      if (!recordId) throw new Error('Missing record id for delete action.');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/workflow-mutation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.INTERNAL_REQUEST_SIGNING_SECRET || '',
-        },
-        body: JSON.stringify({
-          action: 'delete_record',
-          entity: action.entity,
-          tenantId: context.tenantId,
-          recordId,
-          workflowId: context.workflowId,
-          runId,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) throw new Error(json?.error || 'delete_record mutation failed');
-      return {};
+      throw new Error(
+        'Delete actions require durable post-approval continuation and are currently disabled.',
+      );
     }
     case 'send_email': {
       await adminDb.collection('email_queue').add({
@@ -230,20 +198,9 @@ async function executeAction(
       return {};
     }
     case 'webhook': {
-      const response = await fetch(action.url, {
-        method: action.method,
-        headers: { 'Content-Type': 'application/json', ...(action.headers || {}) },
-        body: JSON.stringify({
-          tenantId: context.tenantId,
-          workflowId: context.workflowId,
-          runId,
-          payload: action.body || context.record || {},
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(`Webhook failed with status ${response.status}`);
-      }
-      return {};
+      throw new Error(
+        'Outbound webhook actions require destination allowlisting and are disabled.',
+      );
     }
     case 'approval': {
       const approvalRef = adminDb.collection('automation_approvals').doc();
@@ -277,10 +234,22 @@ async function executeAction(
 
 export class WorkflowEngine {
   async execute(workflow: WorkflowDefinition, context: WorkflowExecutionContext) {
+    if (
+      workflow.id !== context.workflowId ||
+      workflow.tenantId !== context.tenantId ||
+      !workflow.id ||
+      !workflow.tenantId
+    ) {
+      throw new Error('Workflow execution context does not match the stored workflow.');
+    }
+    const validation = validateWorkflowDefinition(workflow);
+    if (!validation.ok) throw new Error(validation.error);
+
     const runRef = adminDb.collection('automation_workflow_runs').doc();
     const baseRun = {
       tenantId: context.tenantId,
       workflowId: workflow.id,
+      recordId: String(context.record?.id || ''),
       triggerSource: context.triggerSource,
       status: 'running' as WorkflowRunStatus,
       retries: 0,

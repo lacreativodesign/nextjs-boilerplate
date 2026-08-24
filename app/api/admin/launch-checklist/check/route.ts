@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { REQUIRED_ENV_VARS } from '@/lib/launch-checklist';
-import { requireAdminOrSuperAdmin } from '../../_utils';
+import { requireLaunchChecklistSuperAdmin } from '../_utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const auth = await requireAdminOrSuperAdmin();
+    const auth = await requireLaunchChecklistSuperAdmin();
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }

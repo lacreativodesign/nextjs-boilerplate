@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
     }
     await queueClientActivationInvite({
+      tenantId: current.tenantId,
       clientId,
       clientData: {
         primaryContactEmail: clientData.primaryContactEmail,

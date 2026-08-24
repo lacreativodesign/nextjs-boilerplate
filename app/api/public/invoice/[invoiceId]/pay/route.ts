@@ -4,6 +4,11 @@ import { getStripeClient } from '@/lib/payments/stripe';
 import { calculatePlatformFee } from '@/lib/stripe/connect';
 import { getInvoiceWithValidation, getTenantRecord } from '../../shared';
 import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
+import {
+  assertConnectInvoicePaymentIntent,
+  connectInvoiceConfirmationKey,
+  connectInvoiceIntentKey,
+} from '@/lib/payments/connect-invoice-integrity';
 
 export const runtime = 'nodejs';
 
@@ -70,14 +75,24 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
 
     const platformFee = calculatePlatformFee(amountCents);
     const stripe = getStripeClient();
-    const paymentIntent = await stripe.paymentIntents.create(
+    const binding = {
+      invoiceId,
+      tenantId: validation.payload.tenantId,
+      clientId: validation.payload.clientId,
+      orderId: validation.payload.orderId,
+      amountCents,
+      currency: validation.payload.currency,
+    };
+    const paidSoFarCents = Math.round(validation.payload.totalPaid * 100);
+
+    // Create the immutable invoice-bound intent without a card. Every request for
+    // this balance version uses the same key, so concurrent cards converge on one
+    // chargeable Stripe object instead of creating one intent per PaymentMethod.
+    const createdIntent = await stripe.paymentIntents.create(
       {
         amount: amountCents,
         currency: validation.payload.currency.toLowerCase(),
-        payment_method: paymentMethodId,
         confirmation_method: 'manual',
-        confirm: true,
-        receipt_email: email || undefined,
         description: `Invoice ${validation.payload.orderId}`,
         metadata: {
           invoiceId,
@@ -96,13 +111,42 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
         // destination-charge parameter and Stripe rejects it when combined with
         // stripeAccount.
         stripeAccount: connectAccountId,
-        idempotencyKey: `inv_pay_${invoiceId}_${paymentMethodId}`,
+        idempotencyKey: connectInvoiceIntentKey(binding, paidSoFarCents),
       },
     );
+
+    // An idempotent create can replay its original response even after the intent
+    // advanced, so always retrieve the current state before deciding what to do.
+    let paymentIntent = await stripe.paymentIntents.retrieve(createdIntent.id, {
+      stripeAccount: connectAccountId,
+    });
+    assertConnectInvoicePaymentIntent(paymentIntent, binding);
+
+    if (paymentIntent.status === 'requires_payment_method') {
+      paymentIntent = await stripe.paymentIntents.update(
+        paymentIntent.id,
+        {
+          payment_method: paymentMethodId,
+          receipt_email: email || undefined,
+        },
+        { stripeAccount: connectAccountId },
+      );
+      assertConnectInvoicePaymentIntent(paymentIntent, binding);
+      paymentIntent = await stripe.paymentIntents.confirm(
+        paymentIntent.id,
+        {},
+        {
+          stripeAccount: connectAccountId,
+          idempotencyKey: connectInvoiceConfirmationKey(paymentIntent.id, paymentMethodId),
+        },
+      );
+      assertConnectInvoicePaymentIntent(paymentIntent, binding);
+    }
 
     if (paymentIntent.status === 'succeeded') {
       const nowIso = new Date().toISOString();
       const invoiceAmount = validation.payload.amount;
+      const totalPaid = validation.payload.totalPaid + invoiceAmount;
       // Deterministic id = PaymentIntent id makes the ledger write idempotent, so
       // retries (and the confirm route / webhook backstop added later) converge on
       // a single payment record instead of creating duplicates.
@@ -112,7 +156,9 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       batch.update(adminDb.collection('invoices').doc(invoiceId), {
         status: 'paid',
         paidAt: nowIso,
-        paidAmount: invoiceAmount,
+        paidAmount: totalPaid,
+        totalPaid,
+        balanceDue: 0,
         paymentMethod: 'stripe',
         stripePaymentIntentId: paymentIntent.id,
         updatedAt: nowIso,

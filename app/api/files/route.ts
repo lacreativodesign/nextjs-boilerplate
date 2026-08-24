@@ -12,6 +12,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const files = await FileManager.listFiles({
       tenantId: session.tenantId,
+      actor: {
+        tenantId: session.tenantId,
+        uid: session.uid,
+        role: session.role,
+      },
       folderId: searchParams.get('folderId') || undefined,
       tag: searchParams.get('tag') || undefined,
       q: searchParams.get('q') || undefined,

@@ -3,8 +3,7 @@
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enrollMFA, verifyMFAEnrollment } from '@/lib/auth/mfa';
-import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebaseClient';
-import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { getFirebaseAuth } from '@/lib/firebaseClient';
 
 const CODE_LENGTH = 6;
 
@@ -63,12 +62,6 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
       if (!ok) {
         throw new Error('Invalid verification code. Please try again.');
       }
-
-      const db = await getFirebaseDb();
-      await updateDoc(doc(db, 'users', user.uid), {
-        mfaEnabled: true,
-        mfaUpdatedAt: serverTimestamp(),
-      });
 
       setStep('success');
       onComplete();

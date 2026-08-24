@@ -3,11 +3,15 @@
  * role's key pages and assert no error banner.
  *
  * Runs against a DEPLOYMENT, not a local build. Required env vars:
- *   - BASE_URL            deployment URL (read by playwright.config.ts)
- *   - E2E_DEMO_PASSWORD   shared password for the demo_* accounts
+ *   - BASE_URL                       deployment URL (read by playwright.config.ts)
+ *   - E2E_DEMO_PASSWORDS_JSON        distinct per-account credentials (secret JSON map)
+ *   - E2E_ISOLATED_ENVIRONMENT=true  acknowledgement after Firebase isolation is verified
+ *   - E2E_EXPECTED_FIREBASE_PROJECT_ID isolated Firebase project expected from the deployment
+ *   - FIREBASE_PRODUCTION_PROJECT_ID production project that must never match the target
  *
- * Without E2E_DEMO_PASSWORD the helper calls test.skip(), so the suite degrades
- * gracefully (e.g. when the GitHub secret is missing). Run with:
+ * Without E2E_DEMO_PASSWORDS_JSON the helper calls test.skip(), so the suite degrades gracefully
+ * (e.g. when the GitHub secret is missing). Production hosts, an unacknowledged remote target, or
+ * an invalid credential map fail the test. Run with:
  *   npm run test:smoke
  */
 import { test, expect, type Page } from '@playwright/test';

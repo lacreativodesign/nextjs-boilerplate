@@ -6,6 +6,8 @@ export type PublicInvoiceData = {
   clientId?: string;
   orderId: string;
   amount: number;
+  totalAmount: number;
+  totalPaid: number;
   subtotal: number | null;
   taxAmount: number;
   currency: string;
@@ -29,6 +31,22 @@ export function normalizeInvoiceAmount(invoice: Record<string, unknown>): number
     invoice.amount ?? invoice.totalAmount ?? invoice.amountTotal ?? invoice.amountTotalUsd ?? 0,
   );
   return Number.isFinite(amount) ? Math.max(0, amount) : 0;
+}
+
+export function normalizeInvoiceBalance(invoice: Record<string, unknown>): {
+  totalAmount: number;
+  totalPaid: number;
+  balanceDue: number;
+} {
+  const totalAmount = normalizeInvoiceAmount(invoice);
+  const rawPaid = Number(invoice.totalPaid ?? invoice.paidAmount ?? 0);
+  const totalPaid = Number.isFinite(rawPaid) ? Math.max(0, Math.min(rawPaid, totalAmount)) : 0;
+  const rawBalance = Number(invoice.balanceDue);
+  const balanceDue = Number.isFinite(rawBalance)
+    ? Math.max(0, Math.min(rawBalance, totalAmount))
+    : Math.max(0, totalAmount - totalPaid);
+
+  return { totalAmount, totalPaid, balanceDue };
 }
 
 export function isCancelledInvoice(status: string): boolean {
@@ -58,7 +76,7 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
     return { error: 'Invoice not found', status: 404 as const };
   }
 
-  const amount = normalizeInvoiceAmount(invoice);
+  const { totalAmount, totalPaid, balanceDue: amount } = normalizeInvoiceBalance(invoice);
   const subtotalRaw = invoice.subtotal ?? invoice.amountSubtotal ?? invoice.amountSubtotalUsd;
   const subtotalNum = Number(subtotalRaw);
   const taxNum = Number(invoice.taxAmount ?? invoice.amountTax ?? invoice.amountTaxUsd ?? 0);
@@ -69,6 +87,8 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
     clientId: invoice.clientId ? String(invoice.clientId) : undefined,
     orderId: String(invoice.orderId || invoiceId),
     amount,
+    totalAmount,
+    totalPaid,
     subtotal: Number.isFinite(subtotalNum) ? subtotalNum : null,
     taxAmount: Number.isFinite(taxNum) ? taxNum : 0,
     currency: String(invoice.currency || 'USD').toUpperCase(),

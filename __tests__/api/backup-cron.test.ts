@@ -13,8 +13,8 @@ import { getBackupCollections } from '@/lib/backup/backup-registry';
  *
  * This gate proves, by static analysis, that the replacement route reads the
  * real top-level collections, groups by tenantId, emits a checksummed manifest,
- * is cron-authenticated, dead-letters + alerts on failure, and is scheduled as a
- * Vercel cron — and that the broken function is gone.
+ * is cron-authenticated, dead-letters + alerts on failure, and remains available
+ * only as an operator action while the daily orchestrator records the Hobby-plan blocker.
  */
 
 const ROUTE = 'app/api/cron/backup/route.ts';
@@ -56,19 +56,19 @@ describe('canonical nightly backup cron (DR-01, DR-02)', () => {
     expect(source).toContain('records:');
   });
 
-  it('is cron-authenticated (CRON_SECRET + x-vercel-cron)', () => {
+  it('is cron-authenticated with CRON_SECRET and never trusts metadata headers', () => {
     expect(source).toContain('CRON_SECRET');
-    expect(source).toContain('x-vercel-cron');
-    expect(source).toContain('status: 401');
+    expect(source).toContain('authorizeCronRequest');
+    expect(source).not.toContain("request.headers.get('x-vercel-cron')");
   });
 
-  it('dead-letters + alerts admin on failure and is scheduled in vercel.json', () => {
+  it('dead-letters + alerts admin on failure and is not an additional Vercel schedule', () => {
     expect(source).toContain("collection('dead_letter_backups')");
     expect(source).toContain("to: 'admin@bizosto.com'");
 
     const vercel = JSON.parse(read(VERCEL)) as { crons: Array<{ path: string; schedule: string }> };
     const cron = vercel.crons.find((entry) => entry.path === '/api/cron/backup');
-    expect(cron).toBeDefined();
-    expect(cron?.schedule).toBe('0 2 * * *');
+    expect(cron).toBeUndefined();
+    expect(vercel.crons).toEqual([{ path: '/api/cron/daily-orchestrator', schedule: '0 2 * * *' }]);
   });
 });

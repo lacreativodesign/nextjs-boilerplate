@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -70,25 +70,38 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    if: ${{ secrets.SONAR_TOKEN != '' }}
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect optional Sonar configuration
+        id: sonar-config
+        shell: bash
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node.js
+        if: steps.sonar-config.outputs.enabled == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: steps.sonar-config.outputs.enabled == 'true'
         run: npm ci
 
       - name: Test coverage
+        if: steps.sonar-config.outputs.enabled == 'true'
         run: npm test
 
       - name: SonarQube Scan
+        if: steps.sonar-config.outputs.enabled == 'true'
         uses: SonarSource/sonarqube-scan-action@v2
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

@@ -6,28 +6,52 @@ import { parseServerEnv, assertServerEnv, serverEnvSchema } from '@/lib/env';
  * lib/env.ts validates the boot-critical SERVER env at startup so missing/invalid
  * values fail fast with a clear message instead of a confusing runtime 500. These
  * tests pin three properties:
- *  1. the boot-required set is exactly {FIREBASE_ADMIN_KEY, RESEND_API_KEY, CRON_SECRET}
- *     (deferred integrations like Stripe must NOT be required pre-launch),
+ *  1. the boot-required set includes credentials plus explicit deployment/Firebase
+ *     isolation metadata (deferred integrations remain optional),
  *  2. shape validation (FIREBASE_ADMIN_KEY must be JSON with project_id; CRON_SECRET
  *     must not be the placeholder), and
  *  3. assertServerEnv throws at runtime but is a no-op during build/tests.
  */
 
-const validKey = JSON.stringify({ project_id: 'la-creativo-erp', client_email: 'x@y.z' });
+const validKey = JSON.stringify({ project_id: 'prod-project', client_email: 'x@y.z' });
 
 const validEnv = {
+  BIZOSTO_ENVIRONMENT: 'production',
   FIREBASE_ADMIN_KEY: validKey,
+  FIREBASE_EXPECTED_PROJECT_ID: 'prod-project',
+  FIREBASE_PRODUCTION_PROJECT_ID: 'prod-project',
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'prod-project',
   RESEND_API_KEY: 're_test_123',
-  CRON_SECRET: 'a-real-cron-secret',
+  CRON_SECRET: 'a'.repeat(32),
 } as unknown as NodeJS.ProcessEnv;
 
 describe('serverEnvSchema — boot-required set', () => {
-  it('requires exactly the three boot-critical server vars', () => {
-    expect(Object.keys(serverEnvSchema.shape).sort()).toEqual([
-      'CRON_SECRET',
-      'FIREBASE_ADMIN_KEY',
-      'RESEND_API_KEY',
-    ]);
+  it('requires the boot-critical credentials and isolation metadata', () => {
+    const keys = Object.keys(serverEnvSchema.shape);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        'BIZOSTO_ENVIRONMENT',
+        'CRON_SECRET',
+        'FIREBASE_ADMIN_KEY',
+        'FIREBASE_EXPECTED_PROJECT_ID',
+        'FIREBASE_PRODUCTION_PROJECT_ID',
+        'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+        'FIREBASE_EXPECTED_STORAGE_BUCKET',
+        'FIREBASE_PRODUCTION_STORAGE_BUCKET',
+        'FIREBASE_STORAGE_BUCKET',
+        'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+        'RESEND_API_KEY',
+        'E2E_EXPECTED_FIREBASE_PROJECT_ID',
+        'E2E_ISOLATED_ENVIRONMENT',
+        'DAILY_CRON_RUNTIME_BUDGET_MS',
+        'DAILY_RETENTION_TENANT_BATCH_SIZE',
+        'DAILY_INVOICE_REMINDER_LIMIT',
+        'DAILY_ABANDONED_SIGNUP_TENANT_BATCH_SIZE',
+        'DAILY_TRIAL_TENANT_BATCH_SIZE',
+        'DAILY_BILLING_TENANT_BATCH_SIZE',
+        'FIREBASE_STORAGE_EMULATOR_HOST',
+      ]),
+    );
   });
 
   it('does NOT require deferred integrations (Stripe etc.)', () => {
@@ -58,6 +82,9 @@ describe('parseServerEnv', () => {
     if (result.success) return;
     const joined = result.errors.join('\n');
     expect(joined).toContain('FIREBASE_ADMIN_KEY');
+    expect(joined).toContain('FIREBASE_EXPECTED_PROJECT_ID');
+    expect(joined).toContain('FIREBASE_PRODUCTION_PROJECT_ID');
+    expect(joined).toContain('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
     expect(joined).toContain('RESEND_API_KEY');
     expect(joined).toContain('CRON_SECRET');
   });
@@ -90,6 +117,25 @@ describe('parseServerEnv', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.errors.join('\n')).toMatch(/placeholder/i);
+  });
+
+  it('validates bounded daily runtime and retention batch settings', () => {
+    expect(
+      parseServerEnv({
+        ...validEnv,
+        DAILY_CRON_RUNTIME_BUDGET_MS: '270001',
+        DAILY_RETENTION_TENANT_BATCH_SIZE: '6',
+        DAILY_INVOICE_REMINDER_LIMIT: '251',
+      } as unknown as NodeJS.ProcessEnv).success,
+    ).toBe(false);
+    expect(
+      parseServerEnv({
+        ...validEnv,
+        DAILY_CRON_RUNTIME_BUDGET_MS: '270000',
+        DAILY_RETENTION_TENANT_BATCH_SIZE: '1',
+        DAILY_INVOICE_REMINDER_LIMIT: '100',
+      } as unknown as NodeJS.ProcessEnv).success,
+    ).toBe(true);
   });
 });
 

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { drainOutbox } from '@/lib/email/outbox';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
-
-const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * Outbox worker (MAIL-5).
@@ -12,22 +11,18 @@ const CRON_SECRET = process.env.CRON_SECRET;
  * Without this the outbox is only a log: a message would be recorded as failed and never
  * tried again, which is no better than the fire-and-forget sends it replaced.
  *
- * Runs every fifteen minutes. The first backoff step is one minute, so a brief provider
- * blip is usually cleared on the next pass; the widening steps mean a longer outage costs
- * a handful of attempts rather than thousands.
+ * The hosting constraint permits one daily cron. Enqueue still attempts delivery
+ * immediately in the originating request; this bounded daily drain is the only scheduled
+ * retry. Sub-daily retry guarantees remain owner-blocked without approved infrastructure.
  */
 export async function GET(request: NextRequest) {
   try {
-    if (!CRON_SECRET || CRON_SECRET === 'change-me-in-production') {
+    const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+    if (!authorization.ok) {
       return NextResponse.json(
-        { error: 'Cron secret is not configured securely.' },
-        { status: 500 },
+        { success: false, error: authorization.code },
+        { status: authorization.status },
       );
-    }
-
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const results = await drainOutbox();

@@ -6,6 +6,7 @@ import { assertPermission, Permission } from '../../../lib/permissions';
 import { createStripeRefund, getStripeClient } from '@/lib/payments/stripe';
 import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
+import { refundOperationIdempotencyKey } from '@/lib/payments/refund-idempotency';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,8 +59,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const maxAmount = Number(payment.amountUsd || 0) - Number(payment.refundedAmountUsd || 0);
-    if (typeof amountUsd === 'number' && (amountUsd <= 0 || amountUsd > maxAmount)) {
+    const alreadyRefundedUsd = Number(payment.refundedAmountUsd || 0);
+    const maxAmount = Number(payment.amountUsd || 0) - alreadyRefundedUsd;
+    const effectiveAmountUsd = amountUsd ?? maxAmount;
+    if (
+      !Number.isFinite(effectiveAmountUsd) ||
+      effectiveAmountUsd <= 0 ||
+      effectiveAmountUsd > maxAmount
+    ) {
       return NextResponse.json({ ok: false, error: 'Invalid refund amount.' }, { status: 400 });
     }
 
@@ -91,16 +98,28 @@ export async function POST(req: Request) {
     const refund = await createStripeRefund({
       stripe,
       paymentIntentId: stripePaymentIntentId,
-      amountUsd,
+      amountUsd: effectiveAmountUsd,
       reason,
       stripeAccount,
       refundApplicationFee,
+      idempotencyKey: refundOperationIdempotencyKey(
+        paymentId,
+        Math.round(alreadyRefundedUsd * 100),
+      ),
     });
     const refundAmountUsd = Number(refund.amount || 0) / 100;
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const refundRef = adminDb.collection('payment_refunds').doc(`refund_${refund.id}`);
+    let refundAlreadyRecorded = false;
 
     await adminDb.runTransaction(async (tx) => {
       const freshPayment = await tx.get(paymentRef);
+      const existingRefund = await tx.get(refundRef);
+      if (existingRefund.exists) {
+        refundAlreadyRecorded = true;
+        return;
+      }
+
       const current = freshPayment.data() || {};
       const nextRefunded = Number(current.refundedAmountUsd || 0) + refundAmountUsd;
 
@@ -115,7 +134,7 @@ export async function POST(req: Request) {
       );
 
       tx.set(
-        adminDb.collection('payment_refunds').doc(`refund_${refund.id}`),
+        refundRef,
         {
           id: `refund_${refund.id}`,
           tenantId: String(current.tenantId || ''),
@@ -168,22 +187,24 @@ export async function POST(req: Request) {
       );
     });
 
-    const refundNotifyTargets = await getUsersByRoles(
-      ['admin', 'super_admin', 'finance'],
-      auth.user.tenantId,
-    );
-    await createNotifications({
-      recipients: refundNotifyTargets,
-      tenantId: auth.user.tenantId,
-      type: 'info',
-      title: 'Refund issued',
-      message: `A refund of USD ${refundAmountUsd} was issued.`,
-      entityType: 'payment',
-      entityId: paymentId,
-      deepLink: '/finance/payments',
-    });
+    if (!refundAlreadyRecorded) {
+      const refundNotifyTargets = await getUsersByRoles(
+        ['admin', 'super_admin', 'finance'],
+        auth.user.tenantId,
+      );
+      await createNotifications({
+        recipients: refundNotifyTargets,
+        tenantId: auth.user.tenantId,
+        type: 'info',
+        title: 'Refund issued',
+        message: `A refund of USD ${refundAmountUsd} was issued.`,
+        entityType: 'payment',
+        entityId: paymentId,
+        deepLink: '/finance/payments',
+      });
+    }
 
-    return NextResponse.json({ ok: true, refundId: refund.id });
+    return NextResponse.json({ ok: true, refundId: refund.id, duplicate: refundAlreadyRecorded });
   } catch (err: any) {
     console.error('payments/refund error:', err);
     return NextResponse.json(

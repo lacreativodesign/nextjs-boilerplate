@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebaseAdmin';
+import firebaseAdminApp, { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '@/app/api/super_admin/_utils';
+import { DEMO_TENANT_ID, evaluateDemoMutationSafety } from '@/lib/demo/safety';
+import { demoRouteErrorResponse } from '../_utils';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
-    const tenantId = 'bizosto-demo';
+    const tenantId = DEMO_TENANT_ID;
+    const mutationSafety = evaluateDemoMutationSafety({
+      tenantId,
+      projectId: String(firebaseAdminApp?.options.projectId || '').trim(),
+    });
 
     const [clients, leads, invoices, projects, productionJobs, employees] = await Promise.all([
       adminDb.collection('clients').where('tenantId', '==', tenantId).count().get(),
@@ -20,6 +27,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      mutationSafety,
       counts: {
         clients: clients.data().count,
         leads: leads.data().count,
@@ -29,10 +37,7 @@ export async function GET(req: NextRequest) {
         employees: employees.data().count,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message || 'Unable to load demo status' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return demoRouteErrorResponse(error, 'Unable to load demo status');
   }
 }

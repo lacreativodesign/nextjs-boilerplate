@@ -10,7 +10,8 @@ import {
   requireAdmin,
   serverTimestamp,
 } from '../../_utils';
-import { generateInvoiceToken } from '@/lib/finance/invoiceToken';
+import { createClientFromClosedWonDeal } from '@/lib/crm';
+import { isTenantOwned } from '@/lib/tenant/ownership';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,11 +34,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
     const preData = preSnap.data() || {};
-    const isSuperAdmin = (auth.user.role || '').toLowerCase() === 'super_admin';
-    if (!isSuperAdmin && String(preData.tenantId || '') !== String(auth.user.tenantId || '')) {
+    if (
+      !isTenantOwned({
+        data: preData,
+        callerTenantId: auth.user.tenantId,
+        callerRole: auth.user.role,
+      })
+    ) {
       return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
     }
+    const targetTenantId = String(preData.tenantId || '').trim();
+    if (!targetTenantId) {
+      return NextResponse.json({ ok: false, error: 'Deal tenant is missing.' }, { status: 409 });
+    }
     let closedWonTriggered = false;
+    let finalStage = parseString(preData.stage, 'New');
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
@@ -48,6 +59,7 @@ export async function POST(req: Request) {
       const prevStage = parseString(data.stage, 'New');
       const nextStage =
         payload.stage !== undefined ? parseString(payload.stage, prevStage) : prevStage;
+      finalStage = nextStage;
       const updates: Record<string, any> = {
         updatedAt: serverTimestamp(),
       };
@@ -78,79 +90,20 @@ export async function POST(req: Request) {
         });
       }
 
-      const shouldProcessClosedWon = nextStage === 'Closed Won' && !data.closedWonProcessed;
-      if (shouldProcessClosedWon) {
-        closedWonTriggered = true;
-        const clientName =
-          parseString(payload.clientName, '') ||
-          parseString(data.clientName, '') ||
-          parseString(data.leadName, '') ||
-          'New Client';
-        let clientId = data.clientId || null;
-        if (!clientId) {
-          const clientRef = adminDb.collection('clients').doc();
-          clientId = clientRef.id;
-          tx.set(clientRef, {
-            companyName: clientName,
-            ownerAmUid: updates.ownerId || data.ownerId || null,
-            ownerAmName: updates.ownerName || data.ownerName || null,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            isDeleted: false,
-          });
-        }
-
-        let projectId = data.projectId || null;
-        if (!projectId) {
-          const projectRef = adminDb.collection('projects').doc();
-          projectId = projectRef.id;
-          tx.set(projectRef, {
-            projectName: updates.dealName || data.dealName || 'New Project',
-            clientId,
-            clientName,
-            stage: 'Inquiry',
-            ownerAmUid: updates.ownerId || data.ownerId || null,
-            ownerAmName: updates.ownerName || data.ownerName || null,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            isDeleted: false,
-          });
-        }
-
-        let invoiceId = data.invoiceId || null;
-        if (!invoiceId) {
-          const invoiceRef = adminDb.collection('invoices').doc();
-          invoiceId = invoiceRef.id;
-          tx.set(invoiceRef, {
-            orderId: `DEAL-${id}`,
-            clientId,
-            clientName,
-            paymentToken: generateInvoiceToken(),
-            currency: 'USD',
-            amountSubtotalUsd: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
-            amountTaxUsd: 0,
-            amountTotalUsd: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
-            status: 'draft',
-            totalPaid: 0,
-            balanceDue: parseNumber(payload.valueUsd, Number(data.valueUsd || 0)),
-            dueDate: null,
-            issuedAt: serverTimestamp(),
-            notes: 'Auto-generated from Closed Won deal.',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            isDeleted: false,
-          });
-        }
-
-        updates.clientId = clientId;
-        updates.projectId = projectId;
-        updates.invoiceId = invoiceId;
-        updates.closedWonProcessed = true;
-        updates.closedWonAt = serverTimestamp();
-      }
-
       tx.set(dealRef, updates, { merge: true });
     });
+
+    if (finalStage === 'Closed Won') {
+      const activation = await createClientFromClosedWonDeal({
+        dealId: id,
+        actor: {
+          uid: auth.user.uid,
+          name: auth.user.name || auth.user.fullName || '',
+          tenantId: targetTenantId,
+        },
+      });
+      closedWonTriggered = activation.created;
+    }
 
     await createSalesEvent({
       type: closedWonTriggered ? 'deal_closed_won' : 'deal_updated',
@@ -160,7 +113,7 @@ export async function POST(req: Request) {
       entityId: id,
       createdByUid: auth.user.uid,
       createdByName: auth.user.name || auth.user.fullName || '',
-      tenantId: auth.user.tenantId,
+      tenantId: targetTenantId,
     });
 
     if (closedWonTriggered) {
@@ -169,7 +122,7 @@ export async function POST(req: Request) {
         body: `Deal ${id} closed won. Project and finance flow created.`,
         userId: auth.user.uid,
         metadata: { dealId: id },
-        tenantId: auth.user.tenantId,
+        tenantId: targetTenantId,
       });
 
       await queueSalesEmail({
@@ -177,7 +130,7 @@ export async function POST(req: Request) {
         template: 'deal_closed_won',
         subject: 'Deal Closed Won',
         data: { dealId: id },
-        tenantId: auth.user.tenantId,
+        tenantId: targetTenantId,
       });
     }
 

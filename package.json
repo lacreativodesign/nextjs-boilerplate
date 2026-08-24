@@ -2,6 +2,10 @@
   "name": "bizosto",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "22.x",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -37,7 +41,6 @@
     "@hookform/resolvers": "^3.3.4",
     "@react-pdf/renderer": "^4.3.1",
     "@sentry/nextjs": "^8.55.0",
-    "@uploadcare/react-uploader": "^1.12.0",
     "@upstash/redis": "^1.35.3",
     "classnames": "^2.3.2",
     "clsx": "^2.1.1",
@@ -70,7 +73,7 @@
     "zustand": "^4.4.6"
   },
   "devDependencies": {
-    "@playwright/test": "1.49.1",
+    "@playwright/test": "1.62.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.1",
@@ -87,7 +90,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-fixed-jsdom": "^0.0.11",
     "msw": "^2.7.0",
-    "postcss": "8.4.38",
+    "postcss": "8.5.26",
     "prettier": "3.9.4",
     "tailwindcss": "3.4.10",
     "typescript": "5.5.4"

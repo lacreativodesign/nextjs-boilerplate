@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SESSION_CONFIG } from '@/lib/auth/sessionConfig';
+import { apiFetch } from '@/lib/api/client';
 
 const WARNING_WINDOW_MS = 5 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -16,7 +17,7 @@ export function useSessionTimeout() {
 
   const refreshSession = useCallback(async () => {
     try {
-      await fetch('/api/auth/sessions', {
+      await apiFetch('/api/auth/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -28,7 +29,7 @@ export function useSessionTimeout() {
 
   const logout = useCallback(async () => {
     try {
-      await fetch('/api/logout', {
+      await apiFetch('/api/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

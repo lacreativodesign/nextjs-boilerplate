@@ -8,6 +8,7 @@ import {
   requireSalesManager,
   serverTimestamp,
 } from '../../_utils';
+import { createClientFromClosedWonDeal } from '@/lib/crm';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,17 @@ export async function POST(req: Request) {
       tx.set(dealRef, updates, { merge: true });
     });
 
+    if (stage === 'Closed Won') {
+      await createClientFromClosedWonDeal({
+        dealId: id,
+        actor: {
+          uid: auth.user.uid,
+          name: auth.user.name || auth.user.fullName || '',
+          tenantId: auth.user.tenantId,
+        },
+      });
+    }
+
     if (!prevStage || prevStage === stage) {
       return NextResponse.json({ ok: true });
     }
@@ -95,6 +107,7 @@ export async function POST(req: Request) {
       createdByUid: auth.user.uid,
       createdByName,
       metadata: { stage },
+      tenantId: auth.user.tenantId,
     });
 
     await notifyUsers({
@@ -105,6 +118,7 @@ export async function POST(req: Request) {
       entityId: id,
       deepLink: '/sales_manager/pipeline',
       createdBy: { uid: auth.user.uid, name: createdByName },
+      tenantId: auth.user.tenantId,
     });
 
     if (stage === 'Closed Won' || stage === 'Closed Lost') {
@@ -116,6 +130,7 @@ export async function POST(req: Request) {
         entityId: id,
         deepLink: '/sales_manager/deals',
         createdBy: { uid: auth.user.uid, name: createdByName },
+        tenantId: auth.user.tenantId,
       });
     }
 

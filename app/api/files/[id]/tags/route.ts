@@ -22,7 +22,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!session?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = schema.parse(await request.json());
-    const file = await FileManager.getFileById(params.id, session.tenantId);
+    const file = await FileManager.getManageableFileById(params.id, {
+      tenantId: session.tenantId,
+      uid: session.uid,
+      role: session.role,
+    });
     if (!file) return NextResponse.json({ error: 'File not found' }, { status: 404 });
 
     await FileManager.addTags({

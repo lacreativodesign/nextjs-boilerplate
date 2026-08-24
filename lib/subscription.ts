@@ -1,4 +1,5 @@
-export type SubscriptionState = 'active' | 'grace' | 'soft_locked' | 'hard_locked' | 'trial';
+export type SubscriptionState =
+  'active' | 'grace' | 'soft_locked' | 'hard_locked' | 'trial' | 'pending_checkout';
 
 const VALID_STATES: SubscriptionState[] = [
   'active',
@@ -6,7 +7,27 @@ const VALID_STATES: SubscriptionState[] = [
   'soft_locked',
   'hard_locked',
   'trial',
+  'pending_checkout',
 ];
+
+// Exact authenticated endpoints needed to start/repair Bizosto SaaS billing or revoke the caller's
+// own sessions. Keeping this as an allowlist prevents a locked tenant from regaining general API
+// access through a broad `/api/billing/*` or `/api/auth/*` exemption.
+const SUBSCRIPTION_RECOVERY_API_PATHS = new Set([
+  '/api/stripe/checkout',
+  '/api/billing/address',
+  '/api/billing/cancel-subscription',
+  '/api/billing/invoices',
+  '/api/billing/payment-method',
+  '/api/billing/portal',
+  '/api/billing/setup-intent',
+  '/api/billing/subscription',
+  '/api/billing/subscription/cancel',
+  '/api/billing/subscription/change',
+  '/api/billing/usage',
+  '/api/auth/sessions',
+  '/api/auth/sessions/invalidate-all',
+]);
 
 export function normalizeSubscriptionState(value: unknown): SubscriptionState {
   const normalized = String(value || '').toLowerCase();
@@ -43,7 +64,15 @@ export function isReadOnlySubscription(state: SubscriptionState) {
 }
 
 export function isHardLockedSubscription(state: SubscriptionState) {
-  return state === 'hard_locked';
+  // A newly provisioned tenant must reach checkout, but it must not receive ordinary product
+  // access until the verified Stripe webhook activates it.
+  return state === 'hard_locked' || state === 'pending_checkout';
+}
+
+export function isSubscriptionRecoveryApiPath(pathname: string): boolean {
+  return (
+    SUBSCRIPTION_RECOVERY_API_PATHS.has(pathname) || /^\/api\/auth\/sessions\/[^/]+$/.test(pathname)
+  );
 }
 
 export function isTrialSubscription(state: SubscriptionState) {
@@ -58,6 +87,11 @@ export function isNonActiveSubscription(state: SubscriptionState) {
 
 export function getSubscriptionBannerCopy(state: SubscriptionState) {
   switch (state) {
+    case 'pending_checkout':
+      return {
+        title: 'Complete checkout',
+        message: 'Complete secure checkout to start your 14-day trial and activate your workspace.',
+      };
     case 'trial':
       return {
         title: 'Free trial',

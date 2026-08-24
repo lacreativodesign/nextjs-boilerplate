@@ -14,14 +14,9 @@ service cloud.firestore {
       return isAuthed() && request.auth.token.role == 'client';
     }
 
-    // Super admin can read/write everything
-    match /{document=**} {
-      allow read, write: if isSuperAdmin();
-    }
-
-    // Tenant document: members may read their own tenant doc. Writes server-only.
+    // Tenant document: members and Super Admin may read. Writes remain server-only.
     match /tenants/{tenantId} {
-      allow read: if belongsToTenant(tenantId);
+      allow read: if isSuperAdmin() || belongsToTenant(tenantId);
       allow write: if false;
     }
 
@@ -38,19 +33,20 @@ service cloud.firestore {
     // client-SDK access here. Any future subcollection that genuinely needs
     // browser reads must be given its own explicit match block below.
     match /tenants/{tenantId}/activity_feed/{docId} {
-      allow read: if belongsToTenant(tenantId) && !isClientRole();
+      allow read: if isSuperAdmin() || (belongsToTenant(tenantId) && !isClientRole());
       allow write: if false;
     }
 
     // All other tenant subcollections (support_tickets, support_meta, and every
-    // future subcollection): server SDK only. Super admin still covered above.
+    // future subcollection): server SDK only for every role.
     match /tenants/{tenantId}/{subcollection}/{docId=**} {
       allow read, write: if false;
     }
 
-    // users: a user may read ONLY their own document. Writes server-only.
+    // users: a user may read only their own document; Super Admin may read for governance.
+    // Writes are server-only for every role.
     match /users/{docId} {
-      allow read: if isAuthed() && request.auth.uid == docId;
+      allow read: if isSuperAdmin() || (isAuthed() && request.auth.uid == docId);
       allow write: if false;
     }
 
@@ -59,7 +55,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // projects: server SDK only (super_admin still covered by the rule above).
+    // projects: server SDK only.
     match /projects/{docId} {
       allow read, write: if false;
     }
@@ -71,10 +67,30 @@ service cloud.firestore {
 
     // notifications: a user may read ONLY their own notifications. Writes server-only.
     match /notifications/{docId} {
-      allow read: if isAuthed()
-                  && request.auth.uid == resource.data.userId
-                  && belongsToTenant(resource.data.tenantId);
+      allow read: if isSuperAdmin()
+                  || (isAuthed()
+                      && request.auth.uid == resource.data.userId
+                      && belongsToTenant(resource.data.tenantId));
       allow write: if false;
+    }
+
+    // Platform and tenant settings are API-only. In particular, launchChecklist controls
+    // public signup and must never be read or changed with a browser Firebase credential,
+    // including a Super Admin credential. The guarded API uses the Admin SDK.
+    match /settings/{docId} {
+      allow read, write: if false;
+    }
+
+    // Cron orchestration state and leases are server-only operational controls.
+    match /cron_orchestration_runs/{docId} {
+      allow read, write: if false;
+    }
+    match /cron_job_leases/{docId} {
+      allow read, write: if false;
+    }
+    match /cron_job_executions/{docId} {
+      allow write: if false;
+      allow read: if false;
     }
 
     // Everything else: server SDK only.

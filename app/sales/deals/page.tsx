@@ -180,7 +180,7 @@ export default function SalesDealsPage() {
   const closeDeal = async (deal: DealRecord, status: 'Won' | 'Lost') => {
     try {
       setActionLoading(deal.id + status);
-      const res = await apiFetch('/api/sales/deals/update', {
+      const res = await apiFetch('/api/sales/deals/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

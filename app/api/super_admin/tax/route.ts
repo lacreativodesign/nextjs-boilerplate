@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '@/app/api/super_admin/_utils';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {

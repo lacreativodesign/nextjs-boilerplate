@@ -12,6 +12,8 @@ type PublicInvoiceResponse = {
     id: string;
     orderId: string;
     amount: number;
+    totalAmount: number;
+    totalPaid: number;
     subtotal: number | null;
     taxAmount: number;
     currency: string;
@@ -417,14 +419,21 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
           )}
 
           {typeof invoice.subtotal === 'number' &&
-            Math.abs(invoice.subtotal - invoice.amount) > 0.01 && (
+            Math.abs(invoice.subtotal - invoice.totalAmount) > 0.01 && (
               <SummaryRow label="Subtotal" value={money(invoice.subtotal, invoice.currency)} />
             )}
           {invoice.taxAmount > 0 && (
             <SummaryRow label="Tax" value={money(invoice.taxAmount, invoice.currency)} />
           )}
+          <SummaryRow label="Invoice total" value={money(invoice.totalAmount, invoice.currency)} />
+          {invoice.totalPaid > 0 && (
+            <SummaryRow
+              label="Payments applied"
+              value={`−${money(invoice.totalPaid, invoice.currency)}`}
+            />
+          )}
           <SummaryRow
-            label="Total Due"
+            label="Balance due"
             value={money(invoice.amount, invoice.currency)}
             emphasized
           />

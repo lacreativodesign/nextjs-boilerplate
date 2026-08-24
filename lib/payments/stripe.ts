@@ -92,6 +92,7 @@ export async function createStripeRefund({
   reason,
   stripeAccount,
   refundApplicationFee,
+  idempotencyKey,
 }: {
   stripe: Stripe;
   paymentIntentId: string;
@@ -99,6 +100,7 @@ export async function createStripeRefund({
   reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer';
   stripeAccount?: string;
   refundApplicationFee?: boolean;
+  idempotencyKey: string;
 }) {
   const payload: Stripe.RefundCreateParams = {
     payment_intent: paymentIntentId,
@@ -117,6 +119,9 @@ export async function createStripeRefund({
 
   // When the PaymentIntent lives on a connected account, the refund must be issued
   // on that account; otherwise it is a platform refund.
-  const options: Stripe.RequestOptions | undefined = stripeAccount ? { stripeAccount } : undefined;
+  const options: Stripe.RequestOptions = {
+    idempotencyKey,
+    ...(stripeAccount ? { stripeAccount } : {}),
+  };
   return stripe.refunds.create(payload, options);
 }

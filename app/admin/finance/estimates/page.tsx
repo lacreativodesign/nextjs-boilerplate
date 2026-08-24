@@ -1,10 +1,24 @@
-import { notFound } from 'next/navigation';
+import Link from 'next/link';
 
-/**
- * F12 (FUNC-02) — this route was a "Placeholder for ..." stub for a feature that is not built
- * yet. Rather than show an unfinished page inside a sold plan, it returns 404 until the real
- * feature ships. It is not linked from any navigation.
- */
 export default function UnbuiltFeaturePage() {
-  notFound();
+  return (
+    <section className="card space-y-4 rounded-2xl p-6" aria-labelledby="estimates-title">
+      <div>
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+          Controlled-beta limitation
+        </p>
+        <h3 id="estimates-title" className="mt-1 text-xl font-bold">
+          Estimates are not yet available
+        </h3>
+      </div>
+      <p className="max-w-2xl text-sm text-[var(--text-muted)]">
+        This route does not yet provide an estimate lifecycle, approval history, or conversion to an
+        invoice. No estimate will be presented as issued until those controls are implemented and
+        verified.
+      </p>
+      <Link className="btn inline-flex w-fit" href="/admin/finance/invoices">
+        Return to invoices
+      </Link>
+    </section>
+  );
 }

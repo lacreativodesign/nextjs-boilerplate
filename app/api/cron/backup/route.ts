@@ -5,6 +5,7 @@ import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getBackupBucketName } from '@/lib/backup/backup-bucket';
 import { getBackupCollections } from '@/lib/backup/backup-registry';
 import { sendEmail } from '@/lib/email/email-service';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,8 +20,9 @@ export const maxDuration = 300;
  * near-useless. This route reads the real top-level collections, groups every
  * document by its tenantId, and writes one JSON file per tenant per collection.
  *
- * DR-02: the old function was never wired for deployment. This route ships as a
- * Vercel cron (see vercel.json) authenticated with CRON_SECRET / x-vercel-cron.
+ * DR-02: the old function was never wired for deployment. This operator endpoint is
+ * authenticated with CRON_SECRET but is not scheduled: a complete export cannot be
+ * guaranteed alongside every daily task on the current Hobby runtime budget.
  *
  * Integrity: alongside the per-tenant files it writes a manifest.json listing
  * every file with its record count and a sha256 checksum of the bytes written,
@@ -43,17 +45,6 @@ const BACKUP_BUCKET = getBackupBucketName();
 // successful run, so nightly backups cannot accumulate without bound. 30 days is a standard
 // point-in-time recovery window; adjust via BACKUP_RETENTION_DAYS.
 const RETENTION_DAYS = Math.max(1, Number(process.env.BACKUP_RETENTION_DAYS || 30));
-
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isCronFromVercel =
-    process.env.VERCEL === '1' && request.headers.get('x-vercel-cron') === '1';
-
-  if (isCronFromVercel) return true;
-  if (!secret) return false;
-  return authHeader === `Bearer ${secret}`;
-}
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
@@ -136,8 +127,12 @@ async function pruneOldBackups(
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+  if (!authorization.ok) {
+    return NextResponse.json(
+      { ok: false, error: authorization.code },
+      { status: authorization.status },
+    );
   }
 
   const runDate = new Date().toISOString().slice(0, 10);

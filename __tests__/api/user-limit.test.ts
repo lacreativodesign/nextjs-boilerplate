@@ -5,8 +5,8 @@ import { FirestoreEmulator } from './test-utils/firestore-emulator';
 /**
  * Plan user-limit enforcement gate (S36, audit P1).
  *
- * Locked seats: Starter 10, Pro 20, Enterprise unlimited. Count is active,
- * non-client staff seats. Client portal users and disabled users never count.
+ * Locked seats: Starter 10 staff and 10 client-portal users; Pro 20 staff and
+ * unlimited portal users; Enterprise unlimited. Disabled users never count.
  */
 
 const seed = () => ({
@@ -85,10 +85,20 @@ describe('checkUserLimit', () => {
     expect(check.limit).toBeLessThan(0);
   });
 
-  it('never limits client portal users, even at a full Starter tenant', async () => {
-    await addUsers('t_starter', 10);
+  it('blocks a Starter client portal user at the separate 10-seat limit', async () => {
+    await addUsers('t_starter', 10, { role: 'client' });
     const check = await checkUserLimit('t_starter', 'client');
+    expect(check.ok).toBe(false);
+    expect(check.limit).toBe(10);
+    expect(check.used).toBe(10);
+    expect(check.seatType).toBe('client_portal');
+  });
+
+  it('keeps Pro client portal users unlimited', async () => {
+    await addUsers('t_pro', 50, { role: 'client' });
+    const check = await checkUserLimit('t_pro', 'client');
     expect(check.ok).toBe(true);
+    expect(check.limit).toBeLessThan(0);
   });
 
   it('does not count existing client users toward the staff seat limit', async () => {

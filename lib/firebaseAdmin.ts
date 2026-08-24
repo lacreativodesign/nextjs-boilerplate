@@ -1,33 +1,67 @@
 import * as admin from 'firebase-admin';
+import {
+  assertFirebaseProjectIsolation,
+  isFirebaseEmulatorMode,
+  isNonRuntimePhase,
+  parseServiceAccountProjectId,
+} from '@/lib/config/firebase-environment';
 
 const rawKey = process.env.FIREBASE_ADMIN_KEY || '';
-let serviceAccount: any = null;
+const adminProjectId = parseServiceAccountProjectId(rawKey);
+const emulatorMode = isFirebaseEmulatorMode(process.env);
+const effectiveProjectId =
+  adminProjectId || (emulatorMode ? process.env.FIREBASE_EXPECTED_PROJECT_ID || '' : '');
 
+let serviceAccount: Record<string, unknown> | null = null;
 if (rawKey) {
   try {
-    serviceAccount = JSON.parse(rawKey);
-  } catch (err) {
-    console.warn('Failed to parse FIREBASE_ADMIN_KEY. Using stub credentials for build.', err);
+    serviceAccount = JSON.parse(rawKey) as Record<string, unknown>;
+  } catch {
+    // Never log the credential or parser input. Runtime fails closed below; build and
+    // tests receive throwing proxies so static compilation can still complete.
+    console.warn('[firebase-admin] FIREBASE_ADMIN_KEY is not valid JSON.');
   }
-} else {
-  console.warn('FIREBASE_ADMIN_KEY not set. Using stub credentials for build.');
 }
 
-const hasProject =
-  typeof serviceAccount?.project_id === 'string' && serviceAccount.project_id.length > 0;
+// This is the mandatory environment boundary. In preview, missing production metadata
+// also fails: without knowing the production project, separation cannot be proved.
+const isolation = assertFirebaseProjectIsolation(process.env, effectiveProjectId);
+const mayInitializeAdmin = isolation.safe && (!isNonRuntimePhase(process.env) || emulatorMode);
 
 let app: admin.app.App | null = null;
 
 try {
-  if (!admin.apps.length && hasProject) {
-    app = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } else if (admin.apps.length) {
+  if (!mayInitializeAdmin) {
+    app = null;
+  } else if (admin.apps.length > 0) {
     app = admin.app();
+    const initializedProjectId = String(app.options.projectId || '').trim();
+    if (!initializedProjectId) {
+      throw new Error('Existing Firebase Admin app has no explicit project ID.');
+    }
+    assertFirebaseProjectIsolation(process.env, initializedProjectId || effectiveProjectId);
+    if (initializedProjectId && adminProjectId && initializedProjectId !== adminProjectId) {
+      throw new Error('Existing Firebase Admin app does not match FIREBASE_ADMIN_KEY project.');
+    }
+  } else if (serviceAccount && adminProjectId) {
+    app = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+      // Pin options.projectId explicitly so a reused Admin app can be verified later.
+      projectId: adminProjectId,
+      ...(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        ? { storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }
+        : {}),
+    });
+  } else if (emulatorMode && effectiveProjectId) {
+    // Emulator hosts are honored by the Admin SDK. No credential is used, and the
+    // demo-* project requirement above prevents an accidental real-project fallback.
+    app = admin.initializeApp({ projectId: effectiveProjectId });
   }
-} catch (err) {
-  console.warn('Firebase admin initialization failed. Falling back to stubbed services.', err);
+} catch {
+  if (!isNonRuntimePhase(process.env)) {
+    throw new Error('Firebase Admin initialization failed (FIREBASE_ADMIN_INITIALIZATION_FAILED).');
+  }
+  console.warn('[firebase-admin] Initialization skipped during build/test.');
   app = null;
 }
 
@@ -46,14 +80,18 @@ function createThrowingProxy<T>(message: string): T {
 }
 
 const missingAdminMessage =
-  'Firebase Admin is not configured. Set FIREBASE_ADMIN_KEY with a valid "project_id".';
+  'Firebase Admin is unavailable. Configure the Firebase project-isolation variables and FIREBASE_ADMIN_KEY.';
 
 const auth = app ? admin.auth(app) : createThrowingProxy<admin.auth.Auth>(missingAdminMessage);
 const firestoreDb = app
   ? admin.firestore(app)
   : createThrowingProxy<admin.firestore.Firestore>(missingAdminMessage);
 const storage = app
-  ? admin.storage(app)
+  ? emulatorMode && !process.env.FIREBASE_STORAGE_EMULATOR_HOST
+    ? createThrowingProxy<admin.storage.Storage>(
+        'Firebase Storage is unavailable until FIREBASE_STORAGE_EMULATOR_HOST is configured.',
+      )
+    : admin.storage(app)
   : createThrowingProxy<admin.storage.Storage>(missingAdminMessage);
 
 export const adminAuth = auth;

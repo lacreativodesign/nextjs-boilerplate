@@ -10,7 +10,6 @@ const ExpenseBreakdownChart = dynamic(() => import('@/components/finance/Expense
   ssr: false,
   loading: () => <div style={{ height: 300 }} />,
 });
-import { exportProfitLossToPDF } from '@/lib/exports/pdfExport';
 import type { ProfitLossReport } from '@/lib/reports/profitLoss';
 
 const REPORTS = [
@@ -109,6 +108,10 @@ export default function FinanceReportsPage() {
     if (!profitLossReport) {
       return;
     }
+    // @react-pdf/renderer is intentionally loaded only after the user requests
+    // an export; keeping it out of the initial finance-report bundle avoids a
+    // multi-hundred-kilobyte client payload on every page view.
+    const { exportProfitLossToPDF } = await import('@/lib/exports/pdfExport');
     await exportProfitLossToPDF(profitLossReport, { name: 'Bizosto' });
   };
 

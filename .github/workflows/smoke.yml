@@ -3,8 +3,8 @@ name: E2E Smoke (per-role)
 # Manual-first to avoid noise. Runs the per-role smoke suite against a deployment.
 # Requires repo secrets:
 #   E2E_BASE_URL        deployment URL to test against (e.g. https://app.example.com)
-#   E2E_DEMO_PASSWORD   shared password for the seeded demo_* accounts
-# When E2E_DEMO_PASSWORD is missing the tests skip gracefully (see e2e/helpers/auth.ts).
+#   E2E_DEMO_PASSWORDS_JSON   per-account credential map for isolated demo accounts
+# When E2E_DEMO_PASSWORDS_JSON is missing tests skip safely (see e2e/helpers/auth.ts).
 on:
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -28,7 +28,10 @@ jobs:
       - name: Run smoke suite
         env:
           BASE_URL: ${{ secrets.E2E_BASE_URL }}
-          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+          E2E_DEMO_PASSWORDS_JSON: ${{ secrets.E2E_DEMO_PASSWORDS_JSON }}
+          E2E_EXPECTED_FIREBASE_PROJECT_ID: ${{ secrets.E2E_EXPECTED_FIREBASE_PROJECT_ID }}
+          FIREBASE_PRODUCTION_PROJECT_ID: ${{ vars.FIREBASE_PRODUCTION_PROJECT_ID }}
+          E2E_ISOLATED_ENVIRONMENT: ${{ vars.E2E_ISOLATED_ENVIRONMENT }}
         run: npx playwright test e2e/smoke
 
       - name: Upload report

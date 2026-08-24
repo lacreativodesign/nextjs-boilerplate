@@ -2,19 +2,12 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * BUILD-01 — the build skips lint and typecheck, so CI must not.
+ * BUILD-01 — both CI and the deployment build enforce lint and typecheck.
  *
- * `next build` re-runs ESLint and a full TypeScript program after webpack finishes. Both
- * already run as their own steps in the Quality Gates workflow, on the same commit, before
- * that workflow runs `npm run build` itself. Doing the work twice bought nothing and cost
- * a second type-check of ~1,700 files plus a generated validator per API route — on
- * Vercel's 2-core / 8 GB builder that phase ran past the 45-minute ceiling and the
- * deployment was killed with no error output at all.
- *
- * Turning the in-build checks off is only safe while CI keeps doing them. This file is the
- * thing that makes that true: if someone deletes the lint or typecheck step from the
- * workflow, or points it at a different command, the suite goes red rather than quietly
- * leaving every deploy unchecked.
+ * CI runs ESLint and TypeScript as explicit diagnostic steps, then `next build` enforces
+ * the same gates at the deployable-artifact boundary. Keeping both protects Vercel builds
+ * if branch protection or workflow configuration drifts. This test prevents either layer
+ * from quietly returning to the historical ignore-build-errors configuration.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -28,19 +21,17 @@ const activeConfig = () =>
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*/g, '');
 
-describe('BUILD-01: the production build no longer duplicates the checks', () => {
-  it('skips ESLint and the type-check inside next build', () => {
+describe('BUILD-01: the production build fails closed', () => {
+  it('does not ignore ESLint or TypeScript build errors', () => {
     const config = activeConfig();
-    expect(config).toMatch(/eslint:\s*\{\s*ignoreDuringBuilds:\s*true\s*\}/);
-    expect(config).toMatch(/typescript:\s*\{\s*ignoreBuildErrors:\s*true\s*\}/);
+    expect(config).toMatch(/eslint:\s*\{\s*ignoreDuringBuilds:\s*false\s*\}/);
+    expect(config).toMatch(/typescript:\s*\{\s*ignoreBuildErrors:\s*false\s*\}/);
   });
 
-  it('explains why in the config itself, so the flags are not read as laziness', () => {
-    // The comment is the load-bearing part: these two flags are dangerous without the
-    // reason and the pointer to what replaces them.
+  it('documents why in-build gates remain enabled', () => {
     const raw = read(NEXT_CONFIG);
     expect(raw).toContain('BUILD-01');
-    expect(raw).toContain('test.yml');
+    expect(raw).toContain('fail closed');
   });
 });
 

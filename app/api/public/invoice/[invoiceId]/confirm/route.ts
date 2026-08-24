@@ -4,6 +4,7 @@ import { getStripeClient } from '@/lib/payments/stripe';
 import { calculatePlatformFee } from '@/lib/stripe/connect';
 import { getInvoiceWithValidation, getTenantRecord } from '../../shared';
 import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
+import { assertConnectInvoicePaymentIntent } from '@/lib/payments/connect-invoice-integrity';
 
 export const runtime = 'nodejs';
 
@@ -56,10 +57,17 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       stripeAccount: connectAccountId,
     });
 
-    // The PaymentIntent id is client-supplied: bind it to THIS invoice before
-    // recording anything, so a succeeded intent belonging to another invoice
-    // cannot be replayed to mark this one paid.
-    if (String(paymentIntent.metadata?.invoiceId || '') !== invoiceId) {
+    const amountCents = Math.round(validation.payload.amount * 100);
+    try {
+      assertConnectInvoicePaymentIntent(paymentIntent, {
+        invoiceId,
+        tenantId: validation.payload.tenantId,
+        clientId: validation.payload.clientId,
+        orderId: validation.payload.orderId,
+        amountCents,
+        currency: validation.payload.currency,
+      });
+    } catch {
       return NextResponse.json(
         { ok: false, error: 'Payment could not be confirmed' },
         { status: 400 },
@@ -78,12 +86,24 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
           idempotencyKey: `inv_confirm_${invoiceId}_${paymentIntentId}`,
         },
       );
+
+      // Confirm can return a materially changed object. Re-check the immutable
+      // invoice binding before any financial state is written.
+      assertConnectInvoicePaymentIntent(paymentIntent, {
+        invoiceId,
+        tenantId: validation.payload.tenantId,
+        clientId: validation.payload.clientId,
+        orderId: validation.payload.orderId,
+        amountCents,
+        currency: validation.payload.currency,
+      });
     }
 
     if (paymentIntent.status === 'succeeded') {
       const nowIso = new Date().toISOString();
       const invoiceAmount = validation.payload.amount;
-      const platformFee = calculatePlatformFee(Math.round(invoiceAmount * 100));
+      const platformFee = calculatePlatformFee(amountCents);
+      const totalPaid = validation.payload.totalPaid + invoiceAmount;
 
       // Deterministic id = PaymentIntent id, identical shape to the pay route, so a
       // 3DS/SCA confirmation records a ledger entry exactly once and converges with
@@ -94,7 +114,9 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       batch.update(adminDb.collection('invoices').doc(invoiceId), {
         status: 'paid',
         paidAt: nowIso,
-        paidAmount: invoiceAmount,
+        paidAmount: totalPaid,
+        totalPaid,
+        balanceDue: 0,
         paymentMethod: 'stripe',
         stripePaymentIntentId: paymentIntent.id,
         updatedAt: nowIso,
