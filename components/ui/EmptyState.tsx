@@ -22,31 +22,68 @@ export type EmptyStateProps = {
   description?: string;
   hint?: string;
   compact?: boolean;
+  /**
+   * `card` is a standalone panel. `table` is bare — no border, no shadow, no
+   * background — for use inside an existing `.table-shell` or a `<td colSpan>`,
+   * where a card renders a second border inside the first.
+   */
+  variant?: 'card' | 'table';
   action?: { label: string; onClick: () => void };
+  /** Rendered next to `action` for the "or do this instead" case. */
+  secondaryAction?: { label: string; onClick: () => void };
 };
 
+/**
+ * DS-5 — the one empty state.
+ *
+ * 23 tables render nothing at all when they have no rows, which is visually identical
+ * to a failed fetch, and 57 more render a bare sentence. This is what replaces both in
+ * S15–S18.
+ *
+ * The `table` variant exists because the previous shape could only be a card: every
+ * current consumer wraps it in a padded `<div>` inside `.table-shell`, producing a
+ * bordered card nested inside a bordered card.
+ */
 export default function EmptyState({
   icon = defaultIcon,
   title,
   description,
   hint,
   compact,
+  variant = 'card',
   action,
+  secondaryAction,
 }: EmptyStateProps) {
+  const shell =
+    variant === 'table'
+      ? 'bg-transparent'
+      : 'rounded-2xl border border-line bg-surface shadow-card';
+
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-center shadow-sm ${compact ? 'px-4 py-6' : 'px-6 py-10'}`}
+      className={`flex flex-col items-center justify-center gap-3 text-center ${shell} ${
+        compact ? 'px-4 py-6' : 'px-6 py-10'
+      }`}
     >
-      <div className="text-[var(--text-soft)]">{icon}</div>
-      <div className="text-base font-semibold text-[var(--text-primary)]">{title}</div>
-      {description ? (
-        <p className="max-w-sm text-sm text-[var(--text-muted)]">{description}</p>
-      ) : null}
-      {hint ? <p className="max-w-sm text-xs text-[var(--text-soft)]">{hint}</p> : null}
-      {action ? (
-        <button type="button" className="btn mt-2" onClick={action.onClick}>
-          {action.label}
-        </button>
+      <div className="text-ink-soft" aria-hidden="true">
+        {icon}
+      </div>
+      <div className="text-base font-semibold text-ink">{title}</div>
+      {description ? <p className="max-w-sm text-sm text-ink-muted">{description}</p> : null}
+      {hint ? <p className="max-w-sm text-xs text-ink-soft">{hint}</p> : null}
+      {action || secondaryAction ? (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {action ? (
+            <button type="button" className="btn" onClick={action.onClick}>
+              {action.label}
+            </button>
+          ) : null}
+          {secondaryAction ? (
+            <button type="button" className="btn ghost" onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
