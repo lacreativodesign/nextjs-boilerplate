@@ -75,6 +75,13 @@ export default function FinanceOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <h1 className="page-title">Finance</h1>
+        <p className="page-subtitle">
+          Revenue, receivables, and recent activity across USD and PKR
+        </p>
+      </div>
+
       {error && (
         <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
           {error}
@@ -87,7 +94,7 @@ export default function FinanceOverviewPage() {
       ) : (
         <>
           <section>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>USD Performance</div>
+            <h2 className="section-title mb-3">USD Performance</h2>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <KpiCard
                 title="Total Revenue (This Month)"
@@ -118,7 +125,7 @@ export default function FinanceOverviewPage() {
           </section>
 
           <section>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>PKR Performance</div>
+            <h2 className="section-title mb-3">PKR Performance</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <KpiCard
                 title="Payroll Due (This Month)"

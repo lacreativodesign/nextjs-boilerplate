@@ -60,7 +60,7 @@ export default function SalesManagerPipelinePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Sales Manager Pipeline</h1>
+      <h1 className="page-title">Sales Manager Pipeline</h1>
       <div className="card grid gap-2 p-4 md:grid-cols-2">
         <select className="input" value={stage} onChange={(e) => setStage(e.target.value)}>
           {STAGES.map((item) => (

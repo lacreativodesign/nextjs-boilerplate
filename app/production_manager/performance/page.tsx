@@ -78,10 +78,8 @@ export default function ProductionManagerPerformancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">My Performance</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Production workload and delivery status
-        </p>
+        <h1 className="page-title">My Performance</h1>
+        <p className="page-subtitle mt-1">Production workload and delivery status</p>
       </div>
       <PeriodSelector
         period={period}

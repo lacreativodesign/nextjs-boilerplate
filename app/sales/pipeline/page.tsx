@@ -79,7 +79,7 @@ export default function SalesPipelinePage() {
 
   return (
     <div className="page-frame space-y-4">
-      <h1 className="text-xl font-bold">My Pipeline</h1>
+      <h1 className="page-title">My Pipeline</h1>
 
       {loading ? (
         <p className="text-sm text-[var(--text-muted)]">Loading…</p>

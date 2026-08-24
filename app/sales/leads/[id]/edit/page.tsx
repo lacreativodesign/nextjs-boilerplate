@@ -134,7 +134,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
         </button>
       </div>
       <div className="max-w-2xl">
-        <h1 className="page-title mb-1">Edit Lead</h1>
+        <h1 className="page-title">Edit Lead</h1>
         <p className="page-subtitle mb-6">Update lead information and pipeline stage.</p>
         <form onSubmit={handleSubmit} className="card p-6 space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
