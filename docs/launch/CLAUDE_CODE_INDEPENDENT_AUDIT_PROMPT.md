@@ -14,16 +14,20 @@ Repositories and immutable bases:
 - ERP: `lacreativodesign/nextjs-boilerplate`
   - base: `f0d3ce4ba16c28bcb114fe01fa7054e6e3397d15`
   - release branch: `codex/release-readiness-2026-08-22`
-  - release integration commit: `d2fa46cdd7ebfc985793147c9680983b3a31e238`
+  - verified release code head: `c1ea7a692b5f8bd26ec32e39e4d0fc38a2fdd516`
 - Marketing: `lacreativodesign/bizosto-website`
   - base: `3608335e8a5ece2aef1befcae1e823a4e1187db1`
   - release branch: `codex/launch-alignment-2026-08-22`
   - release commit: `10c9b9026650765638f7ab70104eeb15fcc8f546`
 
 At the start, fetch both branches, record their actual HEAD SHAs and compare
-`base...HEAD`. If a SHA above differs from GitHub, stop and explain the exact
-drift. Do not merge, deploy, change secrets/settings/rules/indexes, or write any
-production/preview Firebase or Stripe data.
+`base...HEAD`. The ERP branch HEAD containing this handoff prompt may be a
+documentation-only descendant of the verified code head; require
+`c1ea7a692b5f8bd26ec32e39e4d0fc38a2fdd516` to be its ancestor and independently
+inspect every later file. If later changes are not limited to this prompt, or a
+pinned commit is absent, stop and explain the exact drift. Do not merge, deploy,
+change secrets/settings/rules/indexes, or write any production/preview Firebase
+or Stripe data.
 
 Hard owner constraint: `vercel.json` must contain exactly one schedule,
 `/api/cron/daily-orchestrator` at one daily execution. Do not add an external
