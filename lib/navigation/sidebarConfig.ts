@@ -757,26 +757,58 @@ export function findNavItemByHref(href: string): NavItem | null {
   return match;
 }
 
+const titleCaseSegment = (segment: string) =>
+  segment
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+/**
+ * DS-2. The previous implementation walked the nav depth-first and returned on the
+ * FIRST prefix match, so `/admin/finance/invoices` resolved to `Home / Overview`:
+ * `/admin` matched, the walk stopped, and it never reached `/admin/finance`. Every
+ * admin route produced the same two crumbs, which is why wiring the component up
+ * would have been worse than leaving it unwired.
+ *
+ * It now collects every nav item that is a path-prefix of the current route,
+ * shallowest first, then derives the remaining crumbs from the URL — the deepest nav
+ * item is rarely the leaf (`/admin/finance` is in the nav, `/admin/finance/invoices`
+ * is not). Derivation stops at the first segment that is not word-like, because an
+ * opaque document id makes a worse crumb than no crumb.
+ *
+ * The synthetic `Home -> /` crumb is gone: `/` only redirects to the role's own
+ * dashboard, so it duplicated the first real crumb's destination.
+ */
 export function getBreadcrumbs(pathname: string): { label: string; href: string }[] {
   const normalized = normalizePath(pathname);
+  if (normalized === '/') return [];
+
+  const seen = new Set<string>();
   const trail: { label: string; href: string }[] = [];
 
-  const dfs = (items: NavItem[], parents: { label: string; href: string }[]): boolean => {
+  const collect = (items: NavItem[]) => {
     for (const item of items) {
-      const nextTrail = [...parents, { label: item.label, href: item.href }];
-      if (isPathMatch(normalized, item.href)) {
-        trail.splice(0, trail.length, ...nextTrail);
-        return true;
+      const href = normalizePath(item.href);
+      if (isPathMatch(normalized, href) && !seen.has(href)) {
+        seen.add(href);
+        trail.push({ label: item.label, href });
       }
-      if (item.children && dfs(item.children, nextTrail)) {
-        return true;
-      }
+      if (item.children) collect(item.children);
     }
-    return false;
   };
 
-  dfs(sidebarNavigation, []);
-
+  collect(sidebarNavigation);
   if (!trail.length) return [];
-  return [{ label: 'Home', href: '/' }, ...trail];
+
+  trail.sort((a, b) => a.href.length - b.href.length);
+
+  const deepest = trail[trail.length - 1].href;
+  let href = deepest;
+  for (const segment of normalized.slice(deepest.length).split('/').filter(Boolean)) {
+    if (!/^[a-z][a-z-]{0,23}$/i.test(segment)) break;
+    href = `${href}/${segment}`;
+    trail.push({ label: titleCaseSegment(segment), href });
+  }
+
+  return trail;
 }

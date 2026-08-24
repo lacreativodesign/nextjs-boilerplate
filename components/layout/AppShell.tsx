@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { SidebarProvider, useSidebar } from '@/lib/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
@@ -18,6 +18,7 @@ import BugReportButton from '@/components/support/BugReportButton';
 import NotificationToast from '@/components/notifications/NotificationToast';
 import ImpersonationBanner from '@/components/super_admin/ImpersonationBanner';
 import ActiveTabScroller from '@/components/layout/ActiveTabScroller';
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import { PlatformTourGate } from '@/components/onboarding/PlatformTourGate';
 
 const GlobalSearchModal = dynamic(() => import('@/components/search/GlobalSearchModal'), {
@@ -33,6 +34,7 @@ function AppShellInner({
   data: TenantContextResponse | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isCollapsed, closeMobile, toggleCollapse } = useSidebar();
   const [activityOpen, setActivityOpen] = useState(false);
 
@@ -161,7 +163,10 @@ function AppShellInner({
         />
         <main className="flex-1 py-[var(--page-padding-y)]">
           <PullToRefresh>
-            <div className="page-frame">{children}</div>
+            <div className="page-frame">
+              <Breadcrumbs pathname={pathname} className="mb-4" />
+              {children}
+            </div>
           </PullToRefresh>
         </main>
       </div>

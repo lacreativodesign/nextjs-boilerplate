@@ -13,7 +13,9 @@ export default function Breadcrumbs({ pathname, className = '' }: BreadcrumbsPro
   const trail = useMemo(() => getBreadcrumbs(pathname), [pathname]);
   const mobileTrail = trail.length > 2 ? trail.slice(-2) : trail;
 
-  if (!trail.length) {
+  // A single crumb restates the page you are already on. Breadcrumbs earn their
+  // vertical space only once there is somewhere to go back to.
+  if (trail.length < 2) {
     return null;
   }
 
