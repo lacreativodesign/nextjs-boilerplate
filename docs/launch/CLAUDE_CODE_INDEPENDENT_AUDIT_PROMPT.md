@@ -14,7 +14,7 @@ Repositories and immutable bases:
 - ERP: `lacreativodesign/nextjs-boilerplate`
   - base: `f0d3ce4ba16c28bcb114fe01fa7054e6e3397d15`
   - release branch: `codex/release-readiness-2026-08-22`
-  - release integration commit: `REMEDIATION_COMMIT_TO_BE_FILLED`
+  - release integration commit: `d2fa46cdd7ebfc985793147c9680983b3a31e238`
 - Marketing: `lacreativodesign/bizosto-website`
   - base: `3608335e8a5ece2aef1befcae1e823a4e1187db1`
   - release branch: `codex/launch-alignment-2026-08-22`
