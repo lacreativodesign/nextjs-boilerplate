@@ -64,7 +64,7 @@ export default function SalesDealDetailPage({ params }: { params: { id: string }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Deal Detail</h1>
+      <h1 className="page-title">Deal Detail</h1>
       <div className="card p-4">
         <div>Title: {deal.title}</div>
         <div>Value (USD): ${Number(deal.valueUSD || 0).toLocaleString()}</div>

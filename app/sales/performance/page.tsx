@@ -130,7 +130,7 @@ export default function SalesPerformancePage() {
 
   return (
     <div className="p-6 space-y-8">
-      <h1 className="text-2xl font-bold">Sales Performance</h1>
+      <h1 className="page-title">Sales Performance</h1>
 
       <PeriodSelector
         period={period}

@@ -41,7 +41,7 @@ export default function SalesManagerDealDetailPage({ params }: { params: { id: s
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Deal Review</h1>
+      <h1 className="page-title">Deal Review</h1>
       <div className="card p-4">
         <div>Title: {deal.title}</div>
         <div>Stage: {deal.stage}</div>

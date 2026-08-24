@@ -94,10 +94,8 @@ export default function FinancePerformancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Finance Performance</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Revenue, collections, and accounts receivable
-        </p>
+        <h1 className="page-title">Finance Performance</h1>
+        <p className="page-subtitle mt-1">Revenue, collections, and accounts receivable</p>
       </div>
 
       <PeriodSelector
