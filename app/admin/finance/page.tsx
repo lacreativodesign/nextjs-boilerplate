@@ -219,13 +219,7 @@ export default function FinanceOverviewPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: 24 }}>
-                        Loading activity…
-                      </td>
-                    </tr>
-                  ) : overview.recentEvents.length === 0 ? (
+                  {overview.recentEvents.length === 0 ? (
                     <tr>
                       <td colSpan={3} style={{ textAlign: 'center', padding: 24 }}>
                         No finance events yet.

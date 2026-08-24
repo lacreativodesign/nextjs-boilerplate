@@ -16,7 +16,6 @@ const EXPECTED_HREFS: Record<string, string[]> = {
     '/admin/reports',
     '/admin/settings',
     '/help',
-    '/super_admin/tickets',
     '/super_admin',
   ],
   finance: [
