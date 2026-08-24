@@ -1,50 +1,72 @@
-# SEC-05 — High-severity dependency advisory triage
+# Production dependency advisory triage
 
-**Status:** documented, no upgrade performed this session
-**Date:** 2026-07-19
-**Owner:** platform / security
+Status: **public-launch blocker**
 
-## Why this doc exists
+Evidence date: 2026-08-24
 
-`npm audit` currently reports **9 high-severity advisories** (0 critical, 40 moderate).
-Every remaining high requires a breaking `--force` upgrade of `next` and/or `@sentry/nextjs`
-and their transitive graphs. Doing that as a drive-by inside an unrelated feature session is
-how a monorepo gets a silent regression, so the mass bump is **deferred to dedicated dependency
-PRs** (one for `next`, one for `@sentry/nextjs`). This document records the triage so a reviewer
-can confirm nothing here is exploitable in production today.
+Owner: platform/security
 
-The CI gate reflects this split (`.github/workflows/test.yml`):
+## Actual audit result
 
-- `npm audit --audit-level=critical` — **blocking** (build fails on any critical).
-- `npm audit --audit-level=high` — **report only** (`continue-on-error: true`) until this triage lands.
+After non-breaking lockfile remediation and clean installation:
 
-## Block-level criterion
+| Severity   |  Count |
+| ---------- | -----: |
+| Critical   |      0 |
+| High       |      5 |
+| Moderate   |     38 |
+| Low / info |      0 |
+| **Total**  | **43** |
 
-> **Raise the audit block level from `critical` to `high`** (make the `--audit-level=high`
-> step blocking, i.e. remove `continue-on-error`) **once `next` and `@sentry/nextjs` are patched
-> in their own dependency PRs** and the high count reaches zero. Until then the high-level audit
-> stays non-blocking and this document is the compensating control.
+The production graph's five high package nodes are `next`, `@sentry/nextjs`,
+`rollup`, the nested Next/PostCSS graph and `undici`. Moderate nodes include the current
+Firebase/Admin dependency chain, Sentry/OpenTelemetry, ExcelJS and UUID.
 
-## The 9 high advisories
+This document does not assert that a high advisory is harmless merely because a
+known vector is build-time or Vercel-hosted. Reachability and platform
+mitigations are inputs to triage, not substitutes for a supported upgrade. The
+release remains blocked for public self-service while high advisories remain.
 
-Current versions: `next@14.2.35`, `@sentry/nextjs@^8.55.0`.
+## Remediation completed here
 
-| Package                    | Vector (summary)                                                                                                           | Why not exploitable here now                                                                                                                                                                                                                  | Upgrade path                                                                                      |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `next`                     | Image Optimizer DoS, RSC request DoS, rewrite request smuggling, cache poisoning, App Router CSP-nonce XSS, WebSocket SSRF | App runs on Vercel: the managed edge/image layer terminates and normalizes requests, so the self-hosted Image Optimizer and request-smuggling vectors are mitigated at the platform. No custom `remotePatterns` exposing arbitrary upstreams. | Bump `next` to the latest patched 14.2.x (or 15.x) in a dedicated PR; re-run the app + e2e suite. |
-| `@sentry/nextjs`           | Pulls vulnerable `@sentry/node`, `@sentry/opentelemetry`, `@sentry/webpack-plugin`, `rollup`                               | Sentry SDK + webpack/rollup plugin run at **build time / server instrumentation only**; not reachable by untrusted end-user input in the request path.                                                                                        | Bump `@sentry/nextjs` to latest 8.x/9.x in a dedicated PR alongside the `next` bump.              |
-| `rollup`                   | Arbitrary file write via path traversal (Rollup 4)                                                                         | **Build-only** — pulled transitively via `@sentry/webpack-plugin`; never runs against untrusted input in production.                                                                                                                          | Resolved by the `@sentry/nextjs` bump.                                                            |
-| `glob`                     | Command injection via `-c/--cmd` in the glob CLI                                                                           | **Dev/build-only** and only via the CLI `-c` flag, which this repo never invokes; pulled transitively through `@next/eslint-plugin-next`.                                                                                                     | Resolved by the `next` / `eslint-config-next` bump.                                               |
-| `@next/eslint-plugin-next` | Transitive `glob`                                                                                                          | Lint-time only; never ships to the runtime bundle.                                                                                                                                                                                            | Resolved by the `eslint-config-next` bump.                                                        |
-| `eslint-config-next`       | Transitive `@next/eslint-plugin-next` → `glob`                                                                             | Lint-time only.                                                                                                                                                                                                                               | Bump with `next`.                                                                                 |
-| `@playwright/test`         | Transitive `playwright`                                                                                                    | **Test-only** dev dependency; never in the production graph.                                                                                                                                                                                  | Bump Playwright in a routine dev-dep PR.                                                          |
-| `playwright`               | Downloads browsers without verifying the SSL certificate                                                                   | **Test/CI-only**; browsers are pre-provisioned in CI, download path not used at runtime.                                                                                                                                                      | Bump Playwright.                                                                                  |
-| `undici`                   | Random-value weakness, decompression/WebSocket DoS, request/response smuggling, header injection                           | Pulled transitively; production HTTP egress goes through the Vercel runtime's `fetch`, not a request-path use of the vulnerable WebSocket/decompression surface.                                                                              | Resolved by the `next` bump (which updates the transitive floor).                                 |
+- Applied only non-breaking lockfile updates; no `npm audit fix --force` was
+  used.
+- Upgraded test-only Playwright from 1.49.1 to 1.62.1.
+- Upgraded the root PostCSS development dependency from 8.4.38 to 8.5.26; the
+  remaining high PostCSS node is nested in the Next 14 graph.
+- Reinstalled from the lockfile and reran TypeScript, lint, 2,039 tests,
+  production build and license policy.
+- Upgraded the independent marketing site to Next.js/eslint-config-next 16.3.2;
+  its production audit now reports zero advisories.
 
-## Summary
+## Why the remaining upgrade is separate
 
-- **0 critical**, so the blocking CI gate is green.
-- All 9 highs are either **dev/build/test-only** or **mitigated by the Vercel platform** in
-  production, so none is a live production exploit today.
-- The fix is a coordinated `next` + `@sentry/nextjs` upgrade in **dedicated dependency PRs**,
-  after which the audit block level is raised from `critical` to `high` per the criterion above.
+The ERP is on Next.js 14.2.35 and a large Sentry/Firebase graph. The available
+remediation requires coordinated framework/runtime behavior changes rather than
+a safe patch-only lock update. A forced major upgrade inside the security/
+billing/cron release would invalidate too many assumptions without an isolated
+browser environment.
+
+Required dedicated sequence:
+
+1. Upgrade Next and `eslint-config-next` together to a supported patched line;
+   apply official codemods and review middleware, dynamic rendering, cache,
+   image and build behavior.
+2. Upgrade `@sentry/nextjs` and its OpenTelemetry/Rollup graph; verify server,
+   edge/middleware and browser instrumentation plus source-map handling without
+   exposing a token.
+3. Upgrade Firebase and Firebase Admin to supported compatible lines; repeat
+   Auth, emulator, tenant, Storage, query and webhook-adjacent tests.
+4. Replace or upgrade ExcelJS/UUID paths as required by the final audit graph.
+5. Run on Node 22: clean install, audit, formatting, lint, typecheck, both
+   timezone test runs, production build, unchanged bundle/license gates and an
+   isolated 11-role browser matrix.
+6. Make the CI high-level audit blocking only when the high count is zero or a
+   time-bounded owner acceptance explicitly documents each reachable risk.
+
+Block level criterion: once the high count reaches zero (or a time-bounded owner
+acceptance covers every remaining reachable advisory), change the CI audit
+block level from critical to high. The current CI still blocks critical
+advisories and reports high advisories as non-blocking so this draft PR can
+expose the complete source remediation. This is a temporary containment, not a
+launch waiver.
