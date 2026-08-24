@@ -200,6 +200,11 @@
   --page-padding-y: 24px;
   --card-padding: 20px;
   --brand-font: Inter, system-ui;
+
+  --motion-fast: 140ms;
+  --motion-base: 160ms;
+  --motion-slow: 240ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1543,4 +1548,29 @@ textarea {
 
 .recharts-tooltip-cursor {
   fill: var(--border-subtle);
+}
+
+/* ==========================================================================
+   Design-system baseline: focus + motion
+   S1. `--focus-ring` existed but only `.input` consumed it, so keyboard users
+   got no visible focus anywhere else. `:where()` has zero specificity, so the
+   existing `.input:focus` treatment still wins and everything else gains a
+   ring. The reduced-motion guard was scoped to three `.admin-shell` selectors;
+   this makes it global.
+   ========================================================================== */
+
+:where(a, button, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--erp-blue);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
