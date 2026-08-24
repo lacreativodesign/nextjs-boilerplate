@@ -235,6 +235,7 @@ export default function BugReportButton() {
               <button
                 type="button"
                 onClick={close}
+                aria-label="Close bug report"
                 className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--surface-muted)] transition-colors"
               >
                 <X className="h-4 w-4 text-[var(--text-muted)]" />
