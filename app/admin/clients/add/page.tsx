@@ -410,20 +410,6 @@ export default function AddClientPage() {
   const yearsRanges = ['<1', '1-3', '4-7', '8-12', '13-20', '20+'];
 
   const styles = useMemo(() => {
-    const pageTitle: React.CSSProperties = {
-      fontSize: 34,
-      fontWeight: 900,
-      marginBottom: 8,
-      color: 'var(--text-primary)',
-    };
-
-    const pageSub: React.CSSProperties = {
-      marginBottom: 18,
-      color: 'var(--text-muted)',
-      fontSize: 14,
-      lineHeight: 1.5,
-    };
-
     // full-width like Create User (NOT centered)
     const fullWidthWrap: React.CSSProperties = {
       width: '100%',
@@ -492,8 +478,6 @@ export default function AddClientPage() {
     };
 
     return {
-      pageTitle,
-      pageSub,
       fullWidthWrap,
       formShell,
       sectionCard,
@@ -617,9 +601,11 @@ export default function AddClientPage() {
       >
         ← Back to CRM
       </Link>
-      <h1 style={styles.pageTitle}>Add Client</h1>
-      <div style={styles.pageSub}>
-        Create a new client record and start tracking pipeline, payments and ownership.
+      <div className="mb-5">
+        <h1 className="page-title">Add Client</h1>
+        <p className="page-subtitle mt-2">
+          Create a new client record and start tracking pipeline, payments and ownership.
+        </p>
       </div>
 
       <div style={styles.formShell}>

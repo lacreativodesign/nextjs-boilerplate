@@ -104,22 +104,6 @@ export default function EditUserPage() {
   const [managerId, setManagerId] = useState('');
   const [managers, setManagers] = useState<ManagerOption[]>([]);
 
-  const muted = 'var(--text-muted)';
-  const titleCol = 'var(--text-primary)';
-
-  const headerStyle: React.CSSProperties = {
-    fontSize: 34,
-    fontWeight: 900,
-    margin: '0 0 8px 0',
-    color: titleCol,
-  };
-
-  const subStyle: React.CSSProperties = {
-    margin: '0 0 18px 0',
-    color: muted,
-    fontSize: 14,
-  };
-
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 18,
@@ -312,8 +296,10 @@ export default function EditUserPage() {
       >
         ← Back to Users
       </Link>
-      <h1 style={headerStyle}>Edit User</h1>
-      <p style={subStyle}>Update profile, work details, and targets.</p>
+      <div className="mb-5">
+        <h1 className="page-title">Edit User</h1>
+        <p className="page-subtitle mt-2">Update profile, work details, and targets.</p>
+      </div>
 
       <form onSubmit={onSubmit} style={shellStyle}>
         <div style={{ display: 'grid', gap: 12 }}>

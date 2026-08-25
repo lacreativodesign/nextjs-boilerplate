@@ -99,8 +99,8 @@ export default function AdminJobsPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Background Job Monitoring</h1>
-        <p style={{ fontSize: 14, opacity: 0.75 }}>
+        <h1 className="page-title">Background Job Monitoring</h1>
+        <p className="page-subtitle mt-2">
           Track queue throughput, failed jobs, retries, and execution history.
         </p>
       </section>

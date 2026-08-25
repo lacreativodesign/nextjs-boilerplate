@@ -233,19 +233,6 @@ export default function UserRolesPage() {
   const heads = ROLE_DEFINITIONS.filter((r) => r.level === 'head');
   const teams = ROLE_DEFINITIONS.filter((r) => r.level === 'team');
 
-  const headerStyle: React.CSSProperties = {
-    fontSize: 34,
-    fontWeight: 900,
-    margin: '0 0 8px 0',
-    color: 'var(--text-primary)',
-  };
-
-  const subStyle: React.CSSProperties = {
-    margin: '0 0 18px 0',
-    color: 'var(--text-muted)',
-    fontSize: 14,
-  };
-
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
     padding: 14,
@@ -256,8 +243,12 @@ export default function UserRolesPage() {
 
   return (
     <div className="w-full">
-      <h1 style={headerStyle}>User Roles & Hierarchy</h1>
-      <p style={subStyle}>Overview of system roles, hierarchy and permissions inside the ERP.</p>
+      <div className="mb-5">
+        <h1 className="page-title">User Roles &amp; Hierarchy</h1>
+        <p className="page-subtitle mt-2">
+          Overview of system roles, hierarchy and permissions inside the ERP.
+        </p>
+      </div>
 
       {loading && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>

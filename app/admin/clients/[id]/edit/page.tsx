@@ -109,20 +109,6 @@ export default function EditClientPage() {
   const yearsRanges = ['<1', '1-3', '4-7', '8-12', '13-20', '20+'];
 
   const styles = useMemo(() => {
-    const pageTitle: React.CSSProperties = {
-      fontSize: 34,
-      fontWeight: 900,
-      marginBottom: 8,
-      color: 'var(--text-primary)',
-    };
-
-    const pageSub: React.CSSProperties = {
-      marginBottom: 18,
-      color: 'var(--text-muted)',
-      fontSize: 14,
-      lineHeight: 1.5,
-    };
-
     // full-width like Create User (NOT centered)
     const fullWidthWrap: React.CSSProperties = {
       width: '100%',
@@ -191,8 +177,6 @@ export default function EditClientPage() {
     };
 
     return {
-      pageTitle,
-      pageSub,
       fullWidthWrap,
       formShell,
       sectionCard,
@@ -353,9 +337,11 @@ export default function EditClientPage() {
       >
         ← Back to CRM
       </Link>
-      <h1 style={styles.pageTitle}>Edit Client</h1>
-      <div style={styles.pageSub}>
-        Update client details and keep pipeline, payments and ownership aligned.
+      <div className="mb-5">
+        <h1 className="page-title">Edit Client</h1>
+        <p className="page-subtitle mt-2">
+          Update client details and keep pipeline, payments and ownership aligned.
+        </p>
       </div>
 
       <div style={styles.formShell}>
