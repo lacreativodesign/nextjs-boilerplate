@@ -150,10 +150,8 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Office Overview</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Your sales pipeline and team performance at a glance.
-        </p>
+        <h1 className="page-title">Office Overview</h1>
+        <p className="page-subtitle">Your sales pipeline and team performance at a glance.</p>
       </header>
 
       {/* SECTION 1 — Sales Performance */}

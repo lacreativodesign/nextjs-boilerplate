@@ -43,7 +43,7 @@ export default function AdminCrmPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-bold">CRM (Read-only)</h1>
+        <h1 className="page-title">CRM (Read-only)</h1>
         <p className="text-sm text-[var(--text-muted)]">Loading…</p>
       </div>
     );
@@ -52,7 +52,7 @@ export default function AdminCrmPage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-bold">CRM (Read-only)</h1>
+        <h1 className="page-title">CRM (Read-only)</h1>
         <EmptyState title="Something went wrong" description={error} />
       </div>
     );
@@ -60,7 +60,7 @@ export default function AdminCrmPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">CRM (Read-only)</h1>
+      <h1 className="page-title">CRM (Read-only)</h1>
 
       <div className="card p-4">
         <h2 className="mb-2 font-semibold">Leads</h2>

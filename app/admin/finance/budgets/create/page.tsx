@@ -119,7 +119,7 @@ export default function CreateBudgetPage() {
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Create Budget</h1>
+        <h1 className="page-title">Create Budget</h1>
         <Button onClick={handleSubmit} disabled={saving}>
           {saving ? 'Saving...' : 'Save Budget'}
         </Button>

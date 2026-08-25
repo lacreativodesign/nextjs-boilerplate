@@ -78,8 +78,8 @@ export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
 
   return (
     <div className="p-6">
-      <h1 className="mb-2 text-3xl font-bold">{budget.name}</h1>
-      <p className="mb-6 text-sm text-[var(--text-muted)]">
+      <h1 className="page-title">{budget.name}</h1>
+      <p className="page-subtitle mb-6 mt-2">
         Fiscal Year: {budget.fiscalYear} • Status: {budget.status} • Currency: {budget.currency}
       </p>
 

@@ -151,7 +151,7 @@ export default function TaxRatesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold">Tax Rates</h1>
+      <h1 className="page-title">Tax Rates</h1>
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Card>
