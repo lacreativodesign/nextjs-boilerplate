@@ -101,7 +101,6 @@ const CLEAN_FILES: string[] = [
   // P2-12: shared components (batch 2) — layout/auth cluster
   'components/DashboardLayout.tsx',
   'components/RequireAuth.tsx',
-  'components/layouts/ERPLayout.tsx',
   'components/performance/ProgressBar.tsx',
   // P2-13: shared components (batch 3). Deferred: components/ui/BizostoSplash.tsx is a
   // self-contained splash screen with its own light/dark decorative gradient system (its own

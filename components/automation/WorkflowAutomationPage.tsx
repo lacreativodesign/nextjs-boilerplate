@@ -211,8 +211,8 @@ export default function WorkflowAutomationPage() {
       <div className="card" style={{ padding: 20, borderRadius: 16 }}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700 }}>Workflow Automation</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+            <h1 className="page-title">Workflow Automation</h1>
+            <p className="page-subtitle mt-2">
               Build and run event, schedule, and manual workflows with approvals.
             </p>
           </div>

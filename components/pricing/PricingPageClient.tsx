@@ -285,9 +285,7 @@ export function PricingPageClient() {
       <main>
         <section className="mx-auto max-w-7xl px-4 pb-10 pt-14 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              Flexible pricing for every growth stage
-            </h1>
+            <h1 className="marketing-title">Flexible pricing for every growth stage</h1>
             <p className="mx-auto mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
               Choose the plan that matches your operating model. Start with a 14-day trial and scale
               as your team grows.
