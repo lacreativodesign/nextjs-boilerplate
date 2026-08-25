@@ -188,9 +188,7 @@ export function HelpCenterPageContent() {
         <p className="text-sm font-semibold uppercase tracking-wide text-[var(--erp-blue)]">
           Bizosto Help Center
         </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--text-primary)] md:text-4xl">
-          Help Center — {getRoleGuideName(currentRole)} Guide
-        </h1>
+        <h1 className="page-title mt-3">Help Center — {getRoleGuideName(currentRole)} Guide</h1>
         <p className="mt-3 text-sm text-[var(--text-muted)] md:text-base">
           Guides, tutorials, and docs for your role.
         </p>

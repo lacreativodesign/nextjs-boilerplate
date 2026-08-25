@@ -216,8 +216,8 @@ export function VisualReportBuilder() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Visual Report Builder</h1>
-          <p className="text-sm text-[var(--text-muted)]">
+          <h1 className="page-title">Visual Report Builder</h1>
+          <p className="page-subtitle">
             Build multi-module custom reports with filters, grouping, charts, exports, and
             schedules.
           </p>

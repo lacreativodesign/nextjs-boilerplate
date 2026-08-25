@@ -212,7 +212,7 @@ export default function TimeTrackingDashboard({ canApprove }: { canApprove: bool
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Time Tracking & Timesheets</h1>
+      <h1 className="page-title">Time Tracking &amp; Timesheets</h1>
       {error ? (
         <div
           style={{

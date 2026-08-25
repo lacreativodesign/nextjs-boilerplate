@@ -58,7 +58,7 @@ export default function HelpArticlePage({ params }: ArticlePageProps) {
       <div className="grid gap-8 lg:grid-cols-[1fr_260px]">
         <article className="min-w-0">
           <header className="card p-6">
-            <h1 className="text-3xl font-semibold text-[var(--text-primary)]">{article.title}</h1>
+            <h1 className="page-title">{article.title}</h1>
             <p className="mt-3 text-sm text-[var(--text-muted)]">{article.excerpt}</p>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-[var(--text-muted)]">

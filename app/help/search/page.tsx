@@ -22,7 +22,7 @@ export default function HelpSearchPage({ searchParams }: SearchPageProps) {
         <span>Search</span>
       </nav>
 
-      <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Search documentation</h1>
+      <h1 className="page-title">Search documentation</h1>
       <p className="mt-2 text-sm text-[var(--text-muted)]">
         Find articles by keywords and filter by category.
       </p>

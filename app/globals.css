@@ -436,6 +436,18 @@ body {
   margin: 0;
 }
 
+/* DS-11: public marketing pages (/pricing). A deliberate hero scale, larger than
+   `.page-title`, but reading a token instead of the fixed `text-gray-900` it used —
+   which rendered near-black on a dark surface. */
+.marketing-title {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  margin: 0;
+}
+
 @keyframes fadeRise {
   from {
     opacity: 0;

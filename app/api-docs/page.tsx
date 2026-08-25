@@ -6,7 +6,7 @@ import { SwaggerUi } from '@/components/docs/swagger-ui';
 export default function ApiDocsPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
-      <h1 className="mb-2 text-3xl font-semibold">API Documentation</h1>
+      <h1 className="page-title mb-2">API Documentation</h1>
       <p className="mb-8 text-sm text-gray-600">
         OpenAPI contracts are versioned and served from <code>/api/openapi?version=*</code>.
       </p>
