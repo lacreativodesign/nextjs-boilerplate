@@ -48,7 +48,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">{project.name}</h1>
+        <h1 className="page-title">{project.name}</h1>
         <div className="mt-2 flex gap-4 text-sm text-[var(--text-muted)]">
           <span>Code: {project.code}</span>
           <span>Progress: {project.progress}%</span>

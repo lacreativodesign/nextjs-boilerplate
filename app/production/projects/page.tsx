@@ -96,7 +96,7 @@ export default function ProductionProjectsPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Production Gantt</h1>
+        <h1 className="page-title">Production Gantt</h1>
         <select
           className="rounded-md border border-[var(--border-subtle)] text-sm px-3 py-2"
           value={activeProjectId}

@@ -79,9 +79,7 @@ export default function ActivityLayout({ children }: { children: React.ReactNode
               alignItems: 'center',
             }}
           >
-            <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-strong)' }}>
-              Activity Monitoring
-            </h1>
+            <h1 className="page-title">Activity Monitoring</h1>
 
             <button
               onClick={async () => {

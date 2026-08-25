@@ -87,8 +87,8 @@ export default function NotificationSettingsPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Notification Preferences</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="page-title">Notification Preferences</h1>
+        <p className="page-subtitle">
           Control channels, event types, digest mode, and quiet hours.
         </p>
       </div>

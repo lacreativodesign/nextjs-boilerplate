@@ -24,8 +24,8 @@ export default function SearchResultsPage() {
       <AppShell>
         <div className="space-y-4">
           <div className="card p-4">
-            <h1 className="text-xl font-semibold">Advanced Search</h1>
-            <p className="text-sm text-[var(--text-soft)]">
+            <h1 className="page-title">Advanced Search</h1>
+            <p className="page-subtitle">
               Build multi-filter queries, save searches, inspect history, and export result sets.
             </p>
           </div>

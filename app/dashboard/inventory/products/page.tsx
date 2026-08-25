@@ -37,7 +37,7 @@ export default function ProductsPage() {
   return (
     <div className="page-frame">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Products</h1>
+        <h1 className="page-title">Products</h1>
         <CreateProductDialog onSuccess={fetchProducts} />
       </div>
 
@@ -58,10 +58,10 @@ export default function ProductsPage() {
         ))}
       </div>
 
-      {loading ? <p className="text-sm text-gray-500">Loading products...</p> : null}
+      {loading ? <p className="text-sm text-ink-muted">Loading products...</p> : null}
 
       {!loading && products.length === 0 ? (
-        <p className="rounded-md border border-dashed p-8 text-center text-sm text-gray-500">
+        <p className="rounded-md border border-dashed border-line p-8 text-center text-sm text-ink-muted">
           No products found.
         </p>
       ) : null}

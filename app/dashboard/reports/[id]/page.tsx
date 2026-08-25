@@ -86,10 +86,8 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     <div className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{report.name}</h1>
-          {report.description ? (
-            <p className="text-sm text-[var(--text-muted)]">{report.description}</p>
-          ) : null}
+          <h1 className="page-title">{report.name}</h1>
+          {report.description ? <p className="page-subtitle">{report.description}</p> : null}
           {executedAt ? (
             <p className="mt-1 text-xs text-[var(--text-muted)]">
               Last run: {new Date(executedAt).toLocaleString()}
