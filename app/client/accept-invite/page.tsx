@@ -135,8 +135,8 @@ function AcceptInviteClient() {
   if (error) {
     return (
       <div className="p-6 max-w-md">
-        <h1 className="text-xl font-bold mb-2">Invite Error</h1>
-        <p className="text-sm text-red-400">{error}</p>
+        <h1 className="screen-title mb-2">Invite Error</h1>
+        <p className="text-sm text-danger">{error}</p>
       </div>
     );
   }
@@ -144,10 +144,8 @@ function AcceptInviteClient() {
   return (
     <div className="p-6 max-w-md space-y-4">
       <div>
-        <h1 className="text-xl font-bold">Activate Your Account</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Create a password to access your client portal.
-        </p>
+        <h1 className="screen-title">Activate Your Account</h1>
+        <p className="screen-subtitle">Create a password to access your client portal.</p>
       </div>
 
       <div className="card p-4 space-y-3">
@@ -171,7 +169,7 @@ function AcceptInviteClient() {
           />
         </div>
 
-        {error && <div className="text-sm text-red-400">{error}</div>}
+        {error && <div className="text-sm text-danger">{error}</div>}
 
         <button className="btn primary w-full" disabled={submitting} onClick={submit}>
           {submitting ? 'Activating…' : 'Activate Account'}

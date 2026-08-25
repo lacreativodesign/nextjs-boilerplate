@@ -114,20 +114,8 @@ function SetPasswordForm() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         }}
       >
-        <h1
-          style={{
-            textAlign: 'center',
-            fontSize: 22,
-            fontWeight: 700,
-            marginBottom: 12,
-            color: 'var(--text-strong)',
-          }}
-        >
-          Set Your Password
-        </h1>
-        <p
-          style={{ textAlign: 'center', fontSize: 14, color: 'var(--gray-500)', marginBottom: 20 }}
-        >
+        <h1 className="screen-title mb-3 text-center">Set Your Password</h1>
+        <p className="screen-subtitle mb-5 text-center">
           Use the link from your email to create your dashboard password.
         </p>
 

@@ -5,8 +5,8 @@ export default function NotFound() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-bg,var(--surface-muted))] px-4">
       <div className="w-full max-w-md text-center">
         <div className="mb-6 text-8xl font-black text-[var(--brand-navy-soft)]">404</div>
-        <h1 className="mb-3 text-2xl font-bold text-[var(--text-slate-deep)]">Page not found</h1>
-        <p className="mb-8 text-sm text-[var(--color-gray)]">
+        <h1 className="screen-title mb-3">Page not found</h1>
+        <p className="screen-subtitle mb-8">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
