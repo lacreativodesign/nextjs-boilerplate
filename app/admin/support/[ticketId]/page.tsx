@@ -133,7 +133,7 @@ export default function SupportTicketDetailPage({ params }: RouteParams) {
       {ticket ? (
         <div className="card p-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-[var(--text-primary)]">{ticket.title}</h1>
+            <h1 className="page-title">{ticket.title}</h1>
             <span className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--text-muted)]">
               {ticket.ticketNumber}
             </span>

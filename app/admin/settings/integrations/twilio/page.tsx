@@ -176,8 +176,8 @@ export default function TwilioIntegrationPage() {
 
   return (
     <main className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Twilio SMS Setup</h1>
-      <p className="text-sm text-[var(--sidebar-text)]">
+      <h1 className="page-title">Twilio SMS Setup</h1>
+      <p className="page-subtitle mt-2">
         Configure Twilio phone routing, trigger mapping, and delivery tracking for critical ERP
         alerts.
       </p>

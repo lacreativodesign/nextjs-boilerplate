@@ -111,7 +111,7 @@ export default function AdminLaunchChecklistPage() {
 
   const readiness = useMemo(() => statusPill(data?.readinessScore || 0), [data?.readinessScore]);
 
-  if (loading) return <div className="p-6 text-sm text-slate-500">Loading launch checklist…</div>;
+  if (loading) return <div className="p-6 text-sm text-ink-muted">Loading launch checklist…</div>;
   if (error)
     return (
       <div className="m-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -125,8 +125,8 @@ export default function AdminLaunchChecklistPage() {
       <header className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Production Launch Checklist</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="page-title">Production Launch Checklist</h1>
+            <p className="page-subtitle mt-1">
               Final pre-launch controls, readiness scoring, and go-live approval.
             </p>
           </div>
@@ -146,15 +146,15 @@ export default function AdminLaunchChecklistPage() {
           ['API P95', `${data.metrics.apiResponseTimeP95} ms`],
         ].map(([label, value]) => (
           <div key={String(label)} className="card p-4">
-            <p className="text-xs text-slate-500">{label}</p>
-            <p className="mt-2 text-xl font-semibold text-slate-900">{value}</p>
+            <p className="text-xs text-ink-muted">{label}</p>
+            <p className="mt-2 text-xl font-semibold text-ink">{value}</p>
           </div>
         ))}
       </section>
 
       <section className="card p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Automated Checks</h2>
+          <h2 className="text-lg font-semibold text-ink">Automated Checks</h2>
           <button
             type="button"
             className="btn"
@@ -168,7 +168,7 @@ export default function AdminLaunchChecklistPage() {
           {data.automatedChecks.map((check) => (
             <div key={check.key} className="rounded-xl border border-[var(--border-subtle)] p-3">
               <div className="flex items-center justify-between">
-                <p className="font-medium text-slate-900">{check.name}</p>
+                <p className="font-medium text-ink">{check.name}</p>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     check.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
@@ -177,7 +177,7 @@ export default function AdminLaunchChecklistPage() {
                   {check.passed ? 'PASS' : 'FAIL'}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-600">{check.details}</p>
+              <p className="mt-1 text-sm text-ink-muted">{check.details}</p>
             </div>
           ))}
         </div>
@@ -203,16 +203,16 @@ export default function AdminLaunchChecklistPage() {
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="card p-5">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Manual Verification</h2>
+          <h2 className="mb-4 text-lg font-semibold text-ink">Manual Verification</h2>
           <div className="space-y-4">
             {MANUAL_CHECKS.map((category) => (
               <div key={category.category}>
-                <p className="text-sm font-semibold text-slate-700">{category.category}</p>
+                <p className="text-sm font-semibold text-ink">{category.category}</p>
                 <div className="mt-2 space-y-2">
                   {category.items.map((item) => {
                     const id = normalizeManualCheckId(item);
                     return (
-                      <label key={id} className="flex items-start gap-2 text-sm text-slate-700">
+                      <label key={id} className="flex items-start gap-2 text-sm text-ink">
                         <input
                           type="checkbox"
                           className="mt-0.5 h-4 w-4"
@@ -233,12 +233,12 @@ export default function AdminLaunchChecklistPage() {
 
         <div className="space-y-6">
           <div className="card p-5">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">Production Configuration</h2>
+            <h2 className="mb-3 text-lg font-semibold text-ink">Production Configuration</h2>
             <div className="space-y-2">
               {PRODUCTION_CONFIGURATION_ITEMS.map((item) => {
                 const id = normalizeManualCheckId(item);
                 return (
-                  <label key={id} className="flex items-start gap-2 text-sm text-slate-700">
+                  <label key={id} className="flex items-start gap-2 text-sm text-ink">
                     <input
                       type="checkbox"
                       className="mt-0.5 h-4 w-4"
@@ -258,7 +258,7 @@ export default function AdminLaunchChecklistPage() {
           </div>
 
           <div className="card p-5">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">Launch Actions</h2>
+            <h2 className="mb-3 text-lg font-semibold text-ink">Launch Actions</h2>
             <div className="space-y-3">
               <button
                 type="button"
@@ -289,7 +289,7 @@ export default function AdminLaunchChecklistPage() {
                 />
               </label>
             </div>
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-ink-muted">
               Announcement sent:{' '}
               {data.launchAnnouncementSentAt
                 ? new Date(data.launchAnnouncementSentAt).toLocaleString()
@@ -300,8 +300,8 @@ export default function AdminLaunchChecklistPage() {
       </section>
 
       <section className="card p-5">
-        <h2 className="text-lg font-semibold text-slate-900">Documentation Export</h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <h2 className="text-lg font-semibold text-ink">Documentation Export</h2>
+        <p className="mt-2 text-sm text-ink-muted">
           Export the launch report and attach architecture diagram, API docs, deployment guide, and
           runbook from /docs.
         </p>

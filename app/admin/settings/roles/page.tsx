@@ -119,8 +119,8 @@ export default function RolesPermissionsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Granular Permissions & Role Builder</h1>
-        <p className="text-sm opacity-70">
+        <h1 className="page-title">Granular Permissions &amp; Role Builder</h1>
+        <p className="page-subtitle mt-2">
           Field-level access control, role templates, and permission previews.
         </p>
       </div>

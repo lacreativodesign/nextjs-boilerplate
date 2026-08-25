@@ -173,7 +173,9 @@ export default function ImportPage() {
 
   return (
     <div className="page-frame">
-      <h1 className="mb-6 text-2xl font-bold">Import Data</h1>
+      <div className="mb-6">
+        <h1 className="page-title">Import Data</h1>
+      </div>
 
       <div className="mb-8 flex flex-wrap items-center gap-4">
         <Step num={1} active={step === 1} label="Upload" />
