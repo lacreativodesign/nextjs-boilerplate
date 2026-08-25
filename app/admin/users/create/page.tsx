@@ -115,22 +115,6 @@ export default function CreateUserPage() {
     };
   }, [role]);
 
-  const muted = 'var(--text-muted)';
-  const titleCol = 'var(--text-primary)';
-
-  const headerStyle: React.CSSProperties = {
-    fontSize: 34,
-    fontWeight: 900,
-    margin: '0 0 8px 0',
-    color: titleCol,
-  };
-
-  const subStyle: React.CSSProperties = {
-    margin: '0 0 18px 0',
-    color: muted,
-    fontSize: 14,
-  };
-
   // ✅ Key-Accounts master outer shell (shadow included)
   const shellStyle: React.CSSProperties = {
     borderRadius: 20,
@@ -198,8 +182,12 @@ export default function CreateUserPage() {
       >
         ← Back to Users
       </Link>
-      <h1 style={headerStyle}>Create User</h1>
-      <p style={subStyle}>Add a new team member and set role, department, payroll and targets.</p>
+      <div className="mb-5">
+        <h1 className="page-title">Create User</h1>
+        <p className="page-subtitle mt-2">
+          Add a new team member and set role, department, payroll and targets.
+        </p>
+      </div>
 
       <form onSubmit={onSubmit} style={shellStyle}>
         <div style={{ display: 'grid', gap: 12 }}>
