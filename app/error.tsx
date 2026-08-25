@@ -20,10 +20,8 @@ export default function GlobalError({
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-muted)] px-4">
       <div className="w-full max-w-md text-center">
         <div className="mb-6 text-6xl">⚠️</div>
-        <h1 className="mb-3 text-2xl font-bold text-[var(--text-slate-deep)]">
-          Something went wrong
-        </h1>
-        <p className="mb-8 text-sm text-[var(--color-gray)]">
+        <h1 className="screen-title mb-3">Something went wrong</h1>
+        <p className="screen-subtitle mb-8">
           An unexpected error occurred. Please try again or return to the dashboard.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">

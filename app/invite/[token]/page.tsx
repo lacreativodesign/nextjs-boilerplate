@@ -54,7 +54,7 @@ export default function InvitePage({ params }: InvitePageProps) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4">
       <div className="card w-full max-w-md p-8">
-        <h1 className="page-title mb-6">Accept Invitation</h1>
+        <h1 className="screen-title mb-6">Accept Invitation</h1>
 
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-600">

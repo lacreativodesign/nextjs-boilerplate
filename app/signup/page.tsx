@@ -577,10 +577,8 @@ function SignupInner() {
                   )}
                 </div>
 
-                <h1 className="text-2xl font-semibold">
-                  {stepContent[step as Exclude<Step, 7>].title}
-                </h1>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                <h1 className="screen-title">{stepContent[step as Exclude<Step, 7>].title}</h1>
+                <p className="screen-subtitle mt-1">
                   {stepContent[step as Exclude<Step, 7>].subtitle}
                 </p>
               </div>
@@ -881,8 +879,8 @@ function SignupInner() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
                 ✓
               </div>
-              <h1 className="text-2xl font-semibold">Your workspace is ready!</h1>
-              <p className="mt-2 text-sm text-[var(--text-muted)]">
+              <h1 className="screen-title">Your workspace is ready!</h1>
+              <p className="screen-subtitle mt-2">
                 Your 14-day free trial is ready. Stripe Checkout is opening for {formState.email}.
               </p>
               <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">

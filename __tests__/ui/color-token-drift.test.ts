@@ -122,9 +122,8 @@ const CLEAN_FILES: string[] = [
   'app/cookie-policy/page.tsx',
   'app/refund-cancellation/page.tsx',
   'app/security/page.tsx',
-  // P2-17: shared layouts (team / hierarchy / activity) — existing tokens, no new tokens
-  'app/team/layout.tsx',
-  'app/hierarchy/layout.tsx',
+  // P2-17: shared layouts. DS-10 deleted app/team/layout.tsx and app/hierarchy/layout.tsx —
+  // both directories held a layout and no page, so neither route ever existed.
   'app/activity/layout.tsx',
   // P2-18: misc role/util pages
   'app/impersonate/page.tsx',

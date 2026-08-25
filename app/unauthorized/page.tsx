@@ -17,8 +17,8 @@ export default function UnauthorizedPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
       <div className="card" style={{ maxWidth: 560, textAlign: 'center', padding: 28 }}>
-        <h1 style={{ fontSize: 30, marginTop: 0 }}>Unauthorized</h1>
-        <p style={{ color: 'var(--text-muted)' }}>
+        <h1 className="screen-title">Unauthorized</h1>
+        <p className="screen-subtitle mt-2">
           You are signed in, but your role is not permitted to access this route.
         </p>
         <button

@@ -293,7 +293,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
           margin: '0 auto',
         }}
       >
-        <h1 style={{ fontSize: 22, marginBottom: 10 }}>Invoice Unavailable</h1>
+        <h1 className="screen-title mb-3">Invoice Unavailable</h1>
         <p style={{ color: 'var(--danger-strong)' }}>
           {error || 'This invoice is no longer available.'}
         </p>
@@ -314,7 +314,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       >
         <div style={{ textAlign: 'center', maxWidth: 500 }}>
           <div style={{ fontSize: 48, color: 'var(--color-green)' }}>✓</div>
-          <h1 style={{ fontSize: 30, margin: '10px 0' }}>Invoice Already Paid</h1>
+          <h1 className="screen-title my-3">Invoice Already Paid</h1>
           <p>This invoice was paid on {dateValue(data.paidAt) || 'a previous date'}.</p>
           <p style={{ marginTop: 6, fontWeight: 600 }}>{tenantName}</p>
         </div>

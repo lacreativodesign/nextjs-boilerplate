@@ -417,6 +417,25 @@ body {
   color: var(--text-muted);
 }
 
+/* DS-10: standalone screens — error, offline, unauthorized, payment result, signup,
+   invite acceptance. These are centred full-viewport moments, not pages inside the
+   shell, so `.page-title` at clamp(24px, 2.4vw, 34px)/900 reads as shouting in a
+   360px card. Eight of them previously sized themselves inline or with a bare
+   Tailwind class, in six different sizes between 20px and 30px. */
+.screen-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0;
+}
+.screen-subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 @keyframes fadeRise {
   from {
     opacity: 0;
