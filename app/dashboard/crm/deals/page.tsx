@@ -57,7 +57,9 @@ export default function DealsPage() {
 
   return (
     <div className="page-frame">
-      <h1 className="mb-6 text-2xl font-bold">Sales Pipeline</h1>
+      <div className="mb-6">
+        <h1 className="page-title">Sales Pipeline</h1>
+      </div>
 
       {pipelines.length > 1 && (
         <div className="mb-4 flex gap-2">

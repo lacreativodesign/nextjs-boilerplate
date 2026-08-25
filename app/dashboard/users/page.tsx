@@ -41,8 +41,8 @@ export default function UsersPage() {
     <div className="p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Team Members</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="page-title">Team Members</h1>
+          <p className="page-subtitle">
             Manage invitations, roles, and access across your organization.
           </p>
         </div>
@@ -76,9 +76,9 @@ export default function UsersPage() {
       )}
 
       {isLoading ? (
-        <div className="text-sm text-gray-500">Loading users...</div>
+        <div className="text-sm text-ink-muted">Loading users...</div>
       ) : users.length === 0 ? (
-        <div className="text-sm text-gray-500">No users found.</div>
+        <div className="text-sm text-ink-muted">No users found.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map((user) => (
