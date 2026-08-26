@@ -158,7 +158,7 @@ export default function FinanceTaxPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="page-title">Tax Settings</h2>
+        <h1 className="page-title">Tax</h1>
         <p className="page-subtitle">
           Configure tax rates for your invoices. You are solely responsible for your tax compliance
           and filing.

@@ -31,10 +31,6 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
       <ModuleErrorBoundary moduleName="Reports">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Reports & Analytics</h1>
-              <p className="page-subtitle">Business performance across all departments.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

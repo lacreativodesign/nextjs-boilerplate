@@ -27,13 +27,6 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
       <ModuleErrorBoundary moduleName="Finance">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Finance</h1>
-              <p className="page-subtitle">
-                Monitor revenue, cash flow, payroll, and finance operations.
-              </p>
-            </div>
-
             <div className="tabs-bar">
               {tabs.map((tab) => {
                 const isActive =

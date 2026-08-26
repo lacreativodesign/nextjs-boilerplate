@@ -33,6 +33,11 @@ export default function ReportsPage() {
   const router = useRouter();
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">Business performance across all departments.</p>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         {REPORT_SECTIONS.map((section) => (
           <button

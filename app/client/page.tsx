@@ -3,6 +3,11 @@ import Link from 'next/link';
 export default function ClientDashboardPage() {
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle mt-2">Your projects, files, and open change requests.</p>
+      </div>
+
       <div className="kpis">
         {['Active Projects', 'Pending Files', 'Open Changes', 'Invoices Due'].map((l) => (
           <div key={l} className="card">

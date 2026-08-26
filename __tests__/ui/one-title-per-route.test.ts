@@ -21,8 +21,9 @@ import * as path from 'path';
  *
  * DS-15 converted `users` and `settings` and established the pattern. DS-16 adds the six
  * modules whose pages were already titled or needed only their index page named:
- * `projects`, `clients`, `am`, `am_manager`, `production_manager`, `sales_manager`. Six
- * modules remain, with 32 pages still needing a title written.
+ * `projects`, `clients`, `am`, `am_manager`, `production_manager`, `sales_manager`. DS-17
+ * adds `client`, `finance` and `reports`. Three modules remain — `hr`, `production` and
+ * `sales` — with 25 pages still needing a title written.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -46,6 +47,12 @@ const resolveImport = (spec: string, from: string): string | null => {
     if (fs.existsSync(path.join(process.cwd(), candidate))) return candidate;
   }
   return null;
+};
+
+/** A page that only redirects or 404s renders no UI, so it has nothing to title. */
+const rendersNothing = (rel: string): boolean => {
+  const source = read(rel);
+  return /\bredirect\(|\bnotFound\(/.test(source);
 };
 
 /** Follows re-exports and component imports, since several pages are one-line delegates. */
@@ -76,6 +83,9 @@ const CONVERTED = [
   'am_manager',
   'production_manager',
   'sales_manager',
+  'client',
+  'finance',
+  'reports',
 ];
 
 describe('DS-15: the converted layouts no longer title the page', () => {
@@ -96,6 +106,7 @@ describe('DS-15: every page in a converted module names itself', () => {
   it.each(CONVERTED)('no page under app/%s is left without a heading', (module) => {
     const orphans = walk(`app/${module}`)
       .filter((rel) => rel.endsWith('page.tsx'))
+      .filter((rel) => !rendersNothing(rel))
       .filter((rel) => !rendersHeading(rel));
     expect(orphans).toEqual([]);
   });
@@ -110,8 +121,33 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/am_manager/page.tsx', 'Dashboard'],
     ['app/production_manager/page.tsx', 'Dashboard'],
     ['app/sales_manager/page.tsx', 'Dashboard'],
+    ['app/client/page.tsx', 'Dashboard'],
+    ['app/finance/tax/page.tsx', 'Tax'],
+    ['app/reports/page.tsx', 'Overview'],
+    ['app/reports/ai/page.tsx', 'AI Reports'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
+  });
+
+  it('the finance overview reads for both routes that render it', () => {
+    // app/reports/finance/page.tsx is a one-line re-export of app/finance/page.tsx, and
+    // the two tabs label it "Overview" and "Finance" respectively. One title has to work
+    // under both breadcrumbs, so it is neither tab label verbatim.
+    expect(read('app/reports/finance/page.tsx').trim()).toBe(
+      "export { default } from '@/app/finance/page';",
+    );
+    expect(read('app/finance/page.tsx')).toContain(
+      '<h1 className="page-title">Finance Overview</h1>',
+    );
+  });
+
+  it('no page uses .page-title on anything other than an h1', () => {
+    // app/finance/tax rendered <h2 className="page-title">, which is why the audit
+    // sweep for missing headings did not flag it.
+    const offenders = walk('app')
+      .filter((rel) => /<h[2-6][^>]*className="page-title/.test(read(rel)))
+      .sort();
+    expect(offenders).toEqual([]);
   });
 
   it('the four role dashboards no longer paint errors from the raw palette', () => {
@@ -135,16 +171,13 @@ describe('DS-15: every page in a converted module names itself', () => {
 });
 
 describe('DS-15: the remaining modules are a known, shrinking list', () => {
-  it('six layouts still title their pages', () => {
+  it('three layouts still title their pages', () => {
     const stillTitling = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('<h1'))
       .sort();
     expect(stillTitling).toEqual([
-      'app/client/layout.tsx',
-      'app/finance/layout.tsx',
       'app/hr/layout.tsx',
       'app/production/layout.tsx',
-      'app/reports/layout.tsx',
       'app/sales/layout.tsx',
     ]);
   });
