@@ -74,8 +74,8 @@ export default function SalesCampaignsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Sources & Campaigns</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+          <h1 className="page-title">Sources &amp; Campaigns</h1>
+          <p className="page-subtitle mt-2">
             Attribution snapshot for lead sources and marketing performance.
           </p>
         </div>

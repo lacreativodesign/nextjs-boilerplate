@@ -29,7 +29,7 @@ import * as path from 'path';
  * DS-20 starts the same job inside `app/admin`, whose nine sub-modules title from a
  * layout using `<h2 className="section-title">` — leaving those routes with no h1 at
  * all. `clients`, `projects`, `users` and `production` convert in DS-20, `finance` and
- * `reports` in DS-21. Three remain: `hr`, `sales`, `settings`.
+ * `reports` in DS-21 and `sales` in DS-22. Two remain: `hr` and `settings`.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -168,6 +168,11 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/admin/finance/payroll/page.tsx', 'Payroll'],
     ['app/admin/finance/reports/page.tsx', 'Reports'],
     ['app/admin/finance/settings/page.tsx', 'Settings'],
+    ['app/admin/sales/page.tsx', 'Overview'],
+    ['app/admin/sales/deals/page.tsx', 'Deals'],
+    ['app/admin/sales/follow-ups/page.tsx', 'Follow-Ups'],
+    ['app/admin/sales/leads/page.tsx', 'Leads'],
+    ['app/admin/sales/pipeline/page.tsx', 'Pipeline'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
   });
@@ -254,7 +259,7 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     // roughly 53 admin pages have no h1 of their own and those routes expose no
     // top-level heading at all. Converting them is the same job done here, and is the
     // last of it.
-    const PENDING_ADMIN = ['hr', 'sales', 'settings'].map(
+    const PENDING_ADMIN = ['hr', 'settings'].map(
       (mod) => `app${path.sep}admin${path.sep}${mod}${path.sep}`,
     );
     const orphans = walk('app')
@@ -266,15 +271,11 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     expect(orphans).toEqual([]);
   });
 
-  it('three admin sub-module layouts are the last holdouts', () => {
+  it('two admin sub-module layouts are the last holdouts', () => {
     const sectionTitled = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('className="section-title'))
       .sort();
-    expect(sectionTitled).toEqual([
-      'app/admin/hr/layout.tsx',
-      'app/admin/sales/layout.tsx',
-      'app/admin/settings/layout.tsx',
-    ]);
+    expect(sectionTitled).toEqual(['app/admin/hr/layout.tsx', 'app/admin/settings/layout.tsx']);
   });
 
   it('no page title is rendered as an h3 or a styled div', () => {
@@ -283,6 +284,7 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     // three more sizes that no stylesheet could reach.
     const offenders = walk('app/admin/finance')
       .concat(walk('app/admin/reports'))
+      .concat(walk('app/admin/sales'))
       .filter((rel) => /<h3[^>]*style=\{/.test(read(rel)))
       .sort();
     expect(offenders).toEqual([]);

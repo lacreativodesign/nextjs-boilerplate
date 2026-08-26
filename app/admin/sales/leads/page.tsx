@@ -260,8 +260,8 @@ export default function SalesLeadsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Leads</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+          <h1 className="page-title">Leads</h1>
+          <p className="page-subtitle mt-2">
             Live lead capture with owner assignment and conversion tools.
           </p>
         </div>

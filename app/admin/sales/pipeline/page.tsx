@@ -159,8 +159,8 @@ export default function SalesPipelinePage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Pipeline</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+          <h1 className="page-title">Pipeline</h1>
+          <p className="page-subtitle mt-2">
             Drag deals across stages to keep the pipeline in sync.
           </p>
         </div>

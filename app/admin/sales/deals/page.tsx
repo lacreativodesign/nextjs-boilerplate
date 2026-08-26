@@ -342,8 +342,8 @@ export default function SalesDealsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Deals</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+          <h1 className="page-title">Deals</h1>
+          <p className="page-subtitle mt-2">
             Manage deal values, probabilities, and closing actions.
           </p>
         </div>
