@@ -10,7 +10,9 @@ import * as path from 'path';
  *     `text-sm text-gray-500` for their subtitles. That is a fixed palette value with
  *     no dark-mode counterpart, so both subtitles stayed mid-grey on a dark surface.
  *   - `app/activity/layout.tsx` styled its heading with an inline
- *     `{ fontSize: 20, fontWeight: 600 }`, which no theme or token could reach.
+ *     `{ fontSize: 20, fontWeight: 600 }`, which no theme or token could reach. DS-14
+ *     has since deleted that heading along with the layout's bespoke shell, so the file
+ *     has left this list; `__tests__/ui/activity-shell.test.ts` guards it now.
  */
 
 const DS7_PAGES = [
@@ -18,7 +20,6 @@ const DS7_PAGES = [
   'app/dashboard/crm/customers/page.tsx',
   'app/dashboard/crm/deals/page.tsx',
   'app/dashboard/inventory/products/page.tsx',
-  'app/dashboard/notifications/page.tsx',
   'app/dashboard/projects/[id]/page.tsx',
   'app/dashboard/reports/[id]/page.tsx',
   'app/dashboard/settings/notifications/page.tsx',
@@ -26,7 +27,6 @@ const DS7_PAGES = [
   'app/notifications/page.tsx',
   'app/production/projects/page.tsx',
   'app/search/page.tsx',
-  'app/activity/layout.tsx',
 ];
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -53,7 +53,8 @@ describe('DS-7: dashboard and the in-shell singles use the canonical title', () 
   });
 
   it('no h1 in these files is styled inline', () => {
-    // app/activity/layout.tsx used style={{ fontSize: 20, fontWeight: 600 }}.
+    // The original offender was app/activity/layout.tsx, with
+    // style={{ fontSize: 20, fontWeight: 600 }}; DS-14 removed that heading entirely.
     for (const rel of DS7_PAGES) {
       expect({ rel, inline: /<h1[^>]*style=\{/.test(read(rel)) }).toEqual({ rel, inline: false });
     }

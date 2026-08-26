@@ -22,7 +22,7 @@ export async function POST() {
       metadata: {
         source: 'notification-preferences-test',
       },
-      deepLink: '/dashboard/notifications',
+      deepLink: '/notifications',
     });
 
     return NextResponse.json({ success: true });
