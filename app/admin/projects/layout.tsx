@@ -16,11 +16,6 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="w-full">
-      <div className="mb-4">
-        <h2 className="section-title mb-1">Projects & Delivery</h2>
-        <p className="section-subtitle">Track delivery timelines, files, and change requests.</p>
-      </div>
-
       <div className="tabs-bar">
         {tabs.map((t) => {
           const active = pathname === t.path;

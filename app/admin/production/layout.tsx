@@ -17,13 +17,6 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
   return (
     <ModuleErrorBoundary moduleName="Production">
       <div className="w-full">
-        <div className="mb-4">
-          <h2 className="section-title mb-1">Production</h2>
-          <p className="section-subtitle">
-            Monitor workloads, QA approvals, and delivery readiness.
-          </p>
-        </div>
-
         <div className="tabs-bar">
           {tabs.map((t) => {
             const active = pathname === t.path;

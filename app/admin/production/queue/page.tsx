@@ -83,12 +83,6 @@ export default function ProductionQueuePage() {
   const [productionUsers, setProductionUsers] = useState<ProductionUserOption[]>([]);
   const [ownerOptions, setOwnerOptions] = useState<ProductionUserOption[]>([]);
 
-  const sectionTitleStyle: React.CSSProperties = {
-    fontSize: 18,
-    fontWeight: 700,
-    color: 'var(--text-primary)',
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: '12px 14px',
     fontSize: 11,
@@ -264,8 +258,13 @@ export default function ProductionQueuePage() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      <div>
+        <h1 className="page-title">Queue</h1>
+        <p className="page-subtitle mt-2">The production queue, filtered and prioritised.</p>
+      </div>
+
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>Queue Filters</div>
+        <h2 className="section-title">Filters</h2>
         <div
           className="card"
           style={{
@@ -334,7 +333,7 @@ export default function ProductionQueuePage() {
       </section>
 
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>Queue KPIs</div>
+        <h2 className="section-title">KPIs</h2>
         <div
           style={{
             display: 'grid',
@@ -350,7 +349,7 @@ export default function ProductionQueuePage() {
       </section>
 
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>Queue</div>
+        <h2 className="section-title">Items</h2>
         {loading ? (
           <div style={{ fontSize: 14, opacity: 0.7 }}>Loading queue…</div>
         ) : error ? (

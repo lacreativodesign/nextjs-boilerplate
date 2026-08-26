@@ -146,6 +146,13 @@ export default function ProductionOverviewPage() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">
+          Workload, QA queue, and delivery readiness across production.
+        </p>
+      </div>
+
       {loading ? (
         <div style={{ fontSize: 14, opacity: 0.7 }}>Loading production overview…</div>
       ) : error ? (

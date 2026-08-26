@@ -42,12 +42,6 @@ export default function ProductionQAPage() {
   const [ownerOptions, setOwnerOptions] = useState<ProductionUserOption[]>([]);
   const [projectTypes, setProjectTypes] = useState<string[]>([]);
 
-  const sectionTitleStyle: React.CSSProperties = {
-    fontSize: 18,
-    fontWeight: 700,
-    color: 'var(--text-primary)',
-  };
-
   const headerCellStyle: React.CSSProperties = {
     padding: '12px 14px',
     fontSize: 11,
@@ -173,8 +167,13 @@ export default function ProductionQAPage() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      <div>
+        <h1 className="page-title">QA &amp; Approvals</h1>
+        <p className="page-subtitle mt-2">Review completed work and approve or reject it.</p>
+      </div>
+
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>QA Filters</div>
+        <h2 className="section-title">Filters</h2>
         <div
           className="card"
           style={{
@@ -215,7 +214,7 @@ export default function ProductionQAPage() {
       </section>
 
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>QA KPIs</div>
+        <h2 className="section-title">KPIs</h2>
         <div
           style={{
             display: 'grid',
@@ -230,7 +229,7 @@ export default function ProductionQAPage() {
       </section>
 
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>QA & Approvals</div>
+        <h2 className="section-title">Items</h2>
         {loading ? (
           <div style={{ fontSize: 14, opacity: 0.7 }}>Loading QA queue…</div>
         ) : error ? (
