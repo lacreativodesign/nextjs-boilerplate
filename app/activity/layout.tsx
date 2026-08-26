@@ -1,111 +1,28 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import RequireAuth from '@/components/RequireAuth';
 import AppShell from '@/components/layout/AppShell';
-import { apiFetch } from '@/lib/api/client';
+import { ModuleErrorBoundary } from '@/components/errors/ModuleErrorBoundary';
 
+/**
+ * DS-14. This layout previously rendered its own application shell — a 250px dark
+ * aside, a bespoke header and a logout button — while importing AppShell on line 7 and
+ * never using it. It was the same template as the hierarchy/team layouts removed in
+ * S10, except those held a layout and no page and so never rendered; this one has a
+ * page, so /activity shipped with no Bizosto sidebar, breadcrumbs, notification bell
+ * or theme toggle.
+ *
+ * Its five-item nav is gone rather than rebuilt as a .tabs-bar: only /activity has a
+ * page. /activity/logs, /activity/actions, /activity/errors and /activity/notifications
+ * were never created, so four of the five links were dead. AppShell's own sidebar is
+ * the navigation for what is a single-page module.
+ */
 export default function ActivityLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  const navItems = [
-    { label: 'All Activity', path: '/activity' },
-    { label: 'System Logs', path: '/activity/logs' },
-    { label: 'User Actions', path: '/activity/actions' },
-    { label: 'Failed Events', path: '/activity/errors' },
-    { label: 'Notifications', path: '/activity/notifications' },
-  ];
-
   return (
     <RequireAuth allowed={['admin', 'super_admin']}>
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          backgroundColor: 'var(--gray-50)',
-          fontFamily: 'Inter, sans-serif',
-        }}
-      >
-        {/* SIDEBAR */}
-        <aside
-          style={{
-            width: 250,
-            backgroundColor: 'var(--text-strong)',
-            color: 'white',
-            padding: '30px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 20,
-            boxShadow: '2px 0 10px rgba(0,0,0,0.15)',
-          }}
-        >
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 30 }}>ACTIVITY</h2>
-
-          {navItems.map((item) => {
-            const active = pathname.startsWith(item.path);
-
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 8,
-                  background: active ? 'var(--surface-inverse)' : 'transparent',
-                  color: active ? 'var(--text-on-brand)' : 'var(--gray-300)',
-                  fontWeight: active ? 700 : 500,
-                  textDecoration: 'none',
-                  transition: '0.2s ease',
-                }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </aside>
-
-        {/* MAIN AREA */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* HEADER */}
-          <header
-            style={{
-              backgroundColor: 'var(--text-on-brand)',
-              borderBottom: '1px solid var(--surface-neutral)',
-              padding: '20px 30px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <h1 className="page-title">Activity Monitoring</h1>
-
-            <button
-              onClick={async () => {
-                await apiFetch('/api/logout', {
-                  method: 'POST',
-                });
-                window.location.href = '/login';
-              }}
-              style={{
-                padding: '10px 20px',
-                borderRadius: 8,
-                background: 'var(--danger)',
-                color: 'var(--text-on-brand)',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              LOGOUT
-            </button>
-          </header>
-
-          {/* CONTENT */}
-          <main style={{ padding: '30px' }}>{children}</main>
-        </div>
-      </div>
+      <ModuleErrorBoundary moduleName="Activity">
+        <AppShell>{children}</AppShell>
+      </ModuleErrorBoundary>
     </RequireAuth>
   );
 }
