@@ -19,10 +19,6 @@ export default function AmLayout({ children }: { children: React.ReactNode }) {
       <ModuleErrorBoundary moduleName="Account Management">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Account Management</h1>
-              <p className="page-subtitle">Your clients, projects, and pipeline.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

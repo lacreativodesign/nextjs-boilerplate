@@ -15,10 +15,6 @@ export default function AmManagerLayout({ children }: { children: React.ReactNod
       <ModuleErrorBoundary moduleName="AM Manager">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">AM Manager</h1>
-              <p className="page-subtitle">Team oversight, approvals, and delivery.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

@@ -19,8 +19,10 @@ import * as path from 'path';
  * the layout header goes and each page names itself — usually with the label already
  * sitting in that layout's own TABS array.
  *
- * This session converts `users` and `settings` and establishes the pattern. The
- * remaining twelve modules follow, with 36 pages still needing a title written.
+ * DS-15 converted `users` and `settings` and established the pattern. DS-16 adds the six
+ * modules whose pages were already titled or needed only their index page named:
+ * `projects`, `clients`, `am`, `am_manager`, `production_manager`, `sales_manager`. Six
+ * modules remain, with 32 pages still needing a title written.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -65,7 +67,16 @@ const rendersHeading = (rel: string, depth = 0, seen = new Set<string>()): boole
   return false;
 };
 
-const CONVERTED = ['users', 'settings'];
+const CONVERTED = [
+  'users',
+  'settings',
+  'projects',
+  'clients',
+  'am',
+  'am_manager',
+  'production_manager',
+  'sales_manager',
+];
 
 describe('DS-15: the converted layouts no longer title the page', () => {
   it.each(CONVERTED)('app/%s/layout.tsx renders no h1', (module) => {
@@ -95,8 +106,24 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/settings/payments/page.tsx', 'Payments'],
     ['app/settings/security/page.tsx', 'Security'],
     ['app/settings/system/page.tsx', 'System'],
+    ['app/am/page.tsx', 'Dashboard'],
+    ['app/am_manager/page.tsx', 'Dashboard'],
+    ['app/production_manager/page.tsx', 'Dashboard'],
+    ['app/sales_manager/page.tsx', 'Dashboard'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
+  });
+
+  it('the four role dashboards no longer paint errors from the raw palette', () => {
+    // All four shared `text-red-400`, a fixed value with no dark-mode counterpart.
+    for (const rel of [
+      'app/am/page.tsx',
+      'app/am_manager/page.tsx',
+      'app/production_manager/page.tsx',
+      'app/sales_manager/page.tsx',
+    ]) {
+      expect({ rel, rawRed: read(rel).includes('text-red-400') }).toEqual({ rel, rawRed: false });
+    }
   });
 
   it('no converted route stacks two titles', () => {
@@ -108,23 +135,17 @@ describe('DS-15: every page in a converted module names itself', () => {
 });
 
 describe('DS-15: the remaining modules are a known, shrinking list', () => {
-  it('twelve layouts still title their pages', () => {
+  it('six layouts still title their pages', () => {
     const stillTitling = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('<h1'))
       .sort();
     expect(stillTitling).toEqual([
-      'app/am/layout.tsx',
-      'app/am_manager/layout.tsx',
       'app/client/layout.tsx',
-      'app/clients/layout.tsx',
       'app/finance/layout.tsx',
       'app/hr/layout.tsx',
       'app/production/layout.tsx',
-      'app/production_manager/layout.tsx',
-      'app/projects/layout.tsx',
       'app/reports/layout.tsx',
       'app/sales/layout.tsx',
-      'app/sales_manager/layout.tsx',
     ]);
   });
 });

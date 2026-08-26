@@ -43,7 +43,12 @@ export default function SalesManagerPage() {
 
   return (
     <div className="space-y-6">
-      {error && <div className="card p-4 text-sm text-red-400">{error}</div>}
+      <div>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle mt-2">Team pipeline, targets, and performance at a glance.</p>
+      </div>
+
+      {error && <div className="card p-4 text-sm text-danger">{error}</div>}
 
       <div className="kpis">
         {cards.map((c) => (
