@@ -126,6 +126,11 @@ export default function SettingsProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
+      <div>
+        <h1 className="page-title">Profile</h1>
+        <p className="page-subtitle mt-2">Your name, contact details, and role.</p>
+      </div>
+
       {/* Avatar + identity */}
       <div className="card p-6">
         <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Your Profile</h2>

@@ -66,6 +66,11 @@ export default function SettingsSecurityPage() {
 
   return (
     <div className="max-w-xl space-y-6">
+      <div>
+        <h1 className="page-title">Security</h1>
+        <p className="page-subtitle mt-2">Change your password and review active sessions.</p>
+      </div>
+
       {/* Change Password */}
       <div className="card p-6">
         <h2 className="mb-1 text-lg font-bold text-[var(--text-primary)]">Change Password</h2>

@@ -72,7 +72,14 @@ export default function SettingsSystemPage() {
     );
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-xl space-y-6">
+      <div>
+        <h1 className="page-title">System</h1>
+        <p className="page-subtitle mt-2">
+          Workspace-wide defaults for signups, plans, and support contact.
+        </p>
+      </div>
+
       <form onSubmit={handleSave} className="space-y-6">
         <div className="card space-y-4 p-6">
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Platform Controls</h2>
