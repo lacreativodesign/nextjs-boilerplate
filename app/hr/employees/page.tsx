@@ -315,7 +315,7 @@ export default function HrEmployeesPage() {
   };
 
   return (
-    <div className="page-frame space-y-6">
+    <div className="space-y-6">
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
