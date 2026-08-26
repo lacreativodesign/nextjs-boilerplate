@@ -183,10 +183,8 @@ export default function HrDocumentsPage() {
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>Employee Documents</div>
-            <div style={{ fontSize: 14, color: 'var(--sidebar-text)' }}>
-              Store HR documents securely in Firebase Storage.
-            </div>
+            <h1 className="page-title">Documents</h1>
+            <p className="page-subtitle mt-2">Store HR documents securely in Firebase Storage.</p>
           </div>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-4">

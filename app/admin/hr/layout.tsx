@@ -21,13 +21,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   return (
     <ModuleErrorBoundary moduleName="HR">
       <div className="w-full">
-        <div className="mb-4">
-          <h2 className="section-title mb-1">HR & Team</h2>
-          <p className="section-subtitle">
-            People ops, onboarding, performance, and HR documentation.
-          </p>
-        </div>
-
         <div className="tabs-bar">
           {tabs.map((t) => {
             const active = pathname === t.path;

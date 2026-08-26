@@ -145,10 +145,8 @@ export default function HrPerformancePage() {
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>Performance</div>
-            <div style={{ fontSize: 14, color: 'var(--sidebar-text)' }}>
-              Capture monthly or quarterly performance feedback.
-            </div>
+            <h1 className="page-title">Performance</h1>
+            <p className="page-subtitle mt-2">Capture monthly or quarterly performance feedback.</p>
           </div>
           <button className="btn" onClick={() => setDrawerOpen(true)}>
             Add Review
