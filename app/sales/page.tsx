@@ -89,6 +89,11 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">Leads, deals, and pipeline health at a glance.</p>
+      </div>
+
       <div className="mb-6">
         <SalesAgentWidget />
       </div>

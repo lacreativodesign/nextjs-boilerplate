@@ -88,7 +88,12 @@ export default function SalesInboxPage() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      <div>
+        <h1 className="page-title">Inbox</h1>
+        <p className="page-subtitle mt-2">Inbound enquiries waiting to be qualified.</p>
+      </div>
+
       {error && (
         <div
           className="card"

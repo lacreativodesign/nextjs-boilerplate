@@ -22,8 +22,8 @@ import * as path from 'path';
  * DS-15 converted `users` and `settings` and established the pattern. DS-16 adds the six
  * modules whose pages were already titled or needed only their index page named:
  * `projects`, `clients`, `am`, `am_manager`, `production_manager`, `sales_manager`. DS-17
- * adds `client`, `finance` and `reports`. Three modules remain — `hr`, `production` and
- * `sales` — with 25 pages still needing a title written.
+ * adds `client`, `finance` and `reports`, and DS-18 adds `production` and `sales`. One
+ * module remains: `hr`, with 11 pages still needing a title written.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -52,7 +52,9 @@ const resolveImport = (spec: string, from: string): string | null => {
 /** A page that only redirects or 404s renders no UI, so it has nothing to title. */
 const rendersNothing = (rel: string): boolean => {
   const source = read(rel);
-  return /\bredirect\(|\bnotFound\(/.test(source);
+  // app/sales/leads/add navigates with router.replace() in an effect and returns null,
+  // so the redirect()/notFound() check alone would report it as an untitled page.
+  return /\bredirect\(|\bnotFound\(/.test(source) || /return null;/.test(source);
 };
 
 /** Follows re-exports and component imports, since several pages are one-line delegates. */
@@ -86,6 +88,8 @@ const CONVERTED = [
   'client',
   'finance',
   'reports',
+  'production',
+  'sales',
 ];
 
 describe('DS-15: the converted layouts no longer title the page', () => {
@@ -125,6 +129,14 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/finance/tax/page.tsx', 'Tax'],
     ['app/reports/page.tsx', 'Overview'],
     ['app/reports/ai/page.tsx', 'AI Reports'],
+    ['app/production/page.tsx', 'Overview'],
+    ['app/production/activity/page.tsx', 'Activity'],
+    ['app/sales/page.tsx', 'Overview'],
+    ['app/sales/campaigns/page.tsx', 'Campaigns'],
+    ['app/sales/deals/page.tsx', 'Deals'],
+    ['app/sales/follow-ups/page.tsx', 'Follow-ups'],
+    ['app/sales/inbox/page.tsx', 'Inbox'],
+    ['app/sales/targets/page.tsx', 'Targets'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
   });
@@ -138,6 +150,29 @@ describe('DS-15: every page in a converted module names itself', () => {
     );
     expect(read('app/finance/page.tsx')).toContain(
       '<h1 className="page-title">Finance Overview</h1>',
+    );
+  });
+
+  it('the two production aliases are titled by their tab, not their path', () => {
+    // /production/jobs re-exports /production/queue and /production/workload re-exports
+    // /production/resources. Only the aliases appear in the tab bar, so the shared
+    // component takes the tab's name.
+    expect(read('app/production/jobs/page.tsx')).toContain(
+      "export { default } from '@/app/production/queue/page';",
+    );
+    expect(read('app/production/queue/page.tsx')).toContain('<h1 className="page-title">Jobs</h1>');
+    expect(read('app/production/workload/page.tsx')).toContain(
+      "export { default } from '@/app/production/resources/page';",
+    );
+    expect(read('app/production/resources/page.tsx')).toContain(
+      '<h1 className="page-title">Workload</h1>',
+    );
+  });
+
+  it('the QA workspace titles the route it backs', () => {
+    // app/production/qa renders this component and nothing else.
+    expect(read('components/production/QualityAssuranceWorkspace.tsx')).toContain(
+      '<h1 className="page-title">QA</h1>',
     );
   });
 
@@ -171,14 +206,10 @@ describe('DS-15: every page in a converted module names itself', () => {
 });
 
 describe('DS-15: the remaining modules are a known, shrinking list', () => {
-  it('three layouts still title their pages', () => {
+  it('only hr still titles its pages', () => {
     const stillTitling = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('<h1'))
       .sort();
-    expect(stillTitling).toEqual([
-      'app/hr/layout.tsx',
-      'app/production/layout.tsx',
-      'app/sales/layout.tsx',
-    ]);
+    expect(stillTitling).toEqual(['app/hr/layout.tsx']);
   });
 });

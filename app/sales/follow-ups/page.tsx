@@ -256,7 +256,12 @@ export default function SalesFollowUpsPage() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      <div>
+        <h1 className="page-title">Follow-ups</h1>
+        <p className="page-subtitle mt-2">Scheduled touchpoints and overdue follow-ups.</p>
+      </div>
+
       {error && (
         <div
           className="card"

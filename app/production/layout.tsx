@@ -18,10 +18,6 @@ export default function ProductionLayout({ children }: { children: React.ReactNo
       <ModuleErrorBoundary moduleName="Production">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Production</h1>
-              <p className="page-subtitle">Job queue, workload, QA reviews, and file delivery.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =
