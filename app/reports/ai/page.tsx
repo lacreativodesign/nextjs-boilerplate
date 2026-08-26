@@ -194,6 +194,11 @@ export default function AIReportsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">AI Reports</h1>
+        <p className="page-subtitle mt-2">Ask a question in plain language and get a chart back.</p>
+      </div>
+
       {/* Input */}
       <div className="card p-5 space-y-4">
         <div>

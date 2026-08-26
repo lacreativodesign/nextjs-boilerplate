@@ -19,10 +19,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <ModuleErrorBoundary moduleName="Client Portal">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Client Portal</h1>
-              <p className="page-subtitle">Your projects, files, and change requests.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

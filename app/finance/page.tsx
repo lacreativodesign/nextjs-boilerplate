@@ -87,6 +87,11 @@ export default function FinanceOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Finance Overview</h1>
+        <p className="page-subtitle mt-2">Revenue, cash flow, and outstanding receivables.</p>
+      </div>
+
       <div className="mb-6">
         <FinanceAgentWidget />
       </div>
