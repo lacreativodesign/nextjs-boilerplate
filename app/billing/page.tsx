@@ -311,7 +311,7 @@ export default function BillingOverviewPage() {
   const defaultCard = subscriptionMeta?.defaultPaymentMethod ?? null;
 
   return (
-    <main className="page-frame text-[var(--text-primary)]">
+    <main className="text-[var(--text-primary)]">
       <div className="tabs-bar" role="tablist" aria-label="Billing sections">
         {TABS.map((tab) => (
           <button

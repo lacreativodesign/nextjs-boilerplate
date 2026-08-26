@@ -166,7 +166,7 @@ export default function CompliancePage() {
   }
 
   return (
-    <div className="page-frame space-y-8">
+    <div className="space-y-8">
       <h1 className="page-title">Compliance Dashboard</h1>
       {status && (
         <div className="rounded border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-primary)]">

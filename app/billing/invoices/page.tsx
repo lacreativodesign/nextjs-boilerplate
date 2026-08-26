@@ -54,7 +54,7 @@ export default function InvoicesPage() {
   }, []);
 
   return (
-    <main className="page-frame text-[var(--text-primary)]">
+    <main className="text-[var(--text-primary)]">
       <div className="tabs-bar">
         <Link href="/billing" className="tab-pill">
           Subscription

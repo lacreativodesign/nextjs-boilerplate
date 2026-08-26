@@ -215,7 +215,7 @@ export function BillingTerminalContent({ showShell = true }: { showShell?: boole
   const pendingBalance = data?.balance?.pending?.[0] || { amount: 0, currency: 'usd' };
 
   return (
-    <div className="page-frame space-y-6 text-[var(--text-primary)]">
+    <div className="space-y-6 text-[var(--text-primary)]">
       {showShell && (
         <>
           <div className="tabs-bar">

@@ -43,14 +43,14 @@ export default function ReportsSalesPage() {
 
   if (loading)
     return (
-      <div className="page-frame">
+      <div className="space-y-6">
         <p className="text-sm text-[var(--text-muted)]">Loading sales report…</p>
       </div>
     );
   if (error)
     return (
-      <div className="page-frame">
-        <p className="text-sm text-red-500">{error}</p>
+      <div className="space-y-6">
+        <p className="text-sm text-danger">{error}</p>
       </div>
     );
   if (!stats) return null;
@@ -62,7 +62,7 @@ export default function ReportsSalesPage() {
   ];
 
   return (
-    <div className="page-frame space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="page-title">Sales Report</h1>
         <p className="page-subtitle">Pipeline activity, lead volume, and revenue closed.</p>

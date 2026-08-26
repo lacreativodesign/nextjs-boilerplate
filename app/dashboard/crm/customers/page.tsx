@@ -49,7 +49,7 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="page-frame">
+    <div className="space-y-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="page-title">Customers</h1>
         <CreateCustomerDialog onSuccess={fetchCustomers} />
