@@ -103,10 +103,8 @@ export default function SalesOverviewPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Overview</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
-            Live sales performance synced from Firestore.
-          </p>
+          <h1 className="page-title">Overview</h1>
+          <p className="page-subtitle mt-2">Live sales performance synced from Firestore.</p>
         </div>
         <button className="btn" onClick={loadOverview} style={{ borderRadius: 999 }}>
           Refresh

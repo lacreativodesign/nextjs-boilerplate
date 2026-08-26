@@ -20,13 +20,6 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
   return (
     <ModuleErrorBoundary moduleName="Sales">
       <div className="w-full">
-        <div className="mb-4">
-          <h2 className="section-title mb-1">Sales & Pipeline</h2>
-          <p className="section-subtitle">
-            Track leads, deals, pipeline, and sales activity in one place.
-          </p>
-        </div>
-
         <div className="tabs-bar">
           {tabs.map((t) => {
             const active = pathname === t.path;
