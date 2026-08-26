@@ -284,7 +284,7 @@ export default function SalesDealsPage() {
   };
 
   return (
-    <div className="page-frame w-full">
+    <div className="w-full">
       {error && (
         <div
           className="card"

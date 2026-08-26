@@ -76,7 +76,7 @@ export default function HrOverviewPage() {
     (data?.newHires ?? 0) === 0;
 
   return (
-    <div className="page-frame space-y-6">
+    <div className="space-y-6">
       <FirstRunHint
         show={isFirstRun}
         title="No employees added yet"

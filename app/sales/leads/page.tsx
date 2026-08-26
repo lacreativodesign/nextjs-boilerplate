@@ -116,7 +116,7 @@ export default function SalesLeadsPage() {
   };
 
   return (
-    <div className="page-frame space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="page-title">Sales Leads</h1>
         <button className="btn" onClick={() => router.push('/sales/leads/add')}>

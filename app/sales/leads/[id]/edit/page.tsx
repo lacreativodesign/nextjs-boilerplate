@@ -105,7 +105,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
 
   if (loading) {
     return (
-      <div className="page-frame">
+      <div className="space-y-6">
         <p className="text-sm text-[var(--text-muted)]">Loading lead…</p>
       </div>
     );
@@ -113,7 +113,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
 
   if (notFound) {
     return (
-      <div className="page-frame">
+      <div className="space-y-6">
         <p className="text-sm text-[var(--text-muted)]">Lead not found.</p>
         <button type="button" onClick={() => router.push('/sales/leads')} className="btn mt-4">
           Back to Leads
@@ -123,7 +123,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="page-frame">
+    <div className="space-y-6">
       <div className="mb-6 flex items-center gap-4">
         <button
           type="button"

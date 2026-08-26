@@ -78,7 +78,7 @@ export default function SalesPipelinePage() {
   }
 
   return (
-    <div className="page-frame space-y-4">
+    <div className="space-y-4">
       <h1 className="page-title">My Pipeline</h1>
 
       {loading ? (

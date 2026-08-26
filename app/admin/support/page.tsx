@@ -83,7 +83,7 @@ export default function SupportTicketsPage() {
   }, [loadTickets]);
 
   return (
-    <div className="page-frame">
+    <div className="space-y-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="page-title">Support Tickets</h1>
         <button onClick={() => setIsModalOpen(true)} className="btn">

@@ -172,7 +172,7 @@ export default function ImportPage() {
   };
 
   return (
-    <div className="page-frame">
+    <div className="space-y-6">
       <div className="mb-6">
         <h1 className="page-title">Import Data</h1>
       </div>
