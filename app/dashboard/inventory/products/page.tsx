@@ -35,7 +35,7 @@ export default function ProductsPage() {
   }, [fetchProducts]);
 
   return (
-    <div className="page-frame">
+    <div className="space-y-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="page-title">Products</h1>
         <CreateProductDialog onSuccess={fetchProducts} />

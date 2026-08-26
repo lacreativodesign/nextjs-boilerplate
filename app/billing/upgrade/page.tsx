@@ -161,7 +161,7 @@ export default function BillingUpgradePage() {
   );
 
   return (
-    <main className="page-frame py-8 text-[var(--text-primary)]">
+    <main className="text-[var(--text-primary)]">
       <div className="mb-6">
         <Link
           href="/billing"

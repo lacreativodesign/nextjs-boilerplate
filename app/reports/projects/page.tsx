@@ -51,13 +51,13 @@ export default function ReportsProjectsPage() {
 
   if (loading)
     return (
-      <div className="page-frame">
+      <div className="space-y-6">
         <p className="text-sm text-[var(--text-muted)]">Loading projects report…</p>
       </div>
     );
 
   return (
-    <div className="page-frame space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="page-title">Projects Report</h1>
         <p className="page-subtitle">Project status, health, and delivery overview.</p>
