@@ -108,8 +108,12 @@ export default function ProductionActivityPage() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      <div>
+        <h1 className="page-title">Activity</h1>
+        <p className="page-subtitle mt-2">Recent production events across jobs and QA.</p>
+      </div>
+
       <section style={{ display: 'grid', gap: 12 }}>
-        <div style={sectionTitleStyle}>Activity</div>
         <div
           className="card"
           style={{

@@ -87,10 +87,8 @@ export default function SalesTargetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">Sales Targets</h2>
-          <p className="text-sm text-[var(--text-muted)]">
-            Monthly revenue targets per sales representative.
-          </p>
+          <h1 className="page-title">Targets</h1>
+          <p className="page-subtitle mt-2">Monthly revenue targets per sales representative.</p>
         </div>
         <input
           type="month"

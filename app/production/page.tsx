@@ -68,6 +68,11 @@ export default function ProductionPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">Job queue, workload, and delivery health at a glance.</p>
+      </div>
+
       {error && (
         <div className="card border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
           {error}

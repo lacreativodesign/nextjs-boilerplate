@@ -152,8 +152,13 @@ export default function ProductionResourcesPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Workload</h1>
+        <p className="page-subtitle mt-2">Resource allocation and capacity planning.</p>
+      </div>
+
       <div className="mb-2">
-        <h2 className="section-title">Resource Management & Capacity Planning</h2>
+        <h2 className="section-title">Capacity</h2>
       </div>
 
       <section className="kpis">

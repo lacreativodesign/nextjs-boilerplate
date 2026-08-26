@@ -19,12 +19,6 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
       <ModuleErrorBoundary moduleName="Sales">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Sales & Pipeline</h1>
-              <p className="page-subtitle">
-                Leads, deals, pipeline management, and revenue targets.
-              </p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

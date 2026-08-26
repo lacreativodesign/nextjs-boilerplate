@@ -242,6 +242,11 @@ export default function QualityAssuranceWorkspace() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">QA</h1>
+        <p className="page-subtitle mt-2">Review, pass or reject completed production work.</p>
+      </div>
+
       {error && (
         <div className="card border-[var(--danger)] bg-red-50 text-red-700 text-sm font-medium p-4">
           {error}

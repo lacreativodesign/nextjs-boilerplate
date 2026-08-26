@@ -191,7 +191,12 @@ export default function SalesCampaignsPage() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      <div>
+        <h1 className="page-title">Campaigns</h1>
+        <p className="page-subtitle mt-2">Outbound campaigns and their performance by channel.</p>
+      </div>
+
       {error && (
         <div
           className="card"

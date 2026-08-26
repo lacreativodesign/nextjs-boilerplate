@@ -237,6 +237,11 @@ export default function ProductionQueuePage() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      <div>
+        <h1 className="page-title">Jobs</h1>
+        <p className="page-subtitle mt-2">The production queue, filtered and prioritised.</p>
+      </div>
+
       <section style={{ display: 'grid', gap: 12 }}>
         <h2 className="section-title mb-2">Filters</h2>
         <div

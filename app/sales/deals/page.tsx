@@ -284,7 +284,12 @@ export default function SalesDealsPage() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      <div>
+        <h1 className="page-title">Deals</h1>
+        <p className="page-subtitle mt-2">Every open and closed deal in your pipeline.</p>
+      </div>
+
       {error && (
         <div
           className="card"
