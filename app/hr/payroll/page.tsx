@@ -59,9 +59,14 @@ export default function PayrollSummary() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Payroll</h1>
+        <p className="page-subtitle mt-2">Monthly payroll runs and payslips.</p>
+      </div>
+
       {/* TOP BAR */}
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
-        <h2 style={{ fontSize: 24, fontWeight: 600 }}>Payroll — {month.format('MMMM YYYY')}</h2>
+        <h2 className="section-title">{month.format('MMMM YYYY')}</h2>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setMonth(month.subtract(1, 'month'))} className="btn">

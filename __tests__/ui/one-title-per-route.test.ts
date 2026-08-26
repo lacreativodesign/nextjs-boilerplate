@@ -22,8 +22,9 @@ import * as path from 'path';
  * DS-15 converted `users` and `settings` and established the pattern. DS-16 adds the six
  * modules whose pages were already titled or needed only their index page named:
  * `projects`, `clients`, `am`, `am_manager`, `production_manager`, `sales_manager`. DS-17
- * adds `client`, `finance` and `reports`, and DS-18 adds `production` and `sales`. One
- * module remains: `hr`, with 11 pages still needing a title written.
+ * adds `client`, `finance` and `reports`, DS-18 adds `production` and `sales`, and DS-19
+ * finishes with `hr`. All fourteen are converted, so the shrinking offender list becomes
+ * a rule: no layout titles a page, and every page either names itself or renders no UI.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -52,9 +53,13 @@ const resolveImport = (spec: string, from: string): string | null => {
 /** A page that only redirects or 404s renders no UI, so it has nothing to title. */
 const rendersNothing = (rel: string): boolean => {
   const source = read(rel);
-  // app/sales/leads/add navigates with router.replace() in an effect and returns null,
-  // so the redirect()/notFound() check alone would report it as an untitled page.
-  return /\bredirect\(|\bnotFound\(/.test(source) || /return null;/.test(source);
+  // A stub neither renders JSX nor delegates to something that does — it redirects,
+  // 404s, or returns null. Both halves matter: `app/hr/employees` is 713 lines and
+  // contains `return null;` in a drawer guard, and `app/clients/page.tsx` is a
+  // one-line re-export whose target must still be checked for a title.
+  if (/<[A-Za-z]/.test(source)) return false;
+  if (/export \{ default \} from/.test(source)) return false;
+  return /\bredirect\(|\bnotFound\(|return null;/.test(source);
 };
 
 /** Follows re-exports and component imports, since several pages are one-line delegates. */
@@ -90,6 +95,7 @@ const CONVERTED = [
   'reports',
   'production',
   'sales',
+  'hr',
 ];
 
 describe('DS-15: the converted layouts no longer title the page', () => {
@@ -137,6 +143,14 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/sales/follow-ups/page.tsx', 'Follow-ups'],
     ['app/sales/inbox/page.tsx', 'Inbox'],
     ['app/sales/targets/page.tsx', 'Targets'],
+    ['app/hr/page.tsx', 'Overview'],
+    ['app/hr/employees/page.tsx', 'Employees'],
+    ['app/hr/performance/page.tsx', 'Performance'],
+    ['app/hr/attendance/page.tsx', 'Attendance'],
+    ['app/hr/documents/page.tsx', 'Documents'],
+    ['app/hr/onboarding/page.tsx', 'Onboarding'],
+    ['app/hr/payroll/page.tsx', 'Payroll'],
+    ['app/hr/activity/page.tsx', 'Activity'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
   });
@@ -206,10 +220,66 @@ describe('DS-15: every page in a converted module names itself', () => {
 });
 
 describe('DS-15: the remaining modules are a known, shrinking list', () => {
-  it('only hr still titles its pages', () => {
+  it('no layout anywhere titles a page', () => {
     const stillTitling = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('<h1'))
       .sort();
-    expect(stillTitling).toEqual(['app/hr/layout.tsx']);
+    expect(stillTitling).toEqual([]);
+  });
+
+  it('every page outside app/admin names itself', () => {
+    // The rule, now that the shrinking list has reached zero for the role modules: a
+    // route either renders a heading of its own or renders no UI at all.
+    //
+    // app/admin is excluded deliberately. Its nine sub-modules (clients, finance, hr,
+    // production, projects, reports, sales, settings, users) still title their pages
+    // from a layout, using `<h2 className="section-title">` rather than an h1 — so
+    // roughly 53 admin pages have no h1 of their own and those routes expose no
+    // top-level heading at all. Converting them is the same job done here, and is the
+    // last of it.
+    const orphans = walk('app')
+      .filter((rel) => rel.endsWith('page.tsx'))
+      .filter((rel) => !rel.startsWith(`app${path.sep}admin${path.sep}`))
+      .filter((rel) => !rendersHeading(rel))
+      .filter((rel) => !rendersNothing(rel))
+      .sort();
+    expect(orphans).toEqual([]);
+  });
+
+  it('the admin sub-module layouts are the last holdouts', () => {
+    const sectionTitled = walk('app')
+      .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('className="section-title'))
+      .sort();
+    expect(sectionTitled).toEqual([
+      'app/admin/clients/layout.tsx',
+      'app/admin/finance/layout.tsx',
+      'app/admin/hr/layout.tsx',
+      'app/admin/production/layout.tsx',
+      'app/admin/projects/layout.tsx',
+      'app/admin/reports/layout.tsx',
+      'app/admin/sales/layout.tsx',
+      'app/admin/settings/layout.tsx',
+      'app/admin/users/layout.tsx',
+    ]);
+  });
+
+  it('the twelve stub routes are the only ones exempt', () => {
+    const stubs = walk('app')
+      .filter((rel) => rel.endsWith('page.tsx') && rendersNothing(rel))
+      .sort();
+    expect(stubs).toEqual([
+      'app/admin/finance/estimates/page.tsx',
+      'app/admin/finance/invoices/create/page.tsx',
+      'app/admin/finance/retainers/page.tsx',
+      'app/admin/hr/leave/page.tsx',
+      'app/admin/hr/payroll/page.tsx',
+      'app/admin/projects/changes/page.tsx',
+      'app/admin/users/add/page.tsx',
+      'app/billing/pricing/page.tsx',
+      'app/client/settings/page.tsx',
+      'app/forbidden/page.tsx',
+      'app/page.tsx',
+      'app/sales/leads/add/page.tsx',
+    ]);
   });
 });

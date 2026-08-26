@@ -233,6 +233,11 @@ export default function PerformancePage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Performance</h1>
+        <p className="page-subtitle mt-2">Review cycles and ratings by employee.</p>
+      </div>
+
       <PeriodSelector
         period={period}
         periodType={periodType}

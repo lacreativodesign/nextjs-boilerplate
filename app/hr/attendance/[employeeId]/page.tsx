@@ -87,6 +87,11 @@ export default function EmployeeAttendanceDetail() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Employee Attendance</h1>
+        <p className="page-subtitle mt-2">Daily attendance record for this employee.</p>
+      </div>
+
       {/* TOP BAR */}
       <div
         style={{
