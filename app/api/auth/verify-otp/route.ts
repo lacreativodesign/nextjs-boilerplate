@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { verifyOtp } from '@/lib/auth/otp';
+import { resolvePublicSignupDenial } from '@/lib/signup/server-policy';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const signupDenial = await resolvePublicSignupDenial();
+    if (signupDenial) {
+      return NextResponse.json(
+        { ok: false, error: signupDenial.error, code: signupDenial.code },
+        { status: signupDenial.status },
+      );
+    }
+
     const ref = adminDb.collection('email_otps').doc(email);
     const snap = await ref.get();
 
@@ -31,6 +40,15 @@ export async function POST(req: Request) {
 
     const data = snap.data() || {};
     const now = Date.now();
+
+    // Older in-flight records without a purpose are treated as signup OTPs during rollout.
+    // Any explicitly different purpose is rejected so verification flows cannot be confused.
+    if (data.purpose && data.purpose !== 'signup') {
+      return NextResponse.json(
+        { ok: false, error: 'This verification code cannot be used for signup.' },
+        { status: 403 },
+      );
+    }
 
     // Check expiry
     if (now > (data.expiresAt as number)) {

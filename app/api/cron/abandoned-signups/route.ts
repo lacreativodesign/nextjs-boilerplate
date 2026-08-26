@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { sendAbandonedSignupReminderEmail } from '@/lib/email/onboarding-emails';
 import {
@@ -6,25 +7,20 @@ import {
   deletionDateIso,
   type AbandonedTenantInput,
 } from '@/lib/tenant/abandoned-signups';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
+
+const configuredTenantBatchSize = Number(process.env.DAILY_ABANDONED_SIGNUP_TENANT_BATCH_SIZE || 5);
+const TENANT_BATCH_SIZE = Number.isFinite(configuredTenantBatchSize)
+  ? Math.min(25, Math.max(1, Math.floor(configuredTenantBatchSize)))
+  : 5;
 
 /**
  * Abandoned-signup lifecycle cron. Classification rules, timeline, and hard
  * safety guards live in lib/tenant/abandoned-signups.ts (route files must only
  * export handlers and route-segment config — Next.js build validates this).
  */
-
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isCronFromVercel =
-    process.env.VERCEL === '1' && request.headers.get('x-vercel-cron') === '1';
-
-  if (isCronFromVercel) return true;
-  if (!secret) return false;
-  return authHeader === `Bearer ${secret}`;
-}
 
 async function findTenantAdmin(tenantId: string) {
   const snap = await adminDb
@@ -68,8 +64,12 @@ async function deleteAbandonedTenant(tenantId: string) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+  if (!authorization.ok) {
+    return NextResponse.json(
+      { ok: false, error: authorization.code },
+      { status: authorization.status },
+    );
   }
 
   const errors: string[] = [];
@@ -78,18 +78,32 @@ export async function GET(request: NextRequest) {
   const nowMs = Date.now();
 
   try {
-    // S38: provisioned-but-unpaid tenants sit in 'pending_checkout'; legacy signups used 'trial'.
-    // Scan both so neither cohort leaks past the 30-day abandonment window.
-    const trialSnap = await adminDb
-      .collection('tenants')
-      .where('subscriptionState', 'in', ['pending_checkout', 'trial'])
-      .limit(500)
-      .get();
+    // Scan a bounded, rotating tenant page. Filtering after the read avoids a composite
+    // index dependency and prevents the same earliest unpaid records from starving later
+    // tenants across daily invocations.
+    const cursorRef = adminDb.collection('cron_job_cursors').doc('abandoned-signups');
+    const cursorSnapshot = await cursorRef.get();
+    const lastTenantId = String(cursorSnapshot.data()?.lastTenantId || '');
+    const baseQuery = adminDb.collection('tenants').orderBy(admin.firestore.FieldPath.documentId());
+    let query = baseQuery.limit(TENANT_BATCH_SIZE + 1);
+    if (lastTenantId) query = baseQuery.startAfter(lastTenantId).limit(TENANT_BATCH_SIZE + 1);
+    let tenantPage = await query.get();
+    if (tenantPage.empty && lastTenantId) {
+      await cursorRef.delete().catch(() => undefined);
+      tenantPage = await baseQuery.limit(TENANT_BATCH_SIZE + 1).get();
+    }
+    const tenantDocs = tenantPage.docs.slice(0, TENANT_BATCH_SIZE);
+    const truncated = tenantPage.size > TENANT_BATCH_SIZE;
 
-    for (const tenantDoc of trialSnap.docs) {
+    for (const tenantDoc of tenantDocs) {
       const tenantId = tenantDoc.id;
       try {
         const tenantData = tenantDoc.data() as Omit<AbandonedTenantInput, 'tenantId'>;
+        // S38: provisioned-but-unpaid tenants sit in pending_checkout; legacy signups
+        // used trial. Other lifecycle states are never candidates for deletion.
+        if (!['pending_checkout', 'trial'].includes(String(tenantData.subscriptionState || ''))) {
+          continue;
+        }
 
         const reminderRef = adminDb.collection('abandoned_signup_reminders').doc(tenantId);
         const reminderSnap = await reminderRef.get();
@@ -138,7 +152,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, remindersSent, deleted, errors });
+    if (errors.length === 0) {
+      if (truncated && tenantDocs.length > 0) {
+        await cursorRef.set({
+          lastTenantId: tenantDocs[tenantDocs.length - 1].id,
+          updatedAt: new Date(),
+        });
+      } else {
+        await cursorRef.delete().catch(() => undefined);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ok: errors.length === 0,
+        blocked: errors.length === 0 && truncated,
+        scanned: tenantDocs.length,
+        remindersSent,
+        deleted,
+        errors,
+        truncated,
+      },
+      { status: errors.length === 0 ? 200 : 500 },
+    );
   } catch (err: any) {
     console.error('abandoned-signups cron error:', err?.message || err);
     return NextResponse.json(

@@ -8,7 +8,6 @@ type SecuritySettings = {
   sessionTimeoutMinutes: number;
   passwordPolicy: string;
   activityRetentionDays: number;
-  forceLogoutAll: boolean;
   updatedAt?: string | null;
   updatedBy?: string | null;
 };
@@ -17,7 +16,6 @@ const DEFAULT_SETTINGS: SecuritySettings = {
   sessionTimeoutMinutes: 60,
   passwordPolicy: 'Minimum 8 characters, 1 uppercase letter, 1 number.',
   activityRetentionDays: 90,
-  forceLogoutAll: false,
 };
 
 export default function SecuritySettingsPage() {
@@ -148,19 +146,11 @@ export default function SecuritySettingsPage() {
           </div>
 
           <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-            <label className="flex items-center justify-between gap-2 text-sm">
-              <span style={{ fontWeight: 600 }}>Force logout all sessions</span>
-              <input
-                type="checkbox"
-                checked={settings.forceLogoutAll}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, forceLogoutAll: e.target.checked }))
-                }
-                disabled={disabled}
-              />
-            </label>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Tenant-wide session revocation</div>
             <p style={{ fontSize: 12, color: 'var(--sidebar-text)', marginTop: 6 }}>
-              Stub: toggling logs the request for enforcement by Functions.
+              Not available in controlled beta. The previous toggle only logged a setting and did
+              not revoke Firebase sessions, so it has been disabled until a bounded, audited
+              revocation operation is implemented.
             </p>
           </div>
         </div>

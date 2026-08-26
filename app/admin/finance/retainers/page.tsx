@@ -1,10 +1,24 @@
-import { notFound } from 'next/navigation';
+import Link from 'next/link';
 
-/**
- * F12 (FUNC-02) — this route was a "Placeholder for ..." stub for a feature that is not built
- * yet. Rather than show an unfinished page inside a sold plan, it returns 404 until the real
- * feature ships. It is not linked from any navigation.
- */
 export default function UnbuiltFeaturePage() {
-  notFound();
+  return (
+    <section className="card space-y-4 rounded-2xl p-6" aria-labelledby="retainers-title">
+      <div>
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+          Controlled-beta limitation
+        </p>
+        <h3 id="retainers-title" className="mt-1 text-xl font-bold">
+          Retainer scheduling is not yet available
+        </h3>
+      </div>
+      <p className="max-w-2xl text-sm text-[var(--text-muted)]">
+        Client retainer status can be recorded today, but automated retainer schedules and billing
+        are not implemented. Use recurring invoices only after that workflow has been verified in an
+        isolated billing sandbox.
+      </p>
+      <Link className="btn inline-flex w-fit" href="/admin/finance/invoices">
+        Return to invoices
+      </Link>
+    </section>
+  );
 }

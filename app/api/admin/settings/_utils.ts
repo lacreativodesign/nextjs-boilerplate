@@ -94,7 +94,6 @@ export const DEFAULT_SECURITY_SETTINGS = {
   sessionTimeoutMinutes: 60,
   passwordPolicy: 'Minimum 8 characters, 1 uppercase letter, 1 number.',
   activityRetentionDays: 90,
-  forceLogoutAll: false,
 };
 
 export function serverTimestamp() {

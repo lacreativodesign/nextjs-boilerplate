@@ -3684,6 +3684,18 @@ paths:
           description: Unauthorized or invalid session.
         '403':
           description: Forbidden for current tenant or role.
+  /api/cron/daily-orchestrator:
+    get:
+      summary: GET /api/cron/daily-orchestrator
+      tags:
+        - Core
+      responses:
+        '200':
+          description: Request completed successfully.
+        '401':
+          description: Unauthorized or invalid session.
+        '403':
+          description: Forbidden for current tenant or role.
   /api/cron/daily-tasks:
     get:
       summary: GET /api/cron/daily-tasks

@@ -11,6 +11,7 @@ import {
   requireSalesManager,
   serverTimestamp,
 } from '../../_utils';
+import { createClientFromClosedWonDeal } from '@/lib/crm';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,6 +155,17 @@ export async function POST(req: Request) {
 
       tx.set(dealRef, updates, { merge: true });
     });
+
+    if (nextStage === 'Closed Won') {
+      await createClientFromClosedWonDeal({
+        dealId: id,
+        actor: {
+          uid: auth.user.uid,
+          name: auth.user.name || auth.user.fullName || '',
+          tenantId,
+        },
+      });
+    }
 
     const createdByName = auth.user.name || auth.user.fullName || '';
     const stageChanged = nextStage && prevStage && nextStage !== prevStage;

@@ -1,9 +1,7 @@
-import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import firebaseAdminApp, { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { assertDemoMutationAllowed, DEMO_TENANT_ID, parseDemoUserPasswords } from './safety';
 
-const DEMO_PASSWORD = 'BizostoDemo2026!';
-const TENANT_ID = 'bizosto-demo';
-
-const DEMO_USERS = [
+export const DEMO_USERS = [
   { email: 'demo_admin@bizosto.com', role: 'admin', name: 'Alex Admin', uid: '' },
   { email: 'demo_sales@bizosto.com', role: 'sales', name: 'Sam Sales', uid: '' },
   {
@@ -26,6 +24,46 @@ const DEMO_USERS = [
   { email: 'demo_client@bizosto.com', role: 'client', name: 'Chris Client', uid: '' },
 ] as const;
 
+const DEMO_SCOPED_COLLECTIONS = [
+  'auditLogs',
+  'clients',
+  'employees',
+  'invoices',
+  'leads',
+  'notifications',
+  'production_jobs',
+  'projects',
+  'users',
+] as const;
+
+function getAdminProjectId(): string {
+  // Auth and Firestore are constructed from this one Admin app in lib/firebaseAdmin, so this is
+  // the authoritative server-side project identity for both mutation surfaces.
+  return String(firebaseAdminApp?.options.projectId || '').trim();
+}
+
+async function deleteTenantScopedDocuments(collectionName: string, tenantId: string) {
+  for (;;) {
+    const snapshot = await adminDb
+      .collection(collectionName)
+      .where('tenantId', '==', tenantId)
+      .limit(200)
+      .get();
+    if (snapshot.empty) return;
+
+    const batch = adminDb.batch();
+    snapshot.docs.forEach((document) => batch.delete(document.ref));
+    await batch.commit();
+  }
+}
+
+async function clearDemoTenantData(tenantId: string) {
+  for (const collectionName of DEMO_SCOPED_COLLECTIONS) {
+    await deleteTenantScopedDocuments(collectionName, tenantId);
+  }
+  await adminDb.collection('tenants').doc(tenantId).delete();
+}
+
 function daysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -42,7 +80,21 @@ function id(): string {
   return adminDb.collection('_').doc().id;
 }
 
-export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
+export async function seedDemoTenant({ tenantId = DEMO_TENANT_ID }: { tenantId?: string } = {}) {
+  const projectId = getAdminProjectId();
+  assertDemoMutationAllowed({ tenantId, projectId });
+
+  // Validate every credential before deleting or writing anything. Demo accounts use distinct,
+  // externally managed passwords; credentials are never embedded in source, logs, or responses.
+  const userPasswords = parseDemoUserPasswords(
+    process.env.DEMO_USER_PASSWORDS_JSON,
+    DEMO_USERS.map((user) => user.email),
+  );
+
+  // A seed is a deterministic replacement, not an append. This keeps retries idempotent and
+  // prevents duplicate sample records while the environment safety guard limits it to demo data.
+  await clearDemoTenantData(tenantId);
+
   const now = new Date().toISOString();
 
   // ─── 1. Create / update tenant document ─────────────────────────────────────
@@ -89,7 +141,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     try {
       const created = await adminAuth.createUser({
         email: user.email,
-        password: DEMO_PASSWORD,
+        password: userPasswords[user.email],
         displayName: user.name,
         emailVerified: true,
       });
@@ -98,7 +150,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
       if (err?.code === 'auth/email-already-exists') {
         const existing = await adminAuth.getUserByEmail(user.email);
         await adminAuth.updateUser(existing.uid, {
-          password: DEMO_PASSWORD,
+          password: userPasswords[user.email],
           displayName: user.name,
           emailVerified: true,
         });
@@ -589,6 +641,7 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
     });
 
   return {
+    tenantId,
     counts: {
       clients: clients.length,
       leads: leads.length,
@@ -598,4 +651,10 @@ export async function seedDemoTenant({ tenantId }: { tenantId: string }) {
       employees: employeeData.length,
     },
   };
+}
+
+export async function resetDemoTenant({ tenantId = DEMO_TENANT_ID }: { tenantId?: string } = {}) {
+  // seedDemoTenant already performs a guarded, credential-validated replacement. Keeping reset as
+  // a named operation makes the destructive intent explicit at the route and CLI boundaries.
+  return seedDemoTenant({ tenantId });
 }

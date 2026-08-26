@@ -156,6 +156,8 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'billing/webhook': 'Deprecated 410 stub.',
   'billing/subscribe': 'Deprecated 410 stub.',
   'billing/cancel-subscription': 'Deprecated 410 stub.',
+  'internal/workflow-mutation':
+    'Deprecated 410 stub; mutations execute in-process with stored run/action binding.',
 };
 
 /**
@@ -215,9 +217,6 @@ export const REQUEST_TENANT_ROUTES: Record<string, string> = {
     'Pre-login OAuth initiation; the tenant being signed into is named in the query.',
   'tenant/module-check':
     'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); middleware passes the tenant.',
-  'internal/workflow-mutation':
-    'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); the automation workflow ' +
-    'engine passes the tenant of the workflow it is executing.',
 };
 
 /**

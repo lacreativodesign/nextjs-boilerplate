@@ -17,15 +17,16 @@ const customJestConfig = {
   collectCoverageFrom: ['lib/**/*.{ts,tsx}', '!lib/**/*.d.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  // Coverage ratchet: baseline set just below current actuals so `npm test` is a
-  // real, passing gate. RAISE these as suites are added — never lower them. The
-  // previous 70% target was aspirational and made the gate impossible to pass.
+  // Coverage ratchet: floors are set just below Jest's effective global totals
+  // (which include every file matched by collectCoverageFrom), so `npm test` is
+  // a real, passing gate. Raise these as suites are added. The previous 70%
+  // target was aspirational and made the gate impossible to pass.
   coverageThreshold: {
     global: {
-      branches: 3,
-      functions: 5,
-      lines: 5,
-      statements: 5,
+      branches: 15,
+      functions: 16,
+      lines: 17.5,
+      statements: 17.5,
     },
     // Q2: risk-based floors on the highest-risk billing gate. lib/subscription.ts decides tenant
     // access (read-only / hard-lock / trial) and the billing state machine; it is now fully

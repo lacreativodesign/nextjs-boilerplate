@@ -135,28 +135,22 @@ describe('MAIL-5: the queue never becomes a directory of customers', () => {
 describe('MAIL-5: the worker exists and is scheduled', () => {
   it('is protected by the cron secret', () => {
     const src = active(WORKER);
-    expect(src).toContain('Bearer ${CRON_SECRET}');
-    expect(src).toContain("CRON_SECRET === 'change-me-in-production'");
+    expect(src).toContain('authorizeCronRequest');
+    expect(src).toContain('process.env.CRON_SECRET');
   });
 
   it('drains due messages', () => {
     expect(active(WORKER)).toContain('drainOutbox()');
   });
 
-  it('is registered in vercel.json', () => {
-    // Without a schedule the outbox is only a log: a failure would be recorded and never
-    // tried again, which is no better than the fire-and-forget it replaced.
+  it('is registered in the sole daily orchestrator, not as a second schedule', () => {
     const cfg = JSON.parse(read('vercel.json')) as {
       crons: Array<{ path: string; schedule: string }>;
     };
     const cron = cfg.crons.find((c) => c.path === '/api/cron/email-outbox');
-    expect(cron).toBeDefined();
-    // Vercel Hobby rejects anything more frequent than daily at deployment time, so a
-    // sub-daily schedule here does not merely run less often — it stops the build.
-    // 09:30 is thirty minutes after /api/cron/invoice-reminders, so a failed reminder
-    // gets a same-day retry instead of waiting until tomorrow.
-    expect(cron?.schedule).toBe('30 9 * * *');
-    expect(cron?.schedule).not.toMatch(/^\*\//);
+    expect(cron).toBeUndefined();
+    expect(cfg.crons).toHaveLength(1);
+    expect(active('lib/cron/registry.ts')).toContain("'/api/cron/email-outbox'");
   });
 
   it('bounds a single run, so one bad batch cannot starve the rest', () => {

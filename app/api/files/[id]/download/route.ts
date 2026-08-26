@@ -9,10 +9,14 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const session = await getCurrentUser();
     if (!session?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const file = await FileManager.getFileById(params.id, session.tenantId);
+    const file = await FileManager.getReadableFileById(params.id, {
+      tenantId: session.tenantId,
+      uid: session.uid,
+      role: session.role,
+    });
     if (!file) return NextResponse.json({ error: 'File not found' }, { status: 404 });
 
-    const downloadUrl = await FileManager.generateDownloadUrl(file.storagePath);
+    const downloadUrl = await FileManager.generateDownloadUrl(file.storagePath, session.tenantId);
     return NextResponse.json({ downloadUrl });
   } catch (error: any) {
     return NextResponse.json(

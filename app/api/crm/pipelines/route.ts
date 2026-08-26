@@ -4,6 +4,8 @@ import { requireCrmUser } from '@/lib/crm';
 import { AppError, resolveErrorResponse } from '@/lib/errors';
 import { logError } from '@/lib/logging';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const auth = await requireCrmUser();

@@ -605,7 +605,10 @@ export async function remindSigners(params: {
 
 export function verifyDocusignWebhookSignature(rawBody: string, signatureHeader: string | null) {
   const secret = getWebhookSecret();
-  if (!secret) return true;
+  // Webhook authentication must fail closed. Treating an absent secret as
+  // authenticated allowed anyone to submit a tenant id and mutate envelope
+  // state in environments where DocuSign had not been fully configured.
+  if (!secret) return false;
   if (!signatureHeader) return false;
 
   const digest = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
@@ -621,37 +624,36 @@ export async function upsertEnvelopeStatusFromWebhook(payload: {
   completedAt?: string | null;
   tenantId?: string | null;
 }) {
-  let tenantId = payload.tenantId || null;
-  if (!tenantId) {
-    const query = await adminDb
-      .collectionGroup('docusignEnvelopes')
-      .where('envelopeId', '==', payload.envelopeId)
-      .limit(1)
-      .get();
-    if (query.empty) throw new Error('Envelope not found for webhook update.');
-    const doc = query.docs[0];
-    tenantId = String(doc.data().tenantId || '');
-    await doc.ref.set(
-      {
-        status: payload.status,
-        completedAt: payload.completedAt || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  } else {
-    await envelopeRef(tenantId, payload.envelopeId).set(
-      {
-        status: payload.status,
-        completedAt: payload.completedAt || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+  // Resolve the tenant from the envelope record created by Bizosto. The
+  // signed provider payload is an event notification, not authorization to
+  // choose an arbitrary tenant document.
+  const query = await adminDb
+    .collectionGroup('docusignEnvelopes')
+    .where('envelopeId', '==', payload.envelopeId)
+    .limit(2)
+    .get();
+  if (query.empty) throw new Error('Envelope not found for webhook update.');
+  if (query.docs.length !== 1) throw new Error('Envelope tenant binding is ambiguous.');
+
+  const doc = query.docs[0];
+  const record = doc.data() as Partial<DocusignEnvelopeRecord>;
+  const tenantId = String(record.tenantId || '').trim();
+  if (!tenantId) throw new Error('Envelope is missing its tenant binding.');
+  if (payload.tenantId && String(payload.tenantId).trim() !== tenantId) {
+    throw new Error('Envelope tenant binding mismatch.');
   }
 
-  if (payload.status.toLowerCase() === 'completed') {
-    await downloadCompletedDocument({ tenantId: tenantId!, envelopeId: payload.envelopeId });
+  await doc.ref.set(
+    {
+      status: payload.status,
+      completedAt: payload.completedAt || null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  if (payload.status.toLowerCase() === 'completed' && !record.signedStoragePath) {
+    await downloadCompletedDocument({ tenantId, envelopeId: payload.envelopeId });
   }
 }
 

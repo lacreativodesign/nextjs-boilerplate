@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function EmployeeProfilePage() {
   const { id } = useParams();
@@ -68,42 +69,15 @@ export default function EmployeeProfilePage() {
           <ProfileCard label="Joined" value={new Date(employee.createdAt).toLocaleDateString()} />
         </div>
 
-        {/* SPACER */}
         <div style={{ height: 30 }} />
 
-        {/* PLACEHOLDER FOR NEXT STEPS */}
-        <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
-          Attendance Summary (Coming Next)
-        </h3>
-        <div
-          style={{
-            background: 'var(--surface-muted)',
-            padding: 20,
-            borderRadius: 10,
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <p style={{ color: 'var(--text-muted)' }}>
-            Attendance charts and logs will show here once we complete Step 5.
-          </p>
-        </div>
-
-        <div style={{ height: 30 }} />
-
-        <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
-          Activity Log (Coming Next)
-        </h3>
-        <div
-          style={{
-            background: 'var(--surface-muted)',
-            padding: 20,
-            borderRadius: 10,
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <p style={{ color: 'var(--text-muted)' }}>
-            Recent activity will appear here after backend integration.
-          </p>
+        <div className="flex flex-wrap gap-3" aria-label="Employee records">
+          <Link className="btn" href={`/hr/attendance/${encodeURIComponent(String(id))}`}>
+            View attendance
+          </Link>
+          <Link className="btn ghost" href="/hr/activity">
+            View HR activity
+          </Link>
         </div>
       </div>
     </div>

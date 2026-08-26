@@ -5,6 +5,8 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { DEFAULT_ROLES } from '@/lib/tenant/constants';
 import { createTenantWorkspace } from '@/lib/tenant/onboarding';
 import { PLAN_MODULES } from '@/app/config/plans';
+import { isReservedTenantIdentifier, toTenantSlugBase } from '@/lib/signup/public-signup-policy';
+import { resolvePublicSignupDenial } from '@/lib/signup/server-policy';
 
 export const runtime = 'nodejs';
 
@@ -37,19 +39,6 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function slugifyCompany(companyName: string) {
-  const slug = companyName
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-
-  return slug || 'workspace';
-}
-
 function getClientIp(request: Request) {
   const forwardedFor = request.headers.get('x-forwarded-for') || '';
   const realIp = request.headers.get('x-real-ip') || '';
@@ -61,7 +50,7 @@ function buildModulesEnabled(selectedPlan: 'starter' | 'pro' | 'enterprise') {
 }
 
 async function generateUniqueTenantId(companyName: string) {
-  const base = slugifyCompany(companyName);
+  const base = toTenantSlugBase(companyName);
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const suffix = crypto.randomBytes(2).toString('hex');
@@ -93,6 +82,28 @@ export async function POST(request: Request) {
 
     const payload = parsed.data;
     const email = normalizeEmail(payload.email);
+
+    const signupDenial = await resolvePublicSignupDenial();
+    if (signupDenial) {
+      return NextResponse.json(
+        { ok: false, error: signupDenial.error, code: signupDenial.code },
+        { status: signupDenial.status },
+      );
+    }
+
+    // Platform and demo identifiers are governance-owned. Reject them before consuming the OTP,
+    // creating an Auth user, or writing a tenant so a public caller cannot impersonate Bizosto.
+    if (isReservedTenantIdentifier(payload.companyName)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'This workspace identifier is reserved. Contact support@bizosto.com for access.',
+          code: 'RESERVED_TENANT_IDENTIFIER',
+        },
+        { status: 409 },
+      );
+    }
+
     const nowIso = new Date().toISOString();
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -109,7 +120,11 @@ export async function POST(request: Request) {
       const otpSnap = await tx.get(otpRef);
       const otpData = otpSnap.data();
 
-      if (!otpSnap.exists || otpData?.verified !== true) {
+      if (
+        !otpSnap.exists ||
+        otpData?.verified !== true ||
+        (otpData?.purpose && otpData.purpose !== 'signup')
+      ) {
         return { ok: false as const, error: 'unverified' };
       }
 
@@ -222,8 +237,8 @@ export async function POST(request: Request) {
           plan: payload.selectedPlan,
           trialEndsAt,
           // S38: signup provisions the tenant but never grants live access. The tenant sits in
-          // `pending_checkout` (fails closed to hard_locked in normalizeSubscriptionState, so
-          // middleware blocks the app) until Stripe Checkout completes. The
+          // `pending_checkout` (a first-class locked state that permits only exact billing
+          // recovery APIs) until Stripe Checkout completes. The
           // checkout.session.completed webhook — via linkExistingTenant → applySubscriptionState
           // ('checkout.linked') — is the sole writer that flips this to 'active'.
           subscriptionState: 'pending_checkout',

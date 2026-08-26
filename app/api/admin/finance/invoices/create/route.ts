@@ -274,6 +274,7 @@ export async function POST(req: Request) {
         if (clientSnap.exists && !clientSnap.data()?.deletedAt) {
           const clientData = clientSnap.data() || {};
           await queueClientActivationInvite({
+            tenantId: auth.user.tenantId,
             clientId,
             clientData: {
               primaryContactEmail: clientData.primaryContactEmail,

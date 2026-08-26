@@ -7,8 +7,8 @@ import path from 'path';
  * Firestore rules are published to Firebase (by the Deploy Firestore Rules
  * workflow) rather than executed from this repo, so a bad edit cannot be caught
  * by the type checker or by any runtime test. These assertions are the safety
- * net: they run on every PR and fail the build BEFORE a dangerous ruleset can be
- * merged and auto-deployed.
+ * net: they run on every PR and again inside the protected manual deployment
+ * workflow, before a dangerous ruleset can be published.
  *
  * Comments are stripped before matching so that explanatory prose describing an
  * old rule can never be mistaken for the rule itself.
@@ -36,12 +36,28 @@ describe('firestore.rules — dangerous patterns', () => {
   });
 
   it('never allows client-SDK writes; all mutations go through the Admin SDK', () => {
-    // Every `allow write` / `allow read, write` must resolve to `if false`.
+    // Every `allow write` / `allow read, write` resolves to `if false`, including
+    // Super Admin. Privileged mutations are API calls, not browser SDK writes.
     const writeGrants = activeRules.match(/allow[^:\n]*\bwrite\b[^:\n]*:\s*if\s+([^;]+);/g) || [];
-    const nonFalseWrites = writeGrants.filter(
-      (grant) => !/:\s*if\s+false\s*;/.test(grant) && !/isSuperAdmin\(\)/.test(grant),
-    );
+    const nonFalseWrites = writeGrants.filter((grant) => !/:\s*if\s+false\s*;/.test(grant));
     expect(nonFalseWrites).toEqual([]);
+  });
+
+  it('does not grant Super Admin a global browser-SDK wildcard', () => {
+    expect(activeRules).not.toMatch(
+      /match\s+\/\{document=\*\*\}\s*\{\s*allow\s+read,\s*write:\s*if\s+isSuperAdmin\(\)/,
+    );
+  });
+});
+
+describe('firestore.rules — launch settings are API-only', () => {
+  it('explicitly denies browser reads and writes to every global settings document', () => {
+    const block = activeRules.match(/match\s+\/settings\/\{docId\}\s*\{([\s\S]*?)\}/)?.[1] || '';
+    expect(block).toContain('allow read, write: if false;');
+  });
+
+  it('contains no client-readable launchChecklist exception', () => {
+    expect(activeRules).not.toMatch(/launchChecklist[\s\S]{0,120}allow\s+read:\s*if/);
   });
 });
 

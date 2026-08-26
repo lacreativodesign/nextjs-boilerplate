@@ -18,7 +18,7 @@ Notes:
   or delimiter (e.g. `audit_logs` vs `auditLogs`) reflect real naming drift to
   reconcile, not generator noise.
 
-## Collections (193)
+## Collections (198)
 
 - `abandoned_signup_deletions`
 - `abandoned_signup_reminders`
@@ -43,6 +43,7 @@ Notes:
 - `automation_workflow_runs`
 - `automation_workflows`
 - `automationEvents`
+- `backup_coordination`
 - `backups`
 - `billing_payment_methods`
 - `billing_state_audit`
@@ -68,6 +69,9 @@ Notes:
 - `complianceRetentionPolicies`
 - `counters`
 - `credit_notes`
+- `cron_compliance_report_runs`
+- `cron_job_cursors`
+- `cron_owner_blocks`
 - `csp_violations`
 - `customer_notes`
 - `customers`
@@ -118,6 +122,7 @@ Notes:
 - `inviteTokens`
 - `invoices`
 - `latest`
+- `launchChecklist`
 - `leadNotes`
 - `leads`
 - `leave_requests`

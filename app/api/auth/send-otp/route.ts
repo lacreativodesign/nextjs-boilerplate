@@ -3,11 +3,25 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { hashOtp } from '@/lib/auth/otp';
+import { resolvePublicSignupDenial } from '@/lib/signup/server-policy';
 
 export const runtime = 'nodejs';
 
 function generateOtp(): string {
   return String(crypto.randomInt(100000, 999999));
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return entities[character] || character;
+  });
 }
 
 function otpEmailHtml(otp: string, email: string): string {
@@ -24,7 +38,7 @@ function otpEmailHtml(otp: string, email: string): string {
 </td></tr>
 <tr><td style="padding:36px 32px;color:#1E293B;font-size:15px;line-height:1.7;">
 <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#1E3A5F;">Verify your email address</h1>
-<p style="margin:0 0 24px;color:#64748B;font-size:14px;">Enter this code to complete your Bizosto signup for <strong>${email}</strong></p>
+<p style="margin:0 0 24px;color:#64748B;font-size:14px;">Enter this code to complete your Bizosto signup for <strong>${escapeHtml(email)}</strong></p>
 <div style="text-align:center;margin:32px 0;">
   <div style="display:inline-block;background:#F1F5F9;border:2px dashed #CBD5E1;border-radius:12px;padding:24px 48px;">
     <span style="font-size:40px;font-weight:800;letter-spacing:12px;color:#012167;font-family:monospace;">${otp}</span>
@@ -49,6 +63,16 @@ export async function POST(req: Request) {
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ ok: false, error: 'Valid email is required.' }, { status: 400 });
+    }
+
+    // This endpoint is exclusively the public-signup OTP path. Password recovery uses
+    // /api/auth/request-password-reset and remains available when acquisition is paused.
+    const signupDenial = await resolvePublicSignupDenial();
+    if (signupDenial) {
+      return NextResponse.json(
+        { ok: false, error: signupDenial.error, code: signupDenial.code },
+        { status: signupDenial.status },
+      );
     }
 
     const apiKey = process.env.RESEND_API_KEY;
@@ -99,6 +123,7 @@ export async function POST(req: Request) {
         email,
         expiresAt,
         createdAt: now,
+        purpose: 'signup',
         verified: false,
         attempts: 0,
       });

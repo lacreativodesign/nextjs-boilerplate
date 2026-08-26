@@ -4,6 +4,7 @@ import type { NextFetchEvent, NextRequest } from 'next/server';
 import {
   isHardLockedSubscription,
   isReadOnlySubscription,
+  isSubscriptionRecoveryApiPath,
   normalizeSubscriptionState,
 } from '@/lib/subscription';
 import { normalizeRole, roleFromPath, rolesAllowedForApi } from '@/lib/erpAccess';
@@ -258,6 +259,26 @@ function isPublicStripePath(pathname: string): boolean {
   return PUBLIC_STRIPE_PATHS.has(pathname) || pathname === '/api/webhooks/stripe';
 }
 
+const PUBLIC_AUTH_PATHS = new Set([
+  '/api/auth/consume-set-password-token',
+  '/api/auth/request-password-reset',
+  '/api/auth/send-otp',
+  '/api/auth/verify-otp',
+  '/api/auth/sso/providers',
+]);
+
+const CSRF_EXEMPT_AUTH_PATHS = new Set([
+  '/api/auth/consume-set-password-token',
+  '/api/auth/request-password-reset',
+  '/api/auth/send-otp',
+  '/api/auth/verify-otp',
+]);
+
+function isPublicAuthPath(pathname: string): boolean {
+  if (PUBLIC_AUTH_PATHS.has(pathname)) return true;
+  return /^\/api\/auth\/sso\/[^/]+\/(authorize|callback)$/.test(pathname);
+}
+
 function isPublicApiPath(pathname: string) {
   const prefixPublic =
     isPublicStripePath(pathname) ||
@@ -268,7 +289,7 @@ function isPublicApiPath(pathname: string) {
     pathname.startsWith('/api/public') ||
     pathname.startsWith('/api/signup') ||
     pathname.startsWith('/api/client/invites/') ||
-    pathname.startsWith('/api/auth');
+    isPublicAuthPath(pathname);
   if (prefixPublic) return true;
   // Exact-match against the reviewed public contract (static keys only; dynamic [param] keys are
   // covered by the prefix families above, e.g. /api/public/*).
@@ -325,7 +346,7 @@ function shouldSkipCsrfCheck(pathname: string): boolean {
     pathname.startsWith('/api/signup') ||
     pathname.startsWith('/api/forgot-password') ||
     pathname.startsWith('/api/create-user') ||
-    pathname.startsWith('/api/auth')
+    CSRF_EXEMPT_AUTH_PATHS.has(pathname)
   );
 }
 
@@ -352,10 +373,6 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   // the root layout can attach it to its inline theme script, and used to emit
   // the Report-Only strict CSP with a matching nonce (enforced CSP stays permissive).
   const nonce = generateNonce();
-
-  if (req.headers.get('x-middleware-prefetch') === '1') {
-    return withSecurityHeaders(NextResponse.next(), nonce);
-  }
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-nonce', nonce);
@@ -527,7 +544,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     pathname.startsWith('/signup') ||
     pathname.startsWith('/api/session-login')
   ) {
-    return NextResponse.next();
+    return applyRateHeaders(
+      pathname,
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      rateContext,
+      nonce,
+    );
   }
 
   if (pathname === '/' || pathname.startsWith('/set-password') || isPublicPagePath(pathname)) {
@@ -608,7 +630,9 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     }
 
     if (sessionRole !== 'super_admin') {
-      if (isHardLockedSubscription(subscriptionState)) {
+      const isSubscriptionRecoveryRequest = isApiRequest && isSubscriptionRecoveryApiPath(pathname);
+
+      if (isHardLockedSubscription(subscriptionState) && !isSubscriptionRecoveryRequest) {
         if (isApiRequest) {
           return applyRateHeaders(
             pathname,
@@ -627,7 +651,11 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         return applyRateHeaders(pathname, NextResponse.redirect(redirectUrl), rateContext, nonce);
       }
 
-      if (isApiRequest && isReadOnlySubscription(subscriptionState)) {
+      if (
+        isApiRequest &&
+        isReadOnlySubscription(subscriptionState) &&
+        !isSubscriptionRecoveryRequest
+      ) {
         const method = req.method.toUpperCase();
         if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
           return applyRateHeaders(

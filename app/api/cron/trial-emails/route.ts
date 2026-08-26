@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import {
   sendTrialDayOneEmail,
@@ -9,8 +10,14 @@ import {
 } from '@/lib/email/onboarding-emails';
 import { PLAN_MODULES } from '@/app/config/plans';
 import { isComped } from '@/lib/billing/billing-mode';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
+
+const configuredTenantBatchSize = Number(process.env.DAILY_TRIAL_TENANT_BATCH_SIZE || 25);
+const TENANT_BATCH_SIZE = Number.isFinite(configuredTenantBatchSize)
+  ? Math.min(50, Math.max(1, Math.floor(configuredTenantBatchSize)))
+  : 25;
 
 type ScheduledEmailState = {
   tenantId: string;
@@ -29,17 +36,6 @@ type ScheduledEmailState = {
   gracePeriodEndSentAt?: string;
 };
 
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isCronFromVercel =
-    process.env.VERCEL === '1' && request.headers.get('x-vercel-cron') === '1';
-
-  if (isCronFromVercel) return true;
-  if (!secret) return false;
-  return authHeader === `Bearer ${secret}`;
-}
-
 function defaultScheduledState(tenantId: string, email: string): ScheduledEmailState {
   return {
     tenantId,
@@ -55,29 +51,37 @@ function defaultScheduledState(tenantId: string, email: string): ScheduledEmailS
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+  if (!authorization.ok) {
+    return NextResponse.json(
+      { ok: false, error: authorization.code },
+      { status: authorization.status },
+    );
   }
 
   const errors: string[] = [];
   let emailsSent = 0;
 
   try {
-    // Select tenants still on trial (signups set subscriptionState:'trial', NOT
-    // plan:'trial') AND tenants already moved to post-trial grace (so the hard-lock
-    // stage remains reachable across cron runs). Merge + dedupe by id.
-    const [trialSnap, graceSnap] = await Promise.all([
-      adminDb.collection('tenants').where('subscriptionState', '==', 'trial').limit(500).get(),
-      adminDb.collection('tenants').where('status', '==', 'grace_period').limit(500).get(),
-    ]);
-    const byId = new Map<string, (typeof trialSnap.docs)[number]>();
-    for (const d of [...trialSnap.docs, ...graceSnap.docs]) byId.set(d.id, d);
-    const tenantDocs = Array.from(byId.values());
+    const cursorRef = adminDb.collection('cron_job_cursors').doc('trial-reminders');
+    const cursorSnapshot = await cursorRef.get();
+    const lastTenantId = String(cursorSnapshot.data()?.lastTenantId || '');
+    const baseQuery = adminDb.collection('tenants').orderBy(admin.firestore.FieldPath.documentId());
+    let query = baseQuery.limit(TENANT_BATCH_SIZE + 1);
+    if (lastTenantId) query = baseQuery.startAfter(lastTenantId).limit(TENANT_BATCH_SIZE + 1);
+    let tenantPage = await query.get();
+    if (tenantPage.empty && lastTenantId) {
+      await cursorRef.delete().catch(() => undefined);
+      tenantPage = await baseQuery.limit(TENANT_BATCH_SIZE + 1).get();
+    }
+    const tenantDocs = tenantPage.docs.slice(0, TENANT_BATCH_SIZE);
+    const truncated = tenantPage.size > TENANT_BATCH_SIZE;
 
     for (const tenantDoc of tenantDocs) {
       const tenantId = tenantDoc.id;
       try {
         const tenantData = tenantDoc.data() as {
+          subscriptionState?: string;
           trialEndsAt?: string;
           status?: string;
           plan?: string;
@@ -85,6 +89,10 @@ export async function GET(request: NextRequest) {
           ownerId?: string;
           billingMode?: string;
         };
+
+        if (tenantData.subscriptionState !== 'trial' && tenantData.status !== 'grace_period') {
+          continue;
+        }
 
         // COMP-1: trial and dunning email asks a customer to pay. A comped workspace is
         // not going to, so "your trial ends in 3 days — add a card" is both wrong and
@@ -221,12 +229,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      ok: true,
-      processedTenants: tenantDocs.length,
-      emailsSent,
-      errors,
-    });
+    if (errors.length === 0) {
+      if (truncated && tenantDocs.length > 0) {
+        await cursorRef.set({
+          lastTenantId: tenantDocs[tenantDocs.length - 1].id,
+          updatedAt: new Date(),
+        });
+      } else {
+        await cursorRef.delete().catch(() => undefined);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ok: errors.length === 0,
+        blocked: errors.length === 0 && truncated,
+        processedTenants: tenantDocs.length,
+        emailsSent,
+        errors,
+        truncated,
+      },
+      { status: errors.length === 0 ? 200 : 500 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(

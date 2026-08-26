@@ -1,8 +1,8 @@
-import crypto from 'crypto';
 import * as admin from 'firebase-admin';
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { adminDb } from '@/lib/firebaseAdmin';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 import { appUrl } from '@/lib/urls';
+import { ensureTenantClientIdentity } from '@/lib/client-identity';
 
 // P0-4b: was a hardcoded constant with no env read, so it could not work on a preview
 // deployment. P0-5: resolved through the canonical app URL helper.
@@ -34,57 +34,23 @@ function cleanString(value: string | undefined) {
 }
 
 export async function ensureClientAccountActivation({
+  tenantId,
   clientId,
   clientData,
   createdByUid,
 }: {
+  tenantId: string;
   clientId: string;
   clientData: ClientActivationData;
   createdByUid?: string | null;
 }): Promise<ClientActivationResult> {
-  const email = normalizeEmail(clientData.primaryContactEmail);
-  if (!email) {
-    throw new Error('Primary contact email is required for account activation.');
-  }
-
-  const existingPortalUserUid = cleanString(clientData.portalUserUid);
-  let portalUserUid = existingPortalUserUid;
-
-  if (portalUserUid) {
-    const existingUser = await adminAuth.getUser(portalUserUid).catch(() => null);
-    if (!existingUser) {
-      portalUserUid = '';
-    }
-  }
-
-  let userRecord = portalUserUid ? null : await adminAuth.getUserByEmail(email).catch(() => null);
-  if (!portalUserUid) {
-    if (!userRecord) {
-      userRecord = await adminAuth.createUser({
-        email,
-        password: crypto.randomBytes(16).toString('hex'),
-        displayName: cleanString(clientData.primaryContactName || clientData.companyName || email),
-      });
-    }
-    portalUserUid = userRecord.uid;
-  }
-
-  await adminDb.collection('users').doc(portalUserUid).set(
-    {
-      uid: portalUserUid,
-      role: 'client',
-      status: 'active',
-      clientId,
-      email,
-      updatedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
+  const identity = await ensureTenantClientIdentity({ tenantId, clientId, clientData });
+  const portalUserUid = identity.uid;
+  const email = normalizeEmail(identity.email);
 
   let setPasswordLink: string | undefined;
   let activationPrepared = false;
-  const needsActivation = !existingPortalUserUid || !portalUserUid;
+  const needsActivation = identity.created;
 
   if (needsActivation) {
     const tokenData = await createPasswordSetupToken({
@@ -99,6 +65,7 @@ export async function ensureClientAccountActivation({
   await adminDb.collection('clients').doc(clientId).set(
     {
       portalUserUid,
+      tenantId,
       accountStatus: 'ACTIVE',
       accountActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -116,11 +83,13 @@ export async function ensureClientAccountActivation({
 }
 
 export async function queueClientActivationInvite({
+  tenantId,
   clientId,
   clientData,
   createdByUid,
   reason,
 }: {
+  tenantId: string;
   clientId: string;
   clientData: ClientActivationData;
   createdByUid?: string | null;
@@ -133,6 +102,7 @@ export async function queueClientActivationInvite({
 
   const existingUserSnap = await adminDb
     .collection('users')
+    .where('tenantId', '==', tenantId)
     .where('clientId', '==', clientId)
     .where('role', '==', 'client')
     .limit(1)
@@ -143,6 +113,7 @@ export async function queueClientActivationInvite({
   }
 
   const activation = await ensureClientAccountActivation({
+    tenantId,
     clientId,
     clientData,
     createdByUid,

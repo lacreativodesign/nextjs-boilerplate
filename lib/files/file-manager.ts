@@ -17,6 +17,11 @@ import type {
   FilePermissions,
   FileSharePermission,
 } from '@/types/files';
+import {
+  canManageManagedFile,
+  canReadManagedFile,
+  type ManagedFileActor,
+} from '@/lib/files/access';
 
 const FILES_COLLECTION = 'erp_files';
 const FILE_VERSIONS_COLLECTION = 'erp_file_versions';
@@ -129,6 +134,7 @@ export class FileManager {
 
   static async listFiles(params: {
     tenantId: string;
+    actor: ManagedFileActor;
     folderId?: string;
     tag?: string;
     q?: string;
@@ -159,7 +165,7 @@ export class FileManager {
       );
     }
 
-    return files;
+    return files.filter((file) => canReadManagedFile(file, params.actor));
   }
 
   static async getFileById(fileId: string, tenantId: string) {
@@ -170,7 +176,21 @@ export class FileManager {
     return file;
   }
 
-  static async generateDownloadUrl(storagePath: string) {
+  static async getReadableFileById(fileId: string, actor: ManagedFileActor) {
+    const file = await this.getFileById(fileId, actor.tenantId);
+    return file && canReadManagedFile(file, actor) ? file : null;
+  }
+
+  static async getManageableFileById(fileId: string, actor: ManagedFileActor) {
+    const file = await this.getFileById(fileId, actor.tenantId);
+    return file && canManageManagedFile(file, actor) ? file : null;
+  }
+
+  static async generateDownloadUrl(storagePath: string, tenantId: string) {
+    const requiredPrefix = `tenants/${tenantId}/files/`;
+    if (!storagePath.startsWith(requiredPrefix)) {
+      throw new Error('File storage ownership check failed');
+    }
     const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const file = bucket.file(storagePath);

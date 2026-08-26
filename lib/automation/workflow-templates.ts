@@ -80,7 +80,7 @@ export const WORKFLOW_TEMPLATES: Record<string, SeedTemplate> = {
   escalate_overdue_tasks_3_days: {
     name: 'Escalate overdue tasks after 3 days',
     description: 'Scheduled escalation for tasks overdue by more than 3 days.',
-    trigger: { type: 'scheduled', cron: '0 * * * *', timezone: 'UTC' },
+    trigger: { type: 'scheduled', cron: '0 8 * * *', timezone: 'UTC' },
     conditions: [{ id: 'days-overdue', field: 'daysOverdue', operator: 'gte', value: 3 }],
     actions: [
       {

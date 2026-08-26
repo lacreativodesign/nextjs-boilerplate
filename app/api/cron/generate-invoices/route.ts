@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { enqueueTenantEmail } from '@/lib/email/outbox';
 import { type TenantSenderSource } from '@/lib/email/tenant-sender';
 import { invoicePaymentUrl } from '@/lib/urls';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
 
@@ -30,20 +31,14 @@ type GeneratedInvoice = {
   total: number;
 };
 
-const CRON_SECRET = process.env.CRON_SECRET;
-
 export async function GET(request: NextRequest) {
   try {
-    if (!CRON_SECRET || CRON_SECRET === 'change-me-in-production') {
+    const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+    if (!authorization.ok) {
       return NextResponse.json(
-        { error: 'Cron secret is not configured securely.' },
-        { status: 500 },
+        { success: false, error: authorization.code },
+        { status: authorization.status },
       );
-    }
-
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // FM-14 (E4c): Recurring invoicing is a deferred, not-yet-wired feature. It

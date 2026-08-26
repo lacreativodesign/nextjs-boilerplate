@@ -27,9 +27,10 @@ describe('S9: pending invitations reserve a seat', () => {
     expect(src).toContain("where('tenantId', '==', tenantId)");
   });
 
-  it('still excludes client-portal seats from the staff limit', () => {
-    const clientSkips = src.match(/if \(role === 'client'\) continue;/g) || [];
-    expect(clientSkips.length).toBeGreaterThanOrEqual(2);
+  it('separates client-portal seats from staff while still counting their own pool', () => {
+    expect(src).toContain("targetRole === 'client'");
+    expect(src).toContain('clientPortalUsers');
+    expect(src).toContain("seatType = role === 'client' ? 'client_portal' : 'staff'");
   });
 
   it('does not let an expired invitation hold a seat', () => {

@@ -14,6 +14,7 @@ import {
   type ReminderType,
   type ScheduleInvoice,
 } from '@/lib/finance/invoice-schedule';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 /**
  * Invoice reminder cron (P0-4a).
@@ -56,8 +57,6 @@ type ClientRecord = {
 
 export const runtime = 'nodejs';
 
-const CRON_SECRET = process.env.CRON_SECRET;
-
 /**
  * Late fees mutate invoice totals. This code path has never successfully executed against
  * real data, so it stays behind an explicit flag until it has been exercised in staging —
@@ -65,9 +64,12 @@ const CRON_SECRET = process.env.CRON_SECRET;
  */
 const LATE_FEES_ENABLED = process.env.ERP_ENABLE_INVOICE_LATE_FEES === 'true';
 
-/** Hard ceiling per run so a growing invoice table cannot silently time the job out. */
-const MAX_INVOICES_PER_RUN = 2000;
-const PAGE_SIZE = 200;
+/** Hard ceiling per run so a growing invoice table cannot silently time the sole cron out. */
+const configuredInvoiceLimit = Number(process.env.DAILY_INVOICE_REMINDER_LIMIT || 100);
+const MAX_INVOICES_PER_RUN = Number.isFinite(configuredInvoiceLimit)
+  ? Math.min(250, Math.max(1, Math.floor(configuredInvoiceLimit)))
+  : 100;
+const PAGE_SIZE = Math.min(50, MAX_INVOICES_PER_RUN);
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com').replace(/\/+$/, '');
 
@@ -75,16 +77,12 @@ const SYSTEM_ACTOR = { uid: 'system:cron:invoice-reminders', name: 'Invoice remi
 
 export async function GET(request: NextRequest) {
   try {
-    if (!CRON_SECRET || CRON_SECRET === 'change-me-in-production') {
+    const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+    if (!authorization.ok) {
       return NextResponse.json(
-        { error: 'Cron secret is not configured securely.' },
-        { status: 500 },
+        { success: false, error: authorization.code },
+        { status: authorization.status },
       );
-    }
-
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log('[CRON] Starting invoice reminder job.');

@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { runXeroSync } from '@/lib/integrations/xero';
+import { authorizeCronRequest } from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
-    const secret = process.env.CRON_SECRET;
-    if (!secret || secret === 'change-me-in-production') {
+    const authorization = authorizeCronRequest(request, process.env.CRON_SECRET);
+    if (!authorization.ok) {
       return NextResponse.json(
-        { ok: false, error: 'Cron secret is not configured securely.' },
-        { status: 500 },
+        { ok: false, error: authorization.code },
+        { status: authorization.status },
       );
-    }
-
-    if (request.headers.get('authorization') !== `Bearer ${secret}`) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const integrations = await adminDb

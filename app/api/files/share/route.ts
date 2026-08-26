@@ -18,7 +18,11 @@ export async function POST(request: Request) {
     if (!session?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = schema.parse(await request.json());
-    const file = await FileManager.getFileById(body.fileId, session.tenantId);
+    const file = await FileManager.getManageableFileById(body.fileId, {
+      tenantId: session.tenantId,
+      uid: session.uid,
+      role: session.role,
+    });
     if (!file) return NextResponse.json({ error: 'File not found' }, { status: 404 });
 
     const share = await FileManager.createShare({

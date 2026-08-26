@@ -419,12 +419,29 @@ export default function WorkflowAutomationPage() {
                       'approval',
                     ] as const
                   ).map((type) => (
-                    <button key={type} className="btn ghost" onClick={() => addAction(type)}>
+                    <button
+                      key={type}
+                      className="btn ghost"
+                      onClick={() => addAction(type)}
+                      disabled={type === 'delete_record' || type === 'webhook'}
+                      title={
+                        type === 'delete_record'
+                          ? 'Requires durable post-approval continuation.'
+                          : type === 'webhook'
+                            ? 'Requires destination allowlisting and SSRF controls.'
+                            : undefined
+                      }
+                    >
                       {type}
+                      {(type === 'delete_record' || type === 'webhook') && ' (pending)'}
                     </button>
                   ))}
                 </div>
               </div>
+              <p className="mb-3 text-xs text-[var(--text-muted)]">
+                Delete and outbound webhook actions remain visible but disabled until their
+                approval-continuation and destination-security release gates are complete.
+              </p>
               <div className="space-y-2">
                 {(selected.actions || []).map((action, index) => (
                   <div key={action.id} className="rounded-lg border p-2">
@@ -460,7 +477,7 @@ export default function WorkflowAutomationPage() {
               )}
               {selected.id && (
                 <button className="btn ghost" onClick={testRun}>
-                  Test run
+                  Dry run (no writes)
                 </button>
               )}
             </div>

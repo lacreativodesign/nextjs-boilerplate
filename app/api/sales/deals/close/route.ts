@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   userLabel,
 } from '../../_utils';
+import { createClientFromClosedWonDeal } from '@/lib/crm';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,8 +85,19 @@ export async function POST(req: Request) {
         },
         { merge: true },
       );
-    } else {
+    } else if (status !== 'Won' || data.closedWonProcessed) {
       return NextResponse.json({ ok: true, status: 'noop' });
+    }
+
+    if (status === 'Won') {
+      await createClientFromClosedWonDeal({
+        dealId: id,
+        actor: {
+          uid: auth.user.uid,
+          name: userLabel(auth.user),
+          tenantId,
+        },
+      });
     }
 
     await logEvent({
@@ -110,25 +122,6 @@ export async function POST(req: Request) {
       createdBy: { uid: auth.user.uid, name: userLabel(auth.user) },
       tenantId,
     });
-
-    if (status === 'Won') {
-      await adminDb.collection('events').add({
-        type: 'sales_deal_won_stub',
-        title: 'Sales deal won',
-        description: `${data.dealName || data.leadName || 'Deal'} ready for fulfillment review.`,
-        entityType: 'deal',
-        entityId: id,
-        metadata: {
-          source: 'sales',
-          leadId: data.leadId || null,
-        },
-        createdByUid: auth.user.uid,
-        createdByName: userLabel(auth.user),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        tenantId,
-      });
-    }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {

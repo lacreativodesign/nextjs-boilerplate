@@ -24,14 +24,15 @@ const ALLOWED_LICENSES = new Set([
   '(MIT OR CC0-1.0)',
   '(WTFPL OR MIT)',
   '(BSD-3-Clause OR GPL-2.0)',
+  '(MIT OR GPL-3.0-or-later)',
   'MIT AND ISC',
+  'MIT/X11',
 ]);
 
 // Packages whose package.json lacks a parseable SPDX string but whose repos were
 // reviewed and carry permissive terms. Keyed by bare name so version bumps do not
 // re-break CI.
 const REVIEWED_PACKAGE_EXCEPTIONS = new Set([
-  '@uploadcare/react-adapter',
   'busboy',
   'config-chain',
   'exit',
@@ -40,6 +41,13 @@ const REVIEWED_PACKAGE_EXCEPTIONS = new Set([
   'streamsearch',
   'rgbcolor',
 ]);
+
+// Exact-version exceptions are required when an old package omits SPDX
+// metadata. Do not broaden these to a bare package name: a future artifact must
+// be reviewed again. buffers@0.1.1 is MIT/X11; the published tarball omits the
+// field, while the upstream release lineage and Debian source metadata retain
+// the MIT terms.
+const REVIEWED_PACKAGE_VERSION_EXCEPTIONS = new Set(['buffers@0.1.1']);
 
 /**
  * Reads package licenses from installed modules.
@@ -102,7 +110,10 @@ async function main() {
 
   for (const [name, license] of packages) {
     const bareName = name.slice(0, name.lastIndexOf('@'));
-    if (REVIEWED_PACKAGE_EXCEPTIONS.has(bareName)) {
+    if (
+      REVIEWED_PACKAGE_EXCEPTIONS.has(bareName) ||
+      REVIEWED_PACKAGE_VERSION_EXCEPTIONS.has(name)
+    ) {
       continue;
     }
     if (!ALLOWED_LICENSES.has(license)) {

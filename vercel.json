@@ -1,44 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/daily-tasks",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/trial-emails",
-      "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/cron/invoice-reminders",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/generate-invoices",
-      "schedule": "0 1 1 * *"
-    },
-    {
-      "path": "/api/cron/compliance-report",
-      "schedule": "0 2 1 * *"
-    },
-    {
-      "path": "/api/cron/compliance-retention",
-      "schedule": "0 3 1 * *"
-    },
-    {
-      "path": "/api/cron/abandoned-signups",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/billing-locks",
-      "schedule": "30 12 * * *"
-    },
-    {
-      "path": "/api/cron/backup",
+      "path": "/api/cron/daily-orchestrator",
       "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/email-outbox",
-      "schedule": "30 9 * * *"
     }
   ]
 }

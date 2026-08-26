@@ -1,8 +1,20 @@
 // lib/firebaseClient.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
-import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  connectAuthEmulator,
+  type Auth,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  connectFirestoreEmulator,
+  type Firestore,
+} from 'firebase/firestore';
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
 type FirebaseClientConfig = {
   apiKey: string;
@@ -11,6 +23,11 @@ type FirebaseClientConfig = {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
+  emulators?: {
+    authHost: string;
+    firestoreHost: string;
+    storageHost?: string;
+  };
 };
 
 const isBrowser = typeof window !== 'undefined';
@@ -46,6 +63,17 @@ type FirebaseClients = {
   storage: FirebaseStorage;
 };
 
+function emulatorEndpoint(value: string): { host: string; port: number } {
+  const parsed = new URL(`http://${value}`);
+  const port = Number(parsed.port);
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname) || !Number.isInteger(port)) {
+    throw new Error('Firebase emulator endpoint is not a valid loopback host:port.');
+  }
+  return { host: parsed.hostname, port };
+}
+
+type EmulatorGlobal = typeof globalThis & { __bizostoFirebaseEmulatorsConnected?: boolean };
+
 let clientsPromise: Promise<FirebaseClients> | null = null;
 async function ensureFirebaseClients(): Promise<FirebaseClients> {
   if (!isBrowser) {
@@ -57,6 +85,22 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
       const config = await fetchFirebaseConfig();
       const app = getApps().length ? getApp() : initializeApp(config);
       const auth = getAuth(app);
+      const db = getFirestore(app);
+      const storage = getStorage(app);
+      const emulatorGlobal = globalThis as EmulatorGlobal;
+      if (config.emulators && !emulatorGlobal.__bizostoFirebaseEmulatorsConnected) {
+        const authEndpoint = emulatorEndpoint(config.emulators.authHost);
+        const firestoreEndpoint = emulatorEndpoint(config.emulators.firestoreHost);
+        connectAuthEmulator(auth, `http://${authEndpoint.host}:${authEndpoint.port}`, {
+          disableWarnings: true,
+        });
+        connectFirestoreEmulator(db, firestoreEndpoint.host, firestoreEndpoint.port);
+        if (config.emulators.storageHost) {
+          const storageEndpoint = emulatorEndpoint(config.emulators.storageHost);
+          connectStorageEmulator(storage, storageEndpoint.host, storageEndpoint.port);
+        }
+        emulatorGlobal.__bizostoFirebaseEmulatorsConnected = true;
+      }
       try {
         await setPersistence(auth, browserLocalPersistence);
       } catch (err) {
@@ -65,8 +109,8 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
       return {
         app,
         auth,
-        db: getFirestore(app),
-        storage: getStorage(app),
+        db,
+        storage,
       };
     })().catch((err) => {
       clientsPromise = null;

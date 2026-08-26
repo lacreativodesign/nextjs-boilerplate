@@ -1,33 +1,60 @@
 name: Deploy Firestore Indexes
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'firestore.indexes.json'
   workflow_dispatch:
+    inputs:
+      project_id:
+        description: Firebase project ID (must match the protected environment variable)
+        required: true
+        type: string
+      confirmation:
+        description: Type DEPLOY FIRESTORE INDEXES
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-firestore-indexes-production
+  cancel-in-progress: false
 
 jobs:
   deploy-indexes:
+    if: ${{ inputs.confirmation == 'DEPLOY FIRESTORE INDEXES' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    environment: firebase-production
+    env:
+      FIREBASE_PROJECT_ID: ${{ inputs.project_id }}
+      EXPECTED_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate protected project target
+        shell: bash
+        run: |
+          test -n "$EXPECTED_FIREBASE_PROJECT_ID"
+          test "$FIREBASE_PROJECT_ID" = "$EXPECTED_FIREBASE_PROJECT_ID"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools@latest
+      - name: Authenticate to Google Cloud with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
+          create_credentials_file: true
 
-      - name: Deploy Firestore Indexes
-        run: |
-          firebase deploy --only firestore:indexes \
-            --project la-creativo-erp \
-            --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --non-interactive
+      - name: Install pinned Firebase CLI
+        run: npm install --global firebase-tools@13.35.1
 
-      - name: Confirm deployment
-        run: echo "Firestore indexes deployed successfully"
+      - name: Deploy Firestore indexes
+        run: >-
+          firebase deploy --only firestore:indexes
+          --project "$FIREBASE_PROJECT_ID"
+          --non-interactive

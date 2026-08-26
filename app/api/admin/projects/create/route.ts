@@ -143,6 +143,7 @@ export async function POST(req: Request) {
     let activationResult: Awaited<ReturnType<typeof ensureClientAccountActivation>> | null = null;
     try {
       activationResult = await ensureClientAccountActivation({
+        tenantId: me.tenantId,
         clientId,
         clientData,
         createdByUid: me.uid,

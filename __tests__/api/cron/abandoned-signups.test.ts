@@ -116,8 +116,13 @@ describe('signup OTP hardening — static gates (P0-2)', () => {
     );
   });
 
-  it('cron is registered in vercel.json', () => {
+  it('runs through the sole daily orchestrator rather than a second schedule', () => {
     const vercel = fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8');
-    expect(vercel).toContain('/api/cron/abandoned-signups');
+    const registry = fs.readFileSync(
+      path.join(process.cwd(), 'lib', 'cron', 'registry.ts'),
+      'utf8',
+    );
+    expect(vercel).not.toContain('/api/cron/abandoned-signups');
+    expect(registry).toContain("'/api/cron/abandoned-signups'");
   });
 });

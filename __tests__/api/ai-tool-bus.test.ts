@@ -13,6 +13,8 @@ import { REQUEST_TENANT_ROUTES, classifyRouteSource } from '@/lib/api/route-cont
  *     differing byte and so leaks the secret's prefix through response timing. The two
  *     other internal endpoints, /api/tenant/module-check and
  *     /api/internal/workflow-mutation, each carried their own copy of the same check.
+ *     The mutation bus is now a 410 stub; workflow mutations execute in-process
+ *     with stored run/action binding instead of transmitting a root secret.
  *   - The secret was INTERNAL_REQUEST_SIGNING_SECRET, which is also the HMAC key for
  *     signup OTPs (lib/auth/otp.ts) and for middleware's signed subscription cache. One
  *     recovered header bought OTP forgery and tenant data access at the same time.
@@ -27,7 +29,7 @@ const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const TOOL_BUS = 'app/api/ai/tools/read/route.ts';
 const MODULE_CHECK = 'app/api/tenant/module-check/route.ts';
 const WORKFLOW_MUTATION = 'app/api/internal/workflow-mutation/route.ts';
-const INTERNAL_ROUTES = [TOOL_BUS, MODULE_CHECK, WORKFLOW_MUTATION];
+const INTERNAL_ROUTES = [TOOL_BUS, MODULE_CHECK];
 
 /** The three server-side callers of the tool bus. */
 const BUS_CALLERS = [
@@ -77,7 +79,7 @@ describe('A-1: secret comparison is constant-time', () => {
   it('every internal route verifies through the shared helper', () => {
     expect(read(TOOL_BUS)).toContain('verifyAiToolBusSecret(req)');
     expect(read(MODULE_CHECK)).toContain('verifyInternalSecret(req)');
-    expect(read(WORKFLOW_MUTATION)).toContain('verifyInternalSecret(req)');
+    expect(read(WORKFLOW_MUTATION)).toContain('{ status: 410 }');
   });
 
   it('the helper is the only place the internal header is read', () => {
@@ -192,18 +194,28 @@ describe('A-1: the tool bus resolves the tenant itself', () => {
     expect(REQUEST_TENANT_ROUTES['ai/tools/read']).toBeUndefined();
   });
 
-  it('workflow-mutation keeps its body tenantId, but only with a written justification', () => {
-    const why = REQUEST_TENANT_ROUTES['internal/workflow-mutation'];
-    expect(typeof why).toBe('string');
-    expect(why.trim().length).toBeGreaterThan(0);
+  it('workflow mutations no longer accept a caller-supplied tenant over HTTP', () => {
+    expect(REQUEST_TENANT_ROUTES['internal/workflow-mutation']).toBeUndefined();
+    const source = read(WORKFLOW_MUTATION);
+    expect(source).toContain('{ status: 410 }');
+    expect(source).not.toContain('req.json');
+    expect(read('lib/automation/workflow-engine.ts')).toContain('executeWorkflowMutation');
+    expect(read('lib/automation/workflow-engine.ts')).not.toContain(
+      '/api/internal/workflow-mutation',
+    );
   });
 });
 
 describe('A-1: the guards still classify these routes', () => {
-  it('all three internal routes classify as internal after the refactor', () => {
+  it('the remaining internal routes classify as internal after the refactor', () => {
     for (const rel of INTERNAL_ROUTES) {
       const routePath = rel.replace(/^app\/api\//, '').replace(/\/route\.ts$/, '');
       expect(classifyRouteSource(routePath, read(rel))).toBe('internal');
     }
+  });
+
+  it('classifies the decommissioned mutation bus as a reviewed public 410 stub', () => {
+    const routePath = WORKFLOW_MUTATION.replace(/^app\/api\//, '').replace(/\/route\.ts$/, '');
+    expect(classifyRouteSource(routePath, read(WORKFLOW_MUTATION))).toBe('public');
   });
 });

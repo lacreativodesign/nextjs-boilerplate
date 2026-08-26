@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     }
 
     const inviteResult = await ensureClientPortalAccess({
+      tenantId: current.tenantId,
       clientId,
       clientData,
       createdByUid: current.uid,
