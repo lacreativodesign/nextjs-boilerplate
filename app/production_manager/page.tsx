@@ -36,7 +36,12 @@ export default function ProductionManagerPage() {
 
   return (
     <div className="space-y-6">
-      {error && <div className="card p-4 text-sm text-red-400">{error}</div>}
+      <div>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle mt-2">Team workload, QA queue, and delivery readiness.</p>
+      </div>
+
+      {error && <div className="card p-4 text-sm text-danger">{error}</div>}
 
       <div className="kpis">
         {cards.map((c) => (

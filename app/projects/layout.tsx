@@ -19,10 +19,6 @@ export default function ProjectsLayout({ children }: { children: React.ReactNode
       <ModuleErrorBoundary moduleName="Projects">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Projects & Delivery</h1>
-              <p className="page-subtitle">Project pipeline, change requests, and file delivery.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

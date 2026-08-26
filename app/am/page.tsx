@@ -45,7 +45,14 @@ export default function AmPage() {
 
   return (
     <div className="space-y-6">
-      {error && <div className="card p-4 text-sm text-red-400">{error}</div>}
+      <div>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle mt-2">
+          Your clients, active projects, and pipeline at a glance.
+        </p>
+      </div>
+
+      {error && <div className="card p-4 text-sm text-danger">{error}</div>}
 
       <FirstRunHint
         show={isFirstRun}

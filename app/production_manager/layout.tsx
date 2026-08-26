@@ -15,10 +15,6 @@ export default function ProductionManagerLayout({ children }: { children: React.
       <ModuleErrorBoundary moduleName="Production Manager">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Production Manager</h1>
-              <p className="page-subtitle">Team workload, QA approvals, and delivery.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

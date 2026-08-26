@@ -17,10 +17,6 @@ export default function ClientsLayout({ children }: { children: React.ReactNode 
       <ModuleErrorBoundary moduleName="Clients">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Client Management</h1>
-              <p className="page-subtitle">Client accounts, segments, and key account tracking.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

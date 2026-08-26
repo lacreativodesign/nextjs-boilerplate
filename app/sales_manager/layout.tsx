@@ -20,10 +20,6 @@ export default function SalesManagerLayout({ children }: { children: React.React
       <ModuleErrorBoundary moduleName="Sales Manager">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Sales Manager</h1>
-              <p className="page-subtitle">Team pipeline, targets, and performance.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =
