@@ -81,10 +81,10 @@ export default function HrActivityPage() {
   return (
     <div className="space-y-6">
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>HR Activity</div>
-        <div style={{ fontSize: 14, color: 'var(--sidebar-text)' }}>
+        <h1 className="page-title">Activity</h1>
+        <p className="page-subtitle mt-2">
           Audit trail of HR actions across onboarding, users, and documents.
-        </div>
+        </p>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <SmartSearchBar value={search} onChange={setSearch} />
           <MasterSelect value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />

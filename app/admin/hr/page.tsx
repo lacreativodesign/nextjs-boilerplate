@@ -80,6 +80,13 @@ export default function HrOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">
+          Headcount, onboarding progress, and recent HR activity.
+        </p>
+      </div>
+
       {error && (
         <div
           className="card"

@@ -237,10 +237,10 @@ export default function HrOnboardingPage() {
   return (
     <div className="space-y-6">
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>Onboarding</div>
-        <div style={{ color: 'var(--sidebar-text)', fontSize: 14 }}>
+        <h1 className="page-title">Onboarding</h1>
+        <p className="page-subtitle mt-2">
           Templates, assignments, and task tracking for new hires.
-        </div>
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {(['templates', 'assign', 'tasks'] as TabKey[]).map((key) => (
             <button

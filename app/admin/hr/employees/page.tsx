@@ -309,10 +309,10 @@ export default function HrEmployeesPage() {
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>Employees</div>
-            <div style={{ color: 'var(--sidebar-text)', fontSize: 14 }}>
+            <h1 className="page-title">Employees</h1>
+            <p className="page-subtitle mt-2">
               Live, synced employee directory with role-aware controls.
-            </div>
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <SmartSearchBar value={search} onChange={setSearch} />
