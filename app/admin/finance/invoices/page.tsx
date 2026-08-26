@@ -265,7 +265,12 @@ function FinanceInvoicesContent() {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Invoices</h1>
+        <p className="page-subtitle mt-2">USD invoicing with live Firestore sync.</p>
+      </div>
+
       {error && (
         <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
           <div style={{ fontWeight: 700 }}>{error.title}</div>
@@ -273,13 +278,7 @@ function FinanceInvoicesContent() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Invoices</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
-            USD invoicing with live Firestore sync.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex flex-wrap gap-2">
           <button className="btn" onClick={() => setCreateOpen(true)} style={{ borderRadius: 999 }}>
             Create Invoice

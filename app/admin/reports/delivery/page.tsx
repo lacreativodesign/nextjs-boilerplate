@@ -185,6 +185,11 @@ export default function DeliveryReportsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Delivery Performance</h1>
+        <p className="page-subtitle mt-2">On-time delivery, cycle times, and slippage.</p>
+      </div>
+
       {error && <ErrorCard message={error} />}
 
       <section>

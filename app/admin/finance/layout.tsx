@@ -20,13 +20,6 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
   return (
     <ModuleErrorBoundary moduleName="Finance">
       <div className="w-full">
-        <div className="mb-4">
-          <h2 className="section-title mb-1">Finance</h2>
-          <p className="section-subtitle">
-            Monitor revenue, cash flow, payroll, and finance operations.
-          </p>
-        </div>
-
         <div className="tabs-bar">
           {tabs.map((t) => {
             const active = pathname === t.path;

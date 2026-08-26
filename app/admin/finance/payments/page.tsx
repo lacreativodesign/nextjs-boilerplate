@@ -185,20 +185,18 @@ export default function FinancePaymentsPage() {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Payments</h1>
+        <p className="page-subtitle mt-2">USD receipts, methods, and settlement status.</p>
+      </div>
+
       {error && (
         <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
           <div style={{ fontWeight: 700 }}>{error.title}</div>
           <div style={{ fontSize: 13, opacity: 0.9 }}>{error.message}</div>
         </div>
       )}
-
-      <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Payments</h3>
-        <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
-          USD receipts, methods, and settlement status.
-        </p>
-      </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
         <div style={{ flex: '1 1 240px', minWidth: 220 }}>

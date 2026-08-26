@@ -136,6 +136,11 @@ export default function ClientReportsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Client Insights</h1>
+        <p className="page-subtitle mt-2">Revenue, retention, and activity by client.</p>
+      </div>
+
       {error && <ErrorCard message={error} />}
 
       <section>

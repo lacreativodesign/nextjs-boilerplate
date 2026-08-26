@@ -121,6 +121,13 @@ export default function ReportsOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">
+          Headline metrics across revenue, delivery, and production.
+        </p>
+      </div>
+
       {error && <ErrorCard message={error} />}
 
       <section>
