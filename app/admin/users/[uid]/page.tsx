@@ -113,6 +113,11 @@ export default function EditUserPage() {
 
   return (
     <div style={{ maxWidth: 500 }}>
+      <div className="mb-5">
+        <h1 className="page-title">User Detail</h1>
+        <p className="page-subtitle mt-2">Profile, role, and access for this team member.</p>
+      </div>
+
       <Link
         href="/admin/users"
         className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--erp-blue)] hover:underline mb-4 block"

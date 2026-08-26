@@ -14,11 +14,6 @@ export default function UsersLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="w-full">
-      <div className="mb-4">
-        <h2 className="section-title mb-1">Users</h2>
-        <p className="section-subtitle">Manage staff access, roles, and onboarding status.</p>
-      </div>
-
       <div className="tabs-bar">
         {tabs.map((t) => {
           const active = pathname === t.path;

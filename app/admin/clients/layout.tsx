@@ -15,13 +15,6 @@ export default function ClientsLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="w-full">
-      <div className="mb-4">
-        <h2 className="section-title mb-1">Clients</h2>
-        <p className="section-subtitle">
-          Manage client accounts, segments, and strategic relationships.
-        </p>
-      </div>
-
       <div className="tabs-bar">
         {tabs.map((t) => {
           const active = pathname === t.path;

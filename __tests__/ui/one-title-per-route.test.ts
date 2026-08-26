@@ -25,6 +25,10 @@ import * as path from 'path';
  * adds `client`, `finance` and `reports`, DS-18 adds `production` and `sales`, and DS-19
  * finishes with `hr`. All fourteen are converted, so the shrinking offender list becomes
  * a rule: no layout titles a page, and every page either names itself or renders no UI.
+ *
+ * DS-20 starts the same job inside `app/admin`, whose nine sub-modules title from a
+ * layout using `<h2 className="section-title">` — leaving those routes with no h1 at
+ * all. `clients`, `projects`, `users` and `production` convert here; five remain.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -151,6 +155,8 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/hr/onboarding/page.tsx', 'Onboarding'],
     ['app/hr/payroll/page.tsx', 'Payroll'],
     ['app/hr/activity/page.tsx', 'Activity'],
+    ['app/admin/production/page.tsx', 'Overview'],
+    ['app/admin/production/queue/page.tsx', 'Queue'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
   });
@@ -237,30 +243,48 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     // roughly 53 admin pages have no h1 of their own and those routes expose no
     // top-level heading at all. Converting them is the same job done here, and is the
     // last of it.
+    const PENDING_ADMIN = ['finance', 'hr', 'reports', 'sales', 'settings'].map(
+      (mod) => `app${path.sep}admin${path.sep}${mod}${path.sep}`,
+    );
     const orphans = walk('app')
       .filter((rel) => rel.endsWith('page.tsx'))
-      .filter((rel) => !rel.startsWith(`app${path.sep}admin${path.sep}`))
+      .filter((rel) => !PENDING_ADMIN.some((prefix) => rel.startsWith(prefix)))
       .filter((rel) => !rendersHeading(rel))
       .filter((rel) => !rendersNothing(rel))
       .sort();
     expect(orphans).toEqual([]);
   });
 
-  it('the admin sub-module layouts are the last holdouts', () => {
+  it('five admin sub-module layouts are the last holdouts', () => {
     const sectionTitled = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('className="section-title'))
       .sort();
     expect(sectionTitled).toEqual([
-      'app/admin/clients/layout.tsx',
       'app/admin/finance/layout.tsx',
       'app/admin/hr/layout.tsx',
-      'app/admin/production/layout.tsx',
-      'app/admin/projects/layout.tsx',
       'app/admin/reports/layout.tsx',
       'app/admin/sales/layout.tsx',
       'app/admin/settings/layout.tsx',
-      'app/admin/users/layout.tsx',
     ]);
+  });
+
+  it('no page renders two titles in the same pass', () => {
+    // Several files hold more than one h1 across mutually exclusive render branches —
+    // loading, error, loaded — which is correct. app/billing/upgrade was different: it
+    // rendered "Premium Upgrade" and then "Choose Your Plan" eight lines later in the
+    // same tree, and the hero already carried a "Premium upgrade" eyebrow above it.
+    const BRANCHED = [
+      'app/admin/crm/page.tsx',
+      'app/client/accept-invite/page.tsx',
+      'app/impersonate/page.tsx',
+      'app/pay/[invoiceId]/page.tsx',
+      'app/signup/page.tsx',
+    ].map((rel) => rel.split('/').join(path.sep));
+
+    const multi = walk('app')
+      .filter((rel) => (read(rel).match(/<h1/g) ?? []).length > 1)
+      .sort();
+    expect(multi).toEqual(BRANCHED.sort());
   });
 
   it('the twelve stub routes are the only ones exempt', () => {
