@@ -18,13 +18,6 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="w-full">
-      <div className="mb-5">
-        <h2 className="section-title mb-1">Reports & Analytics</h2>
-        <p className="section-subtitle">
-          Executive-ready dashboards spanning delivery, production, finance, HR, and client health.
-        </p>
-      </div>
-
       <div className="tabs-bar">
         {tabs.map((t) => {
           const isActive =

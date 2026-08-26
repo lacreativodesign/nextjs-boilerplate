@@ -28,7 +28,8 @@ import * as path from 'path';
  *
  * DS-20 starts the same job inside `app/admin`, whose nine sub-modules title from a
  * layout using `<h2 className="section-title">` — leaving those routes with no h1 at
- * all. `clients`, `projects`, `users` and `production` convert here; five remain.
+ * all. `clients`, `projects`, `users` and `production` convert in DS-20, `finance` and
+ * `reports` in DS-21. Three remain: `hr`, `sales`, `settings`.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -157,6 +158,16 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/hr/activity/page.tsx', 'Activity'],
     ['app/admin/production/page.tsx', 'Overview'],
     ['app/admin/production/queue/page.tsx', 'Queue'],
+    ['app/admin/reports/page.tsx', 'Overview'],
+    ['app/admin/reports/clients/page.tsx', 'Client Insights'],
+    ['app/admin/reports/delivery/page.tsx', 'Delivery Performance'],
+    ['app/admin/reports/production/page.tsx', 'Production Analytics'],
+    ['app/admin/reports/settings/page.tsx', 'Settings'],
+    ['app/admin/finance/invoices/page.tsx', 'Invoices'],
+    ['app/admin/finance/payments/page.tsx', 'Payments'],
+    ['app/admin/finance/payroll/page.tsx', 'Payroll'],
+    ['app/admin/finance/reports/page.tsx', 'Reports'],
+    ['app/admin/finance/settings/page.tsx', 'Settings'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
   });
@@ -243,7 +254,7 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     // roughly 53 admin pages have no h1 of their own and those routes expose no
     // top-level heading at all. Converting them is the same job done here, and is the
     // last of it.
-    const PENDING_ADMIN = ['finance', 'hr', 'reports', 'sales', 'settings'].map(
+    const PENDING_ADMIN = ['hr', 'sales', 'settings'].map(
       (mod) => `app${path.sep}admin${path.sep}${mod}${path.sep}`,
     );
     const orphans = walk('app')
@@ -255,17 +266,26 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     expect(orphans).toEqual([]);
   });
 
-  it('five admin sub-module layouts are the last holdouts', () => {
+  it('three admin sub-module layouts are the last holdouts', () => {
     const sectionTitled = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('className="section-title'))
       .sort();
     expect(sectionTitled).toEqual([
-      'app/admin/finance/layout.tsx',
       'app/admin/hr/layout.tsx',
-      'app/admin/reports/layout.tsx',
       'app/admin/sales/layout.tsx',
       'app/admin/settings/layout.tsx',
     ]);
+  });
+
+  it('no page title is rendered as an h3 or a styled div', () => {
+    // admin/finance/reports and /settings used <h3 style={{ fontSize: 20 }}>, and
+    // admin/finance/ar used <h3 style={{ fontSize: 18 }}> inside a hand-rolled card —
+    // three more sizes that no stylesheet could reach.
+    const offenders = walk('app/admin/finance')
+      .concat(walk('app/admin/reports'))
+      .filter((rel) => /<h3[^>]*style=\{/.test(read(rel)))
+      .sort();
+    expect(offenders).toEqual([]);
   });
 
   it('no page renders two titles in the same pass', () => {

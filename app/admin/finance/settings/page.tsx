@@ -102,10 +102,8 @@ export default function FinanceSettingsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Finance Settings</h3>
-        <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
-          Configure tenant invoice numbering.
-        </p>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle mt-2">Configure tenant invoice numbering.</p>
       </div>
 
       <div className="card" style={{ padding: 18, borderRadius: 16 }}>

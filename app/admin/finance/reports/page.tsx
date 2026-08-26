@@ -149,8 +149,8 @@ export default function FinanceReportsPage() {
   return (
     <div>
       <div>
-        <h3 style={{ fontSize: 20, fontWeight: 700 }}>Reports</h3>
-        <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+        <h1 className="page-title">Reports</h1>
+        <p className="page-subtitle mt-2">
           Generate period-based financial reporting and export documents for leadership reviews.
         </p>
       </div>

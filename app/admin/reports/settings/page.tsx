@@ -106,6 +106,11 @@ export default function ReportsSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle mt-2">Reporting periods, targets, and export defaults.</p>
+      </div>
+
       {error && <ErrorCard message={error} />}
       {success && (
         <div

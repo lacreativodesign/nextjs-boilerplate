@@ -156,7 +156,12 @@ export default function FinancePayrollPage() {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Payroll</h1>
+        <p className="page-subtitle mt-2">PKR salary runs, approvals, and payments.</p>
+      </div>
+
       {error && (
         <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)] mb-4">
           <div style={{ fontWeight: 700 }}>{error.title}</div>
@@ -164,13 +169,7 @@ export default function FinancePayrollPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 style={{ fontSize: 20, fontWeight: 700 }}>Payroll</h3>
-          <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
-            PKR salary runs, approvals, and payments.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <input
             className="input"
