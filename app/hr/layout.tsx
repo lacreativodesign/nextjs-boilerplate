@@ -19,12 +19,6 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
       <ModuleErrorBoundary moduleName="HR">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">HR & People</h1>
-              <p className="page-subtitle">
-                Workforce management, leave, onboarding, and performance.
-              </p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

@@ -19,8 +19,8 @@ export default function SuspendedPage() {
           textAlign: 'center',
         }}
       >
-        <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>Account Suspended</div>
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+        <h1 className="screen-title mb-3">Account Suspended</h1>
+        <p className="screen-subtitle">
           Your company account is currently suspended. Please contact your account owner or support
           to restore access.
         </p>

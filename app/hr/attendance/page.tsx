@@ -67,6 +67,11 @@ export default function AttendanceDashboard() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="page-title">Attendance</h1>
+        <p className="page-subtitle mt-2">Monthly attendance by employee.</p>
+      </div>
+
       {/* HEADER */}
       <div
         style={{
@@ -80,7 +85,7 @@ export default function AttendanceDashboard() {
           border: '1px solid var(--border-subtle)',
         }}
       >
-        <h2 style={{ fontSize: 24, fontWeight: 700 }}>Attendance — {month.format('MMMM YYYY')}</h2>
+        <h2 className="section-title">{month.format('MMMM YYYY')}</h2>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setMonth(month.subtract(1, 'month'))} style={btn}>

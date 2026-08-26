@@ -313,8 +313,12 @@ export default function HrOnboardingPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Onboarding</h1>
+        <p className="page-subtitle mt-2">New-starter checklists and their progress.</p>
+      </div>
+
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>Onboarding</div>
         <div style={{ color: 'var(--sidebar-text)', fontSize: 14 }}>
           Templates, assignments, and task tracking for new hires.
         </div>

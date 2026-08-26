@@ -77,6 +77,11 @@ export default function HrOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Overview</h1>
+        <p className="page-subtitle mt-2">Headcount, leave, and onboarding at a glance.</p>
+      </div>
+
       <FirstRunHint
         show={isFirstRun}
         title="No employees added yet"

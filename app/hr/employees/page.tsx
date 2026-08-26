@@ -316,12 +316,15 @@ export default function HrEmployeesPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Employees</h1>
+        <p className="page-subtitle mt-2">
+          Everyone on the team, with role, department, and status.
+        </p>
+      </div>
+
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="page-title">Employees</h1>
-            <p className="page-subtitle">Keep employee records accurate and up to date.</p>
-          </div>
           <div style={{ fontSize: 12, color: 'var(--sidebar-text)' }}>
             Click a row to view details.
           </div>

@@ -26,9 +26,9 @@ export default function ModuleDisabledPage() {
           textAlign: 'center',
         }}
       >
-        <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Upgrade Required</div>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Module Not Enabled</div>
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+        <h1 className="screen-title mb-2">Upgrade Required</h1>
+        <p className="screen-subtitle mb-3 font-semibold">Module Not Enabled</p>
+        <p className="screen-subtitle">
           This module is not enabled for your company. Reach out to your administrator to request
           access.
         </p>

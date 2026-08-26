@@ -219,6 +219,11 @@ export default function HrDocumentsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Documents</h1>
+        <p className="page-subtitle mt-2">Contracts, policies, and employee records.</p>
+      </div>
+
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>

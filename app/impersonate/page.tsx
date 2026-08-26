@@ -57,10 +57,8 @@ function ImpersonateInner() {
           gap: 12,
         }}
       >
-        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--danger-strong)' }}>
-          Impersonation Failed
-        </p>
-        <p style={{ fontSize: 14, color: 'var(--color-gray)' }}>{error}</p>
+        <h1 className="screen-title text-danger">Impersonation Failed</h1>
+        <p className="screen-subtitle">{error}</p>
         <button
           onClick={() => window.close()}
           style={{
@@ -102,9 +100,7 @@ function ImpersonateInner() {
           animation: 'spin 0.8s linear infinite',
         }}
       />
-      <p style={{ fontSize: 15, color: 'var(--color-gray)', fontWeight: 500 }}>
-        Starting impersonation session...
-      </p>
+      <h1 className="screen-title">Starting impersonation session…</h1>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

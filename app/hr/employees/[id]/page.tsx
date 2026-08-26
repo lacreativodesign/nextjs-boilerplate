@@ -41,6 +41,11 @@ export default function EmployeeProfilePage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">{employee.name}</h1>
+        <p className="page-subtitle mt-2">{employee.email}</p>
+      </div>
+
       <div
         style={{
           background: 'var(--surface-card)',
@@ -49,11 +54,6 @@ export default function EmployeeProfilePage() {
           border: '1px solid var(--border-subtle)',
         }}
       >
-        {/* HEADER */}
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>{employee.name}</h2>
-
-        <p style={{ color: 'var(--text-muted)', marginBottom: 25 }}>{employee.email}</p>
-
         {/* GRID */}
         <div
           style={{

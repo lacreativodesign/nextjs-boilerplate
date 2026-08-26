@@ -115,8 +115,14 @@ export default function HrActivityPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Activity</h1>
+        <p className="page-subtitle mt-2">
+          Recent HR events across leave, onboarding, and records.
+        </p>
+      </div>
+
       <section className="card" style={{ padding: 18, borderRadius: 18 }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>HR Activity</div>
         <div style={{ fontSize: 14, color: 'var(--sidebar-text)' }}>
           Audit trail of HR actions across onboarding, users, and documents.
         </div>

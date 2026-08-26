@@ -68,6 +68,11 @@ export default function EditEmployeePage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Edit Employee</h1>
+        <p className="page-subtitle mt-2">Update profile, role, department, and payroll details.</p>
+      </div>
+
       <div
         style={{
           background: 'var(--surface-card)',
@@ -77,8 +82,6 @@ export default function EditEmployeePage() {
           maxWidth: 800,
         }}
       >
-        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 25 }}>Edit Employee</h2>
-
         {/* FORM GRID */}
         <div
           style={{

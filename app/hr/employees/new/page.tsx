@@ -70,7 +70,12 @@ export default function AddEmployeePage() {
 
   return (
     <div className="space-y-6">
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>Add New Employee</h2>
+      <div>
+        <h1 className="page-title">Add Employee</h1>
+        <p className="page-subtitle mt-2">
+          Create an employee record and set their role and department.
+        </p>
+      </div>
 
       <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 30 }}>
         This creates their account and emails them an invitation to set a password. They will appear
