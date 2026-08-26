@@ -16,10 +16,6 @@ export default function UsersLayout({ children }: { children: React.ReactNode })
       <ModuleErrorBoundary moduleName="Users">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">User Management</h1>
-              <p className="page-subtitle">Manage platform users, roles, and permissions.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

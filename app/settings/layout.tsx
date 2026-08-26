@@ -52,10 +52,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       <ModuleErrorBoundary moduleName="Settings">
         <AppShell>
           <div>
-            <div className="mb-6">
-              <h1 className="page-title">Settings</h1>
-              <p className="page-subtitle">Manage your profile, security, and preferences.</p>
-            </div>
             <div className="tabs-bar">
               {TABS.map((tab) => {
                 const isActive =

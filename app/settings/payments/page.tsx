@@ -130,6 +130,13 @@ export default function SettingsPaymentsPage() {
   return (
     <div className="space-y-6">
       <div>
+        <h1 className="page-title">Payments</h1>
+        <p className="page-subtitle mt-2">
+          Connect a Stripe account to accept payments from your clients.
+        </p>
+      </div>
+
+      <div>
         <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Payment Settings</h2>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
           Connect your Stripe account to accept payments from your clients
