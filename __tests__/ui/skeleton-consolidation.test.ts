@@ -91,9 +91,11 @@ describe('DS-26: the routeless route group is gone', () => {
   });
 
   it('the two live modules keep a route-level loading state', () => {
+    // DS-28 moved both onto the shared PageLoading component; what matters here is only
+    // that neither module lost the loading state the deleted group had provided.
     for (const rel of ['app/finance/loading.tsx', 'app/projects/loading.tsx']) {
       expect({ rel, present: exists(rel) }).toEqual({ rel, present: true });
-      expect(read(rel)).toContain("from '@/components/ui/Skeleton'");
+      expect(read(rel)).toMatch(/@\/components\/ui\/(Skeleton|PageLoading)/);
     }
   });
 
