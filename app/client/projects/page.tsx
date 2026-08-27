@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const PIPELINE_STAGES = [
   'Inquiry',
@@ -244,7 +245,11 @@ export default function ClientProjectsPage() {
         ) : error ? (
           <div className="p-4 text-sm text-red-400">{error}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-4 text-sm text-[var(--text-muted)]">No projects found.</div>
+          <EmptyState
+            variant="table"
+            title="No projects yet"
+            description="Projects appear here once your account manager starts one."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ minWidth: 980 }}>
