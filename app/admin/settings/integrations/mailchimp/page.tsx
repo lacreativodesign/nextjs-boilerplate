@@ -170,8 +170,8 @@ export default function MailchimpIntegrationPage() {
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>Mailchimp Email Marketing Sync</div>
-            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+            <h1 className="page-title">Mailchimp</h1>
+            <p className="page-subtitle mt-2">
               OAuth/API key connection, audience mapping, auto-sync, and segment sync.
             </p>
           </div>

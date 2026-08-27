@@ -30,8 +30,8 @@ import * as path from 'path';
  * layout using `<h2 className="section-title">` — leaving those routes with no h1 at
  * all. `clients`, `projects`, `users` and `production` convert in DS-20, `finance` and
  * `reports` in DS-21, `sales` in DS-22 and `hr` in DS-23. DS-24 takes the nine
- * tab-reachable `settings` pages, retiring the last layout-owned title on the platform;
- * nine deeper settings pages follow.
+ * tab-reachable `settings` pages, retiring the last layout-owned title on the platform,
+ * and DS-25 the nine deeper ones. Phase 3 closes here: all 258 routes name themselves.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -267,22 +267,11 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     expect(stillTitling).toEqual([]);
   });
 
-  it('every page outside app/admin names itself', () => {
-    // The rule, now that the shrinking list has reached zero for the role modules: a
-    // route either renders a heading of its own or renders no UI at all.
-    //
-    // app/admin is excluded deliberately. Its nine sub-modules (clients, finance, hr,
-    // production, projects, reports, sales, settings, users) still title their pages
-    // from a layout, using `<h2 className="section-title">` rather than an h1 — so
-    // roughly 53 admin pages have no h1 of their own and those routes expose no
-    // top-level heading at all. Converting them is the same job done here, and is the
-    // last of it.
-    const PENDING_ADMIN = ['settings'].map(
-      (mod) => `app${path.sep}admin${path.sep}${mod}${path.sep}`,
-    );
+  it('every page in the platform names itself', () => {
+    // The rule, with no exemptions left: every one of the 258 routes either renders a
+    // heading of its own or renders no UI at all.
     const orphans = walk('app')
       .filter((rel) => rel.endsWith('page.tsx'))
-      .filter((rel) => !PENDING_ADMIN.some((prefix) => rel.startsWith(prefix)))
       .filter((rel) => !rendersHeading(rel))
       .filter((rel) => !rendersNothing(rel))
       .sort();
@@ -298,34 +287,14 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     expect(sectionTitled).toEqual([]);
   });
 
-  it('the settings pages still needing a title are a known, shrinking list', () => {
-    const orphans = walk('app/admin/settings')
-      .filter((rel) => rel.endsWith('page.tsx'))
-      .filter((rel) => !rendersNothing(rel))
-      .filter((rel) => !rendersHeading(rel))
-      .map((rel) => rel.split(path.sep).join('/'))
-      .sort();
-    expect(orphans).toEqual([
-      'app/admin/settings/integrations/docusign/page.tsx',
-      'app/admin/settings/integrations/mailchimp/page.tsx',
-      'app/admin/settings/integrations/page.tsx',
-      'app/admin/settings/integrations/quickbooks/page.tsx',
-      'app/admin/settings/integrations/xero/page.tsx',
-      'app/admin/settings/sales/page.tsx',
-      'app/admin/settings/security/page.tsx',
-      'app/admin/settings/sso/page.tsx',
-      'app/admin/settings/workflows/page.tsx',
-    ]);
-  });
-
   it('no admin page titles itself with a styled div', () => {
     // Every app/admin/hr page rendered its title as
     // `<div style={{ fontSize: 20, fontWeight: 700 }}>`, which is why a sweep for <h1
     // reported all seven as untitled.
-    const offenders = walk('app/admin/hr')
-      .concat(walk('app/admin/sales'))
-      .concat(walk('app/admin/finance'))
-      .filter((rel) => /fontSize: 20, fontWeight: 700/.test(read(rel)))
+    const offenders = walk('app/admin')
+      .filter((rel) => /fontSize: (16|20), fontWeight: 700/.test(read(rel)))
+      .filter((rel) => rel.endsWith('page.tsx'))
+      .filter((rel) => !rendersHeading(rel))
       .sort();
     expect(offenders).toEqual([]);
   });

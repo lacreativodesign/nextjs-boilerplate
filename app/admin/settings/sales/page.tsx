@@ -118,6 +118,11 @@ export default function SalesSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Sales</h1>
+        <p className="page-subtitle mt-2">Lead routing, deal stages, and sales automations.</p>
+      </div>
+
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 
