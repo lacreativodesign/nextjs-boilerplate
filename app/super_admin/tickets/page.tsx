@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 type FixKind = 'data_fix' | 'code_fix' | 'answer' | 'unknown';
 
@@ -204,7 +205,11 @@ export default function SuperAdminTicketsPage() {
           {loading ? (
             <p className="p-5 text-sm text-[var(--text-muted)]">Loading…</p>
           ) : tickets.length === 0 ? (
-            <p className="p-5 text-sm text-[var(--text-muted)]">No tickets.</p>
+            <EmptyState
+              variant="table"
+              title="No tickets"
+              description="Reports raised from the in-app bug button land here."
+            />
           ) : (
             <ul className="divide-y divide-[var(--border-subtle)]">
               {tickets.map((ticket) => {

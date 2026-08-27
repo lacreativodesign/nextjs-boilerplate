@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { InviteUserDialog } from '@/components/users/InviteUserDialog';
 import { UserCard, type UserCardData } from '@/components/users/UserCard';
+import EmptyState from '@/components/ui/EmptyState';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserCardData[]>([]);
@@ -78,7 +79,10 @@ export default function UsersPage() {
       {isLoading ? (
         <div className="text-sm text-ink-muted">Loading users...</div>
       ) : users.length === 0 ? (
-        <div className="text-sm text-ink-muted">No users found.</div>
+        <EmptyState
+          title="No team members yet"
+          description="Invite someone to give them access to this workspace."
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map((user) => (
