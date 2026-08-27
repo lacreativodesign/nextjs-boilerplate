@@ -314,6 +314,13 @@ export default function IntegrationSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Integrations</h1>
+        <p className="page-subtitle mt-2">
+          Connect accounting, email, e-signature, and SMS providers.
+        </p>
+      </div>
+
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 

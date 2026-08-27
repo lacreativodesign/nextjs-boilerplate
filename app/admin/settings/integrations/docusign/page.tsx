@@ -173,8 +173,8 @@ export default function DocusignIntegrationPage() {
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>DocuSign E-Signature</div>
-            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+            <h1 className="page-title">DocuSign</h1>
+            <p className="page-subtitle mt-2">
               Connect DocuSign, upload documents, send for signature, and track completion.
             </p>
           </div>

@@ -142,8 +142,8 @@ export default function QuickBooksIntegrationPage() {
       <section className="card settings-section" style={{ padding: 20, borderRadius: 18 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>QuickBooks Online</div>
-            <p style={{ fontSize: 13, color: 'var(--sidebar-text)' }}>
+            <h1 className="page-title">QuickBooks</h1>
+            <p className="page-subtitle mt-2">
               Two-way accounting sync for invoices, payments, customers, chart of accounts, and tax
               rates.
             </p>

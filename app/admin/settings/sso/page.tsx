@@ -81,6 +81,11 @@ export default function SsoSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">SSO</h1>
+        <p className="page-subtitle mt-2">Single sign-on provider and domain enforcement.</p>
+      </div>
+
       {error ? <SettingsAlert tone="error">{error}</SettingsAlert> : null}
       {success ? <SettingsAlert tone="success">{success}</SettingsAlert> : null}
 

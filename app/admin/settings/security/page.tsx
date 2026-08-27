@@ -82,6 +82,13 @@ export default function SecuritySettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Security</h1>
+        <p className="page-subtitle mt-2">
+          Session policy, password rules, and access restrictions.
+        </p>
+      </div>
+
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 
