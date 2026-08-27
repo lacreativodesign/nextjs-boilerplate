@@ -17,24 +17,25 @@ import PageLoading from '@/components/ui/PageLoading';
  * gave every page an `h1` and a `.page-subtitle`. Without them the heading pops in above
  * content already occupying the space, which is the jump the skeleton exists to prevent.
  *
- * This session covers the nine largest modules — 106 of the 135 pages. Eight smaller
- * ones follow.
+ * DS-27 covered the nine largest modules; DS-28 finishes the remaining eight and
+ * rewrites the three that predated `PageLoading` — `admin`, `finance` and `projects` —
+ * which opened straight into a `SkeletonDashboard` with no title placeholder at all.
+ * All twenty modules now ship one, so the shrinking list becomes a rule.
  */
 
 const exists = (rel: string) => fs.existsSync(path.join(process.cwd(), rel));
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
-const COVERED = [
-  'am',
-  'client',
-  'dashboard',
-  'hr',
-  'production',
-  'reports',
-  'sales',
-  'sales_manager',
-  'super_admin',
-];
+const shellModules = () =>
+  fs
+    .readdirSync(path.join(process.cwd(), 'app'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => {
+      const layout = `app/${name}/layout.tsx`;
+      return exists(layout) && read(layout).includes('<AppShell');
+    })
+    .sort();
 
 describe('DS-27: PageLoading', () => {
   it('renders a title and subtitle placeholder', () => {
@@ -72,38 +73,33 @@ describe('DS-27: PageLoading', () => {
   });
 });
 
-describe('DS-27: route-level coverage', () => {
-  it.each(COVERED)('app/%s has a loading.tsx', (module) => {
-    expect(exists(`app/${module}/loading.tsx`)).toBe(true);
+describe('DS-28: route-level coverage is complete', () => {
+  it('every module rendering AppShell ships a loading state', () => {
+    // The rule, now that the shrinking list has reached zero. A new module without one
+    // leaves the previous route frozen on screen during navigation.
+    const missing = shellModules().filter((name) => !exists(`app/${name}/loading.tsx`));
+    expect(missing).toEqual([]);
   });
 
-  it.each(COVERED)('app/%s/loading.tsx uses the shared component', (module) => {
-    expect(read(`app/${module}/loading.tsx`)).toContain(
-      "import PageLoading from '@/components/ui/PageLoading'",
+  it('all twenty of them use the shared component', () => {
+    const bespoke = shellModules().filter(
+      (name) =>
+        !read(`app/${name}/loading.tsx`).includes(
+          "import PageLoading from '@/components/ui/PageLoading'",
+        ),
     );
+    expect(bespoke).toEqual([]);
   });
 
-  it('the modules still without one are a known, shrinking list', () => {
-    const shellModules = fs
-      .readdirSync(path.join(process.cwd(), 'app'), { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .filter((name) => {
-        const layout = `app/${name}/layout.tsx`;
-        return exists(layout) && read(layout).includes('<AppShell');
-      });
-
-    const missing = shellModules.filter((name) => !exists(`app/${name}/loading.tsx`)).sort();
-    expect(missing).toEqual([
-      'activity',
-      'am_manager',
-      'billing',
-      'clients',
-      'notifications',
-      'production_manager',
-      'settings',
-      'users',
-    ]);
+  it('none of them renders a skeleton without a title placeholder', () => {
+    // app/admin, app/finance and app/projects predated PageLoading and opened straight
+    // into a SkeletonDashboard, so the h1 still popped in above content that had
+    // already arrived — the jump the skeleton exists to prevent.
+    const offenders = shellModules().filter((name) => {
+      const source = read(`app/${name}/loading.tsx`);
+      return source.includes('SkeletonDashboard') || source.includes('TableSkeleton');
+    });
+    expect(offenders).toEqual([]);
   });
 
   it('every loading.tsx still sits beside a real route', () => {
