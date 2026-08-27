@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type InvoiceRecord = {
   id: string;
@@ -293,7 +294,11 @@ export default function ClientBillingPage() {
         ) : error ? (
           <div className="p-4 text-sm text-red-400">{error}</div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="p-4 text-sm text-[var(--text-muted)]">No invoices found.</div>
+          <EmptyState
+            variant="table"
+            title="No invoices yet"
+            description="Invoices appear here once they are issued."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ minWidth: 860 }}>

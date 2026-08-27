@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import EmptyState from '@/components/ui/EmptyState';
 
 type ActivityEvent = {
   id: string;
@@ -110,9 +111,11 @@ export default function SuperAdminActivityPage() {
         ) : error ? (
           <div className="p-6 text-center text-sm text-[var(--text-muted)]">{error}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-6 text-center text-sm text-[var(--text-muted)]">
-            No activity found for this period.
-          </div>
+          <EmptyState
+            variant="table"
+            title="No activity in this period"
+            description="Widen the date range or clear the filters to see more."
+          />
         ) : (
           <div className="divide-y divide-[var(--border-subtle)]">
             {filtered.map((e) => (

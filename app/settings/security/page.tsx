@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 type Session = {
   id: string;
@@ -116,9 +117,12 @@ export default function SettingsSecurityPage() {
         {loading ? (
           <p className="text-sm text-[var(--text-muted)]">Loading sessions...</p>
         ) : sessions.length === 0 ? (
-          <div className="rounded-lg bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
-            No active sessions found. Your current session is always active.
-          </div>
+          <EmptyState
+            variant="table"
+            compact
+            title="No other active sessions"
+            description="Your current session is always active and is not listed here."
+          />
         ) : (
           <div className="space-y-3">
             {sessions.map((s) => (

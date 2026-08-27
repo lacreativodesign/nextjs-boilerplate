@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import type { NotificationCategory } from '@/types/notifications';
+import EmptyState from '@/components/ui/EmptyState';
 
 type NotificationItem = {
   id: string;
@@ -148,7 +149,11 @@ export default function NotificationsPage() {
         {loading ? (
           <div className="p-12 text-center text-[var(--text-muted)]">Loading…</div>
         ) : notifications.length === 0 ? (
-          <div className="p-12 text-center text-[var(--text-muted)]">No notifications</div>
+          <EmptyState
+            variant="table"
+            title="You are all caught up"
+            description="New mentions, approvals and alerts will appear here."
+          />
         ) : (
           <ul className="divide-y divide-[var(--border-subtle)]">
             {notifications.map((n) => (

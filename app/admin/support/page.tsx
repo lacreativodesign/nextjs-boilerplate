@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CreateTicketModal } from '@/components/support/CreateTicketModal';
+import EmptyState from '@/components/ui/EmptyState';
 
 type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -109,8 +110,12 @@ export default function SupportTicketsPage() {
             <tbody className="divide-y divide-slate-100">
               {!loading && tickets.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-[var(--text-muted)]" colSpan={6}>
-                    No support tickets found.
+                  <td colSpan={6}>
+                    <EmptyState
+                      variant="table"
+                      title="No support tickets"
+                      description="Tickets raised by your team will appear here."
+                    />
                   </td>
                 </tr>
               ) : null}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ProductCard } from '@/components/inventory/ProductCard';
 import { CreateProductDialog } from '@/components/inventory/CreateProductDialog';
 import type { Product } from '@/types/inventory';
+import EmptyState from '@/components/ui/EmptyState';
 
 type ProductRecord = Partial<Product> & { id: string };
 
@@ -61,9 +62,10 @@ export default function ProductsPage() {
       {loading ? <p className="text-sm text-ink-muted">Loading products...</p> : null}
 
       {!loading && products.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-8 text-center text-sm text-ink-muted">
-          No products found.
-        </p>
+        <EmptyState
+          title="No products yet"
+          description="Add a product to start tracking stock and pricing."
+        />
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

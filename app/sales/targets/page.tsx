@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 
 type TargetData = {
   userId: string;
@@ -131,9 +132,10 @@ export default function SalesTargetsPage() {
       ) : error ? (
         <div className="card p-6 text-red-400">{error}</div>
       ) : targets.length === 0 ? (
-        <div className="card p-6 text-[var(--text-muted)]">
-          No targets set for {month}. Ask your sales manager to set targets.
-        </div>
+        <EmptyState
+          title={`No targets set for ${month}`}
+          description="Your sales manager sets monthly revenue targets per representative."
+        />
       ) : (
         <div className="space-y-4">
           {targets.map((t, i) => (
