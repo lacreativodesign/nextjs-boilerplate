@@ -7,6 +7,7 @@ import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type FileRecord = {
   id: string;
@@ -182,7 +183,11 @@ export default function ClientFilesPage() {
         ) : error ? (
           <div className="p-4 text-sm text-red-400">{error}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-4 text-sm text-[var(--text-muted)]">No files found.</div>
+          <EmptyState
+            variant="table"
+            title="No files yet"
+            description="Deliverables shared with you will appear here."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ minWidth: 860 }}>
