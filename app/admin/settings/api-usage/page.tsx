@@ -116,8 +116,8 @@ export default function ApiUsageSettingsPage() {
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
 
       <section className="card p-5 rounded-xl settings-section">
-        <h3 className="font-semibold">API Usage Dashboard</h3>
-        <p className="text-sm opacity-70">
+        <h1 className="page-title">API Usage</h1>
+        <p className="page-subtitle mt-2">
           Total API calls: {loading ? 'Loading...' : stats.totalCalls.toLocaleString()}
         </p>
         <UsageCharts endpointStats={stats.endpointStats} realtimePoints={realtimePoints} />

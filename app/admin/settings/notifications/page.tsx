@@ -108,6 +108,13 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Notifications</h1>
+        <p className="page-subtitle mt-2">
+          Which events notify which roles, and through which channel.
+        </p>
+      </div>
+
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 

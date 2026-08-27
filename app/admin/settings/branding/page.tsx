@@ -195,8 +195,8 @@ export default function BrandingSettingsPage() {
       <section className="card p-5 rounded-xl settings-section space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-base">White-label Branding</h3>
-            <p className="text-sm opacity-70">
+            <h1 className="page-title">Branding</h1>
+            <p className="page-subtitle mt-2">
               Manage logo, color palette, domain mapping, and branded email sender.
             </p>
           </div>

@@ -29,7 +29,9 @@ import * as path from 'path';
  * DS-20 starts the same job inside `app/admin`, whose nine sub-modules title from a
  * layout using `<h2 className="section-title">` — leaving those routes with no h1 at
  * all. `clients`, `projects`, `users` and `production` convert in DS-20, `finance` and
- * `reports` in DS-21, `sales` in DS-22 and `hr` in DS-23. One remains: `settings`.
+ * `reports` in DS-21, `sales` in DS-22 and `hr` in DS-23. DS-24 takes the nine
+ * tab-reachable `settings` pages, retiring the last layout-owned title on the platform;
+ * nine deeper settings pages follow.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -180,6 +182,15 @@ describe('DS-15: every page in a converted module names itself', () => {
     ['app/admin/hr/onboarding/page.tsx', 'Onboarding'],
     ['app/admin/hr/performance/page.tsx', 'Performance'],
     ['app/admin/hr/settings/page.tsx', 'Settings'],
+    ['app/admin/settings/page.tsx', 'General'],
+    ['app/admin/settings/ai-workforce/page.tsx', 'AI Workforce'],
+    ['app/admin/settings/api-key/page.tsx', 'API Key'],
+    ['app/admin/settings/api-usage/page.tsx', 'API Usage'],
+    ['app/admin/settings/branding/page.tsx', 'Branding'],
+    ['app/admin/settings/email-delivery/page.tsx', 'Email Delivery'],
+    ['app/admin/settings/email-templates/page.tsx', 'Email Templates'],
+    ['app/admin/settings/finance/page.tsx', 'Finance'],
+    ['app/admin/settings/notifications/page.tsx', 'Notifications'],
   ])('%s titles itself "%s", matching its tab label', (rel, title) => {
     expect(read(rel)).toContain(`<h1 className="page-title">${title}</h1>`);
   });
@@ -278,11 +289,33 @@ describe('DS-15: the remaining modules are a known, shrinking list', () => {
     expect(orphans).toEqual([]);
   });
 
-  it('settings is the last holdout', () => {
+  it('no layout anywhere titles a page', () => {
+    // The last of the nine admin sub-module layouts. Every route in the platform now
+    // takes its name from the page, not from the chrome around it.
     const sectionTitled = walk('app')
       .filter((rel) => rel.endsWith('layout.tsx') && read(rel).includes('className="section-title'))
       .sort();
-    expect(sectionTitled).toEqual(['app/admin/settings/layout.tsx']);
+    expect(sectionTitled).toEqual([]);
+  });
+
+  it('the settings pages still needing a title are a known, shrinking list', () => {
+    const orphans = walk('app/admin/settings')
+      .filter((rel) => rel.endsWith('page.tsx'))
+      .filter((rel) => !rendersNothing(rel))
+      .filter((rel) => !rendersHeading(rel))
+      .map((rel) => rel.split(path.sep).join('/'))
+      .sort();
+    expect(orphans).toEqual([
+      'app/admin/settings/integrations/docusign/page.tsx',
+      'app/admin/settings/integrations/mailchimp/page.tsx',
+      'app/admin/settings/integrations/page.tsx',
+      'app/admin/settings/integrations/quickbooks/page.tsx',
+      'app/admin/settings/integrations/xero/page.tsx',
+      'app/admin/settings/sales/page.tsx',
+      'app/admin/settings/security/page.tsx',
+      'app/admin/settings/sso/page.tsx',
+      'app/admin/settings/workflows/page.tsx',
+    ]);
   });
 
   it('no admin page titles itself with a styled div', () => {

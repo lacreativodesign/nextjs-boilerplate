@@ -117,6 +117,11 @@ export default function ApiKeySettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">API Key</h1>
+        <p className="page-subtitle mt-2">Keys for posting leads and events into this workspace.</p>
+      </div>
+
       {error ? <SettingsAlert tone="error">{error}</SettingsAlert> : null}
       {success ? <SettingsAlert tone="success">{success}</SettingsAlert> : null}
 

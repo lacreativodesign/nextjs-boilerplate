@@ -135,6 +135,13 @@ export default function AIWorkforceSettingsPage() {
 
   return (
     <div className="mt-6 space-y-6">
+      <div>
+        <h1 className="page-title">AI Workforce</h1>
+        <p className="page-subtitle mt-2">
+          Bring your own Anthropic key and choose which agents can run.
+        </p>
+      </div>
+
       <div className="card p-6">
         <div className="section-title">AI Workforce — API Keys</div>
         <p className="section-subtitle mt-1">
