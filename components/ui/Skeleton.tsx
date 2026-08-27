@@ -209,16 +209,56 @@ export function SkeletonDashboard({ className = '' }: SkeletonDashboardProps) {
   );
 }
 
-export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
+type TableSkeletonProps = {
+  rows?: number;
+  columns?: number;
+  /**
+   * Off by default: three of the five consumers render inside a `<td colSpan>`, where
+   * the real table header is already on screen and a second one would read as a
+   * duplicate. Standalone consumers — a card, a route-level loading.tsx — opt in.
+   */
+  showHeader?: boolean;
+  rowHeightClassName?: string;
+  className?: string;
+};
+
+/**
+ * DS-26. Previously this laid cells out with `flex-1`, so the placeholder columns did
+ * not line up with the real table's columns and the row visibly re-flowed the moment
+ * data arrived. A CSS grid of equal fractions matches what a table renders. It is also
+ * `aria-hidden`, since a screen reader announcing eight empty cells is noise.
+ */
+export function TableSkeleton({
+  rows = 5,
+  columns = 4,
+  showHeader = false,
+  rowHeightClassName = 'h-12',
+  className = '',
+}: TableSkeletonProps) {
+  const gridStyle = { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
+
   return (
-    <div className="space-y-2">
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex gap-4">
-          {Array.from({ length: columns }).map((_, j) => (
-            <Skeleton key={j} className="h-12 flex-1" />
+    <div className={`w-full space-y-3 ${className}`.trim()} aria-hidden="true">
+      {showHeader ? (
+        <div className="grid gap-3" style={gridStyle}>
+          {Array.from({ length: columns }).map((_, index) => (
+            <Skeleton key={`head-${index}`} className="h-4 w-full" />
           ))}
         </div>
-      ))}
+      ) : null}
+
+      <div className="space-y-2">
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div key={`row-${rowIndex}`} className="grid gap-3" style={gridStyle}>
+            {Array.from({ length: columns }).map((_, colIndex) => (
+              <Skeleton
+                key={`cell-${rowIndex}-${colIndex}`}
+                className={`${rowHeightClassName} w-full`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

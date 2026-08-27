@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import MasterSelect from '@/components/ui/MasterSelect';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import SalesDrawer from '@/components/sales/SalesDrawer';
 import { formatDate, formatDateTime, formatUsd } from '@/components/finance/financeUtils';
-import TableSkeleton from '@/components/ui/skeleton/TableSkeleton';
 import { toastError } from '@/lib/toast';
 import { useOptimisticUpdate } from '@/lib/hooks/useOptimisticUpdate';
 import { PIPELINE_STAGES, toInputDate } from '@/lib/sales/utils';
