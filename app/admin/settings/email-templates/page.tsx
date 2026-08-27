@@ -236,6 +236,13 @@ export default function EmailTemplatesSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Email Templates</h1>
+        <p className="page-subtitle mt-2">
+          Customise the transactional emails your workspace sends.
+        </p>
+      </div>
+
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 

@@ -134,6 +134,11 @@ export default function FinanceSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Finance</h1>
+        <p className="page-subtitle mt-2">Currency, tax defaults, and invoice numbering.</p>
+      </div>
+
       {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
       {success && <SettingsAlert tone="success">{success}</SettingsAlert>}
 

@@ -117,8 +117,8 @@ export default function AdminSettingsPage() {
       <section className="card p-5 rounded-xl settings-section">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="font-semibold text-base">General System Settings</h3>
-            <p className="text-sm opacity-70">Global defaults used across the ERP.</p>
+            <h1 className="page-title">General</h1>
+            <p className="page-subtitle mt-2">Global defaults used across the ERP.</p>
           </div>
 
           <button className="btn subtle rounded-full" onClick={handleSave} disabled={disabled}>

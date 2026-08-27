@@ -29,13 +29,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <RequireAuth allowed={['admin', 'super_admin']}>
       <div className="w-full">
-        <div className="mb-4">
-          <h2 className="section-title mb-1">Admin Settings</h2>
-          <p className="section-subtitle">
-            Configure platform-wide settings, automation, and security policies.
-          </p>
-        </div>
-
         <div className="tabs-bar">
           {tabs.map((t) => {
             const active = pathname === t.path;

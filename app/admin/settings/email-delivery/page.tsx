@@ -113,6 +113,13 @@ export default function EmailDeliverySettingsPage() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="page-title">Email Delivery</h1>
+        <p className="page-subtitle mt-2">
+          Sender identity, domain verification, and delivery provider.
+        </p>
+      </div>
+
       {error ? <SettingsAlert tone="error">{error}</SettingsAlert> : null}
       {success ? <SettingsAlert tone="success">{success}</SettingsAlert> : null}
 
