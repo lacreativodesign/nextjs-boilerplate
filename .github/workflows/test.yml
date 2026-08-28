@@ -70,7 +70,13 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    if: ${{ secrets.SONAR_TOKEN != '' }}
+    # `secrets` is not one of the contexts GitHub allows in a job-level `if:` (only
+    # github, needs, vars and inputs are), so this rejected the whole workflow at parse
+    # time and NO job ran — including `quality`. The gate moves to the steps that need
+    # the token, where `env` IS a valid context; the job now starts and no-ops when
+    # SONAR_TOKEN is unset.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,10 +91,11 @@ jobs:
         run: npm ci
 
       - name: Test coverage
+        if: env.SONAR_TOKEN != ''
         run: npm test
 
       - name: SonarQube Scan
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v2
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
