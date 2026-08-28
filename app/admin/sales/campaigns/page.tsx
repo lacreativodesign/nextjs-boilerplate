@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatUsd } from '@/components/finance/financeUtils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const toPercent = (value: number) => `${Number(value || 0).toFixed(1)}%`;
 
@@ -122,8 +123,12 @@ export default function SalesCampaignsPage() {
                 </tr>
               ) : filteredCampaigns.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 24, textAlign: 'center' }}>
-                    No campaigns found.
+                  <td colSpan={6}>
+                    <EmptyState
+                      variant="table"
+                      title="No campaigns yet"
+                      description="Campaign performance appears here once one is running."
+                    />
                   </td>
                 </tr>
               ) : (

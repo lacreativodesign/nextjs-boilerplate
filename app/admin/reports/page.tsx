@@ -6,6 +6,7 @@ import MasterSelect from '@/components/ui/MasterSelect';
 import { CardShell, ErrorCard, KpiCard, MiniBarChart } from './_components/ReportsUI';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type OverviewResponse = {
   kpis: {
@@ -287,8 +288,12 @@ export default function ReportsOverviewPage() {
                   </tr>
                 ) : filteredActivity.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="table-empty">
-                      No activity found.
+                    <td colSpan={3}>
+                      <EmptyState
+                        variant="table"
+                        title="No activity in this period"
+                        description="Widen the date range or clear the filters to see more."
+                      />
                     </td>
                   </tr>
                 ) : (

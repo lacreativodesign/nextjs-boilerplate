@@ -12,6 +12,7 @@ import {
 } from '../_components/ReportsUI';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type ProductionResponse = {
   workloadByProductionOwner: Array<{
@@ -330,8 +331,12 @@ export default function ProductionReportsPage() {
                   </tr>
                 ) : sortedProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: 40 }}>
-                      No stuck projects found.
+                    <td colSpan={6}>
+                      <EmptyState
+                        variant="table"
+                        title="Nothing stuck"
+                        description="No project has sat in the same stage long enough to flag."
+                      />
                     </td>
                   </tr>
                 ) : (

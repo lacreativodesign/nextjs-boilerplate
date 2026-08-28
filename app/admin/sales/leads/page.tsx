@@ -8,6 +8,7 @@ import { LEAD_STAGES } from '@/lib/sales/utils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STAGE_OPTIONS = [
   { label: 'All Stages', value: '' },
@@ -326,8 +327,12 @@ export default function SalesLeadsPage() {
                 </tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: 24, textAlign: 'center' }}>
-                    No leads found.
+                  <td colSpan={8}>
+                    <EmptyState
+                      variant="table"
+                      title="No leads yet"
+                      description="Leads captured from your website and campaigns land here."
+                    />
                   </td>
                 </tr>
               ) : (
