@@ -54,6 +54,12 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          # DS-33: `next build` exhausts the runner's ~2083MB V8 old-space and aborts
+          # with exit 134. Latent for as long as the workflow was unschedulable, so it
+          # had never been observed. Verified: 2048 reproduces the OOM, 4096 builds
+          # clean. Nothing below this line ran until this was raised.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Bundle size check
         run: npm run bundle:check
