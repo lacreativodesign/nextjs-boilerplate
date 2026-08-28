@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api/client';
 import { showToast } from '@/lib/utils/toast';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = [
   { label: 'All Status', value: 'all' },
@@ -508,8 +509,12 @@ export default function HrOnboardingPage() {
                     </tr>
                   ) : filteredTemplates.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
-                        No templates yet.
+                      <td colSpan={6}>
+                        <EmptyState
+                          variant="table"
+                          title="No onboarding templates"
+                          description="Create one to give every new starter the same checklist."
+                        />
                       </td>
                     </tr>
                   ) : (

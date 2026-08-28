@@ -12,6 +12,7 @@ import { apiFetch } from '@/lib/api/client';
 import { showToast } from '@/lib/utils/toast';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = [
   { label: 'All Status', value: 'all' },
@@ -447,8 +448,12 @@ export default function HrEmployeesPage() {
                 </tr>
               ) : sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: 24 }}>
-                    No employees found.
+                  <td colSpan={9}>
+                    <EmptyState
+                      variant="table"
+                      title="No employees yet"
+                      description="Add someone to start tracking role, department and payroll."
+                    />
                   </td>
                 </tr>
               ) : (

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { formatDate, formatUsd, toInputDate } from '@/components/finance/financeUtils';
 import { Label } from '@/components/ui/label';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STAGE_OPTIONS = [
   'New Lead',
@@ -274,7 +275,11 @@ export default function SalesManagerDealsPage() {
         {loading ? (
           <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>Loading deals...</p>
         ) : sortedDeals.length === 0 ? (
-          <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>No deals found.</p>
+          <EmptyState
+            variant="table"
+            title="No deals yet"
+            description="Deals opened by your team appear here."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatUsd, toInputMonth } from '@/components/finance/financeUtils';
+import EmptyState from '@/components/ui/EmptyState';
 
 type TargetRow = {
   uid: string;
@@ -134,9 +135,11 @@ export default function SalesManagerTargetsPage() {
         {loading ? (
           <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>Loading targets...</p>
         ) : targets.length === 0 ? (
-          <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>
-            No targets configured for this month.
-          </p>
+          <EmptyState
+            variant="table"
+            title="No targets for this month"
+            description="Set a monthly revenue target for each representative."
+          />
         ) : (
           <div style={{ display: 'grid', gap: 12 }}>
             {targets.map((row) => {

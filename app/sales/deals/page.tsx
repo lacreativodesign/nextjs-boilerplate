@@ -7,6 +7,7 @@ import { TableSkeleton } from '@/components/ui/Skeleton';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = ['All', 'Open', 'Won', 'Lost'];
 
@@ -383,8 +384,12 @@ export default function SalesDealsPage() {
                   </tr>
                 ) : sortedDeals.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: 24, textAlign: 'center' }}>
-                      No deals found.
+                    <td colSpan={7}>
+                      <EmptyState
+                        variant="table"
+                        title="No deals yet"
+                        description="Convert a lead to open your first deal."
+                      />
                     </td>
                   </tr>
                 ) : (

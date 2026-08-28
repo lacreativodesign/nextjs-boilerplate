@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api/client';
 import { formatDate } from '@/components/finance/financeUtils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = [
   { value: 'All', label: 'All statuses' },
@@ -370,7 +371,11 @@ export default function SalesManagerLeadsPage() {
         ) : error ? (
           <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
         ) : filtered.length === 0 ? (
-          <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>No leads found.</p>
+          <EmptyState
+            variant="table"
+            title="No leads yet"
+            description="Leads assigned to your team appear here."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table
