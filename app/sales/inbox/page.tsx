@@ -5,6 +5,7 @@ import SalesDrawer from '@/components/sales/SalesDrawer';
 import { formatDateTime } from '@/components/finance/financeUtils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type EmailRecord = {
   id: string;
@@ -151,8 +152,12 @@ export default function SalesInboxPage() {
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: 'center' }}>
-                      No emails found.
+                    <td colSpan={5}>
+                      <EmptyState
+                        variant="table"
+                        title="No enquiries yet"
+                        description="Inbound leads from your website land in this inbox."
+                      />
                     </td>
                   </tr>
                 ) : (

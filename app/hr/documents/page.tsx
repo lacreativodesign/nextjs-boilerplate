@@ -10,6 +10,7 @@ import { apiFetch } from '@/lib/api/client';
 import { showToast } from '@/lib/utils/toast';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const DOC_TYPES = [
   { label: 'Contract', value: 'Contract' },
@@ -337,8 +338,12 @@ export default function HrDocumentsPage() {
                 </tr>
               ) : sortedDocuments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
-                    No documents found.
+                  <td colSpan={6}>
+                    <EmptyState
+                      variant="table"
+                      title="No documents yet"
+                      description="Upload contracts, policies and employee records here."
+                    />
                   </td>
                 </tr>
               ) : (

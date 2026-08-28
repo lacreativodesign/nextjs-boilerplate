@@ -5,6 +5,7 @@ import MasterSelect from '@/components/ui/MasterSelect';
 import { formatDateTime } from '@/components/finance/financeUtils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const TYPE_OPTIONS = [
   { label: 'All Types', value: 'all' },
@@ -201,8 +202,12 @@ export default function HrActivityPage() {
                 </tr>
               ) : sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: 24 }}>
-                    No activity found.
+                  <td colSpan={4}>
+                    <EmptyState
+                      variant="table"
+                      title="No HR activity yet"
+                      description="Leave, onboarding and record changes will appear here."
+                    />
                   </td>
                 </tr>
               ) : (

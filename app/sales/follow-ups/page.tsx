@@ -7,6 +7,7 @@ import { FOLLOW_UP_STATUS, FOLLOW_UP_TYPES, isOverdue, toInputDateTime } from '@
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const TYPE_OPTIONS = ['All', ...FOLLOW_UP_TYPES];
 const STATUS_OPTIONS = ['All', ...FOLLOW_UP_STATUS];
@@ -365,8 +366,12 @@ export default function SalesFollowUpsPage() {
                   </tr>
                 ) : sortedFollowUps.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: 'center' }}>
-                      No follow-ups found.
+                    <td colSpan={5}>
+                      <EmptyState
+                        variant="table"
+                        title="No follow-ups scheduled"
+                        description="Calls, emails and meetings you schedule will show up here."
+                      />
                     </td>
                   </tr>
                 ) : (

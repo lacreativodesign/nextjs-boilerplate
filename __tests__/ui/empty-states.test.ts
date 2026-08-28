@@ -7,8 +7,8 @@ import * as path from 'path';
  * Of the files that check for emptiness at all, thirteen used `<EmptyState>` and
  * sixty-three printed a bare sentence — "No files found.", "No tickets.", "No
  * notifications" — in `text-[var(--text-muted)]`, at whatever padding that page
- * happened to use. Twelve convert here; the remaining 51 are pinned by name so the
- * count only goes down.
+ * happened to use. Twelve converted in DS-29 and twelve more in DS-30; the remaining 39
+ * are pinned by name so the count only goes down.
  *
  * The distinction that matters is where the branch renders. Most sit outside the table,
  * replacing it wholesale, so `variant="table"` from DS-5 drops straight in.
@@ -35,6 +35,7 @@ const walk = (dir: string): string[] => {
 };
 
 const CONVERTED = [
+  // DS-29
   'app/client/billing/page.tsx',
   'app/client/change-requests/page.tsx',
   'app/client/files/page.tsx',
@@ -47,6 +48,32 @@ const CONVERTED = [
   'app/admin/support/page.tsx',
   'app/sales/targets/page.tsx',
   'app/settings/security/page.tsx',
+  // DS-30
+  'app/hr/activity/page.tsx',
+  'app/hr/documents/page.tsx',
+  'app/hr/employees/page.tsx',
+  'app/hr/onboarding/page.tsx',
+  'app/sales/campaigns/page.tsx',
+  'app/sales/deals/page.tsx',
+  'app/sales/follow-ups/page.tsx',
+  'app/sales/inbox/page.tsx',
+  'app/sales_manager/deals/page.tsx',
+  'app/sales_manager/leads/page.tsx',
+  'app/sales_manager/targets/page.tsx',
+  'app/sales_manager/team/page.tsx',
+];
+
+/** The DS-30 branches that sit inside a <tbody> and therefore keep a <td colSpan>. */
+const IN_TBODY: Array<[string, number]> = [
+  ['app/admin/support/page.tsx', 6],
+  ['app/hr/activity/page.tsx', 4],
+  ['app/hr/documents/page.tsx', 6],
+  ['app/hr/employees/page.tsx', 9],
+  ['app/hr/onboarding/page.tsx', 6],
+  ['app/sales/campaigns/page.tsx', 5],
+  ['app/sales/deals/page.tsx', 7],
+  ['app/sales/follow-ups/page.tsx', 5],
+  ['app/sales/inbox/page.tsx', 5],
 ];
 
 describe('DS-29: the converted pages use the shared empty state', () => {
@@ -72,16 +99,37 @@ describe('DS-29: the converted pages use the shared empty state', () => {
     }
   });
 
-  it('the one inside a tbody keeps its row wrapper', () => {
-    const source = read('app/admin/support/page.tsx');
-    const branch = source.slice(source.indexOf('tickets.length === 0'));
-    expect(branch.slice(0, 400)).toContain('<td colSpan={6}>');
-    expect(branch.slice(0, 400)).toContain('variant="table"');
+  it.each(IN_TBODY)('%s keeps its <td colSpan={%i}> wrapper', (rel, colSpan) => {
+    // An EmptyState rendered as a direct child of <tbody> is invalid markup and the
+    // browser hoists it out of the table entirely.
+    const source = read(rel);
+    const branch = source.slice(source.indexOf('.length === 0'));
+    expect(branch.slice(0, 500)).toContain(`<td colSpan={${colSpan}}>`);
+    expect(branch.slice(0, 500)).toContain('variant="table"');
+  });
+
+  it('the sales_manager pages no longer paint from a hardcoded rgba', () => {
+    // All four used `color: 'rgba(15,23,42,0.70)'` — a fixed near-black with no
+    // dark-mode counterpart, so the message was invisible on a dark surface.
+    for (const rel of [
+      'app/sales_manager/deals/page.tsx',
+      'app/sales_manager/leads/page.tsx',
+      'app/sales_manager/targets/page.tsx',
+      'app/sales_manager/team/page.tsx',
+    ]) {
+      const source = read(rel);
+      const start = source.indexOf('.length === 0');
+      const branch = source.slice(start, start + 600);
+      expect({ rel, hardcoded: branch.includes('rgba(15,23,42') }).toEqual({
+        rel,
+        hardcoded: false,
+      });
+    }
   });
 });
 
 describe('DS-29: the remaining bare-text pages are a known, shrinking list', () => {
-  it('51 are left', () => {
+  it('39 are left', () => {
     const bare = walk('app')
       .filter((rel) => !CONVERTED.includes(rel.split(path.sep).join('/')))
       .filter((rel) => {
@@ -127,21 +175,9 @@ describe('DS-29: the remaining bare-text pages are a known, shrinking list', () 
       'app/billing/terminal/BillingTerminalContent.tsx',
       'app/finance/performance/page.tsx',
       'app/finance/tax/page.tsx',
-      'app/hr/activity/page.tsx',
-      'app/hr/documents/page.tsx',
-      'app/hr/employees/page.tsx',
-      'app/hr/onboarding/page.tsx',
       'app/production/activity/page.tsx',
       'app/production/queue/page.tsx',
-      'app/sales/campaigns/page.tsx',
-      'app/sales/deals/page.tsx',
-      'app/sales/follow-ups/page.tsx',
-      'app/sales/inbox/page.tsx',
       'app/sales/leads/[id]/page.tsx',
-      'app/sales_manager/deals/page.tsx',
-      'app/sales_manager/leads/page.tsx',
-      'app/sales_manager/targets/page.tsx',
-      'app/sales_manager/team/page.tsx',
       'app/super_admin/tax/page.tsx',
     ]);
   });

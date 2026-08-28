@@ -6,6 +6,7 @@ import { formatDate } from '@/components/finance/financeUtils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = ['All', 'Active', 'Paused', 'Completed'];
 
@@ -286,8 +287,12 @@ export default function SalesCampaignsPage() {
                   </tr>
                 ) : sortedCampaigns.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: 'center' }}>
-                      No campaigns found.
+                    <td colSpan={5}>
+                      <EmptyState
+                        variant="table"
+                        title="No campaigns yet"
+                        description="Campaign performance appears here once one is running."
+                      />
                     </td>
                   </tr>
                 ) : (

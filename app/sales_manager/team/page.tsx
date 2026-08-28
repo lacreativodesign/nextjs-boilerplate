@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatUsd } from '@/components/finance/financeUtils';
+import EmptyState from '@/components/ui/EmptyState';
 
 type TeamMember = {
   uid: string;
@@ -108,7 +109,11 @@ export default function SalesManagerTeamPage() {
         {loading ? (
           <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>Loading team...</p>
         ) : sortedRows.length === 0 ? (
-          <p style={{ fontSize: 14, color: 'rgba(15,23,42,0.70)' }}>No sales reps found.</p>
+          <EmptyState
+            variant="table"
+            title="No sales reps yet"
+            description="Assign reps to your team to see their performance."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table
