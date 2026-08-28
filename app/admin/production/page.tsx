@@ -5,6 +5,7 @@ import ProductionProjectDrawer, {
   type ProductionProject,
   type ProductionUserOption,
 } from '@/components/production/ProductionProjectDrawer';
+import EmptyState from '@/components/ui/EmptyState';
 
 const ACTIVE_STAGES = ['Draft', 'Review', 'Revisions', 'Final'] as const;
 
@@ -201,8 +202,12 @@ export default function ProductionOverviewPage() {
                   <tbody>
                     {queueRows.length === 0 ? (
                       <tr>
-                        <td style={{ ...cellStyle, textAlign: 'left' }} colSpan={6}>
-                          No production projects yet.
+                        <td colSpan={6}>
+                          <EmptyState
+                            variant="table"
+                            title="No production projects yet"
+                            description="Projects move here once they are approved for delivery."
+                          />
                         </td>
                       </tr>
                     ) : (

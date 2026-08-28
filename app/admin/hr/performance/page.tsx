@@ -5,6 +5,7 @@ import MasterSelect from '@/components/ui/MasterSelect';
 import { formatDate } from '@/components/finance/financeUtils';
 import { apiFetch } from '@/lib/api/client';
 import { toastError } from '@/lib/toast';
+import EmptyState from '@/components/ui/EmptyState';
 
 const RATING_OPTIONS = [
   { label: 'All Ratings', value: 'all' },
@@ -207,8 +208,12 @@ export default function HrPerformancePage() {
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
-                    No performance reviews yet.
+                  <td colSpan={6}>
+                    <EmptyState
+                      variant="table"
+                      title="No performance reviews yet"
+                      description="Reviews appear here once a cycle is recorded."
+                    />
                   </td>
                 </tr>
               ) : (

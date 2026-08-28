@@ -5,6 +5,7 @@ import { formatDate } from '@/components/finance/financeUtils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -194,7 +195,11 @@ export default function AdminLeadsPage() {
           ) : error ? (
             <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
           ) : filtered.length === 0 ? (
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No leads found.</p>
+            <EmptyState
+              variant="table"
+              title="No leads yet"
+              description="Leads captured from your website and campaigns land here."
+            />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table

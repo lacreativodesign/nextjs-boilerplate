@@ -8,6 +8,7 @@ import ProductionProjectDrawer, {
 } from '@/components/production/ProductionProjectDrawer';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 const ACTIVE_STAGES = ['Draft', 'Review', 'Revisions', 'Final'] as const;
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'] as const;
@@ -412,8 +413,12 @@ export default function ProductionQueuePage() {
                 <tbody>
                   {sorted.length === 0 ? (
                     <tr>
-                      <td style={{ ...cellStyle, textAlign: 'left' }} colSpan={10}>
-                        No projects match these filters.
+                      <td colSpan={10}>
+                        <EmptyState
+                          variant="table"
+                          title="No projects match these filters"
+                          description="Clear a filter or widen the date range to see more."
+                        />
                       </td>
                     </tr>
                   ) : (

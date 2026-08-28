@@ -9,6 +9,7 @@ import MasterSelect from '@/components/ui/MasterSelect';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { formatDate } from '@/components/finance/financeUtils';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const DOC_TYPES = [
   { label: 'Contract', value: 'Contract' },
@@ -264,8 +265,12 @@ export default function HrDocumentsPage() {
                 </tr>
               ) : filteredDocuments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
-                    No documents found.
+                  <td colSpan={6}>
+                    <EmptyState
+                      variant="table"
+                      title="No documents yet"
+                      description="Upload contracts, policies and employee records here."
+                    />
                   </td>
                 </tr>
               ) : (

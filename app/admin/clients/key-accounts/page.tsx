@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type SalesStage =
   | 'New Lead'
@@ -278,7 +279,11 @@ export default function KeyAccountsPage() {
           ) : error ? (
             <p style={{ fontSize: 14, color: 'var(--danger-text-soft)' }}>{error}</p>
           ) : keyAccountsSorted.length === 0 ? (
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No key accounts found.</p>
+            <EmptyState
+              variant="table"
+              title="No key accounts yet"
+              description="Flag a client as a key account to track it here."
+            />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table
