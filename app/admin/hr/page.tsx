@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatDateTime, useInterval } from '@/components/finance/financeUtils';
+import EmptyState from '@/components/ui/EmptyState';
 
 type HrOverview = {
   kpis: {
@@ -154,8 +155,12 @@ export default function HrOverviewPage() {
                   </tr>
                 ) : overview.recentActivity.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', padding: 24 }}>
-                      No HR events yet.
+                    <td colSpan={3}>
+                      <EmptyState
+                        variant="table"
+                        title="No HR events yet"
+                        description="Leave requests and onboarding steps will show up here."
+                      />
                     </td>
                   </tr>
                 ) : (

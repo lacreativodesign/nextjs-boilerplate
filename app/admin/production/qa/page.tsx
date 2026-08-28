@@ -8,6 +8,7 @@ import ProductionProjectDrawer, {
 } from '@/components/production/ProductionProjectDrawer';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type QueuePayload = {
   ok: boolean;
@@ -255,8 +256,12 @@ export default function ProductionQAPage() {
                 <tbody>
                   {finalProjects.length === 0 ? (
                     <tr>
-                      <td style={{ ...cellStyle, textAlign: 'left' }} colSpan={6}>
-                        No projects ready for QA.
+                      <td colSpan={6}>
+                        <EmptyState
+                          variant="table"
+                          title="Nothing waiting on QA"
+                          description="Projects appear here once production marks them complete."
+                        />
                       </td>
                     </tr>
                   ) : (

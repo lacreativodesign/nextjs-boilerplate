@@ -6,6 +6,7 @@ import { formatDate } from '@/components/finance/financeUtils';
 import { INTERNAL_ROLE_OPTIONS } from '@/lib/userOptions';
 import { apiFetch } from '@/lib/api/client';
 import { toastError } from '@/lib/toast';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = [
   { label: 'All Status', value: 'all' },
@@ -404,7 +405,11 @@ export default function HrOnboardingPage() {
             {loading ? (
               <div>Loading templates…</div>
             ) : templates.length === 0 ? (
-              <div style={{ color: 'var(--sidebar-text)' }}>No templates created yet.</div>
+              <EmptyState
+                variant="table"
+                title="No onboarding templates"
+                description="Create one to give every new starter the same checklist."
+              />
             ) : (
               <div className="space-y-3">
                 {templates.map((template) => (

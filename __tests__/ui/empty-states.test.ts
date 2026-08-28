@@ -7,8 +7,8 @@ import * as path from 'path';
  * Of the files that check for emptiness at all, thirteen used `<EmptyState>` and
  * sixty-three printed a bare sentence — "No files found.", "No tickets.", "No
  * notifications" — in `text-[var(--text-muted)]`, at whatever padding that page
- * happened to use. Twelve converted in DS-29 and twelve more in DS-30; the remaining 39
- * are pinned by name so the count only goes down.
+ * happened to use. Twelve converted in DS-29, twelve in DS-30 and eleven in DS-31;
+ * the remaining 28 are pinned by name so the count only goes down.
  *
  * The distinction that matters is where the branch renders. Most sit outside the table,
  * replacing it wholesale, so `variant="table"` from DS-5 drops straight in.
@@ -61,6 +61,18 @@ const CONVERTED = [
   'app/sales_manager/leads/page.tsx',
   'app/sales_manager/targets/page.tsx',
   'app/sales_manager/team/page.tsx',
+  // DS-31
+  'app/admin/clients/key-accounts/page.tsx',
+  'app/admin/hr/activity/page.tsx',
+  'app/admin/hr/documents/page.tsx',
+  'app/admin/hr/employees/page.tsx',
+  'app/admin/hr/onboarding/page.tsx',
+  'app/admin/hr/page.tsx',
+  'app/admin/hr/performance/page.tsx',
+  'app/admin/leads/page.tsx',
+  'app/admin/production/page.tsx',
+  'app/admin/production/qa/page.tsx',
+  'app/admin/production/queue/page.tsx',
 ];
 
 /** The DS-30 branches that sit inside a <tbody> and therefore keep a <td colSpan>. */
@@ -74,6 +86,14 @@ const IN_TBODY: Array<[string, number]> = [
   ['app/sales/deals/page.tsx', 7],
   ['app/sales/follow-ups/page.tsx', 5],
   ['app/sales/inbox/page.tsx', 5],
+  ['app/admin/hr/activity/page.tsx', 4],
+  ['app/admin/hr/documents/page.tsx', 6],
+  ['app/admin/hr/employees/page.tsx', 9],
+  ['app/admin/hr/page.tsx', 3],
+  ['app/admin/hr/performance/page.tsx', 6],
+  ['app/admin/production/page.tsx', 6],
+  ['app/admin/production/qa/page.tsx', 6],
+  ['app/admin/production/queue/page.tsx', 10],
 ];
 
 describe('DS-29: the converted pages use the shared empty state', () => {
@@ -108,6 +128,19 @@ describe('DS-29: the converted pages use the shared empty state', () => {
     expect(branch.slice(0, 500)).toContain('variant="table"');
   });
 
+  it('no converted empty state still carries a hand-tuned cell style', () => {
+    // The three app/admin/production tables spread `...cellStyle` onto the empty cell,
+    // which set a border and 14px padding around what is now a centred EmptyState.
+    for (const [rel] of IN_TBODY) {
+      const source = read(rel);
+      const start = source.indexOf('.length === 0');
+      // Stop at the closing </tr> — past it are the real data rows, which legitimately
+      // still carry their own cell styles.
+      const branch = source.slice(start, source.indexOf('</tr>', start));
+      expect({ rel, styled: /<td[^>]*style=\{/.test(branch) }).toEqual({ rel, styled: false });
+    }
+  });
+
   it('the sales_manager pages no longer paint from a hardcoded rgba', () => {
     // All four used `color: 'rgba(15,23,42,0.70)'` — a fixed near-black with no
     // dark-mode counterpart, so the message was invisible on a dark surface.
@@ -129,7 +162,7 @@ describe('DS-29: the converted pages use the shared empty state', () => {
 });
 
 describe('DS-29: the remaining bare-text pages are a known, shrinking list', () => {
-  it('39 are left', () => {
+  it('28 are left', () => {
     const bare = walk('app')
       .filter((rel) => !CONVERTED.includes(rel.split(path.sep).join('/')))
       .filter((rel) => {
@@ -140,22 +173,11 @@ describe('DS-29: the remaining bare-text pages are a known, shrinking list', () 
       .map((rel) => rel.split(path.sep).join('/'))
       .sort();
     expect(bare).toEqual([
-      'app/admin/clients/key-accounts/page.tsx',
       'app/admin/clients/segments/page.tsx',
       'app/admin/finance/invoices/page.tsx',
       'app/admin/finance/page.tsx',
       'app/admin/finance/payments/page.tsx',
       'app/admin/finance/payroll/page.tsx',
-      'app/admin/hr/activity/page.tsx',
-      'app/admin/hr/documents/page.tsx',
-      'app/admin/hr/employees/page.tsx',
-      'app/admin/hr/onboarding/page.tsx',
-      'app/admin/hr/page.tsx',
-      'app/admin/hr/performance/page.tsx',
-      'app/admin/leads/page.tsx',
-      'app/admin/production/page.tsx',
-      'app/admin/production/qa/page.tsx',
-      'app/admin/production/queue/page.tsx',
       'app/admin/projects/change-requests/page.tsx',
       'app/admin/projects/files/page.tsx',
       'app/admin/projects/pipeline/page.tsx',
