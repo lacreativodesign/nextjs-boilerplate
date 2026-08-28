@@ -13,6 +13,7 @@ import {
 import { CurrencyConverter } from '@/components/currency/CurrencyConverter';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type RevenueResponse = {
   revenueByMonth: Array<{ label: string; revenueUsd: number }>;
@@ -376,8 +377,12 @@ export default function RevenueReportsPage() {
                   </tr>
                 ) : sortedInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: 40 }}>
-                      No outstanding invoices found.
+                    <td colSpan={5}>
+                      <EmptyState
+                        variant="table"
+                        title="Nothing outstanding"
+                        description="Every invoice in this period has been collected."
+                      />
                     </td>
                   </tr>
                 ) : (

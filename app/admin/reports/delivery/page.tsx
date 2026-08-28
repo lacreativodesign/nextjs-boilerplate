@@ -12,6 +12,7 @@ import {
 } from '../_components/ReportsUI';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type DeliveryResponse = {
   projectsByStage: Array<{ stage: string; count: number }>;
@@ -386,8 +387,12 @@ export default function DeliveryReportsPage() {
                   </tr>
                 ) : sortedProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: 40 }}>
-                      No at-risk projects found.
+                    <td colSpan={6}>
+                      <EmptyState
+                        variant="table"
+                        title="Nothing at risk"
+                        description="Every project in this period is tracking to its delivery date."
+                      />
                     </td>
                   </tr>
                 ) : (

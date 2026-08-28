@@ -7,8 +7,8 @@ import * as path from 'path';
  * Of the files that check for emptiness at all, thirteen used `<EmptyState>` and
  * sixty-three printed a bare sentence — "No files found.", "No tickets.", "No
  * notifications" — in `text-[var(--text-muted)]`, at whatever padding that page
- * happened to use. Twelve converted in DS-29, twelve in DS-30 and eleven in DS-31;
- * the remaining 28 are pinned by name so the count only goes down.
+ * happened to use. Twelve converted in DS-29, twelve in DS-30, eleven in DS-31 and
+ * nine in DS-32; the remaining 19 are pinned by name so the count only goes down.
  *
  * The distinction that matters is where the branch renders. Most sit outside the table,
  * replacing it wholesale, so `variant="table"` from DS-5 drops straight in.
@@ -73,6 +73,16 @@ const CONVERTED = [
   'app/admin/production/page.tsx',
   'app/admin/production/qa/page.tsx',
   'app/admin/production/queue/page.tsx',
+  // DS-32
+  'app/admin/reports/clients/page.tsx',
+  'app/admin/reports/delivery/page.tsx',
+  'app/admin/reports/page.tsx',
+  'app/admin/reports/production/page.tsx',
+  'app/admin/reports/revenue/page.tsx',
+  'app/admin/sales/campaigns/page.tsx',
+  'app/admin/sales/deals/page.tsx',
+  'app/admin/sales/follow-ups/page.tsx',
+  'app/admin/sales/leads/page.tsx',
 ];
 
 /** The DS-30 branches that sit inside a <tbody> and therefore keep a <td colSpan>. */
@@ -94,6 +104,15 @@ const IN_TBODY: Array<[string, number]> = [
   ['app/admin/production/page.tsx', 6],
   ['app/admin/production/qa/page.tsx', 6],
   ['app/admin/production/queue/page.tsx', 10],
+  ['app/admin/reports/clients/page.tsx', 4],
+  ['app/admin/reports/delivery/page.tsx', 6],
+  ['app/admin/reports/page.tsx', 3],
+  ['app/admin/reports/production/page.tsx', 6],
+  ['app/admin/reports/revenue/page.tsx', 5],
+  ['app/admin/sales/campaigns/page.tsx', 6],
+  ['app/admin/sales/deals/page.tsx', 9],
+  ['app/admin/sales/follow-ups/page.tsx', 6],
+  ['app/admin/sales/leads/page.tsx', 8],
 ];
 
 describe('DS-29: the converted pages use the shared empty state', () => {
@@ -141,6 +160,25 @@ describe('DS-29: the converted pages use the shared empty state', () => {
     }
   });
 
+  it('a report with nothing to flag says so, rather than reporting a shortage', () => {
+    // "No at-risk projects found." reads as a missing result. On a delivery report the
+    // empty case is the good outcome, so the copy says what it means.
+    expect(read('app/admin/reports/delivery/page.tsx')).toContain('title="Nothing at risk"');
+    expect(read('app/admin/reports/production/page.tsx')).toContain('title="Nothing stuck"');
+    expect(read('app/admin/reports/revenue/page.tsx')).toContain('title="Nothing outstanding"');
+  });
+
+  it('no converted empty cell still uses the .table-empty class', () => {
+    // app/admin/reports carried `className="table-empty"`, which paints its own
+    // surface-muted background behind what is now a centred EmptyState.
+    for (const [rel] of IN_TBODY) {
+      const source = read(rel);
+      const start = source.indexOf('.length === 0');
+      const branch = source.slice(start, source.indexOf('</tr>', start));
+      expect({ rel, legacy: branch.includes('table-empty') }).toEqual({ rel, legacy: false });
+    }
+  });
+
   it('the sales_manager pages no longer paint from a hardcoded rgba', () => {
     // All four used `color: 'rgba(15,23,42,0.70)'` — a fixed near-black with no
     // dark-mode counterpart, so the message was invisible on a dark surface.
@@ -162,7 +200,7 @@ describe('DS-29: the converted pages use the shared empty state', () => {
 });
 
 describe('DS-29: the remaining bare-text pages are a known, shrinking list', () => {
-  it('28 are left', () => {
+  it('19 are left', () => {
     const bare = walk('app')
       .filter((rel) => !CONVERTED.includes(rel.split(path.sep).join('/')))
       .filter((rel) => {
@@ -181,15 +219,6 @@ describe('DS-29: the remaining bare-text pages are a known, shrinking list', () 
       'app/admin/projects/change-requests/page.tsx',
       'app/admin/projects/files/page.tsx',
       'app/admin/projects/pipeline/page.tsx',
-      'app/admin/reports/clients/page.tsx',
-      'app/admin/reports/delivery/page.tsx',
-      'app/admin/reports/page.tsx',
-      'app/admin/reports/production/page.tsx',
-      'app/admin/reports/revenue/page.tsx',
-      'app/admin/sales/campaigns/page.tsx',
-      'app/admin/sales/deals/page.tsx',
-      'app/admin/sales/follow-ups/page.tsx',
-      'app/admin/sales/leads/page.tsx',
       'app/admin/settings/integrations/quickbooks/page.tsx',
       'app/admin/settings/integrations/xero/page.tsx',
       'app/admin/settings/notifications/page.tsx',

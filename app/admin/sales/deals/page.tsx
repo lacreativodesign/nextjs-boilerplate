@@ -11,6 +11,7 @@ import { PIPELINE_STAGES, toInputDate } from '@/lib/sales/utils';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
+import EmptyState from '@/components/ui/EmptyState';
 
 const STAGE_OPTIONS = [
   { label: 'All Stages', value: '' },
@@ -419,8 +420,12 @@ export default function SalesDealsPage() {
                 </tr>
               ) : visibleDeals.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 24, textAlign: 'center' }}>
-                    No deals found.
+                  <td colSpan={9}>
+                    <EmptyState
+                      variant="table"
+                      title="No deals yet"
+                      description="Convert a lead to open your first deal."
+                    />
                   </td>
                 </tr>
               ) : (

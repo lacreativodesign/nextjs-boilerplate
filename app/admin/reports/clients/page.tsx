@@ -12,6 +12,7 @@ import {
 } from '../_components/ReportsUI';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import EmptyState from '@/components/ui/EmptyState';
 
 type ClientResponse = {
   keyAccounts: Array<{ id: string; name: string; totalPaidUsd: number }>;
@@ -331,8 +332,12 @@ export default function ClientReportsPage() {
                   </tr>
                 ) : sortedClients.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: 40 }}>
-                      No clients found.
+                    <td colSpan={4}>
+                      <EmptyState
+                        variant="table"
+                        title="No clients in this period"
+                        description="Widen the date range or clear the filters to see more."
+                      />
                     </td>
                   </tr>
                 ) : (
