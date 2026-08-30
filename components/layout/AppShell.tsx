@@ -90,14 +90,18 @@ function AppShellInner({
 
   useEffect(() => {
     const prefetchSearchModal = () => import('@/components/search/GlobalSearchModal');
-    if ('requestIdleCallback' in window) {
-      const idleCallback = window.requestIdleCallback(prefetchSearchModal, {
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (typeof idleWindow.requestIdleCallback === 'function') {
+      const idleCallback = idleWindow.requestIdleCallback(prefetchSearchModal, {
         timeout: 1200,
       });
-      return () => window.cancelIdleCallback(idleCallback);
+      return () => idleWindow.cancelIdleCallback?.(idleCallback);
     }
-    const timeoutId = window.setTimeout(prefetchSearchModal, 900);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = globalThis.setTimeout(prefetchSearchModal, 900);
+    return () => globalThis.clearTimeout(timeoutId);
   }, []);
 
   useKeyboardShortcuts({
