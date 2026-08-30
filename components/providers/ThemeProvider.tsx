@@ -1,85 +1,83 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-type Theme = 'light' | 'dark' | 'system';
+export type Theme = "light" | "dark" | "system";
 
 type ThemeContextValue = {
   theme: Theme;
   isDark: boolean;
-  setTheme: (t: Theme) => void;
+  setTheme: (theme: Theme) => void;
   toggle: () => void;
 };
 
-const ThemeContext = createContext<ThemeContextValue>({
-  theme: 'system',
-  isDark: false,
-  setTheme: () => {},
-  toggle: () => {},
-});
-
-export function useTheme() {
-  return useContext(ThemeContext);
-}
-
-const STORAGE_KEY = 'bizosto_theme';
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+const STORAGE_KEY = "bizosto_theme";
 
 function applyTheme(theme: Theme): boolean {
-  if (typeof window === 'undefined') return false;
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const dark = theme === 'dark' || (theme === 'system' && prefersDark);
-  if (dark) {
-    document.documentElement.classList.add('dark');
-    document.documentElement.classList.remove('light');
-  } else {
-    document.documentElement.classList.remove('dark');
-    // Add .light class to override @media (prefers-color-scheme: dark)
-    // when user explicitly chooses light mode
-    if (theme === 'light') {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
-    }
-  }
-  return dark;
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = theme === "dark" || (theme === "system" && prefersDark);
+  document.documentElement.classList.toggle("dark", isDark);
+  document.documentElement.classList.toggle(
+    "light",
+    !isDark && theme === "light",
+  );
+  document.documentElement.dataset.theme = isDark ? "dark" : "light";
+  document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+  return isDark;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
+  const [theme, setThemeState] = useState<Theme>("system");
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? 'system';
-    setThemeState(stored);
-    const dark = applyTheme(stored);
-    setIsDark(dark);
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const initialTheme: Theme =
+      stored === "light" || stored === "dark" ? stored : "system";
+    setThemeState(initialTheme);
+    setIsDark(applyTheme(initialTheme));
 
-    // Listen for system preference changes (only relevant when theme === "system")
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      if ((localStorage.getItem(STORAGE_KEY) ?? 'system') === 'system') {
-        const dark = applyTheme('system');
-        setIsDark(dark);
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemTheme = () => {
+      if ((window.localStorage.getItem(STORAGE_KEY) ?? "system") === "system") {
+        setIsDark(applyTheme("system"));
       }
     };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    media.addEventListener("change", handleSystemTheme);
+    return () => media.removeEventListener("change", handleSystemTheme);
   }, []);
 
-  const setTheme = (t: Theme) => {
-    localStorage.setItem(STORAGE_KEY, t);
-    setThemeState(t);
-    const dark = applyTheme(t);
-    setIsDark(dark);
-  };
+  const setTheme = useCallback((nextTheme: Theme) => {
+    window.localStorage.setItem(STORAGE_KEY, nextTheme);
+    setThemeState(nextTheme);
+    setIsDark(applyTheme(nextTheme));
+  }, []);
 
-  const toggle = () => {
-    setTheme(isDark ? 'light' : 'dark');
-  };
+  const toggle = useCallback(() => {
+    setTheme(isDark ? "light" : "dark");
+  }, [isDark, setTheme]);
+
+  const value = useMemo(
+    () => ({ theme, isDark, setTheme, toggle }),
+    [theme, isDark, setTheme, toggle],
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark, setTheme, toggle }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (!context) throw new Error("useTheme must be used within ThemeProvider");
+  return context;
 }
