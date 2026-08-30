@@ -7,7 +7,7 @@ const APP_BUILD_MANIFEST_PATH = path.resolve('.next/app-build-manifest.json');
 
 // DS-33: these are independent budgets. The root shell is paid once, while a route budget
 // measures only JavaScript owned by that route. Shared root/layout chunks are excluded from
-// every route report instead of being charged hundreds of times.
+// every route report instead of being charged hundreds of times. Each limit is a ratchet\n// that may move down as code is split, never up to hide a regression.
 const MAX_MAIN_BUNDLE_KB = 210;
 const MAX_ROUTE_BUNDLE_KB = 100;
 const MAX_FIRST_LOAD_JS_KB = 300;
