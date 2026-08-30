@@ -1,13 +1,24 @@
-'use client';
-import BizostoSplash from '@/components/ui/BizostoSplash';
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, LogOut, Moon, Settings, Sun } from 'lucide-react';
-import { useTheme } from '@/components/providers/ThemeProvider';
-import { useRouter } from 'next/navigation';
-import { useI18n } from '@/components/i18n/I18nProvider';
-import { apiFetch } from '@/lib/api/client';
-import type { CSSProperties, ReactNode } from 'react';
+import Image, { type ImageLoaderProps } from "next/image";
+import BizostoSplash from "@/components/ui/BizostoSplash";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bell,
+  LayoutList,
+  LogOut,
+  Menu,
+  Moon,
+  Rows3,
+  Search,
+  Settings,
+  Sun,
+} from "lucide-react";
+import { useTheme } from "@/components/providers/ThemeProvider";
+import { useDensity } from "@/components/providers/DensityProvider";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api/client";
+import type { ReactNode } from "react";
 
 type HeaderUser = {
   name: string;
@@ -24,283 +35,301 @@ type HeaderProps = {
   onMenuToggle?: () => void;
 };
 
-type DayPeriod = 'morning' | 'afternoon' | 'evening';
+type DayPeriod = "morning" | "afternoon" | "evening";
 
-const ROLE_BADGE_STYLES: Record<string, CSSProperties> = {
-  super_admin: { backgroundColor: 'var(--color-purple)', color: 'var(--text-on-brand)' },
-  admin: { backgroundColor: 'var(--color-blue)', color: 'var(--text-on-brand)' },
-  finance: { backgroundColor: 'var(--color-green)', color: 'var(--text-on-brand)' },
-  hr: { backgroundColor: 'var(--color-teal)', color: 'var(--text-on-brand)' },
-  sales: { backgroundColor: 'var(--color-orange)', color: 'var(--text-on-brand)' },
-  sales_manager: { backgroundColor: 'var(--color-orange)', color: 'var(--text-on-brand)' },
-  production: { backgroundColor: 'var(--color-yellow)', color: 'var(--text-strong)' },
-  production_manager: { backgroundColor: 'var(--color-yellow)', color: 'var(--text-strong)' },
-  am: { backgroundColor: 'var(--color-cyan)', color: 'var(--text-primary)' },
-  am_manager: { backgroundColor: 'var(--color-cyan)', color: 'var(--text-primary)' },
-  client: { backgroundColor: 'var(--color-gray)', color: 'var(--text-on-brand)' },
-};
+const imageLoader = ({ src }: ImageLoaderProps) => src;
 
 function normalizeRoleKey(role?: string | null) {
-  return String(role || '')
+  return String(role || "")
     .trim()
     .toLowerCase()
-    .replace(/-/g, '_')
-    .replace(/^account_manager$/, 'am');
+    .replace(/-/g, "_")
+    .replace(/^account_manager$/, "am");
 }
 
 function formatRoleLabel(role?: string | null) {
   const normalized = normalizeRoleKey(role);
-  if (!normalized) return 'User';
-
+  if (!normalized) return "User";
   return normalized
-    .split('_')
+    .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .join(" ");
 }
 
 function getDayPeriod(date: Date): DayPeriod {
   const hour = date.getHours();
-  if (hour >= 5 && hour <= 11) return 'morning';
-  if (hour >= 12 && hour <= 17) return 'afternoon';
-  return 'evening';
+  if (hour >= 5 && hour <= 11) return "morning";
+  if (hour >= 12 && hour <= 17) return "afternoon";
+  return "evening";
 }
 
 function getFirstName(displayName?: string | null) {
   const trimmed = displayName?.trim();
-  if (!trimmed) return null;
-  return trimmed.split(/\s+/)[0] || null;
+  return trimmed ? trimmed.split(/\s+/)[0] || null : null;
 }
 
 function getUserInitials(name?: string | null, email?: string | null) {
   const trimmedName = name?.trim();
   if (trimmedName) {
     const parts = trimmedName.split(/\s+/).filter(Boolean);
-    const firstInitial = parts[0]?.charAt(0) || '';
-    const lastInitial = parts.length > 1 ? parts[parts.length - 1]?.charAt(0) || '' : '';
-    return `${firstInitial}${lastInitial}`.toUpperCase() || 'U';
+    const firstInitial = parts[0]?.charAt(0) || "";
+    const lastInitial =
+      parts.length > 1 ? parts[parts.length - 1]?.charAt(0) || "" : "";
+    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
   }
-
-  return (email?.trim().charAt(0) || 'U').toUpperCase();
+  return (email?.trim().charAt(0) || "U").toUpperCase();
 }
 
-export default function Header({ currentUser, activityTrigger, notificationBell }: HeaderProps) {
+export default function Header({
+  currentUser,
+  activityTrigger,
+  notificationBell,
+  onMenuToggle,
+}: HeaderProps) {
   const router = useRouter();
-  const { t } = useI18n();
   const { isDark, toggle } = useTheme();
+  const { density, toggleDensity } = useDensity();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
-  const [dayPeriod, setDayPeriod] = useState<DayPeriod>(() => getDayPeriod(new Date()));
+  const [dayPeriod, setDayPeriod] = useState<DayPeriod>(() =>
+    getDayPeriod(new Date()),
+  );
   const menuRef = useRef<HTMLDivElement>(null);
   const roleKey = normalizeRoleKey(currentUser.role);
-  const roleBadgeStyle = ROLE_BADGE_STYLES[roleKey] || ROLE_BADGE_STYLES.admin;
   const roleLabel = formatRoleLabel(currentUser.role);
-  const fullName = currentUser.displayName?.trim() || currentUser.name?.trim() || currentUser.email;
-  const firstName = useMemo(() => getFirstName(currentUser.displayName), [currentUser.displayName]);
-  const greeting = firstName ? `Good ${dayPeriod}, ${firstName}` : 'Welcome back';
+  const fullName =
+    currentUser.displayName?.trim() ||
+    currentUser.name?.trim() ||
+    currentUser.email;
+  const firstName = useMemo(
+    () => getFirstName(currentUser.displayName),
+    [currentUser.displayName],
+  );
+  const greeting = firstName
+    ? `Good ${dayPeriod}, ${firstName}`
+    : "Welcome back";
   const userInitials = useMemo(
     () => getUserInitials(fullName, currentUser.email),
     [fullName, currentUser.email],
   );
   const profileSettingsPath =
-    roleKey === 'admin' || roleKey === 'super_admin' ? '/admin/settings' : '/settings';
+    roleKey === "admin" || roleKey === "super_admin"
+      ? "/admin/settings"
+      : roleKey === "client"
+        ? "/client/profile"
+        : "/settings";
 
   useEffect(() => {
     const updateDayPeriod = () => setDayPeriod(getDayPeriod(new Date()));
-    updateDayPeriod();
     const intervalId = window.setInterval(updateDayPeriod, 60_000);
     return () => window.clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node))
         setMenuOpen(false);
-      }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const openSearch = () =>
+    window.dispatchEvent(new CustomEvent("bizosto:search-open"));
 
   const navigateFromMenu = (path: string) => {
     setMenuOpen(false);
     router.push(path);
   };
 
-  const handleLogout = async () => {
-    setShowLogoutSplash(true);
-  };
-
   const doLogout = async () => {
-    await apiFetch('/api/logout', { method: 'POST' });
-    window.location.href = '/login';
+    await apiFetch("/api/logout", { method: "POST" });
+    window.location.href = "/login";
   };
-
-  const iconBtn =
-    'relative flex h-11 w-11 items-center justify-center rounded-xl border ' +
-    'border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)] ' +
-    'shadow-sm hover:bg-[var(--surface-muted)] transition-colors';
-  const menuItemClass =
-    'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-[var(--text-primary)] ' +
-    'hover:bg-[var(--surface-muted)] transition-colors';
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 shadow-sm">
-        <div className="flex h-[var(--header-height)] items-center justify-between">
-          <div className="flex-1" />
+      <header className="workspace-header">
+        <div className="workspace-header__left">
+          <button
+            type="button"
+            className="workspace-icon-button md:hidden"
+            onClick={onMenuToggle}
+            aria-label="Open navigation"
+          >
+            <Menu className="h-[18px] w-[18px]" />
+          </button>
 
-          <div className="flex items-center gap-2">
-            {notificationBell || null}
-            {activityTrigger || null}
+          <button
+            type="button"
+            className="workspace-command-search"
+            onClick={openSearch}
+            aria-label="Search Bizosto"
+          >
+            <Search className="h-[18px] w-[18px]" />
+            <span className="hidden sm:inline">
+              Search people, work, finance and settings
+            </span>
+            <kbd className="hidden lg:inline-flex">Ctrl K</kbd>
+          </button>
 
-            <div className="relative hidden items-center gap-2 sm:flex" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex h-11 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-muted)] transition-colors"
-                title={currentUser.displayName || currentUser.email || greeting}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-              >
-                <span
-                  className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold"
-                  style={roleBadgeStyle}
-                >
-                  {currentUser.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt={currentUser.displayName || currentUser.email || 'Current user'}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    userInitials
-                  )}
-                </span>
-                <span className="max-w-[220px] truncate text-sm font-semibold">{greeting}</span>
-              </button>
+          <p className="workspace-header__greeting hidden xl:block">
+            {greeting}
+          </p>
+        </div>
 
-              <span
-                className="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-sm"
-                style={roleBadgeStyle}
-              >
-                {roleLabel}
+        <div className="workspace-header__right">
+          {notificationBell || null}
+          {activityTrigger || null}
+
+          <button
+            type="button"
+            onClick={toggle}
+            className="workspace-icon-button hidden sm:inline-flex"
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDark ? "Light mode" : "Dark mode"}
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
+
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="workspace-profile-trigger"
+              title={fullName || currentUser.email || greeting}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              <span className="workspace-profile-trigger__avatar">
+                {currentUser.avatarUrl ? (
+                  <Image
+                    loader={imageLoader}
+                    unoptimized
+                    src={currentUser.avatarUrl}
+                    alt={
+                      currentUser.displayName ||
+                      currentUser.email ||
+                      "Current user"
+                    }
+                    width={32}
+                    height={32}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  userInitials
+                )}
               </span>
+              <span className="hidden max-w-[180px] text-left lg:block">
+                <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">
+                  {fullName || "User"}
+                </span>
+                <span className="block truncate text-[11px] text-[var(--text-muted)]">
+                  {roleLabel}
+                </span>
+              </span>
+            </button>
 
-              {menuOpen && (
-                <div
-                  className="absolute right-0 top-full mt-2 z-50 w-80 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-xl"
-                  role="menu"
-                >
-                  <div className="flex items-center gap-3 px-4 py-4">
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold"
-                      style={roleBadgeStyle}
-                    >
-                      {currentUser.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={currentUser.avatarUrl}
-                          alt={currentUser.displayName || currentUser.email || 'Current user'}
-                          className="w-9 h-9 rounded-full object-cover"
-                        />
-                      ) : (
-                        userInitials
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
-                        {fullName}
-                      </p>
-                      <p className="truncate text-xs text-[var(--text-muted)]">
-                        {currentUser.email}
-                      </p>
-                      <span
-                        className="mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm"
-                        style={roleBadgeStyle}
-                      >
-                        {roleLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-[var(--border-subtle)]" />
-
-                  <button
-                    type="button"
-                    onClick={() => navigateFromMenu(profileSettingsPath)}
-                    className={menuItemClass}
-                    role="menuitem"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>Profile Settings</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigateFromMenu('/settings/preferences')}
-                    className={menuItemClass}
-                    role="menuitem"
-                  >
-                    <Bell className="h-4 w-4" />
-                    <span>Notification Preferences</span>
-                  </button>
-
-                  <div className="h-px bg-[var(--border-subtle)]" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      toggle();
-                    }}
-                    className={menuItemClass}
-                    role="menuitem"
-                  >
-                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                    <span>{isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
-                  </button>
-
-                  <div className="h-px bg-[var(--border-subtle)]" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      handleLogout();
-                    }}
-                    className={`${menuItemClass} text-[var(--danger)]`}
-                    role="menuitem"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Log out</span>
-                  </button>
+            {menuOpen ? (
+              <div className="workspace-profile-menu" role="menu">
+                <div className="workspace-profile-menu__identity">
+                  <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                    {fullName || "User"}
+                  </p>
+                  <p className="truncate text-xs text-[var(--text-muted)]">
+                    {currentUser.email}
+                  </p>
+                  <span className="workspace-role-chip">{roleLabel}</span>
                 </div>
-              )}
-            </div>
 
-            <button
-              type="button"
-              onClick={toggle}
-              className={iconBtn}
-              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={isDark ? 'Light mode' : 'Dark mode'}
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
+                <div className="workspace-profile-menu__divider" />
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className={iconBtn}
-              aria-label={t('common.logout')}
-              title={t('common.logout')}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+                <button
+                  type="button"
+                  onClick={() => navigateFromMenu(profileSettingsPath)}
+                  className="workspace-profile-menu__item"
+                  role="menuitem"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Profile settings</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateFromMenu("/settings/preferences")}
+                  className="workspace-profile-menu__item"
+                  role="menuitem"
+                >
+                  <Bell className="h-4 w-4" />
+                  <span>Notification preferences</span>
+                </button>
+
+                <div className="workspace-profile-menu__divider" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleDensity();
+                    setMenuOpen(false);
+                  }}
+                  className="workspace-profile-menu__item"
+                  role="menuitem"
+                >
+                  {density === "comfortable" ? (
+                    <Rows3 className="h-4 w-4" />
+                  ) : (
+                    <LayoutList className="h-4 w-4" />
+                  )}
+                  <span>
+                    {density === "comfortable"
+                      ? "Use compact density"
+                      : "Use comfortable density"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggle();
+                    setMenuOpen(false);
+                  }}
+                  className="workspace-profile-menu__item"
+                  role="menuitem"
+                >
+                  {isDark ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                  <span>
+                    {isDark ? "Switch to light mode" : "Switch to dark mode"}
+                  </span>
+                </button>
+
+                <div className="workspace-profile-menu__divider" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowLogoutSplash(true);
+                  }}
+                  className="workspace-profile-menu__item workspace-profile-menu__item--danger"
+                  role="menuitem"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Log out</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </header>
-      {showLogoutSplash && <BizostoSplash duration={2000} onDone={doLogout} />}
+      {showLogoutSplash ? (
+        <BizostoSplash duration={2000} onDone={doLogout} />
+      ) : null}
     </>
   );
 }
