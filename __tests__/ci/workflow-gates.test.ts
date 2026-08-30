@@ -105,9 +105,18 @@ describe('DS-33: the bundle budget is enforceable again', () => {
     expect(source).toContain('ratchet');
   });
 
-  it('the route and first-load budgets are untouched', () => {
-    // Only the main-bundle number moved; the other two were passing.
+  it('keeps the first-load and route-owned budgets active', () => {
     expect(source).toContain('const MAX_ROUTE_BUNDLE_KB = 100;');
     expect(source).toContain('const MAX_FIRST_LOAD_JS_KB = 300;');
+  });
+
+  it('does not charge shared root or layout chunks to every route', () => {
+    expect(source).toContain('countRouteReferences(routeAssets)');
+    expect(source).toContain('!rootMainSet.has(asset)');
+    expect(source).toContain('referenceCounts.get(asset) === 1');
+  });
+
+  it('budgets JavaScript rather than unrelated manifest assets', () => {
+    expect(source).toContain("asset.endsWith('.js')");
   });
 });
