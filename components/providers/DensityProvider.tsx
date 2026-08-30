@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   createContext,
@@ -8,9 +8,9 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from "react";
+} from 'react';
 
-export type WorkspaceDensity = "comfortable" | "compact";
+export type WorkspaceDensity = 'comfortable' | 'compact';
 
 type DensityContextValue = {
   density: WorkspaceDensity;
@@ -18,7 +18,7 @@ type DensityContextValue = {
   toggleDensity: () => void;
 };
 
-const STORAGE_KEY = "bizosto_workspace_density";
+const STORAGE_KEY = 'bizosto_workspace_density_v1';
 
 const DensityContext = createContext<DensityContextValue | null>(null);
 
@@ -27,12 +27,11 @@ function applyDensity(density: WorkspaceDensity) {
 }
 
 export function DensityProvider({ children }: { children: ReactNode }) {
-  const [density, setDensityState] = useState<WorkspaceDensity>("comfortable");
+  const [density, setDensityState] = useState<WorkspaceDensity>('comfortable');
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    const nextDensity: WorkspaceDensity =
-      stored === "compact" ? "compact" : "comfortable";
+    const nextDensity: WorkspaceDensity = stored === 'compact' ? 'compact' : 'comfortable';
     setDensityState(nextDensity);
     applyDensity(nextDensity);
   }, []);
@@ -44,7 +43,7 @@ export function DensityProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleDensity = useCallback(() => {
-    setDensity(density === "comfortable" ? "compact" : "comfortable");
+    setDensity(density === 'comfortable' ? 'compact' : 'comfortable');
   }, [density, setDensity]);
 
   const value = useMemo(
@@ -52,14 +51,11 @@ export function DensityProvider({ children }: { children: ReactNode }) {
     [density, setDensity, toggleDensity],
   );
 
-  return (
-    <DensityContext.Provider value={value}>{children}</DensityContext.Provider>
-  );
+  return <DensityContext.Provider value={value}>{children}</DensityContext.Provider>;
 }
 
 export function useDensity() {
   const context = useContext(DensityContext);
-  if (!context)
-    throw new Error("useDensity must be used within DensityProvider");
+  if (!context) throw new Error('useDensity must be used within DensityProvider');
   return context;
 }
