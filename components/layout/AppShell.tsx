@@ -1,36 +1,30 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { SidebarProvider, useSidebar } from "@/lib/context/SidebarContext";
-import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
-import ActivityFeedSidebar from "@/components/activity/ActivityFeedSidebar";
-import NotificationBell from "@/components/notifications/NotificationBell";
-import {
-  useTenantContext,
-  type TenantContextResponse,
-} from "@/lib/tenant/useTenantContext";
-import { normalizeRole } from "@/lib/erpAccess";
-import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
-import { I18nProvider } from "@/components/i18n/I18nProvider";
-import { generateThemeCssVariables } from "@/lib/white-label/theme";
-import PullToRefresh from "@/components/mobile/PullToRefresh";
-import BugReportButton from "@/components/support/BugReportButton";
-import NotificationToast from "@/components/notifications/NotificationToast";
-import ImpersonationBanner from "@/components/super_admin/ImpersonationBanner";
-import ActiveTabScroller from "@/components/layout/ActiveTabScroller";
-import Breadcrumbs from "@/components/layout/Breadcrumbs";
-import { PlatformTourGate } from "@/components/onboarding/PlatformTourGate";
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { SidebarProvider, useSidebar } from '@/lib/context/SidebarContext';
+import Header from '@/components/layout/Header';
+import Sidebar from '@/components/layout/Sidebar';
+import ActivityFeedSidebar from '@/components/activity/ActivityFeedSidebar';
+import NotificationBell from '@/components/notifications/NotificationBell';
+import { useTenantContext, type TenantContextResponse } from '@/lib/tenant/useTenantContext';
+import { normalizeRole } from '@/lib/erpAccess';
+import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+import { I18nProvider } from '@/components/i18n/I18nProvider';
+import { generateThemeCssVariables } from '@/lib/white-label/theme';
+import PullToRefresh from '@/components/mobile/PullToRefresh';
+import BugReportButton from '@/components/support/BugReportButton';
+import NotificationToast from '@/components/notifications/NotificationToast';
+import ImpersonationBanner from '@/components/super_admin/ImpersonationBanner';
+import ActiveTabScroller from '@/components/layout/ActiveTabScroller';
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import { PlatformTourGate } from '@/components/onboarding/PlatformTourGate';
 
-const GlobalSearchModal = dynamic(
-  () => import("@/components/search/GlobalSearchModal"),
-  {
-    ssr: false,
-    loading: () => null,
-  },
-);
+const GlobalSearchModal = dynamic(() => import('@/components/search/GlobalSearchModal'), {
+  ssr: false,
+  loading: () => null,
+});
 
 function AppShellInner({
   children,
@@ -46,11 +40,9 @@ function AppShellInner({
 
   const currentUser = useMemo(
     () => ({
-      name:
-        data?.user?.displayName ||
-        (data?.user?.email ? data.user.email.split("@")[0] : "User"),
-      email: data?.user?.email || "",
-      role: normalizeRole(data?.user?.role || "") || "",
+      name: data?.user?.displayName || (data?.user?.email ? data.user.email.split('@')[0] : 'User'),
+      email: data?.user?.email || '',
+      role: normalizeRole(data?.user?.role || '') || '',
       avatarUrl: undefined,
       displayName: data?.user?.displayName || null,
     }),
@@ -70,11 +62,8 @@ function AppShellInner({
       document.documentElement.style.setProperty(key, value);
     });
     const tenantFont = `"${whiteLabel.fontFamily}", system-ui`;
-    document.documentElement.style.setProperty("--brand-font", tenantFont);
-    document.documentElement.style.setProperty(
-      "--brand-heading-font",
-      tenantFont,
-    );
+    document.documentElement.style.setProperty('--brand-font', tenantFont);
+    document.documentElement.style.setProperty('--brand-heading-font', tenantFont);
   }, [data?.tenant?.whiteLabel]);
 
   useEffect(() => {
@@ -91,18 +80,17 @@ function AppShellInner({
       const deltaY = Math.abs(endY - startY);
       if (startX < 24 && deltaX > 110 && deltaY < 70) router.back();
     };
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
     };
   }, [router]);
 
   useEffect(() => {
-    const prefetchSearchModal = () =>
-      import("@/components/search/GlobalSearchModal");
-    if ("requestIdleCallback" in window) {
+    const prefetchSearchModal = () => import('@/components/search/GlobalSearchModal');
+    if ('requestIdleCallback' in window) {
       const idleCallback = window.requestIdleCallback(prefetchSearchModal, {
         timeout: 1200,
       });
@@ -114,8 +102,7 @@ function AppShellInner({
 
   useKeyboardShortcuts({
     onToggleSidebar: toggleCollapse,
-    onOpenSearch: () =>
-      window.dispatchEvent(new CustomEvent("bizosto:search-open")),
+    onOpenSearch: () => window.dispatchEvent(new CustomEvent('bizosto:search-open')),
     onEscape: closeMobile,
   });
 
@@ -125,23 +112,17 @@ function AppShellInner({
         currentRole={currentUser.role}
         userName={currentUser.name}
         userEmail={currentUser.email}
-        tenantName={data?.tenant?.name || "Bizosto"}
+        tenantName={data?.tenant?.name || 'Bizosto'}
         brandTagline={data?.tenant?.whiteLabel?.tagline || undefined}
-        tenantLogoUrl={
-          data?.tenant?.whiteLabel?.logoUrl ||
-          data?.tenant?.brand?.logoUrl ||
-          null
-        }
+        tenantLogoUrl={data?.tenant?.whiteLabel?.logoUrl || data?.tenant?.brand?.logoUrl || null}
         collapsed={isCollapsed}
-        tenantPlan={data?.tenant?.plan || "trial"}
+        tenantPlan={data?.tenant?.plan || 'trial'}
         tenantModules={data?.tenant?.modules || {}}
       />
 
       <div
         className={`workspace-main ${
-          isCollapsed
-            ? "workspace-main--sidebar-collapsed"
-            : "workspace-main--sidebar-expanded"
+          isCollapsed ? 'workspace-main--sidebar-collapsed' : 'workspace-main--sidebar-expanded'
         }`}
       >
         <Header
@@ -167,10 +148,7 @@ function AppShellInner({
       </div>
 
       <ActiveTabScroller />
-      <PlatformTourGate
-        role={currentUser.role}
-        companyName={data?.tenant?.name || "Bizosto"}
-      />
+      <PlatformTourGate role={currentUser.role} companyName={data?.tenant?.name || 'Bizosto'} />
       <ImpersonationBanner />
       <BugReportButton />
       <NotificationToast />
