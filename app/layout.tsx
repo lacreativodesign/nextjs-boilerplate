@@ -1,5 +1,4 @@
 import './globals.css';
-import './workspace.css';
 import { DM_Sans, Sora } from 'next/font/google';
 import { headers } from 'next/headers';
 import type { Metadata, Viewport } from 'next';
