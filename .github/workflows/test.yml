@@ -54,6 +54,12 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          # DS-33: `next build` exhausts the runner's ~2083MB V8 old-space and aborts
+          # with exit 134. Latent for as long as the workflow was unschedulable, so it
+          # had never been observed. Verified: 2048 reproduces the OOM, 4096 builds
+          # clean. Nothing below this line ran until this was raised.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Bundle size check
         run: npm run bundle:check
@@ -70,7 +76,13 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    if: ${{ secrets.SONAR_TOKEN != '' }}
+    # `secrets` is not one of the contexts GitHub allows in a job-level `if:` (only
+    # github, needs, vars and inputs are), so this rejected the whole workflow at parse
+    # time and NO job ran — including `quality`. The gate moves to the steps that need
+    # the token, where `env` IS a valid context; the job now starts and no-ops when
+    # SONAR_TOKEN is unset.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,10 +97,11 @@ jobs:
         run: npm ci
 
       - name: Test coverage
+        if: env.SONAR_TOKEN != ''
         run: npm test
 
       - name: SonarQube Scan
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v2
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

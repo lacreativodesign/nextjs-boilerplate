@@ -43,6 +43,13 @@ describe('QUAL-07: recharts is code-split out of the finance reports route', () 
     expect(source).toContain('PieChart');
     expect(source).toContain('ResponsiveContainer');
   });
+
+  it('loads the PDF renderer only when the user requests an export', () => {
+    const source = read(REPORTS_PAGE);
+
+    expect(source).not.toMatch(/^import .*['"]@\/lib\/exports\/pdfExport['"];?$/m);
+    expect(source).toContain("await import('@/lib/exports/pdfExport')");
+  });
 });
 
 describe('SEC-05: dependency triage documents the block-level criterion', () => {

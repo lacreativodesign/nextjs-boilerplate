@@ -25,6 +25,11 @@ const ALLOWED_LICENSES = new Set([
   '(WTFPL OR MIT)',
   '(BSD-3-Clause OR GPL-2.0)',
   'MIT AND ISC',
+  // Reviewed additions (Aug 2026), all reached through exceljs:
+  // `MIT/X11` is the pre-SPDX spelling of MIT (chainsaw, traverse), and jszip is
+  // dual-licensed so the MIT branch applies.
+  'MIT/X11',
+  '(MIT OR GPL-3.0-or-later)',
 ]);
 
 // Packages whose package.json lacks a parseable SPDX string but whose repos were
@@ -39,6 +44,9 @@ const REVIEWED_PACKAGE_EXCEPTIONS = new Set([
   'png-js',
   'streamsearch',
   'rgbcolor',
+  // exceljs -> unzipper -> binary -> buffers. No SPDX field; the repository carries
+  // MIT terms.
+  'buffers',
 ]);
 
 /**
