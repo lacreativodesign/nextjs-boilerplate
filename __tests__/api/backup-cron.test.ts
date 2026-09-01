@@ -56,10 +56,12 @@ describe('canonical nightly backup cron (DR-01, DR-02)', () => {
     expect(source).toContain('records:');
   });
 
-  it('is cron-authenticated (CRON_SECRET + x-vercel-cron)', () => {
+  it('is cron-authenticated by CRON_SECRET alone, with no spoofable header bypass', () => {
     expect(source).toContain('CRON_SECRET');
-    expect(source).toContain('x-vercel-cron');
+    expect(source).toContain('Bearer ${secret}');
     expect(source).toContain('status: 401');
+    // SOC2 F-04: `x-vercel-cron` is client-supplied and must never grant authorization.
+    expect(source).not.toContain('if (isCronFromVercel) return true;');
   });
 
   it('dead-letters + alerts admin on failure and is scheduled in vercel.json', () => {

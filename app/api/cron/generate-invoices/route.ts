@@ -104,7 +104,6 @@ async function generateRecurringInvoices() {
 
   for (const tenantDoc of tenantsSnapshot.docs) {
     const tenantId = tenantDoc.id;
-    console.log(`[CRON] Processing tenant ${tenantId}`);
 
     // P3-3: recurring templates are stored in the top-level `recurring_invoice_templates`
     // collection (with a tenantId field), which is where every CRUD route writes them.
