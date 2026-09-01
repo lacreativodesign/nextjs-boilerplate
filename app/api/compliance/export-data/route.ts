@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCurrentUser } from '@/app/api/admin/_utils';
-import { createDataExportRequest } from '@/lib/compliance/data-retention';
+import { createDataExportRequest, TenantOwnershipError } from '@/lib/compliance/data-retention';
 
 export const runtime = 'nodejs';
 
@@ -24,12 +24,20 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
-  const result = await createDataExportRequest({
-    tenantId: me.tenantId,
-    requestedBy: me.uid,
-    subjectUserId: parsed.data.subjectUserId,
-    format: parsed.data.format,
-  });
+  let result;
+  try {
+    result = await createDataExportRequest({
+      tenantId: me.tenantId,
+      requestedBy: me.uid,
+      subjectUserId: parsed.data.subjectUserId,
+      format: parsed.data.format,
+    });
+  } catch (error) {
+    if (error instanceof TenantOwnershipError) {
+      return NextResponse.json({ error: 'Subject user not found' }, { status: 404 });
+    }
+    throw error;
+  }
 
   const contentType = parsed.data.format === 'csv' ? 'text/csv' : 'application/json';
   return new Response(result.content, {

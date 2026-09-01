@@ -137,6 +137,35 @@ export async function runRetentionCleanup(tenantId: string) {
   return summary;
 }
 
+/**
+ * Raised when a DSAR subject does not belong to the requesting tenant.
+ *
+ * Callers surface this as 404 rather than 403: confirming that a uid exists in
+ * some other tenant is itself a cross-tenant disclosure.
+ */
+export class TenantOwnershipError extends Error {
+  constructor(message = 'Subject user not found in this tenant') {
+    super(message);
+    this.name = 'TenantOwnershipError';
+  }
+}
+
+/**
+ * SOC2 F-01 / F-02: `subjectUserId` arrives from a request body. Every DSAR
+ * entry point must prove the subject belongs to the caller's tenant BEFORE any
+ * read or write, otherwise a tenant-A admin can export or erase a tenant-B user.
+ * A uid is globally unique to one user in one tenant, so the user document's
+ * own `tenantId` is the authoritative ownership record.
+ */
+async function assertSubjectBelongsToTenant(tenantId: string, subjectUserId: string) {
+  const snap = await adminDb.collection('users').doc(subjectUserId).get();
+  if (!snap.exists) throw new TenantOwnershipError();
+  const subjectTenantId = (snap.data() as { tenantId?: unknown } | undefined)?.tenantId;
+  if (typeof subjectTenantId !== 'string' || subjectTenantId !== tenantId) {
+    throw new TenantOwnershipError();
+  }
+}
+
 async function collectUserData(tenantId: string, userId: string) {
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
   const [userDoc, auditLogs] = await Promise.all([
@@ -148,6 +177,15 @@ async function collectUserData(tenantId: string, userId: string) {
       .limit(5000)
       .get(),
   ]);
+
+  // Defense in depth. The caller already asserted ownership; re-check against the
+  // document we just read so this function is safe to call from any future path.
+  if (
+    !userDoc.exists ||
+    (userDoc.data() as { tenantId?: unknown } | undefined)?.tenantId !== tenantId
+  ) {
+    throw new TenantOwnershipError();
+  }
 
   const scopedCollections = [
     'invoices',
@@ -207,6 +245,8 @@ export async function createDataExportRequest(input: {
   subjectUserId: string;
   format: ExportFormat;
 }) {
+  await assertSubjectBelongsToTenant(input.tenantId, input.subjectUserId);
+
   const requestedAt = nowIso();
   const ref = adminDb
     .collection('tenants')
@@ -283,6 +323,8 @@ export async function createDataDeletionRequest(input: {
   subjectUserId: string;
   mode: DeletionMode;
 }) {
+  await assertSubjectBelongsToTenant(input.tenantId, input.subjectUserId);
+
   const requestedAt = nowIso();
   const ref = adminDb
     .collection('tenants')
@@ -316,7 +358,14 @@ export async function createDataDeletionRequest(input: {
 async function deleteOrAnonymizeUserData(tenantId: string, userId: string, mode: DeletionMode) {
   const userRef = adminDb.collection('users').doc(userId);
   const userSnap = await userRef.get();
-  if (!userSnap.exists) return;
+
+  // Defense in depth: never delete or redact a user document that is not ours.
+  if (
+    !userSnap.exists ||
+    (userSnap.data() as { tenantId?: unknown } | undefined)?.tenantId !== tenantId
+  ) {
+    throw new TenantOwnershipError();
+  }
 
   if (mode === 'delete') {
     await userRef.delete();
