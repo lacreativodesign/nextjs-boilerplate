@@ -605,7 +605,11 @@ export async function remindSigners(params: {
 
 export function verifyDocusignWebhookSignature(rawBody: string, signatureHeader: string | null) {
   const secret = getWebhookSecret();
-  if (!secret) return true;
+  // SOC2 F-22: this returned `true` when DOCUSIGN_WEBHOOK_SECRET was unset, so with the
+  // integration deferred and the variable blank the webhook accepted every unsigned
+  // request. Fail closed: no secret configured means no request can be authenticated,
+  // and the endpoint stays inert until DocuSign is actually provisioned.
+  if (!secret) return false;
   if (!signatureHeader) return false;
 
   const digest = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
@@ -615,43 +619,47 @@ export function verifyDocusignWebhookSignature(rawBody: string, signatureHeader:
   return crypto.timingSafeEqual(expected, actual);
 }
 
+/**
+ * SOC2 F-23: the tenant is resolved ONLY from the stored envelope, never from the
+ * webhook body.
+ *
+ * This previously accepted `tenantId` from the request payload and wrote straight to
+ * tenants/{tenantId}/docusignEnvelopes/{envelopeId}. Nothing in `sendEnvelopeForSignature`
+ * ever puts a tenantId into the DocuSign envelope, so DocuSign Connect cannot echo one
+ * back — the field had no legitimate producer and could only ever be supplied by a
+ * caller. Combined with the fail-open signature check, that was an unauthenticated
+ * write into any tenant of the attacker's choosing.
+ *
+ * The envelope id is minted by DocuSign and stored by us at send time, so the stored
+ * record is the only trustworthy binding between an envelope and a tenant.
+ */
 export async function upsertEnvelopeStatusFromWebhook(payload: {
   envelopeId: string;
   status: string;
   completedAt?: string | null;
-  tenantId?: string | null;
 }) {
-  let tenantId = payload.tenantId || null;
-  if (!tenantId) {
-    const query = await adminDb
-      .collectionGroup('docusignEnvelopes')
-      .where('envelopeId', '==', payload.envelopeId)
-      .limit(1)
-      .get();
-    if (query.empty) throw new Error('Envelope not found for webhook update.');
-    const doc = query.docs[0];
-    tenantId = String(doc.data().tenantId || '');
-    await doc.ref.set(
-      {
-        status: payload.status,
-        completedAt: payload.completedAt || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  } else {
-    await envelopeRef(tenantId, payload.envelopeId).set(
-      {
-        status: payload.status,
-        completedAt: payload.completedAt || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  }
+  const query = await adminDb
+    .collectionGroup('docusignEnvelopes')
+    .where('envelopeId', '==', payload.envelopeId)
+    .limit(1)
+    .get();
+  if (query.empty) throw new Error('Envelope not found for webhook update.');
+
+  const doc = query.docs[0];
+  const tenantId = String(doc.data().tenantId || '');
+  if (!tenantId) throw new Error('Stored envelope is missing its tenant binding.');
+
+  await doc.ref.set(
+    {
+      status: payload.status,
+      completedAt: payload.completedAt || null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
 
   if (payload.status.toLowerCase() === 'completed') {
-    await downloadCompletedDocument({ tenantId: tenantId!, envelopeId: payload.envelopeId });
+    await downloadCompletedDocument({ tenantId, envelopeId: payload.envelopeId });
   }
 }
 
