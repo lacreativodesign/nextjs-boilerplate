@@ -32,7 +32,9 @@ export type SubscriptionLifecycleSource =
   | 'payment.failed'
   | 'lock.advanced'
   | 'plan.downgrade_scheduled'
-  | 'plan.downgrade_cleared';
+  | 'plan.downgrade_cleared'
+  | 'trial.expired'
+  | 'trial.grace_ended';
 
 const KNOWN_PAID_TIERS = ['starter', 'pro', 'enterprise'] as const;
 export type PaidTier = (typeof KNOWN_PAID_TIERS)[number];
@@ -206,6 +208,33 @@ export async function applySubscriptionState(
       // A cancellation supersedes any scheduled downgrade.
       derived.pendingDowngradePlan = null;
       derived.pendingDowngradeAt = null;
+    }
+
+    // SOC2 F-09: trial expiry and grace-period end are subscription lifecycle
+    // transitions, but the trial-emails cron wrote them straight onto the tenant
+    // document. That bypassed everything this service exists to guarantee: no
+    // billing_state_audit record for the transition, no protected-tenant guard, and
+    // no transactional re-read — so a checkout completing between the cron's read
+    // and its write was silently overwritten with a downgrade.
+    if (input.source === 'trial.expired' || input.source === 'trial.grace_ended') {
+      if (PROTECTED_TENANTS.has(tenantId)) {
+        return { ok: false, tenantExists: true, derived: {} };
+      }
+      // Re-derived inside the transaction: a tenant that has started paying is no
+      // longer on the trial ladder, and the payment must win the race.
+      if (String(before.billingStatus || '') === 'active') {
+        return { ok: false, tenantExists: true, derived: {} };
+      }
+
+      if (input.source === 'trial.expired') {
+        derived.status = 'grace_period';
+        derived.subscriptionState = 'grace';
+        derived.billingStatus = 'past_due';
+      } else {
+        derived.status = 'hard_locked';
+        derived.subscriptionState = 'hard_locked';
+        derived.billingStatus = 'canceled';
+      }
     }
 
     const rawPlan = String(input.plan || '').trim();
