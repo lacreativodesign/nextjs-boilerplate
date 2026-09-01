@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCurrentUser } from '@/app/api/admin/_utils';
-import { createDataDeletionRequest } from '@/lib/compliance/data-retention';
+import { createDataDeletionRequest, TenantOwnershipError } from '@/lib/compliance/data-retention';
 
 export const runtime = 'nodejs';
 
@@ -24,12 +24,18 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
-  const result = await createDataDeletionRequest({
-    tenantId: me.tenantId,
-    requestedBy: me.uid,
-    subjectUserId: parsed.data.subjectUserId,
-    mode: parsed.data.mode,
-  });
-
-  return NextResponse.json(result, { status: 202 });
+  try {
+    const result = await createDataDeletionRequest({
+      tenantId: me.tenantId,
+      requestedBy: me.uid,
+      subjectUserId: parsed.data.subjectUserId,
+      mode: parsed.data.mode,
+    });
+    return NextResponse.json(result, { status: 202 });
+  } catch (error) {
+    if (error instanceof TenantOwnershipError) {
+      return NextResponse.json({ error: 'Subject user not found' }, { status: 404 });
+    }
+    throw error;
+  }
 }
