@@ -45,13 +45,14 @@ const BACKUP_BUCKET = getBackupBucketName();
 const RETENTION_DAYS = Math.max(1, Number(process.env.BACKUP_RETENTION_DAYS || 30));
 
 function isAuthorized(request: NextRequest) {
+  // SOC2 F-04: this previously short-circuited on the `x-vercel-cron` request header
+  // before checking CRON_SECRET. That header is client-supplied, so any caller able to
+  // reach this handler could assert it and run the job. Vercel Cron sends
+  // `Authorization: Bearer $CRON_SECRET` whenever CRON_SECRET is set, so the Bearer
+  // check alone is sufficient and matches the other eight cron routes.
   const secret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isCronFromVercel =
-    process.env.VERCEL === '1' && request.headers.get('x-vercel-cron') === '1';
-
-  if (isCronFromVercel) return true;
   if (!secret) return false;
+  const authHeader = request.headers.get('authorization');
   return authHeader === `Bearer ${secret}`;
 }
 

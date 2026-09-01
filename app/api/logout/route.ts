@@ -7,12 +7,6 @@ import { getCurrentUser } from '@/app/api/admin/_utils';
 import { recordAttendanceEvent } from '@/lib/attendance/record';
 
 const COOKIE_NAME = 'lac_session';
-function getCookieDomain(hostname: string): string | undefined {
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined;
-  const parts = hostname.split('.');
-  if (parts.length >= 2) return `.${parts.slice(-2).join('.')}`;
-  return undefined;
-}
 
 export async function POST(request: Request) {
   try {
@@ -39,10 +33,11 @@ export async function POST(request: Request) {
     }
 
     const res = NextResponse.json({ success: true });
-    const hostname = new URL(request.url).hostname;
-    const cookieDomain = getCookieDomain(hostname);
 
-    // Clear lac_session cookie
+    // SOC2 F-17: session-login sets lac_session host-only (no `domain`). A browser only
+    // clears a cookie when the clearing Set-Cookie matches the same domain scope, so the
+    // previous `domain: .bizosto.com` never cleared the cookie it was aiming at. All three
+    // cookies are now cleared exactly as they were set.
     res.cookies.set({
       name: COOKIE_NAME,
       value: '',
@@ -50,7 +45,6 @@ export async function POST(request: Request) {
       secure: true,
       sameSite: 'lax',
       path: '/',
-      domain: cookieDomain,
       maxAge: 0,
     });
 
