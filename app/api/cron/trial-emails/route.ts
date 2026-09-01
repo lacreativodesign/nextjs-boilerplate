@@ -7,8 +7,8 @@ import {
   sendTrialExpiredEmail,
   sendTrialGracePeriodEndingEmail,
 } from '@/lib/email/onboarding-emails';
-import { PLAN_MODULES } from '@/app/config/plans';
 import { isComped } from '@/lib/billing/billing-mode';
+import { applySubscriptionState } from '@/lib/billing/apply-subscription-state';
 
 export const runtime = 'nodejs';
 
@@ -180,18 +180,16 @@ export async function GET(request: NextRequest) {
             { expiredSent: true, expiredSentAt: now, email: ownerData.email },
             { merge: true },
           );
-          // Downgrade to starter modules so sidebar hides Finance, Production, HR
-          // until the tenant upgrades to a paid plan
-          await adminDb.collection('tenants').doc(tenantId).set(
-            {
-              status: 'grace_period',
-              subscriptionState: 'grace',
-              billingStatus: 'past_due',
-              plan: 'starter',
-              modules: PLAN_MODULES.starter,
-            },
-            { merge: true },
-          );
+          // SOC2 F-09: routed through the canonical billing state service rather than
+          // written straight onto the tenant document. That is what produces the
+          // billing_state_audit record for this transition, re-derives starter modules
+          // and limits from the plan, and re-reads inside a transaction so a checkout
+          // completing mid-run is not overwritten with a downgrade.
+          await applySubscriptionState({
+            tenantId,
+            source: 'trial.expired',
+            plan: 'starter',
+          });
           emailsSent += 1;
           continue;
         }
@@ -202,18 +200,13 @@ export async function GET(request: NextRequest) {
             { gracePeriodEndSent: true, gracePeriodEndSentAt: now, email: ownerData.email },
             { merge: true },
           );
-          // Hard lock — middleware blocks all access, module state does not matter
-          // but set starter modules so if they reactivate they start from the right baseline
-          await adminDb.collection('tenants').doc(tenantId).set(
-            {
-              status: 'hard_locked',
-              subscriptionState: 'hard_locked',
-              billingStatus: 'canceled',
-              plan: 'starter',
-              modules: PLAN_MODULES.starter,
-            },
-            { merge: true },
-          );
+          // Hard lock — middleware blocks all access. Starter modules and limits are
+          // still re-derived so a reactivating tenant starts from the right baseline.
+          await applySubscriptionState({
+            tenantId,
+            source: 'trial.grace_ended',
+            plan: 'starter',
+          });
           emailsSent += 1;
         }
       } catch (error) {
