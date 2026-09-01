@@ -4,6 +4,12 @@ import {
   handleCalendlyWebhookByTenant,
   verifyCalendlyWebhookSignature,
 } from '@/lib/integrations/calendly';
+import {
+  claimWebhookEvent,
+  finalizeWebhookEvent,
+  releaseWebhookEvent,
+} from '@/lib/stripe/webhook-idempotency';
+import { webhookEventKey } from '@/lib/webhooks/event-key';
 
 export const runtime = 'nodejs';
 
@@ -60,7 +66,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await handleCalendlyWebhookByTenant({ tenantId, payload });
+    // SOC2 F-10: claimed only AFTER signature verification. Claiming first would let
+    // an unauthenticated caller pre-register an event key and cause the real Calendly
+    // delivery to be discarded as a duplicate.
+    //
+    // Calendly sends no first-class event id, so the raw body is the key basis: a
+    // redelivery is byte-identical, while distinct events carry their own invitee URI
+    // and creation timestamp.
+    const eventType = String(payload?.event || 'calendly.unknown');
+    const eventKey = webhookEventKey('calendly', [], rawBody);
+
+    const claim = await claimWebhookEvent(eventKey, eventType);
+    if (claim === 'duplicate') {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+
+    try {
+      await handleCalendlyWebhookByTenant({ tenantId, payload });
+    } catch (processingError) {
+      // Release the claim so Calendly's next retry can re-process rather than being
+      // silently swallowed as a duplicate.
+      await releaseWebhookEvent(eventKey);
+      throw processingError;
+    }
+
+    await finalizeWebhookEvent(eventKey, eventType);
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error('POST /api/integrations/calendly/webhook', error);

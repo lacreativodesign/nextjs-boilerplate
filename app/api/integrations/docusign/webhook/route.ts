@@ -3,6 +3,12 @@ import {
   upsertEnvelopeStatusFromWebhook,
   verifyDocusignWebhookSignature,
 } from '@/lib/integrations/docusign';
+import {
+  claimWebhookEvent,
+  finalizeWebhookEvent,
+  releaseWebhookEvent,
+} from '@/lib/stripe/webhook-idempotency';
+import { webhookEventKey } from '@/lib/webhooks/event-key';
 
 export const runtime = 'nodejs';
 
@@ -53,7 +59,29 @@ export async function POST(request: Request) {
       );
     }
 
-    await upsertEnvelopeStatusFromWebhook(event);
+    // SOC2 F-10: claimed only AFTER signature verification, so an unauthenticated
+    // caller cannot pre-register a key and cause the real delivery to be dropped.
+    //
+    // An envelope id plus its status is stable across DocuSign Connect retries and
+    // distinct for each real transition (sent, delivered, completed), so it is a
+    // better key than a body hash, whose timestamps differ between retries.
+    const eventType = `docusign.${event.status.toLowerCase()}`;
+    const eventKey = webhookEventKey('docusign', [event.envelopeId, event.status], rawBody);
+
+    const claim = await claimWebhookEvent(eventKey, eventType);
+    if (claim === 'duplicate') {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+
+    try {
+      await upsertEnvelopeStatusFromWebhook(event);
+    } catch (processingError) {
+      // Release so DocuSign's next retry re-processes instead of being swallowed.
+      await releaseWebhookEvent(eventKey);
+      throw processingError;
+    }
+
+    await finalizeWebhookEvent(eventKey, eventType);
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     return NextResponse.json(
