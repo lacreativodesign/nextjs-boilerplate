@@ -22,13 +22,15 @@ function extractEnvelopeEvent(payload: any) {
     '';
 
   const completedAt = payload?.data?.completedDateTime || payload?.completedDateTime || null;
-  const tenantId = payload?.data?.tenantId || payload?.tenantId || null;
 
+  // SOC2 F-23: `tenantId` is deliberately NOT read from the payload. Bizosto never puts
+  // a tenantId into the envelope it sends to DocuSign, so Connect cannot return one —
+  // the only way this field could ever be populated is by a caller choosing it. The
+  // tenant is resolved from the stored envelope instead.
   return {
     envelopeId: String(envelopeId || '').trim(),
     status: String(status || '').trim(),
     completedAt: completedAt ? String(completedAt) : null,
-    tenantId: tenantId ? String(tenantId) : null,
   };
 }
 
