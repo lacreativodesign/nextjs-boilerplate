@@ -1,7 +1,9 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-const DEFAULT_FONT = 'Inter';
+const DEFAULT_FONT = 'DM Sans';
 const FONT_ALLOWLIST = [
+  'DM Sans',
+  'Sora',
   'Inter',
   'Roboto',
   'Poppins',
@@ -98,6 +100,7 @@ export function generateThemeCssVariables(branding: {
     '--focus-ring': `0 0 0 3px ${palette.primaryColor}33`,
     '--brand-accent': palette.accentColor,
     '--brand-font': `"${font}", system-ui`,
+    '--brand-heading-font': `"${font}", system-ui`,
   };
 }
 

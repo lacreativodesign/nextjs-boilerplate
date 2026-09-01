@@ -8,6 +8,8 @@ export type NavItem = {
   module?: string | null;
   children?: NavItem[];
   badge?: { text: string; variant: 'info' | 'warning' | 'success' | 'danger' };
+  locked?: boolean;
+  lockReason?: string;
 };
 
 export const sidebarNavigation: NavItem[] = [
@@ -697,6 +699,63 @@ export const sidebarNavigation: NavItem[] = [
     module: null,
   },
 ];
+
+export type NavigationGroup = {
+  id: 'workspace' | 'revenue' | 'delivery' | 'finance' | 'people' | 'manage' | 'platform';
+  label: string;
+  items: NavItem[];
+};
+
+const NAVIGATION_GROUPS: Array<Pick<NavigationGroup, 'id' | 'label'>> = [
+  { id: 'workspace', label: 'Workspace' },
+  { id: 'revenue', label: 'Revenue' },
+  { id: 'delivery', label: 'Delivery' },
+  { id: 'finance', label: 'Finance & insights' },
+  { id: 'people', label: 'People' },
+  { id: 'manage', label: 'Manage' },
+  { id: 'platform', label: 'Platform' },
+];
+
+function getNavigationGroup(item: NavItem): NavigationGroup['id'] {
+  const key = `${item.id} ${item.href}`;
+
+  if (/super_admin|platform/.test(key)) return 'platform';
+  if (/help|settings|billing|users|profile/.test(key)) return 'manage';
+  if (/hr|team|employee|leave|performance/.test(key)) return 'people';
+  if (/finance|report|payment|invoice|payroll|tax/.test(key)) return 'finance';
+  if (/production|project|job|workload|qa|file|change-request/.test(key)) return 'delivery';
+  if (/sales|lead|deal|pipeline|target|follow-up|client/.test(key)) return 'revenue';
+  return 'workspace';
+}
+
+export function getNavigationForTenant(
+  role: string,
+  tenantModules: Record<string, boolean> = {},
+): NavItem[] {
+  return getNavigationForRole(role).map((item) => {
+    const locked =
+      role === 'admin' && Boolean(item.module) && tenantModules[item.module as string] === false;
+    return {
+      ...item,
+      locked,
+      lockReason: locked ? 'Upgrade required' : undefined,
+    };
+  });
+}
+
+export function groupNavigationItems(items: NavItem[]): NavigationGroup[] {
+  const grouped = new Map<NavigationGroup['id'], NavItem[]>();
+
+  for (const item of items) {
+    const group = getNavigationGroup(item);
+    grouped.set(group, [...(grouped.get(group) ?? []), item]);
+  }
+
+  return NAVIGATION_GROUPS.flatMap((group) => {
+    const groupItems = grouped.get(group.id);
+    return groupItems?.length ? [{ ...group, items: groupItems }] : [];
+  });
+}
 
 const normalizePath = (path: string) => {
   if (!path) return '/';

@@ -1,34 +1,38 @@
 'use client';
 
+import Image, { type ImageLoaderProps } from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  Users,
-  Briefcase,
-  TrendingUp,
-  FolderKanban,
-  Factory,
-  DollarSign,
-  UserCircle,
   BarChart3,
-  Settings,
-  CreditCard,
-  Shield,
-  X,
-  SlidersHorizontal,
-  FileText,
+  Briefcase,
   CalendarDays,
+  CreditCard,
+  DollarSign,
+  Factory,
+  FileText,
+  FolderKanban,
   FolderOpen,
   GitPullRequest,
-  UserPlus,
+  LayoutDashboard,
   LifeBuoy,
+  LockKeyhole,
+  LogOut,
+  Settings,
+  Shield,
+  SlidersHorizontal,
+  TrendingUp,
+  UserCircle,
+  UserPlus,
+  Users,
+  X,
   type LucideProps,
 } from 'lucide-react';
-import type { ForwardRefExoticComponent, RefAttributes } from 'react';
+import { useMemo, type ForwardRefExoticComponent, type RefAttributes } from 'react';
 import { useSidebar } from '@/lib/context/SidebarContext';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { getNavigationForRole } from '@/lib/navigation/sidebarConfig';
+import { getNavigationForTenant, groupNavigationItems } from '@/lib/navigation/sidebarConfig';
+import { apiFetch } from '@/lib/api/client';
 
 type IconComponent = ForwardRefExoticComponent<
   Omit<LucideProps, 'ref'> & RefAttributes<SVGSVGElement>
@@ -68,153 +72,204 @@ type SidebarProps = {
   tenantModules?: Record<string, boolean>;
 };
 
+const imageLoader = ({ src }: ImageLoaderProps) => src;
+
+function formatRole(role: string) {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'User';
+}
+
+function initials(name: string, email: string) {
+  const source = name.trim() || email.trim();
+  if (!source) return 'U';
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase();
+}
+
 export default function Sidebar({
   currentRole,
+  userName,
+  userEmail,
   tenantName,
   brandTagline,
   tenantLogoUrl,
   collapsed,
+  tenantPlan = 'trial',
   tenantModules = {},
 }: SidebarProps) {
   const pathname = usePathname();
-  const { isMobileOpen, closeMobile, openMobile, toggleCollapse } = useSidebar();
+  const { isMobileOpen, closeMobile, toggleCollapse } = useSidebar();
   const { t } = useI18n();
 
-  const navItems = getNavigationForRole(currentRole)
-    .filter((item) => {
-      // Module gating — only applies to admin role (other roles have their own dedicated dashboards)
-      // super_admin bypasses all module checks
-      if (item.module && currentRole === 'admin' && Object.keys(tenantModules).length > 0) {
-        return tenantModules[item.module] !== false;
-      }
-      return true;
-    })
-    .map((item) => ({
-      ...item,
-      label: item.labelKey ? t(item.labelKey, { defaultValue: item.label }) : item.label,
-    }));
-
-  const labelsClass = [
-    isMobileOpen ? 'sidebar-mobile-open' : '',
-    !collapsed ? 'sidebar-desktop-open' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const sidebarTagline = brandTagline?.trim() || 'Powered by Bizosto®';
-
-  const LogoIcon = () => (
-    <img
-      src={tenantLogoUrl || '/icons/icon-192.svg'}
-      alt={tenantLogoUrl ? tenantName : 'Bizosto B-mark'}
-      className="h-10 w-10 flex-shrink-0 rounded-xl object-contain"
-    />
+  const navItems = useMemo(
+    () =>
+      getNavigationForTenant(currentRole, tenantModules).map((item) => ({
+        ...item,
+        label: item.labelKey ? t(item.labelKey, { defaultValue: item.label }) : item.label,
+      })),
+    [currentRole, tenantModules, t],
   );
+  const groups = useMemo(() => groupNavigationItems(navItems), [navItems]);
+  const sidebarTagline = brandTagline?.trim() || 'Executive Workspace';
+  const roleLabel = formatRole(currentRole);
+  const userInitials = initials(userName, userEmail);
+  const showSubscriberHelp =
+    currentRole !== 'client' && !navItems.some((item) => item.href === '/help');
+
+  const handleLogout = async () => {
+    await apiFetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login';
+  };
 
   return (
     <>
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 z-[35] md:hidden"
-          style={{
-            background: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-          }}
+      {isMobileOpen ? (
+        <button
+          type="button"
+          className="workspace-sidebar-overlay"
           onClick={closeMobile}
+          aria-label="Close navigation"
         />
-      )}
+      ) : null}
 
       <aside
         id="main-sidebar"
         className={[
-          'sidebar-transition',
-          'fixed left-0 top-0 z-40 h-full',
-          'border-r border-[var(--border-subtle)] bg-[var(--surface-card)]',
-          isMobileOpen ? 'w-[260px]' : 'w-16',
-          collapsed ? 'md:w-[var(--sidebar-collapsed-width)]' : 'md:w-[var(--sidebar-width)]',
-          labelsClass,
-        ].join(' ')}
+          'workspace-sidebar sidebar-transition',
+          isMobileOpen ? 'workspace-sidebar--mobile-open' : '',
+          collapsed ? 'workspace-sidebar--collapsed' : 'sidebar-desktop-open',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        aria-label="Primary navigation"
       >
-        {/* No horizontal padding on outer — icons must center in 64px */}
-        <div className="flex h-full flex-col py-3">
-          {/* px-3 on header keeps B icon at 12px left → center = 12+20 = 32px = half of 64px */}
-          <div className="mb-4 border-b border-[var(--border-subtle)] pb-3 px-3">
-            <div className="flex h-14 items-center">
-              {/* B icon is the ONLY toggle — desktop: collapse, mobile: open/close drawer */}
+        <div className="workspace-sidebar__inner">
+          <div className="workspace-sidebar__brand">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.innerWidth < 768) closeMobile();
+                else toggleCollapse();
+              }}
+              className="workspace-sidebar__logo"
+              aria-label={
+                isMobileOpen
+                  ? 'Close navigation'
+                  : collapsed
+                    ? 'Expand sidebar'
+                    : 'Collapse sidebar'
+              }
+            >
+              <Image
+                loader={imageLoader}
+                unoptimized
+                src={tenantLogoUrl || '/icons/icon-192.svg'}
+                alt={tenantLogoUrl ? `${tenantName} logo` : 'Bizosto B-mark'}
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-xl object-contain"
+              />
+            </button>
+
+            <div className="sidebar-label min-w-0 flex-1">
+              <p className="workspace-sidebar__tenant">{tenantName}</p>
+              <p className="workspace-sidebar__tagline">{sidebarTagline}</p>
+            </div>
+
+            {isMobileOpen ? (
               <button
                 type="button"
-                onClick={() => {
-                  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-                    toggleCollapse();
-                  } else {
-                    isMobileOpen ? closeMobile() : openMobile();
-                  }
-                }}
-                className="flex-shrink-0 cursor-pointer focus:outline-none"
-                aria-label="Toggle sidebar"
+                onClick={closeMobile}
+                className="workspace-icon-button md:hidden"
+                aria-label="Close menu"
               >
-                <LogoIcon />
+                <X className="h-4 w-4" />
               </button>
-
-              <div className="sidebar-label ml-3 min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-[var(--text-primary)] leading-tight">
-                  {tenantName}
-                </div>
-                <div className="truncate text-xs text-[var(--text-muted)]">{sidebarTagline}</div>
-              </div>
-
-              {isMobileOpen && (
-                <button
-                  onClick={closeMobile}
-                  className="ml-2 flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--surface-muted)] transition-colors md:hidden"
-                  aria-label="Close menu"
-                >
-                  <X className="h-4 w-4 text-[var(--text-muted)]" />
-                </button>
-              )}
-            </div>
+            ) : null}
           </div>
 
-          {/* px-4 on links → icon starts at 16px, center = 16+16 = 32px = half of 64px */}
-          <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
-            {navItems.map((item) => {
-              const Icon: IconComponent = ICON_MAP[item.icon] ?? LayoutDashboard;
-              const isIndexHref =
-                item.href === '/admin' ||
-                item.href === '/dashboard' ||
-                item.href === '/super_admin' ||
-                item.href.split('/').filter(Boolean).length === 1;
-              const isActive = isIndexHref
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(item.href + '/');
-              const opensInNewTab = item.href === '/help';
-              return (
-                <Link
-                  key={item.id}
-                  id={item.href === '/dashboard' ? 'sidebar-dashboard' : undefined}
-                  href={item.href}
-                  title={item.label}
-                  target={opensInNewTab ? '_blank' : undefined}
-                  rel={opensInNewTab ? 'noopener noreferrer' : undefined}
-                  onClick={isMobileOpen ? closeMobile : undefined}
-                  className={[
-                    'flex w-full items-center rounded-xl transition-colors px-4 py-2.5',
-                    isActive
-                      ? 'bg-[var(--erp-blue)] text-white shadow-lg shadow-blue-500/20'
-                      : 'text-[var(--text-primary)] opacity-60 hover:bg-[var(--surface-muted)] hover:opacity-100',
-                  ].join(' ')}
-                >
-                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="sidebar-label ml-2 text-sm font-semibold whitespace-nowrap">
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
+          <nav className="workspace-sidebar__nav">
+            {groups.map((group) => (
+              <div key={group.id} className="workspace-sidebar__group">
+                <p className="workspace-sidebar__group-label sidebar-label">{group.label}</p>
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
+                    const isIndexHref =
+                      item.href === '/admin' ||
+                      item.href === '/dashboard' ||
+                      item.href === '/super_admin' ||
+                      item.href.split('/').filter(Boolean).length === 1;
+                    const isActive = isIndexHref
+                      ? pathname === item.href
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const href = item.locked
+                      ? `/billing?upgrade=module&module=${encodeURIComponent(item.module || '')}`
+                      : item.href;
+
+                    return (
+                      <Link
+                        key={item.id}
+                        id={item.href === '/dashboard' ? 'sidebar-dashboard' : undefined}
+                        href={href}
+                        title={item.locked ? `${item.label} — upgrade required` : item.label}
+                        aria-current={isActive ? 'page' : undefined}
+                        aria-label={item.locked ? `${item.label}, upgrade required` : item.label}
+                        onClick={isMobileOpen ? closeMobile : undefined}
+                        className={[
+                          'workspace-sidebar__link',
+                          isActive && !item.locked ? 'workspace-sidebar__link--active' : '',
+                          item.locked ? 'workspace-sidebar__link--locked' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
+                        <span className="workspace-sidebar__link-icon">
+                          <Icon className="h-[18px] w-[18px]" />
+                        </span>
+                        <span className="sidebar-label min-w-0 flex-1 truncate">{item.label}</span>
+                        {item.locked ? (
+                          <LockKeyhole className="sidebar-label h-3.5 w-3.5 shrink-0" />
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
+
+          <footer className="workspace-sidebar__footer">
+            {showSubscriberHelp ? (
+              <Link href="/help" className="workspace-sidebar__utility" onClick={closeMobile}>
+                <LifeBuoy className="h-[18px] w-[18px] shrink-0" />
+                <span className="sidebar-label flex-1">Help Center</span>
+              </Link>
+            ) : null}
+
+            <div className="workspace-sidebar__profile">
+              <span className="workspace-sidebar__avatar" aria-hidden="true">
+                {userInitials}
+              </span>
+              <div className="sidebar-label min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                  {userName || userEmail || 'User'}
+                </p>
+                <p className="truncate text-[11px] text-[var(--text-muted)]">
+                  {roleLabel} · {tenantPlan}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="workspace-sidebar__logout"
+                onClick={handleLogout}
+                aria-label="Log out"
+                title="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </footer>
         </div>
       </aside>
     </>

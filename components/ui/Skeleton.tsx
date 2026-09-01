@@ -1,7 +1,6 @@
 import React from 'react';
 
-const baseStyles =
-  'animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/80 transition-opacity duration-300';
+const baseStyles = 'skeleton-shimmer rounded-md transition-opacity duration-300';
 
 type SkeletonVariant = 'text' | 'card' | 'block' | 'avatar';
 
@@ -120,7 +119,7 @@ export function SkeletonCard({
 
   return (
     <div
-      className={`rounded-xl border border-slate-200/70 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 ${className}`}
+      className={`rounded-xl border border-line bg-surface p-4 shadow-card ${className}`}
       style={{ width: sizeValue(width), height: sizeValue(height) }}
     >
       <Skeleton variant="text" className="h-4 w-2/5" />

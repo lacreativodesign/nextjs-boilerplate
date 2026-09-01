@@ -19,6 +19,10 @@ module.exports = {
     // Note: because these are `var()` and not raw channels, Tailwind's slash-opacity syntax
     // (`bg-surface/50`) does not apply. Use the `-soft` variants, which are pre-tinted.
     extend: {
+      fontFamily: {
+        sans: ['var(--brand-font)'],
+        display: ['var(--brand-heading-font)'],
+      },
       colors: {
         app: 'var(--app-bg)',
         surface: {
