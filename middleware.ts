@@ -521,13 +521,24 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
 
   if (legacyRedirect) return applyRateHeaders(pathname, legacyRedirect, rateContext, nonce);
 
-  // Skip tenant validation for login/signup pages
+  // Skip tenant validation for login/signup pages.
+  //
+  // SOC2 F-07: this returned a BARE NextResponse.next(), which meant the three highest-value
+  // unauthenticated surfaces on the platform — the login page, the signup funnel and the
+  // session-login endpoint — shipped with no CSP, no HSTS, no X-Frame-Options and no
+  // Referrer-Policy, and never received the x-nonce request header. Tenant validation is
+  // still skipped (these routes have no tenant yet); only the response headers change.
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/api/session-login')
   ) {
-    return NextResponse.next();
+    return applyRateHeaders(
+      pathname,
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      rateContext,
+      nonce,
+    );
   }
 
   if (pathname === '/' || pathname.startsWith('/set-password') || isPublicPagePath(pathname)) {
@@ -778,6 +789,9 @@ export const config = {
     '/unauthorized',
     '/forbidden',
     '/login/:path*',
+    // SOC2 F-07: /signup was absent from the matcher entirely, so middleware never ran for
+    // the signup funnel and it received no security headers at all.
+    '/signup/:path*',
     '/account_manager/:path*',
     '/customer/:path*',
     '/api/:path*',
