@@ -3,7 +3,25 @@ export type FirestoreRecord = Record<string, any>;
 type DocSeed = { id: string; data: FirestoreRecord };
 type Seed = Record<string, DocSeed[]>;
 
-type WhereFilter = { field: string; op: '=='; value: unknown };
+type WhereOp = '==' | '<' | '<=' | '>' | '>=';
+type WhereFilter = { field: string; op: WhereOp; value: unknown };
+
+/**
+ * Range operators exist so retention-style queries — an equality on `tenantId`
+ * combined with a `<=` cutoff on a timestamp — can be exercised here. `==` keeps
+ * its original strict-equality semantics exactly; the relational operators rely on
+ * JavaScript's own coercion, which orders Date and number values correctly.
+ */
+function matchesFilter(actual: unknown, op: WhereOp, expected: unknown): boolean {
+  if (op === '==') return actual === expected;
+  if (actual === undefined || actual === null) return false;
+  const a = actual as number;
+  const b = expected as number;
+  if (op === '<') return a < b;
+  if (op === '<=') return a <= b;
+  if (op === '>') return a > b;
+  return a >= b;
+}
 type OrderRule = { field: string; direction: 'asc' | 'desc' };
 
 class MockDocSnapshot {
@@ -90,7 +108,7 @@ class MockQuery {
     private readonly max: number | null = null,
   ) {}
 
-  where(field: string, op: '==', value: unknown) {
+  where(field: string, op: WhereOp, value: unknown) {
     return new MockQuery(
       this.db,
       this.collectionName,
@@ -117,7 +135,7 @@ class MockQuery {
   async get() {
     const rows = this.db
       .getCollectionDocs(this.collectionName)
-      .filter(({ data }) => this.filters.every((f) => data[f.field] === f.value));
+      .filter(({ data }) => this.filters.every((f) => matchesFilter(data[f.field], f.op, f.value)));
 
     if (this.order) {
       rows.sort((a, b) => {
@@ -137,6 +155,9 @@ class MockQuery {
         ref: new MockDocRef(this.db, this.collectionName, id),
       })),
       empty: limitedRows.length === 0,
+      // Firestore's QuerySnapshot exposes both `docs` and `size`; production code
+      // reads `.size` freely, and omitting it here silently yields NaN in counters.
+      size: limitedRows.length,
     };
   }
 }
@@ -159,14 +180,30 @@ class MockCollectionRef extends MockQuery {
 }
 
 class MockBatch {
-  private readonly updates: Array<{ ref: MockDocRef; data: FirestoreRecord }> = [];
+  // Writes are replayed in the order they were queued, which is what Firestore
+  // guarantees within a batch. Retention archiving depends on it: the archive copy
+  // must land before the source document is removed.
+  private readonly writes: Array<() => Promise<void>> = [];
 
   update(ref: MockDocRef, data: FirestoreRecord) {
-    this.updates.push({ ref, data });
+    this.writes.push(() => ref.update(data));
+    return this;
+  }
+
+  set(ref: MockDocRef, data: FirestoreRecord, options?: { merge?: boolean }) {
+    this.writes.push(() => ref.set(data, options));
+    return this;
+  }
+
+  delete(ref: MockDocRef) {
+    this.writes.push(() => ref.delete());
+    return this;
   }
 
   async commit() {
-    await Promise.all(this.updates.map((u) => u.ref.update(u.data)));
+    for (const write of this.writes) {
+      await write();
+    }
   }
 }
 

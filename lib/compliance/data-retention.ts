@@ -78,9 +78,48 @@ export async function listRetentionPolicies(tenantId: string): Promise<DataReten
   }));
 }
 
+/**
+ * SOC2 F-03: the canonical top-level collection and timestamp field for each
+ * retention entity type.
+ *
+ * Bizosto stores tenant data in TOP-LEVEL collections carrying a `tenantId` field,
+ * not under tenants/{id}/{collection}. `runRetentionCleanup` read the subcollection,
+ * which does not exist, so every run scanned zero documents, deleted nothing and
+ * reported success. The weekly compliance report then counted the policy as active,
+ * manufacturing evidence for a control that had never once executed.
+ *
+ * This is an allowlist, not a lookup with a fallback. A policy's `collectionPath` is
+ * a free-form string supplied by a tenant admin; resolving it straight against a
+ * top-level collection would let an admin aim a delete policy at any collection in
+ * the database. `users` is deliberately absent — erasing user documents on a
+ * schedule would orphan Firebase Auth accounts, and subject erasure already has its
+ * own audited path in `createDataDeletionRequest`.
+ */
+const RETENTION_TARGETS: Record<string, { collection: string; timestampField: string }> = {
+  audit_logs: { collection: 'auditLogs', timestampField: 'createdAt' },
+  invoices: { collection: 'invoices', timestampField: 'createdAt' },
+  expenses: { collection: 'expenses', timestampField: 'createdAt' },
+  projects: { collection: 'projects', timestampField: 'createdAt' },
+  tasks: { collection: 'tasks', timestampField: 'createdAt' },
+  documents: { collection: 'documents', timestampField: 'createdAt' },
+  notifications: { collection: 'notifications', timestampField: 'createdAt' },
+};
+
+/**
+ * Deletion stays disarmed until this is explicitly set, matching the posture of
+ * ERP_ENABLE_RECURRING_INVOICES. Fixing the query and arming bulk deletion in the
+ * same change would take a job that has never removed a single document straight to
+ * destructive with no observation window. Disarmed, the job reports exactly what it
+ * WOULD remove via `eligible`, so a real retention footprint can be reviewed first.
+ */
+function retentionDeletionArmed() {
+  return process.env.ERP_ENABLE_RETENTION_DELETION === 'true';
+}
+
 export async function runRetentionCleanup(tenantId: string) {
   const policies = await listRetentionPolicies(tenantId);
   const enabledPolicies = policies.filter((p) => p.enabled);
+  const armed = retentionDeletionArmed();
 
   const summary = {
     tenantId,
@@ -88,28 +127,49 @@ export async function runRetentionCleanup(tenantId: string) {
     deleted: 0,
     archived: 0,
     scanned: 0,
+    eligible: 0,
+    dryRun: !armed,
+    skipped: [] as Array<{ policyId: string; entityType: string; reason: string }>,
   };
 
   for (const policy of enabledPolicies) {
+    const target = RETENTION_TARGETS[policy.entityType];
+    if (!target) {
+      summary.skipped.push({
+        policyId: policy.id,
+        entityType: policy.entityType,
+        reason: 'entityType is not an allowlisted retention target',
+      });
+      continue;
+    }
+
     const cutoff = new Date();
     cutoff.setUTCDate(cutoff.getUTCDate() - policy.retentionDays);
     const cutoffTs = Timestamp.fromDate(cutoff);
 
-    const q = adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection(policy.collectionPath)
-      .where('createdAt', '<=', cutoffTs)
-      .limit(500);
+    const snapshot = await adminDb
+      .collection(target.collection)
+      .where('tenantId', '==', tenantId)
+      .where(target.timestampField, '<=', cutoffTs)
+      .limit(500)
+      .get();
 
-    const snapshot = await q.get();
     summary.scanned += snapshot.size;
 
     if (snapshot.empty) continue;
 
+    if (!armed) {
+      summary.eligible += snapshot.size;
+      continue;
+    }
+
     const batch = adminDb.batch();
 
     snapshot.docs.forEach((doc) => {
+      // Defense in depth: never act on a document belonging to another tenant, even
+      // if a query or index were ever misconfigured.
+      if ((doc.data() as { tenantId?: unknown }).tenantId !== tenantId) return;
+
       if (policy.action === 'delete') {
         batch.delete(doc.ref);
         summary.deleted += 1;
@@ -117,7 +177,7 @@ export async function runRetentionCleanup(tenantId: string) {
         batch.set(
           adminDb.collection('tenants').doc(tenantId).collection('complianceArchive').doc(),
           {
-            sourceCollection: policy.collectionPath,
+            sourceCollection: target.collection,
             sourceId: doc.id,
             tenantId,
             policyId: policy.id,
