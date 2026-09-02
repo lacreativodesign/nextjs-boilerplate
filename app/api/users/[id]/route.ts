@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
 import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { logEvent } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,6 +136,24 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       resourceType: 'user',
       resourceId: params.id,
       resourceName: userData.name || userData.email,
+    });
+
+    // SOC2 F-05: UserService.logActivity writes to `user_activity`, which is a
+    // per-user timeline, not the audit trail. Revoking someone's access is a CC6.2
+    // event and has to reach `auditLogs` as well.
+    await logEvent({
+      tenantId: me.tenantId,
+      type: 'user.deactivated',
+      title: 'User deactivated',
+      description: `${userData.name || userData.email || params.id} was deactivated.`,
+      entityType: 'user',
+      entityId: params.id,
+      actor: { uid: me.uid, name: me.name || me.email || '' },
+      audit: {
+        action: 'update',
+        resource: 'user',
+        changes: [{ field: 'status', oldValue: 'active', newValue: 'inactive' }],
+      },
     });
 
     return NextResponse.json({ success: true });

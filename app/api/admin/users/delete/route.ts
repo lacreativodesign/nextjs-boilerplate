@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminRole, isSuperAdmin } from '../_utils';
-import { logActivity } from '@/lib/activity/tracker';
+import { logEvent } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 
@@ -41,17 +41,29 @@ export async function POST(req: Request) {
     // Delete Firestore profile
     await adminDb.collection('users').doc(uid).delete();
 
-    await logActivity({
+    // SOC2 F-05: account deletion is a CC6.2 control event. This previously called
+    // logActivity directly, which writes only to tenants/{id}/activity_feed, so the
+    // permanent removal of an identity left no entry in `auditLogs`. logEvent writes
+    // the audit record AND still forwards to the activity feed.
+    await logEvent({
       tenantId: String(data?.tenantId || current.tenantId || ''),
+      type: 'user.deleted',
+      title: 'User deleted',
+      description: `${String(data?.name || data?.email || uid)} was removed from the workspace.`,
+      entityType: 'user',
+      entityId: uid,
       actor: {
         uid: current.uid,
         name: String(current.name || current.fullName || current.email || 'Admin'),
       },
-      action: 'deleted',
-      entityType: 'user',
-      entityId: uid,
-      entityName: String(data?.name || data?.email || uid),
-      category: 'user',
+      audit: {
+        action: 'delete',
+        resource: 'user',
+        changes: [
+          { field: 'email', oldValue: String(data?.email || ''), newValue: null },
+          { field: 'role', oldValue: String(data?.role || ''), newValue: null },
+        ],
+      },
     });
     return NextResponse.json({ success: true });
   } catch (e: any) {

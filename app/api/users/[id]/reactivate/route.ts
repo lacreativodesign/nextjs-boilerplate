@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
 import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { logEvent } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
       resourceType: 'user',
       resourceId: params.id,
       resourceName: userData.name || userData.email,
+    });
+
+    // SOC2 F-05: restoring access is the counterpart to deactivation and belongs in
+    // the same trail. Without it, `auditLogs` would show access being revoked and
+    // never granted back.
+    await logEvent({
+      tenantId: me.tenantId,
+      type: 'user.reactivated',
+      title: 'User reactivated',
+      description: `${userData.name || userData.email || params.id} was reactivated.`,
+      entityType: 'user',
+      entityId: params.id,
+      actor: { uid: me.uid, name: me.name || me.email || '' },
+      audit: {
+        action: 'update',
+        resource: 'user',
+        changes: [{ field: 'status', oldValue: 'inactive', newValue: 'active' }],
+      },
     });
 
     return NextResponse.json({ success: true });
