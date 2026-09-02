@@ -130,8 +130,8 @@ function hash(value: string): string {
 }
 
 // Per-request CSP nonce. Web Crypto only (Edge runtime has no Node crypto):
-// 16 random bytes → base64. Forwarded on x-nonce and used for the Report-Only
-// strict CSP; the enforced CSP stays permissive so nothing is blocked.
+// 16 random bytes → base64. Forwarded on x-nonce and used for the strict CSP,
+// which is enforced by default and mirrored Report-Only for violation reporting.
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
@@ -349,8 +349,10 @@ function applyRateHeaders(
 
 export async function middleware(req: NextRequest, event: NextFetchEvent) {
   // Per-request CSP nonce. Forwarded to the app on the x-nonce request header so
-  // the root layout can attach it to its inline theme script, and used to emit
-  // the Report-Only strict CSP with a matching nonce (enforced CSP stays permissive).
+  // the root layout can attach it to its inline theme script, and used to emit the
+  // strict nonce CSP with a matching nonce. That strict policy is ENFORCED by default
+  // (see cspEnforcementEnabled in lib/security/headers.ts); it is also mirrored
+  // Report-Only so violations keep reaching the readiness console while enforced.
   const nonce = generateNonce();
 
   if (req.headers.get('x-middleware-prefetch') === '1') {

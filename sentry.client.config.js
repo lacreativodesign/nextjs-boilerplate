@@ -16,6 +16,9 @@ Sentry.init({
   tracesSampleRate,
   replaysSessionSampleRate,
   replaysOnErrorSampleRate,
+  // SOC2 F-12: matches the server config. Without it the browser SDK attaches
+  // request PII to events by default, which would defeat the beforeSend scrubbing.
+  sendDefaultPii: false,
   integrations: [
     Sentry.feedbackIntegration({
       autoInject: false,
@@ -48,9 +51,13 @@ if (typeof window !== 'undefined') {
     .then((auth) => {
       auth.onAuthStateChanged((user) => {
         if (user) {
+          // SOC2 F-12: uid only. Sending `email` shipped identifiable personal data to
+          // Sentry, contradicting `sendDefaultPii: false` and the beforeSend scrubbing,
+          // and putting PII into a processor that is not covered by a DPA or named in
+          // any subprocessor register. A uid is pseudonymous and still lets an engineer
+          // correlate an error to a session through Firebase.
           Sentry.setUser({
             id: user.uid,
-            email: user.email || undefined,
           });
           user
             .getIdTokenResult()

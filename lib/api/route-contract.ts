@@ -146,7 +146,7 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'currency/rates': 'Cached public exchange rates.',
   'finance/currency/rates': 'Cached public exchange rates (finance UI alias).',
   'monitoring/ingest': 'Browser telemetry; 8KB cap, field whitelist, ingest-keyed in prod.',
-  'invoices/search': 'Public invoice lookup by unguessable token.',
+  'invoices/search': 'Legacy path; 308 redirect to /api/finance/invoices, which enforces auth.',
   // Versioned proxy catch-alls (delegate to underlying guarded routes)
   'v1/[[...path]]': 'Versioned proxy; auth enforced by the proxied route.',
   'v2/[[...path]]': 'Versioned proxy; auth enforced by the proxied route.',
