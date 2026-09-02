@@ -55,6 +55,9 @@ export async function POST() {
       cancel_at_period_end: true,
     });
 
+    // SOC2 F-05: the actor rides into the canonical service, which writes the trail
+    // entry after its transaction commits. Cancellation ends a paid relationship, so
+    // the record has to name the admin who scheduled it rather than the system.
     await applySubscriptionState({
       tenantId,
       source: 'subscription.updated',
@@ -62,6 +65,11 @@ export async function POST() {
       stripeSubscriptionId: subscriptionId,
       currentPeriodEnd: updated.current_period_end ?? null,
       cancelAtPeriodEnd: true,
+      actor: {
+        userId: auth.user.uid,
+        userEmail: String(auth.user.email || ''),
+        userName: String(auth.user.name || auth.user.email || auth.user.uid),
+      },
     });
 
     try {

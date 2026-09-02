@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { AuditLogger } from '@/lib/audit/audit-logger';
 import { isComped } from '@/lib/billing/billing-mode';
 import { getAppUrl } from '@/lib/urls';
 
@@ -54,6 +55,26 @@ export async function POST() {
     const session = await stripe.billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,
       return_url: `${appUrl}/billing`,
+    });
+
+    // SOC2 F-05: inside the Stripe portal an admin can cancel the subscription, swap
+    // the card and change the billing address — none of which comes back through this
+    // application, so none of it reaches this trail. Minting the session is therefore
+    // the only record that the capability was handed over, and it is what explains a
+    // later state change that appears to have no actor behind it.
+    //
+    // session.url is NOT logged: it is a bearer link that grants billing management to
+    // anyone holding it, and the trail is not the place to store one.
+    await AuditLogger.log({
+      tenantId,
+      userId: auth.user.uid,
+      userEmail: String(auth.user.email || ''),
+      userName: String(auth.user.name || auth.user.email || auth.user.uid),
+      action: 'create',
+      resource: 'subscription',
+      resourceId: tenantId,
+      changes: [{ field: 'billingPortalSession', oldValue: null, newValue: 'created' }],
+      status: 'success',
     });
 
     return NextResponse.json({ ok: true, url: session.url });

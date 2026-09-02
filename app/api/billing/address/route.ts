@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
+import { AuditLogger } from '@/lib/audit/audit-logger';
 import { toIsoCountryCode, updateStripeCustomerAddress } from '@/lib/stripe/customer';
 
 export const runtime = 'nodejs';
@@ -63,6 +64,23 @@ export async function PATCH(req: Request) {
       },
       { merge: true },
     );
+
+    // SOC2 F-05: the billing address sets the tax jurisdiction a workspace is billed
+    // under, so a change to it is a financial control event. Only the country is
+    // recorded — it is the tax-determining field. City and postcode are deliberately
+    // omitted: for a sole trader the billing address is a home address, and the trail
+    // should not become a second copy of it.
+    await AuditLogger.log({
+      tenantId,
+      userId: auth.user.uid,
+      userEmail: String(auth.user.email || ''),
+      userName: String(auth.user.name || auth.user.email || auth.user.uid),
+      action: 'update',
+      resource: 'settings',
+      resourceId: tenantId,
+      changes: [{ field: 'billingAddress.country', oldValue: null, newValue: isoCountry }],
+      status: 'success',
+    });
 
     return NextResponse.json({ ok: true, message: 'Billing address updated' });
   } catch (error) {
