@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { plans } from '@/lib/billing/plans';
 import { resolvePlanModules, type PlanTier } from '@/lib/tenant/plan-access';
+import { AuditLogger } from '@/lib/audit/audit-logger';
 
 /**
  * Canonical billing state service (P0-3, locked founder decision).
@@ -136,6 +137,36 @@ function unixToIso(value: number | null | undefined): string | null {
     : null;
 }
 
+/**
+ * SOC2 F-05: `billing_state_audit`, written inside every transaction below, is a
+ * private billing ledger — no audit or compliance surface reads it, so a plan
+ * change, a cancellation or a period-end downgrade left nothing in `auditLogs`.
+ * It is the same trap as `logActivity`: it looks like audit logging at the call
+ * site and is not. The ledger is kept (it carries full before/after state); the
+ * entries added here put the transition on the trail an auditor actually samples.
+ */
+export interface BillingAuditActor {
+  userId: string;
+  userEmail: string;
+  userName: string;
+}
+
+/**
+ * Billing state arrives from three places: a tenant admin acting in the app, a
+ * Stripe webhook, and the billing cron. Only the first has a user, so a caller
+ * that omits `actor` is attributed to the machine path that drove the change
+ * rather than to whoever happened to be signed in.
+ */
+function resolveActor(
+  actor: BillingAuditActor | undefined,
+  source: string,
+  fallbackUid?: string,
+): BillingAuditActor {
+  if (actor?.userId) return actor;
+  if (fallbackUid) return { userId: fallbackUid, userEmail: '', userName: fallbackUid };
+  return { userId: `system:${source}`, userEmail: '', userName: 'Billing system' };
+}
+
 export interface ApplySubscriptionStateInput {
   tenantId: string;
   source: Exclude<
@@ -155,6 +186,8 @@ export interface ApplySubscriptionStateInput {
   /** Unix seconds from Stripe, or null. */
   trialEnd?: number | null;
   billingCycle?: 'monthly' | 'annual';
+  /** Present when a signed-in admin drove the change; absent for webhook and cron. */
+  actor?: BillingAuditActor;
 }
 
 export interface ApplyResult {
@@ -173,12 +206,20 @@ export async function applySubscriptionState(
   const auditRef = adminDb.collection('billing_state_audit').doc();
   const nowIso = new Date().toISOString();
 
-  return adminDb.runTransaction(async (tx) => {
+  // Captured inside the transaction so the trail entry can state the transition
+  // rather than only its result. A retry overwrites these, leaving the values
+  // read by the attempt that actually committed.
+  let beforePlan: unknown = null;
+  let beforeState: unknown = null;
+
+  const result = await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(tenantRef);
     if (!snap.exists) {
       return { ok: false, tenantExists: false, derived: {} };
     }
     const before = snap.data() as Record<string, unknown>;
+    beforePlan = before.plan ?? null;
+    beforeState = before.subscriptionState ?? null;
 
     const derived: Record<string, unknown> = { updatedAt: nowIso };
     let auditWarning: string | null = null;
@@ -278,6 +319,35 @@ export async function applySubscriptionState(
 
     return { ok: true, tenantExists: true, derived };
   });
+
+  // Written AFTER the transaction resolves, never inside it. A Firestore
+  // transaction retries on contention and AuditLogger.log performs its own
+  // non-transactional write, so logging inside would emit one trail entry per
+  // attempt and record transitions that never committed.
+  if (result.ok) {
+    const actor = resolveActor(input.actor, input.source);
+    await AuditLogger.log({
+      tenantId,
+      userId: actor.userId,
+      userEmail: actor.userEmail,
+      userName: actor.userName,
+      action: input.source === 'subscription.deleted' ? 'delete' : 'update',
+      resource: 'subscription',
+      resourceId: tenantId,
+      changes: [
+        { field: 'source', oldValue: null, newValue: input.source },
+        { field: 'plan', oldValue: beforePlan, newValue: result.derived.plan ?? beforePlan },
+        {
+          field: 'subscriptionState',
+          oldValue: beforeState,
+          newValue: result.derived.subscriptionState ?? beforeState,
+        },
+      ],
+      status: 'success',
+    });
+  }
+
+  return result;
 }
 
 export async function applyPaymentSucceeded(input: {
@@ -475,6 +545,8 @@ export interface SchedulePendingDowngradeInput {
   /** ISO timestamp when the downgrade takes effect (current period end). */
   effectiveAtIso: string;
   actorUid: string;
+  /** Richer identity for the trail when a signed-in admin drove the change. */
+  actor?: BillingAuditActor;
 }
 
 /**
@@ -495,12 +567,15 @@ export async function schedulePendingDowngrade(
   const auditRef = adminDb.collection('billing_state_audit').doc();
   const nowIso = new Date().toISOString();
 
-  return adminDb.runTransaction(async (tx) => {
+  let beforePlan: unknown = null;
+
+  const result = await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(tenantRef);
     if (!snap.exists) {
       return { ok: false, tenantExists: false, derived: {} };
     }
     const before = snap.data() as Record<string, unknown>;
+    beforePlan = before.plan ?? null;
 
     const derived: Record<string, unknown> = {
       pendingDowngradePlan: input.plan,
@@ -521,6 +596,26 @@ export async function schedulePendingDowngrade(
 
     return { ok: true, tenantExists: true, derived };
   });
+
+  if (result.ok) {
+    const actor = resolveActor(input.actor, 'plan.downgrade_scheduled', input.actorUid);
+    await AuditLogger.log({
+      tenantId,
+      userId: actor.userId,
+      userEmail: actor.userEmail,
+      userName: actor.userName,
+      action: 'update',
+      resource: 'subscription',
+      resourceId: tenantId,
+      changes: [
+        { field: 'pendingDowngradePlan', oldValue: beforePlan, newValue: input.plan },
+        { field: 'pendingDowngradeAt', oldValue: null, newValue: input.effectiveAtIso },
+      ],
+      status: 'success',
+    });
+  }
+
+  return result;
 }
 
 /**
@@ -531,6 +626,8 @@ export async function clearPendingDowngrade(input: {
   tenantId: string;
   actorUid: string;
   reason?: string;
+  /** Richer identity for the trail when a signed-in admin drove the change. */
+  actor?: BillingAuditActor;
 }): Promise<ApplyResult> {
   const tenantId = String(input.tenantId || '').trim();
   if (!tenantId) return { ok: false, tenantExists: false, derived: {} };
@@ -539,12 +636,15 @@ export async function clearPendingDowngrade(input: {
   const auditRef = adminDb.collection('billing_state_audit').doc();
   const nowIso = new Date().toISOString();
 
-  return adminDb.runTransaction(async (tx) => {
+  let beforePending: unknown = null;
+
+  const result = await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(tenantRef);
     if (!snap.exists) {
       return { ok: false, tenantExists: false, derived: {} };
     }
     const before = snap.data() as Record<string, unknown>;
+    beforePending = before.pendingDowngradePlan ?? null;
 
     const derived: Record<string, unknown> = {
       pendingDowngradePlan: null,
@@ -565,4 +665,24 @@ export async function clearPendingDowngrade(input: {
 
     return { ok: true, tenantExists: true, derived };
   });
+
+  if (result.ok) {
+    const actor = resolveActor(input.actor, 'plan.downgrade_cleared', input.actorUid);
+    await AuditLogger.log({
+      tenantId,
+      userId: actor.userId,
+      userEmail: actor.userEmail,
+      userName: actor.userName,
+      action: 'update',
+      resource: 'subscription',
+      resourceId: tenantId,
+      changes: [
+        { field: 'pendingDowngradePlan', oldValue: beforePending, newValue: null },
+        { field: 'reason', oldValue: null, newValue: input.reason || null },
+      ],
+      status: 'success',
+    });
+  }
+
+  return result;
 }

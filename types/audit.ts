@@ -43,7 +43,11 @@ export type AuditResource =
   | 'event'
   | 'notification'
   | 'email'
-  | 'attendance';
+  | 'attendance'
+  // Billing lifecycle. Plan changes, cancellations and portal grants move money and
+  // entitlement, and had no resource of their own — they were previously invisible to
+  // any auditor filtering the trail by what was affected.
+  | 'subscription';
 
 export interface AuditLog {
   id: string;

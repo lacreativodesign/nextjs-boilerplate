@@ -41,6 +41,15 @@ async function handlePlanChange(req: Request) {
       return NextResponse.json({ ok: false, error: 'Tenant context missing' }, { status: 400 });
     }
 
+    // SOC2 F-05: passed into the canonical billing service so the trail entry names
+    // the admin who changed the plan. Omitting it would attribute a human plan change
+    // to the machine path, which is how Stripe- and cron-driven changes are recorded.
+    const actor = {
+      userId: auth.user.uid,
+      userEmail: String(auth.user.email || ''),
+      userName: String(auth.user.name || auth.user.email || auth.user.uid),
+    };
+
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantSnap.data() || {};
 
@@ -98,6 +107,7 @@ async function handlePlanChange(req: Request) {
         await clearPendingDowngrade({
           tenantId,
           actorUid: auth.user.uid,
+          actor,
           reason: 'Scheduled downgrade cancelled by tenant admin',
         });
         return NextResponse.json({
@@ -130,12 +140,14 @@ async function handlePlanChange(req: Request) {
         stripeSubscriptionId: subscriptionId,
         currentPeriodEnd: updated.current_period_end ?? null,
         cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end),
+        actor,
       });
 
       if (pendingDowngradePlan) {
         await clearPendingDowngrade({
           tenantId,
           actorUid: auth.user.uid,
+          actor,
           reason: 'Superseded by upgrade',
         });
       }
@@ -169,6 +181,7 @@ async function handlePlanChange(req: Request) {
       plan: newPlan,
       effectiveAtIso,
       actorUid: auth.user.uid,
+      actor,
     });
 
     return NextResponse.json({

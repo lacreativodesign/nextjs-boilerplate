@@ -34,8 +34,20 @@ const ROOT = process.cwd();
  * AuditLogger.log, so every one of its ten call sites reaches the trail. The same
  * precedent already exists in lib/api/route-contract.ts, where extracting a check
  * into a shared helper required teaching the evidence matcher about the helper.
+ *
+ * The canonical billing service qualifies on the same terms as of WP-13:
+ * applySubscriptionState, schedulePendingDowngrade and clearPendingDowngrade each
+ * call AuditLogger.log after their transaction commits. Instrumenting the service
+ * rather than only its routes is what puts Stripe- and cron-driven plan changes on
+ * the trail — a payment-failure downgrade has no route and no user behind it, and
+ * was previously invisible. A test below holds the service to that promise.
+ *
+ * NOTE: `billing_state_audit`, which that service also writes, is NOT a trail
+ * writer. It is a private billing ledger that no audit or compliance surface reads
+ * — the same trap as logActivity, one collection further down.
  */
-const TRAIL_WRITERS = /writeAuditLog\(|logEvent\(|AuditLogger\.log\(|logSettingsChange\(/;
+const TRAIL_WRITERS =
+  /writeAuditLog\(|logEvent\(|AuditLogger\.log\(|logSettingsChange\(|applySubscriptionState\(|schedulePendingDowngrade\(|clearPendingDowngrade\(/;
 
 /**
  * Routes that must produce an audit-trail entry. Append only.
@@ -63,6 +75,21 @@ const MUST_AUDIT = [
   'app/api/admin/settings/sales/route.ts',
   'app/api/admin/settings/workflows/route.ts',
   'app/api/admin/reports/settings/route.ts',
+
+  // Billing. These move money and entitlement: a plan change alters what a workspace
+  // is charged, a cancellation ends the paid relationship, a payment-method change
+  // swaps the instrument charged, and the billing address sets the tax jurisdiction.
+  // The portal is here because it is the one route that grants management capability
+  // exercised entirely outside this application.
+  //
+  // The deprecated 410 stubs (billing/subscribe, billing/webhook,
+  // billing/cancel-subscription) are deliberately absent: they mutate nothing, so
+  // there is no event to record.
+  'app/api/billing/subscription/change/route.ts',
+  'app/api/billing/subscription/cancel/route.ts',
+  'app/api/billing/payment-method/route.ts',
+  'app/api/billing/address/route.ts',
+  'app/api/billing/portal/route.ts',
 ];
 
 describe('audit trail coverage for account lifecycle', () => {
@@ -101,6 +128,77 @@ describe('the settings helper reaches the trail', () => {
 
     for (const rel of routes) {
       expect(MUST_AUDIT).toContain(rel);
+    }
+  });
+});
+
+describe('billing state changes are recorded', () => {
+  const SERVICE = 'lib/billing/apply-subscription-state.ts';
+
+  it('the canonical billing service writes an auditLogs record', () => {
+    // Five routes and both Stripe webhooks depend on this service for their audit
+    // story, exactly as ten settings routes depend on logSettingsChange.
+    const source = fs.readFileSync(path.join(ROOT, SERVICE), 'utf8');
+    expect(source).toContain('AuditLogger.log(');
+    expect(source).toContain("resource: 'subscription'");
+  });
+
+  it('logs after the transaction commits, never inside it', () => {
+    // A Firestore transaction retries on contention, and AuditLogger.log performs its
+    // own non-transactional write. Logging inside the callback would emit one entry
+    // per attempt and record transitions that never committed.
+    const source = fs.readFileSync(path.join(ROOT, SERVICE), 'utf8');
+
+    for (const block of source.split('runTransaction(async (tx) => {').slice(1)) {
+      const closes = block.indexOf('\n  });');
+      expect(closes).toBeGreaterThan(-1);
+      expect(block.slice(0, closes)).not.toContain('AuditLogger.log(');
+    }
+  });
+
+  it('attributes machine-driven changes to the system, not to a signed-in user', () => {
+    // A webhook and the billing cron have no user. Falling back to whoever was last
+    // signed in would put a real person's name on a change they did not make.
+    const source = fs.readFileSync(path.join(ROOT, SERVICE), 'utf8');
+    expect(source).toContain('function resolveActor(');
+    expect(source).toContain('system:');
+  });
+
+  it('never writes a bearer portal URL or a payment token into the trail', () => {
+    // The portal URL grants billing management to anyone holding it, and a payment
+    // method id names the tenant's instrument. Neither belongs in a trail that every
+    // tenant admin can read.
+    // Bounded to the log call itself: both routes legitimately use those values in
+    // the response that follows, and the claim here is only that neither reaches the
+    // audit payload.
+    const auditPayload = (source: string) => {
+      const start = source.indexOf('AuditLogger.log(');
+      expect(start).toBeGreaterThan(-1);
+      const end = source.indexOf('});', start);
+      expect(end).toBeGreaterThan(start);
+      return source.slice(start, end);
+    };
+
+    const portal = fs.readFileSync(path.join(ROOT, 'app/api/billing/portal/route.ts'), 'utf8');
+    expect(auditPayload(portal)).not.toContain('session.url');
+
+    const card = fs.readFileSync(
+      path.join(ROOT, 'app/api/billing/payment-method/route.ts'),
+      'utf8',
+    );
+    expect(auditPayload(card)).not.toContain('paymentMethodId');
+  });
+
+  it('leaves the deprecated 410 stubs off the list', () => {
+    // They return 410 and mutate nothing. Listing them would force a log call into a
+    // dead endpoint and record an event that never happened.
+    for (const rel of [
+      'app/api/billing/subscribe/route.ts',
+      'app/api/billing/webhook/route.ts',
+      'app/api/billing/cancel-subscription/route.ts',
+    ]) {
+      expect(fs.readFileSync(path.join(ROOT, rel), 'utf8')).toContain('410');
+      expect(MUST_AUDIT).not.toContain(rel);
     }
   });
 });
