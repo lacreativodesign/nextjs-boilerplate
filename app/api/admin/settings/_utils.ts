@@ -2,6 +2,7 @@ import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant/constants';
 import { createNotification } from '@/lib/notifications';
+import { AuditLogger } from '@/lib/audit/audit-logger';
 import { getCurrentUser, isAdminRole, isSuperAdmin } from '../_utils';
 
 export const runtime = 'nodejs';
@@ -296,6 +297,30 @@ export async function logSettingsChange({
   summary: string;
   notificationsEnabled?: boolean;
 }) {
+  const tenantId = user.tenantId || DEFAULT_TENANT_ID;
+
+  // SOC2 F-05: this helper is the ONLY event record for all ten privileged settings
+  // routes — including security policy and ingest API key creation and revocation —
+  // and it wrote to `admin_activity`, `events` and a notification, none of which is
+  // the audit trail. `auditLogs` is what the compliance reader, the DSAR export and
+  // the super-admin viewer read, so credential rotation and security-policy changes
+  // were invisible to every one of them.
+  //
+  // AuditLogger.log is used rather than logEvent because logEvent also emits a
+  // notification event, and this helper already writes to `events` and notifies
+  // below. This adds the missing audit record and nothing else.
+  await AuditLogger.log({
+    tenantId,
+    userId: user.uid,
+    userEmail: user.email || '',
+    userName: user.name || user.email || '',
+    action: 'settings_changed',
+    resource: 'settings',
+    resourceId: section,
+    changes: [{ field: section, oldValue: null, newValue: summary }],
+    status: 'success',
+  });
+
   await adminDb.collection('admin_activity').add({
     action: 'settings.update',
     section,
@@ -303,7 +328,7 @@ export async function logSettingsChange({
     performedBy: user.uid,
     performedByRole: user.role,
     timestamp: new Date().toISOString(),
-    tenantId: user.tenantId || DEFAULT_TENANT_ID,
+    tenantId,
   });
 
   await adminDb.collection('events').add({
@@ -317,13 +342,13 @@ export async function logSettingsChange({
     createdByName: user.name || user.email || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    tenantId: user.tenantId || DEFAULT_TENANT_ID,
+    tenantId,
   });
 
   const notifications =
     typeof notificationsEnabled === 'boolean'
       ? notificationsEnabled
-      : (await getNotificationSettings(user.tenantId || DEFAULT_TENANT_ID)).enableInApp;
+      : (await getNotificationSettings(tenantId)).enableInApp;
 
   if (notifications) {
     await createNotification({
@@ -334,7 +359,7 @@ export async function logSettingsChange({
       entityType: null,
       entityId: section,
       createdBy: { uid: user.uid, name: user.name || user.email || null },
-      tenantId: user.tenantId || DEFAULT_TENANT_ID,
+      tenantId,
     });
   }
 }
