@@ -7,7 +7,7 @@ import { assertPermission, Permission } from '../../../../lib/permissions';
 import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
 import { checkRateLimit } from '@/lib/security';
-import { logActivity } from '@/lib/activity/tracker';
+import { logEvent } from '@/lib/audit';
 import { isRoleEnabled } from '@/lib/tenant/access';
 import { sendEmail } from '@/lib/email/email-service';
 import { getUsersByRoles } from '@/lib/notifications';
@@ -214,17 +214,31 @@ export async function POST(req: Request) {
       timestamp: new Date().toISOString(),
     });
 
-    await logActivity({
+    // SOC2 F-05: account creation is a CC6.2 control event and must reach the audit
+    // trail. This previously called logActivity directly, which writes only to
+    // tenants/{id}/activity_feed — so the single most audit-critical IAM event on the
+    // platform never appeared in `auditLogs`, the collection the compliance reader,
+    // the DSAR export and the super-admin viewer all read. logEvent writes the audit
+    // record AND still forwards to the activity feed, so the feed is unchanged.
+    await logEvent({
       tenantId,
+      type: 'user.created',
+      title: 'User created',
+      description: `${displayName || email} was added to the workspace as ${targetRole}.`,
+      entityType: 'user',
+      entityId: userRecord.uid,
       actor: {
         uid: current.uid,
         name: current.name || current.fullName || current.email || 'Admin',
       },
-      action: 'created',
-      entityType: 'user',
-      entityId: userRecord.uid,
-      entityName: displayName || email,
-      category: 'user',
+      audit: {
+        action: 'create',
+        resource: 'user',
+        changes: [
+          { field: 'email', oldValue: null, newValue: email },
+          { field: 'role', oldValue: null, newValue: targetRole },
+        ],
+      },
     });
 
     // Notify tenant admins of new team member — non-blocking
