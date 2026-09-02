@@ -1,36 +1,25 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
-import type { PermissionSet, RoleDocument } from '@/lib/permissions/types';
+import type { RoleDocument } from '@/lib/permissions/types';
+import { resolveErrorResponse } from '@/lib/errors';
+import { validateRequest } from '@/lib/validations/validate';
+import { createRoleSchema } from '@/lib/validations/permission';
 
 export const dynamic = 'force-dynamic';
-
-function validatePermissions(payload: unknown): payload is PermissionSet[] {
-  if (!Array.isArray(payload)) return false;
-  return payload.every((permission) => {
-    const item = permission as PermissionSet;
-    return (
-      !!item &&
-      typeof item.module === 'string' &&
-      typeof item.entity === 'string' &&
-      Array.isArray(item.actions)
-    );
-  });
-}
 
 export async function POST(request: Request) {
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = (await request.json()) as Partial<RoleDocument>;
-    if (!body.name?.trim()) {
-      return NextResponse.json({ error: 'Role name is required' }, { status: 400 });
-    }
-
-    if (!validatePermissions(body.permissions)) {
-      return NextResponse.json({ error: 'Invalid permissions payload' }, { status: 400 });
-    }
+    // SOC2 F-06: the hand-rolled check this replaces tested `Array.isArray(actions)`
+    // without inspecting the array's contents, so arbitrary objects could be stored
+    // as permission actions. Nothing bounded the number of entries or the length of
+    // a name either. The schema draws its enums from the same constants the
+    // permission engine evaluates, so an action it cannot understand cannot be
+    // persisted in the first place.
+    const body = validateRequest(createRoleSchema, await request.json());
 
     const now = Date.now();
     const ref = adminDb.collection('permission_roles').doc();
@@ -38,8 +27,8 @@ export async function POST(request: Request) {
     const role: RoleDocument = {
       id: ref.id,
       tenantId: auth.user.tenantId,
-      name: body.name.trim(),
-      description: body.description?.trim() || '',
+      name: body.name,
+      description: body.description ?? '',
       permissions: body.permissions,
       parentRoleId: body.parentRoleId || null,
       isTemplate: false,
@@ -53,8 +42,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ role }, { status: 201 });
   } catch (error) {
-    console.error('Create role error', error);
-    return NextResponse.json({ error: 'Failed to create role' }, { status: 500 });
+    const { status, body, headers } = resolveErrorResponse(error, {
+      fallbackMessage: 'Failed to create role',
+    });
+    return NextResponse.json(body, { status, headers });
   }
 }
 

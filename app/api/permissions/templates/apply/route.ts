@@ -7,18 +7,19 @@ import {
   invalidateUserPermissionCache,
 } from '@/lib/permissions/permission-engine';
 import type { RoleDocument } from '@/lib/permissions/types';
+import { resolveErrorResponse } from '@/lib/errors';
+import { validateRequest } from '@/lib/validations/validate';
+import { applyTemplateSchema } from '@/lib/validations/permission';
 
 export async function POST(request: Request) {
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = (await request.json()) as {
-      templateKey?: string;
-      roleName?: string;
-      userId?: string;
-    };
-    const template = getPermissionTemplateByKey(body.templateKey || '');
+    // SOC2 F-06: this route mints a role AND grants it to a user in one call, from a
+    // body that was cast rather than validated.
+    const body = validateRequest(applyTemplateSchema, await request.json());
+    const template = getPermissionTemplateByKey(body.templateKey);
 
     if (!template) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     const role: RoleDocument = {
       id: roleRef.id,
       tenantId: auth.user.tenantId,
-      name: body.roleName?.trim() || template.name,
+      name: body.roleName || template.name,
       description: template.description,
       parentRoleId: template.parentRoleId || null,
       permissions: template.permissions,
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ role }, { status: 201 });
   } catch (error) {
-    console.error('Apply template error', error);
-    return NextResponse.json({ error: 'Failed to apply template' }, { status: 500 });
+    const { status, body, headers } = resolveErrorResponse(error, {
+      fallbackMessage: 'Failed to apply template',
+    });
+    return NextResponse.json(body, { status, headers });
   }
 }
