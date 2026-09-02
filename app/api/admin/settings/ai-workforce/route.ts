@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { requireAdmin, serverTimestamp } from '../_utils';
+import { requireAdmin, serverTimestamp, logSettingsChange } from '../_utils';
 import { encryptApiKey, decryptApiKey } from '@/lib/ai/byok-crypto';
 
 export const runtime = 'nodejs';
@@ -90,6 +90,17 @@ export async function POST(req: Request) {
           },
           { merge: true },
         );
+
+      // SOC2 F-05: storing and removing a tenant's own provider credential was the
+      // one settings route with no event record at all — not even the admin_activity
+      // entry the other ten write. The summary names the provider only; the key
+      // itself must never reach any log.
+      await logSettingsChange({
+        user: auth.user,
+        section: 'ai-workforce',
+        summary: 'AI Workforce provider key removed.',
+      });
+
       return NextResponse.json({ ok: true, removed: true });
     }
 
@@ -134,6 +145,12 @@ export async function POST(req: Request) {
         },
         { merge: true },
       );
+
+    await logSettingsChange({
+      user: auth.user,
+      section: 'ai-workforce',
+      summary: `AI Workforce provider key set (${provider}).`,
+    });
 
     return NextResponse.json({ ok: true, provider, apiKeyMasked: maskKey(key) });
   } catch (err: any) {
