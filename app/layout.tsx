@@ -42,7 +42,8 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Per-request CSP nonce, set by middleware on the x-nonce request header.
   // Attaching it to the inline theme script makes that script compliant with
-  // the nonce-based strict CSP (Report-Only today, enforced in S31-B).
+  // the nonce-based strict CSP, which is enforced by default. If the nonce is
+  // ever absent the script would be blocked, so this is load-bearing, not advisory.
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   return (
