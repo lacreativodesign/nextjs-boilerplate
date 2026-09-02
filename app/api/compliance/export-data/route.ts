@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCurrentUser } from '@/app/api/admin/_utils';
 import { createDataExportRequest, TenantOwnershipError } from '@/lib/compliance/data-retention';
+import { AuditLogger } from '@/lib/audit/audit-logger';
 
 export const runtime = 'nodejs';
 
@@ -38,6 +39,23 @@ export async function POST(request: Request) {
     }
     throw error;
   }
+
+  // SOC2 F-05 / P6.1: a DSAR export hands one admin the complete personal record of
+  // another person — profile, audit history, invoices, expenses, projects, tasks,
+  // documents and notifications. GDPR requires a record of how each request was
+  // handled, and this is exactly the event an auditor samples. It produced no entry
+  // in `auditLogs`, so the compliance machinery was the least audited surface here.
+  await AuditLogger.log({
+    tenantId: me.tenantId,
+    userId: me.uid,
+    userEmail: me.email || '',
+    userName: me.name || me.email || '',
+    action: 'export',
+    resource: 'user',
+    resourceId: parsed.data.subjectUserId,
+    changes: [{ field: 'dsar.export', oldValue: null, newValue: `format=${parsed.data.format}` }],
+    status: 'success',
+  });
 
   const contentType = parsed.data.format === 'csv' ? 'text/csv' : 'application/json';
   return new Response(result.content, {

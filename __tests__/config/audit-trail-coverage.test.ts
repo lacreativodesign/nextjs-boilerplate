@@ -34,7 +34,6 @@ const ROOT = process.cwd();
  * AuditLogger.log, so every one of its ten call sites reaches the trail. The same
  * precedent already exists in lib/api/route-contract.ts, where extracting a check
  * into a shared helper required teaching the evidence matcher about the helper.
- *
  * The canonical billing service qualifies on the same terms as of WP-13:
  * applySubscriptionState, schedulePendingDowngrade and clearPendingDowngrade each
  * call AuditLogger.log after their transaction commits. Instrumenting the service
@@ -75,6 +74,15 @@ const MUST_AUDIT = [
   'app/api/admin/settings/sales/route.ts',
   'app/api/admin/settings/workflows/route.ts',
   'app/api/admin/reports/settings/route.ts',
+
+  // The compliance machinery itself. A DSAR export hands one admin another person's
+  // complete record; an erasure is irreversible; a retention policy is standing
+  // authority to destroy records on a schedule. GDPR requires a record of how each
+  // request was handled, so these are the events an auditor samples first — and they
+  // were the least audited surface in the codebase.
+  'app/api/compliance/export-data/route.ts',
+  'app/api/compliance/delete-data/route.ts',
+  'app/api/compliance/policies/route.ts',
 
   // Billing. These move money and entitlement: a plan change alters what a workspace
   // is charged, a cancellation ends the paid relationship, a payment-method change
@@ -128,6 +136,41 @@ describe('the settings helper reaches the trail', () => {
 
     for (const rel of routes) {
       expect(MUST_AUDIT).toContain(rel);
+    }
+  });
+});
+
+describe('DSAR handling is recorded', () => {
+  it.each([
+    ['app/api/compliance/export-data/route.ts', "action: 'export'"],
+    ['app/api/compliance/policies/route.ts', "resource: 'settings'"],
+  ])('%s records the right action', (rel, needle) => {
+    expect(fs.readFileSync(path.join(ROOT, rel), 'utf8')).toContain(needle);
+  });
+
+  it('records the erasure only after it has actually happened', () => {
+    // Writing the audit entry before the erasure would leave a record of a deletion
+    // that may have thrown. The entry must sit inside the try, after the await.
+    const source = fs.readFileSync(
+      path.join(ROOT, 'app/api/compliance/delete-data/route.ts'),
+      'utf8',
+    );
+    const erasureAt = source.indexOf('await createDataDeletionRequest(');
+    const auditAt = source.indexOf('await AuditLogger.log(');
+
+    expect(erasureAt).toBeGreaterThan(-1);
+    expect(auditAt).toBeGreaterThan(erasureAt);
+  });
+
+  it('never writes a subject identifier into the changes payload as free text', () => {
+    // resourceId carries the subject; `changes` must describe the action, not restate
+    // personal data into a second field.
+    for (const rel of [
+      'app/api/compliance/export-data/route.ts',
+      'app/api/compliance/delete-data/route.ts',
+    ]) {
+      const source = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+      expect(source).toContain('resourceId: parsed.data.subjectUserId');
     }
   });
 });
