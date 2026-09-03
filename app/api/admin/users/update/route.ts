@@ -6,6 +6,7 @@ import { assertPermission, Permission } from '../../../../lib/permissions';
 import { eligibleManagerRolesFor } from '@/lib/hierarchy';
 import { validateRequest } from '@/lib/validations/validate';
 import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
+import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 
 export const runtime = 'nodejs';
 
@@ -239,6 +240,19 @@ export async function POST(req: Request) {
     }
 
     if (requestedRole && role !== existingRole) {
+      // SOC2 CC6.2: the Firestore write above changes what API routes see, but
+      // Firestore security rules read the custom claim, and an already-issued session
+      // cookie embeds the claims it was minted with. Without this the two enforcement
+      // layers disagreed for up to fourteen days, until someone remembered to run
+      // repair-claims by hand. Revoking forces a fresh sign-in, so the demotion or
+      // promotion takes effect on the user's very next request.
+      await syncUserClaims({
+        uid,
+        role,
+        tenantId: String(existing.tenantId || current.tenantId || ''),
+        endSessions: true,
+      });
+
       try {
         await logEvent({
           type: 'user.role_changed',
