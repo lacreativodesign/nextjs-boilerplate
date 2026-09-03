@@ -148,6 +148,27 @@ describe('canonical billing state service (P0-3)', () => {
     expect(t.billingCycle).toBe('annual');
   });
 
+  it('checkout.linked preserves a real Stripe trial instead of promoting it to paid active', async () => {
+    await applySubscriptionState({
+      tenantId: 'tenant_a',
+      source: 'checkout.linked',
+      eventId: 'evt_trial_checkout',
+      plan: 'pro',
+      stripeStatus: 'trialing',
+      stripeCustomerId: 'cus_trial',
+      stripeSubscriptionId: 'sub_trial',
+      billingCycle: 'monthly',
+      trialEnd: 1798761600,
+    });
+
+    const t = await tenant();
+    expect(t.subscriptionState).toBe('trial');
+    expect(t.billingStatus).toBe('active');
+    expect(t.status).toBe('active');
+    expect(t.plan).toBe('pro');
+    expect(t.trialEndsAt).toBeTruthy();
+  });
+
   it('returns tenantExists=false and writes nothing for a missing tenant', async () => {
     const result = await applySubscriptionState({
       tenantId: 'ghost_tenant',

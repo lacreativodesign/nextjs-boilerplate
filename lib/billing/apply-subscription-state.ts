@@ -230,8 +230,14 @@ export async function applySubscriptionState(
     }
 
     if (input.source === 'checkout.linked') {
-      derived.subscriptionState = 'active';
-      derived.billingStatus = 'active';
+      // When Stripe reports trialing, preserve the canonical trial state established above.
+      // checkout.linked means the workspace is operationally activated; it does not mean the
+      // 14-day trial has already converted to a paid active subscription. Legacy callers that
+      // do not supply stripeStatus still fall back to active for backward compatibility.
+      if (!input.stripeStatus) {
+        derived.subscriptionState = 'active';
+        derived.billingStatus = 'active';
+      }
       derived.status = 'active';
     }
 
