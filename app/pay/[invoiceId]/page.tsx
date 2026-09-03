@@ -12,6 +12,16 @@ type PublicInvoiceResponse = {
     id: string;
     orderId: string;
     amount: number;
+    totalPaid: number;
+    balanceDue: number;
+    payableNow: number;
+    paymentPlan: 'full' | 'fifty_fifty';
+    installmentSequence: number;
+    firstInstallmentAmount: number;
+    secondInstallmentAmount: number;
+    balanceTriggerType: string | null;
+    balanceDueDate: string | null;
+    balanceMilestoneStage: string | null;
     subtotal: number | null;
     taxAmount: number;
     currency: string;
@@ -38,6 +48,14 @@ type PublicInvoiceResponse = {
     companyName: string | null;
     contactName: string | null;
   };
+};
+
+type PaymentResult = {
+  amountPaid: number;
+  totalPaid: number;
+  balanceDue: number;
+  invoiceStatus: string;
+  projectId?: string | null;
 };
 
 type StripeCardElement = { mount: (selector: string) => void; destroy: () => void };
@@ -80,6 +98,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<PublicInvoiceResponse | null>(null);
   const [paidState, setPaidState] = useState<'none' | 'success' | 'already'>('none');
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
   const [receiptEmail, setReceiptEmail] = useState('');
   const stripeRef = useRef<StripeInstance | null>(null);
   const cardRef = useRef<StripeCardElement | null>(null);
@@ -185,9 +204,9 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
     };
   }, [loading, error, data, paidState]);
 
-  const totalLabel = useMemo(() => {
+  const dueNowLabel = useMemo(() => {
     if (!data?.invoice) return '';
-    return `${money(data.invoice.amount, data.invoice.currency)} ${data.invoice.currency}`;
+    return `${money(data.invoice.payableNow, data.invoice.currency)} ${data.invoice.currency}`;
   }, [data]);
 
   async function payInvoice() {
@@ -228,6 +247,13 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       }
 
       if (payPayload.status === 'succeeded') {
+        setPaymentResult({
+          amountPaid: Number(payPayload.amountPaid || data.invoice.payableNow),
+          totalPaid: Number(payPayload.totalPaid || 0),
+          balanceDue: Number(payPayload.balanceDue || 0),
+          invoiceStatus: String(payPayload.invoiceStatus || ''),
+          projectId: payPayload.projectId || null,
+        });
         setPaidState('success');
         return;
       }
@@ -255,6 +281,13 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
         const confirmPayload = await confirmRes.json();
 
         if (confirmRes.ok && confirmPayload.ok && confirmPayload.status === 'succeeded') {
+          setPaymentResult({
+            amountPaid: Number(confirmPayload.amountPaid || data.invoice.payableNow),
+            totalPaid: Number(confirmPayload.totalPaid || 0),
+            balanceDue: Number(confirmPayload.balanceDue || 0),
+            invoiceStatus: String(confirmPayload.invoiceStatus || ''),
+            projectId: confirmPayload.projectId || null,
+          });
           setPaidState('success');
           return;
         }
@@ -321,6 +354,11 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
       </main>
     );
   }
+
+  const isFirstDeposit =
+    invoice.paymentPlan === 'fifty_fifty' &&
+    invoice.installmentSequence === 1 &&
+    invoice.totalPaid <= 0;
 
   return (
     <main
@@ -423,12 +461,40 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
           {invoice.taxAmount > 0 && (
             <SummaryRow label="Tax" value={money(invoice.taxAmount, invoice.currency)} />
           )}
+          <SummaryRow label="Project Total" value={money(invoice.amount, invoice.currency)} />
+          {invoice.totalPaid > 0 && (
+            <SummaryRow label="Paid to Date" value={money(invoice.totalPaid, invoice.currency)} />
+          )}
+          {invoice.paymentPlan === 'fifty_fifty' && (
+            <SummaryRow
+              label="Payment Terms"
+              value={isFirstDeposit ? '50% deposit / 50% balance' : 'Remaining 50% balance'}
+            />
+          )}
           <SummaryRow
-            label="Total Due"
-            value={money(invoice.amount, invoice.currency)}
+            label={isFirstDeposit ? 'Deposit Due Now' : 'Amount Due Now'}
+            value={money(invoice.payableNow, invoice.currency)}
             emphasized
           />
-          {invoice.dueDate && (
+          {invoice.balanceDue > invoice.payableNow && (
+            <SummaryRow
+              label="Balance After This Payment"
+              value={money(invoice.balanceDue - invoice.payableNow, invoice.currency)}
+            />
+          )}
+          {invoice.balanceTriggerType === 'date' && invoice.balanceDueDate && isFirstDeposit && (
+            <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
+              Remaining balance due: {dateValue(invoice.balanceDueDate)}
+            </p>
+          )}
+          {invoice.balanceTriggerType === 'milestone' &&
+            invoice.balanceMilestoneStage &&
+            isFirstDeposit && (
+              <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
+                Remaining balance due at milestone: {invoice.balanceMilestoneStage}
+              </p>
+            )}
+          {invoice.dueDate && !isFirstDeposit && (
             <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
               Due: {dateValue(invoice.dueDate)}
             </p>
@@ -461,7 +527,22 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
               ✓
             </div>
             <h3 style={{ fontSize: 28, margin: '14px 0 8px' }}>Payment Successful!</h3>
-            <p>Your payment of {money(invoice.amount, invoice.currency)} has been received.</p>
+            <p>
+              Your payment of{' '}
+              {money(paymentResult?.amountPaid || invoice.payableNow, invoice.currency)} has been
+              received.
+            </p>
+            {paymentResult && paymentResult.balanceDue > 0 ? (
+              <>
+                <p>Your project is now activated and ready for kickoff.</p>
+                <p>
+                  Remaining balance: {money(paymentResult.balanceDue, invoice.currency)}. We’ll send
+                  the next payment notice according to the agreed terms.
+                </p>
+              </>
+            ) : (
+              <p>Your invoice is paid in full.</p>
+            )}
             <p>A receipt has been sent to {receiptEmail || 'your email'} if provided.</p>
             <p>Thank you for your payment.</p>
           </section>
@@ -470,6 +551,12 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
             style={{ border: '1px solid var(--surface-neutral)', borderRadius: 12, padding: 16 }}
           >
             <h3 style={{ marginTop: 0 }}>Pay Securely</h3>
+            {isFirstDeposit && (
+              <p style={{ marginTop: 0, color: 'var(--color-slate)' }}>
+                This 50% deposit starts your project. The remaining 50% will stay attached to this
+                same project and invoice.
+              </p>
+            )}
             <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>
               Email for receipt (optional)
             </label>
@@ -513,7 +600,7 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
                 opacity: processing ? 0.7 : 1,
               }}
             >
-              {processing ? 'Processing...' : `Pay ${totalLabel}`}
+              {processing ? 'Processing...' : `Pay ${dueNowLabel}`}
             </button>
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--gray-500)' }}>
               🔒 Payments are processed securely by Stripe. Your card details are never stored.
@@ -549,13 +636,14 @@ function SummaryRow({
       style={{
         display: 'flex',
         justifyContent: 'space-between',
+        gap: 16,
         marginTop: 8,
         fontSize: emphasized ? 20 : 15,
         fontWeight: emphasized ? 700 : 500,
       }}
     >
       <span>{label}</span>
-      <span>{value}</span>
+      <span style={{ textAlign: 'right' }}>{value}</span>
     </div>
   );
 }

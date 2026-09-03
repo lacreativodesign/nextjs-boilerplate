@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { enqueueTenantEmail } from '@/lib/email/outbox';
 import { mutateFinanceInTransaction } from '@/lib/finance/ledger';
+import { milestoneReached } from '@/lib/finance/paymentSchedule';
 import {
   REMINDABLE_STATUSES,
   computeLateFee,
@@ -34,6 +35,7 @@ import {
  *  - late fees route through mutateFinanceInTransaction so the append-only finance ledger
  *    records the adjustment atomically, and are OFF unless ERP_ENABLE_INVOICE_LATE_FEES=true
  *  - payment links point at /pay/{id}?token=… , the route that actually exists
+ *  - 50/50 milestone balances become due when the linked project reaches the configured stage
  */
 
 type TenantRecord = {
@@ -51,7 +53,10 @@ type TenantRecord = {
 
 type ClientRecord = {
   email?: string;
+  primaryContactEmail?: string;
   name?: string;
+  primaryContactName?: string;
+  companyName?: string;
 };
 
 export const runtime = 'nodejs';
@@ -102,6 +107,7 @@ async function processInvoiceReminders() {
   const results = {
     scanned: 0,
     remindersSent: 0,
+    milestoneBalancesActivated: 0,
     lateFeesApplied: 0,
     markedOverdue: 0,
     errors: 0,
@@ -140,14 +146,14 @@ async function processInvoiceReminders() {
         continue;
       }
 
-      const invoice: ScheduleInvoice = {
+      let invoice: ScheduleInvoice = {
         id: doc.id,
         tenantId,
         clientId: String(raw.clientId || ''),
         orderId: String(raw.orderId || doc.id),
         status: String(raw.status || ''),
-        amountTotal: Number(raw.amountTotal ?? 0),
-        balanceDue: Number(raw.balanceDue ?? raw.amountTotal ?? 0),
+        amountTotal: Number(raw.amountTotal ?? raw.amountTotalUsd ?? 0),
+        balanceDue: Number(raw.balanceDue ?? raw.amountTotal ?? raw.amountTotalUsd ?? 0),
         dueDate: raw.dueDate,
         lateFeeApplied: Boolean(raw.lateFeeApplied),
         reminderCount: Number(raw.reminderCount || 0),
@@ -156,6 +162,17 @@ async function processInvoiceReminders() {
 
       try {
         const tenant = await loadTenant(tenantId, tenantCache);
+
+        const milestoneActivation = await activateMilestoneBalanceIfDue({
+          invoiceRef: doc.ref,
+          invoice,
+          raw,
+          today,
+        });
+        invoice = milestoneActivation.invoice;
+        if (milestoneActivation.activated) {
+          results.milestoneBalancesActivated += 1;
+        }
 
         const reminderType = selectReminderType(invoice, today);
         if (reminderType) {
@@ -215,6 +232,59 @@ async function processInvoiceReminders() {
   }
 
   return results;
+}
+
+async function activateMilestoneBalanceIfDue({
+  invoiceRef,
+  invoice,
+  raw,
+  today,
+}: {
+  invoiceRef: FirebaseFirestore.DocumentReference;
+  invoice: ScheduleInvoice;
+  raw: Record<string, any>;
+  today: Date;
+}): Promise<{ invoice: ScheduleInvoice; activated: boolean }> {
+  const isMilestoneBalance =
+    String(raw.paymentPlan || '') === 'fifty_fifty' &&
+    String(raw.balanceTriggerType || '') === 'milestone' &&
+    String(invoice.status || '') === 'partially_paid' &&
+    Number(invoice.balanceDue || 0) > 0;
+
+  if (!isMilestoneBalance || invoice.dueDate) {
+    return { invoice, activated: false };
+  }
+
+  const projectId = String(raw.projectId || '').trim();
+  const targetStage = String(raw.balanceMilestoneStage || '').trim();
+  if (!projectId || !targetStage) {
+    return { invoice, activated: false };
+  }
+
+  const projectSnap = await adminDb.collection('projects').doc(projectId).get();
+  if (!projectSnap.exists) {
+    return { invoice, activated: false };
+  }
+  const project = projectSnap.data() || {};
+  if (String(project.tenantId || '') !== invoice.tenantId) {
+    throw new Error('Milestone project tenant mismatch.');
+  }
+  if (!milestoneReached(project.stage, targetStage)) {
+    return { invoice, activated: false };
+  }
+
+  const dueTimestamp = admin.firestore.Timestamp.fromDate(today);
+  await invoiceRef.update({
+    dueDate: dueTimestamp,
+    balanceMilestoneTriggeredAt: admin.firestore.FieldValue.serverTimestamp(),
+    balanceMilestoneTriggeredStage: String(project.stage || ''),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return {
+    invoice: { ...invoice, dueDate: dueTimestamp },
+    activated: true,
+  };
 }
 
 async function loadTenant(
@@ -304,7 +374,8 @@ async function sendReminderEmail(params: {
   const { tenant, invoice, reminderType, paymentToken, currencySymbol, clientCache } = params;
 
   const client = await loadClient(invoice.tenantId, invoice.clientId, clientCache);
-  if (!client?.email) return false;
+  const clientEmail = String(client?.primaryContactEmail || client?.email || '').trim();
+  if (!clientEmail) return false;
 
   const subjects: Record<ReminderType, string> = {
     upcoming: `Reminder: Invoice ${invoice.orderId} due in 3 days`,
@@ -334,34 +405,13 @@ async function sendReminderEmail(params: {
     : `${APP_URL}/pay/${invoice.id}`;
 
   // MAIL-3: this is the TENANT's message to the TENANT's customer.
-  //
-  // It went out hard-coded as `Bizosto <invoices@bizosto.com>`, straight through the raw
-  // Resend client, bypassing sendEmail() entirely. So a client of Website Design Dogs
-  // received a payment chase from a company they have never heard of, about an invoice
-  // issued by a company they have. That reads as a phishing attempt, it discloses the
-  // tenant's supplier — which Enterprise customers pay for white-label precisely to
-  // avoid — and any reply landed in a Bizosto inbox the tenant cannot read.
-  //
-  // Resolution, in order:
-  //   - A verified tenant sender (MAIL-1/MAIL-2) is used as-is. Full white-label.
-  //   - Otherwise the platform ADDRESS is kept, because it is the only domain Bizosto is
-  //     authorised to send from, but the tenant's NAME is the display name and Reply-To
-  //     points at the tenant. The recipient sees who is chasing them and a reply reaches
-  //     the right company. This claims no domain the tenant has not proven, so it is not
-  //     the silent Bizosto-sender fallback MAIL-2 forbids — the identity on the envelope
-  //     is honest about which service sent it.
-  // MAIL-4: the same decision now serves every customer-facing send site, so the three
-  // copies of it cannot drift apart.
-  // MAIL-5: queued rather than sent inline. A throw used to leave `lastReminderSent`
-  // unwritten so the next daily run tried again — a retry with a 24-hour interval, no
-  // attempt limit and no record of why it failed. The outbox retries in minutes, bounds
-  // the attempts, and keeps the reason where an operator can read it.
+  // MAIL-5: queued rather than sent inline; the durable outbox retries bounded failures.
   await enqueueTenantEmail({
     tenantId: invoice.tenantId,
     tenant,
     messageClass: `invoice.reminder.${reminderType}`,
     entityId: invoice.id,
-    to: client.email,
+    to: clientEmail,
     subject: subjects[reminderType],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827;">

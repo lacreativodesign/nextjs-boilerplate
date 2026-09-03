@@ -4,7 +4,7 @@ import path from 'path';
 /**
  * SOC2 F-06 — the validation ratchet.
  *
- * 329 routes under app/api mutate state and read a request body. The 238 listed below
+ * 329 routes under app/api mutate state and read a request body. The 235 listed below
  * hand that body onward without ever checking its shape. Converting them is long work;
  * this test exists so that the number can only fall while that work happens.
  *
@@ -35,19 +35,7 @@ const MUTATING =
   /export\s+(?:async\s+)?function\s+(?:POST|PUT|PATCH|DELETE)\b|export\s+const\s+(?:POST|PUT|PATCH|DELETE)\s*[:=]/;
 const READS_BODY = /\b(?:req|request|_req|_request)\s*\.\s*(?:json|formData)\s*\(\s*\)/;
 
-/**
- * Evidence that the body was checked against a schema.
- *
- * `JSON.parse` and `Date.parse` are excluded because neither validates anything —
- * app/api/auth/consume-set-password-token/route.ts reads a body and calls `Date.parse`
- * on one field, and counting that as validation would have exempted the route forever.
- * `validateQuery` is likewise absent: it validates the query string, not the body.
- *
- * Non-schema helpers do not count. validateFile, validateAssembledFile,
- * validatePermissions, validateTaxRate and validateCompedGrant each check one value;
- * none constrains the shape of the body, and none is schema-backed. The thirteen routes
- * that call them are on the list below and still owe a schema.
- */
+/** Evidence that the request body was checked against a schema. */
 const VALIDATES =
   /\bvalidateRequest\s*\(|\bvalidatePartial\s*\(|\bsafeParse\s*\(|(?<!\bJSON)(?<!\bDate)\.parse\s*\(/;
 
@@ -69,14 +57,7 @@ const inScope = routeFiles(path.join(ROOT, 'app/api'))
 
 const validates = (rel: string) => VALIDATES.test(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
-/**
- * Routes that read a request body and never check its shape. DELETE ONLY.
- *
- * Granularity is the file, because that is what an entry can name. Every route here
- * that exports more than one mutating handler reads a body in only one of them, so no
- * entry is currently hiding a second unvalidated handler behind a validated sibling.
- * If that ever changes, splitting the entry is the fix — not widening the matcher.
- */
+/** Routes that read a request body and never check its shape. DELETE ONLY. */
 const KNOWN_UNVALIDATED = [
   'app/api/activities/presence/route.ts',
   'app/api/activities/route.ts',
@@ -131,7 +112,6 @@ const KNOWN_UNVALIDATED = [
   'app/api/admin/sales/campaigns/update/route.ts',
   'app/api/admin/sales/deals/create/route.ts',
   'app/api/admin/sales/deals/delete/route.ts',
-  'app/api/admin/sales/deals/update/route.ts',
   'app/api/admin/sales/follow-ups/create/route.ts',
   'app/api/admin/sales/follow-ups/delete/route.ts',
   'app/api/admin/sales/follow-ups/update/route.ts',
@@ -278,8 +258,6 @@ const KNOWN_UNVALIDATED = [
   'app/api/production/resources/assign/route.ts',
   'app/api/production/test-cases/route.ts',
   'app/api/production/test-runs/route.ts',
-  'app/api/public/invoice/[invoiceId]/confirm/route.ts',
-  'app/api/public/invoice/[invoiceId]/pay/route.ts',
   'app/api/sales/campaigns/create/route.ts',
   'app/api/sales/campaigns/update/route.ts',
   'app/api/sales/deals/close/route.ts',
@@ -320,35 +298,24 @@ const KNOWN_UNVALIDATED = [
 
 describe('the validation ratchet', () => {
   it('adds no new unvalidated route', () => {
-    // Rule 1. Anything in scope and not on the list must validate. This is the test a
-    // newly added route fails, and the reason the default is now "must have a schema".
     const listed = new Set(KNOWN_UNVALIDATED);
     const offenders = inScope.filter((rel) => !listed.has(rel) && !validates(rel));
-
     expect(offenders).toEqual([]);
   });
 
   it('drops each route from the inventory as it is fixed', () => {
-    // Rule 2. A listed route that now validates has been fixed, and its entry is stale.
-    // Leaving it behind is how a ratchet rots into a permanent excuse, so it fails here.
     const fixed = KNOWN_UNVALIDATED.filter((rel) => fs.existsSync(path.join(ROOT, rel)))
       .filter((rel) => validates(rel))
       .map((rel) => `${rel} now validates — delete it from KNOWN_UNVALIDATED`);
-
     expect(fixed).toEqual([]);
   });
 
   it('keeps every entry pointing at a route that is still in scope', () => {
-    // A deleted or renamed route leaves an entry that can never be removed by fixing
-    // anything, and a route that stopped reading a body no longer belongs on the list.
     const stale = KNOWN_UNVALIDATED.filter((rel) => !inScope.includes(rel));
-
     expect(stale).toEqual([]);
   });
 
   it('stays sorted and free of duplicates', () => {
-    // The list is only auditable if it has one canonical form. A duplicate entry would
-    // also survive its own removal, which would quietly defeat rule 2.
     expect(new Set(KNOWN_UNVALIDATED).size).toBe(KNOWN_UNVALIDATED.length);
     expect(KNOWN_UNVALIDATED).toEqual([...KNOWN_UNVALIDATED].sort());
   });

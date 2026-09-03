@@ -22,6 +22,10 @@ type DealDoc = {
   paymentStatus?: string | null;
   projectId?: string | null;
   projectCreated?: boolean;
+  paymentPlan?: 'full' | 'fifty_fifty';
+  balanceTriggerType?: 'date' | 'milestone' | null;
+  balanceDueDate?: any;
+  balanceMilestoneStage?: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -77,6 +81,10 @@ export async function GET(req: NextRequest) {
         paymentStatus: data.paymentStatus || null,
         projectId: data.projectId || null,
         projectCreated: Boolean(data.projectCreated),
+        paymentPlan: data.paymentPlan || 'full',
+        balanceTriggerType: data.balanceTriggerType || null,
+        balanceDueDate: toISO(data.balanceDueDate),
+        balanceMilestoneStage: data.balanceMilestoneStage || null,
         isDeleted: Boolean(data.isDeleted),
       };
     });

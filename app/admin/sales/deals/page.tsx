@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, formatUsd } from '@/components/finance/fina
 import { toastError } from '@/lib/toast';
 import { useOptimisticUpdate } from '@/lib/hooks/useOptimisticUpdate';
 import { PIPELINE_STAGES, toInputDate } from '@/lib/sales/utils';
+import { PROJECT_MILESTONE_STAGES } from '@/lib/finance/paymentSchedule';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
@@ -17,6 +18,18 @@ const STAGE_OPTIONS = [
   { label: 'All Stages', value: '' },
   ...PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage })),
 ];
+
+const PAYMENT_PLAN_OPTIONS = [
+  { label: '100% Upfront', value: 'full' },
+  { label: '50% Deposit / 50% Balance', value: 'fifty_fifty' },
+];
+
+const BALANCE_TRIGGER_OPTIONS = [
+  { label: 'Specific Date', value: 'date' },
+  { label: 'Project Milestone', value: 'milestone' },
+];
+
+const MILESTONE_OPTIONS = PROJECT_MILESTONE_STAGES.map((stage) => ({ label: stage, value: stage }));
 
 type DealRecord = {
   id: string;
@@ -34,10 +47,13 @@ type DealRecord = {
   paymentStatus?: string | null;
   projectId?: string | null;
   projectCreated?: boolean;
+  paymentPlan?: 'full' | 'fifty_fifty';
+  balanceTriggerType?: 'date' | 'milestone' | null;
+  balanceDueDate?: string | null;
+  balanceMilestoneStage?: string | null;
 };
 
 type UserOption = { uid: string; name?: string; fullName?: string; role?: string };
-
 type ErrorState = { title: string; message: string };
 
 type DealFormState = {
@@ -50,6 +66,10 @@ type DealFormState = {
   ownerId: string;
   ownerName: string;
   expectedCloseDate: string;
+  paymentPlan: 'full' | 'fifty_fifty';
+  balanceTriggerType: 'date' | 'milestone';
+  balanceDueDate: string;
+  balanceMilestoneStage: string;
 };
 
 const defaultForm: DealFormState = {
@@ -61,6 +81,10 @@ const defaultForm: DealFormState = {
   ownerId: '',
   ownerName: '',
   expectedCloseDate: '',
+  paymentPlan: 'full',
+  balanceTriggerType: 'date',
+  balanceDueDate: '',
+  balanceMilestoneStage: 'Final',
 };
 
 export default function SalesDealsPage() {
@@ -185,6 +209,10 @@ export default function SalesDealsPage() {
       ownerId: deal.ownerId || '',
       ownerName: deal.ownerName || '',
       expectedCloseDate: toInputDate(deal.expectedCloseDate),
+      paymentPlan: deal.paymentPlan || 'full',
+      balanceTriggerType: deal.balanceTriggerType || 'date',
+      balanceDueDate: toInputDate(deal.balanceDueDate),
+      balanceMilestoneStage: deal.balanceMilestoneStage || 'Final',
     });
     setDrawerOpen(true);
   };
@@ -198,18 +226,58 @@ export default function SalesDealsPage() {
     }));
   };
 
+  function paymentTermsPayload() {
+    if (form.paymentPlan === 'full') {
+      return {
+        paymentPlan: 'full' as const,
+        balanceTriggerType: null,
+        balanceDueDate: null,
+        balanceMilestoneStage: null,
+      };
+    }
+
+    return {
+      paymentPlan: 'fifty_fifty' as const,
+      balanceTriggerType: form.balanceTriggerType,
+      balanceDueDate: form.balanceTriggerType === 'date' ? form.balanceDueDate || null : null,
+      balanceMilestoneStage:
+        form.balanceTriggerType === 'milestone' ? form.balanceMilestoneStage || null : null,
+    };
+  }
+
   const handleSave = async () => {
     try {
       setActionLoading('save');
       const endpoint =
         drawerMode === 'create' ? '/api/admin/sales/deals/create' : '/api/admin/sales/deals/update';
+      const body =
+        drawerMode === 'create'
+          ? {
+              dealName: form.dealName,
+              clientName: form.clientName,
+              stage: form.stage,
+              valueUsd: form.valueUsd,
+              probability: form.probability,
+              ownerId: form.ownerId,
+              ownerName: form.ownerName,
+              expectedCloseDate: form.expectedCloseDate || null,
+            }
+          : {
+              id: form.id,
+              dealName: form.dealName,
+              clientName: form.clientName,
+              stage: form.stage,
+              valueUsd: form.valueUsd,
+              probability: form.probability,
+              ownerId: form.ownerId,
+              ownerName: form.ownerName,
+              expectedCloseDate: form.expectedCloseDate || null,
+              ...paymentTermsPayload(),
+            };
       const res = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          expectedCloseDate: form.expectedCloseDate || null,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -219,7 +287,10 @@ export default function SalesDealsPage() {
       await loadDeals();
     } catch (err) {
       console.error('Deal save error', err);
-      setError({ title: 'Unable to save deal', message: 'Please try again.' });
+      setError({
+        title: 'Unable to save deal',
+        message: err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setActionLoading(null);
     }
@@ -255,7 +326,11 @@ export default function SalesDealsPage() {
     }
   };
 
-  const markClosed = async (deal: DealRecord, status: 'Closed Won' | 'Closed Lost') => {
+  const markClosed = async (
+    deal: DealRecord,
+    status: 'Closed Won' | 'Closed Lost',
+    terms?: ReturnType<typeof paymentTermsPayload>,
+  ) => {
     try {
       setActionLoading(`${deal.id}-${status}`);
       const previousDeals = deals;
@@ -272,19 +347,30 @@ export default function SalesDealsPage() {
           const res = await apiFetch('/api/admin/sales/deals/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: deal.id, stage: status }),
+            body: JSON.stringify({
+              id: deal.id,
+              stage: status,
+              ...(status === 'Closed Won' ? terms : {}),
+            }),
           });
           const data = await res.json();
           if (!res.ok || !data.ok) {
             throw new Error(data?.error || 'Unable to update deal.');
           }
         },
-        successMessage: `Deal moved to ${status}.`,
+        successMessage:
+          status === 'Closed Won'
+            ? 'Deal closed won. Payment request prepared; project starts after payment.'
+            : `Deal moved to ${status}.`,
         errorMessage: 'Unable to update deal.',
       });
+      await loadDeals();
     } catch (err) {
       console.error('Deal close error', err);
-      setError({ title: 'Unable to update deal', message: 'Please try again.' });
+      setError({
+        title: 'Unable to update deal',
+        message: err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setActionLoading(null);
     }
@@ -294,7 +380,7 @@ export default function SalesDealsPage() {
     if (!form.id) return;
     const deal = deals.find((item) => item.id === form.id);
     if (deal) {
-      markClosed(deal, 'Closed Won');
+      markClosed(deal, 'Closed Won', paymentTermsPayload());
     }
   };
 
@@ -345,7 +431,7 @@ export default function SalesDealsPage() {
         <div>
           <h1 className="page-title">Deals</h1>
           <p className="page-subtitle mt-2">
-            Manage deal values, probabilities, and closing actions.
+            Manage deal values, payment terms, probabilities, and closing actions.
           </p>
         </div>
         <button className="btn" onClick={openCreate} style={{ borderRadius: 999 }}>
@@ -357,16 +443,8 @@ export default function SalesDealsPage() {
         <div style={{ flex: '1 1 240px', minWidth: 220 }}>
           <SmartSearchBar value={query} onChange={setQuery} />
         </div>
-        <MasterSelect
-          value={stageFilter}
-          onChange={(value) => setStageFilter(value)}
-          options={STAGE_OPTIONS}
-        />
-        <MasterSelect
-          value={ownerFilter}
-          onChange={(value) => setOwnerFilter(value)}
-          options={ownerOptions}
-        />
+        <MasterSelect value={stageFilter} onChange={setStageFilter} options={STAGE_OPTIONS} />
+        <MasterSelect value={ownerFilter} onChange={setOwnerFilter} options={ownerOptions} />
         <button
           type="button"
           className="btn"
@@ -474,6 +552,7 @@ export default function SalesDealsPage() {
                           onClick={() => markClosed(deal, 'Closed Won')}
                           disabled={actionLoading === `${deal.id}-Closed Won`}
                           style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
+                          title="Uses saved payment terms, or 100% upfront if none were configured."
                         >
                           {actionLoading === `${deal.id}-Closed Won` ? 'Processing' : 'Closed Won'}
                         </button>
@@ -548,9 +627,12 @@ export default function SalesDealsPage() {
                 <button
                   className="btn"
                   onClick={handleDrawerClosedWon}
+                  disabled={actionLoading === `${form.id}-Closed Won`}
                   style={{ borderRadius: 999 }}
                 >
-                  Mark Closed Won
+                  {actionLoading === `${form.id}-Closed Won`
+                    ? 'Preparing Invoice'
+                    : 'Mark Closed Won'}
                 </button>
               )}
               {drawerMode === 'edit' && selectedDeal && (
@@ -641,6 +723,85 @@ export default function SalesDealsPage() {
               </label>
             </div>
           </div>
+
+          {drawerMode === 'edit' && (
+            <div className="card" style={{ padding: 16, borderRadius: 14, marginTop: 12 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>Payment Terms</div>
+              <p style={{ margin: '0 0 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                Closed Won sends the invoice/payment link. Production starts only after the first
+                successful payment.
+              </p>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>Payment Plan</span>
+                  <MasterSelect
+                    value={form.paymentPlan}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        paymentPlan: value as DealFormState['paymentPlan'],
+                      }))
+                    }
+                    options={PAYMENT_PLAN_OPTIONS}
+                  />
+                </div>
+                {form.paymentPlan === 'fifty_fifty' && (
+                  <>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>Remaining 50% Due By</span>
+                      <MasterSelect
+                        value={form.balanceTriggerType}
+                        onChange={(value) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            balanceTriggerType: value as DealFormState['balanceTriggerType'],
+                          }))
+                        }
+                        options={BALANCE_TRIGGER_OPTIONS}
+                      />
+                    </div>
+                    {form.balanceTriggerType === 'date' ? (
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>Balance Due Date</span>
+                        <input
+                          className="input"
+                          type="date"
+                          value={form.balanceDueDate}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, balanceDueDate: e.target.value }))
+                          }
+                        />
+                      </label>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>Balance Milestone</span>
+                        <MasterSelect
+                          value={form.balanceMilestoneStage}
+                          onChange={(value) =>
+                            setForm((prev) => ({ ...prev, balanceMilestoneStage: value }))
+                          }
+                          options={MILESTONE_OPTIONS}
+                        />
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        borderRadius: 10,
+                        padding: 12,
+                        background: 'var(--surface-muted)',
+                        fontSize: 12,
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      First 50% payment creates the project, activates/reuses the client portal, and
+                      starts kickoff. The remaining 50% stays on the same project and invoice.
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {drawerMode === 'edit' && selectedDeal && (
             <div className="card" style={{ padding: 16, borderRadius: 14, marginTop: 12 }}>
               <div

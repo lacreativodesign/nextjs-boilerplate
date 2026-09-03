@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/firebaseAdmin';
+import { resolveAmountTotal, resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
 
 export type PublicInvoiceData = {
   id: string;
@@ -6,6 +7,16 @@ export type PublicInvoiceData = {
   clientId?: string;
   orderId: string;
   amount: number;
+  totalPaid: number;
+  balanceDue: number;
+  payableNow: number;
+  paymentPlan: 'full' | 'fifty_fifty';
+  installmentSequence: number;
+  firstInstallmentAmount: number;
+  secondInstallmentAmount: number;
+  balanceTriggerType: string | null;
+  balanceDueDate: string | null;
+  balanceMilestoneStage: string | null;
   subtotal: number | null;
   taxAmount: number;
   currency: string;
@@ -24,11 +35,19 @@ export type PublicInvoiceData = {
   paidAt: string | null;
 };
 
+function normalizeDate(value: unknown): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    const date = (value as { toDate: () => Date }).toDate();
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export function normalizeInvoiceAmount(invoice: Record<string, unknown>): number {
-  const amount = Number(
-    invoice.amount ?? invoice.totalAmount ?? invoice.amountTotal ?? invoice.amountTotalUsd ?? 0,
-  );
-  return Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  return resolveAmountTotal(invoice);
 }
 
 export function isCancelledInvoice(status: string): boolean {
@@ -58,7 +77,7 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
     return { error: 'Invoice not found', status: 404 as const };
   }
 
-  const amount = normalizeInvoiceAmount(invoice);
+  const schedule = resolveInvoicePaymentSchedule(invoice);
   const subtotalRaw = invoice.subtotal ?? invoice.amountSubtotal ?? invoice.amountSubtotalUsd;
   const subtotalNum = Number(subtotalRaw);
   const taxNum = Number(invoice.taxAmount ?? invoice.amountTax ?? invoice.amountTaxUsd ?? 0);
@@ -68,17 +87,29 @@ export async function getInvoiceWithValidation(invoiceId: string, token?: string
     tenantId: String(invoice.tenantId || ''),
     clientId: invoice.clientId ? String(invoice.clientId) : undefined,
     orderId: String(invoice.orderId || invoiceId),
-    amount,
+    amount: schedule.amountTotal,
+    totalPaid: schedule.totalPaid,
+    balanceDue: schedule.balanceDue,
+    payableNow: schedule.payableNow,
+    paymentPlan: schedule.paymentPlan,
+    installmentSequence: schedule.installmentSequence,
+    firstInstallmentAmount: schedule.firstInstallmentAmount,
+    secondInstallmentAmount: schedule.secondInstallmentAmount,
+    balanceTriggerType: invoice.balanceTriggerType ? String(invoice.balanceTriggerType) : null,
+    balanceDueDate: normalizeDate(invoice.balanceDueDate),
+    balanceMilestoneStage: invoice.balanceMilestoneStage
+      ? String(invoice.balanceMilestoneStage)
+      : null,
     subtotal: Number.isFinite(subtotalNum) ? subtotalNum : null,
     taxAmount: Number.isFinite(taxNum) ? taxNum : 0,
     currency: String(invoice.currency || 'USD').toUpperCase(),
     status,
-    dueDate: invoice.dueDate ? String(invoice.dueDate) : null,
+    dueDate: normalizeDate(invoice.dueDate),
     lineItems: Array.isArray(invoice.lineItems)
       ? (invoice.lineItems as PublicInvoiceData['lineItems'])
       : [],
     notes: invoice.notes ? String(invoice.notes) : null,
-    paidAt: invoice.paidAt ? String(invoice.paidAt) : null,
+    paidAt: normalizeDate(invoice.paidAt),
   };
 
   return { invoice, payload };
