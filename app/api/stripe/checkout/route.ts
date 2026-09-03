@@ -8,6 +8,8 @@ import { getStripePriceId } from '@/lib/billing/stripe-prices';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const INITIAL_TRIAL_DAYS = 14;
+
 // One product per plan. Each has monthly + annual pricing.
 const PLAN_CONFIGS = {
   starter_monthly: {
@@ -89,6 +91,21 @@ function parsePlanKey(value: unknown): PlanKey | null {
   return monthlyPlanKey in PLAN_CONFIGS ? (monthlyPlanKey as PlanKey) : null;
 }
 
+async function resolveBillingEmail(tenantData: Record<string, any>, authUser: Record<string, any>) {
+  const ownerId = String(tenantData.ownerId || '').trim();
+  if (ownerId) {
+    const ownerSnap = await adminDb.collection('users').doc(ownerId).get();
+    const ownerEmail = String(ownerSnap.data()?.email || '')
+      .trim()
+      .toLowerCase();
+    if (ownerEmail) return ownerEmail;
+  }
+
+  return String(authUser.email || '')
+    .trim()
+    .toLowerCase();
+}
+
 export async function POST(req: Request) {
   try {
     const auth = await requireAdminOrSuperAdmin();
@@ -118,10 +135,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Prevent creating a SECOND Stripe subscription for a tenant that already has a
-    // live one (active or past_due). Re-subscribing is only allowed after cancellation
-    // (billingStatus 'canceled'); trial conversion has no subscription yet so it passes.
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantSnap.exists) {
+      return NextResponse.json({ ok: false, error: 'Tenant not found.' }, { status: 404 });
+    }
     const tenantData = tenantSnap.data() || {};
 
     // COMP-1: a comped workspace has no external payment relationship, so opening a
@@ -141,6 +158,8 @@ export async function POST(req: Request) {
       );
     }
 
+    // Prevent creating a SECOND Stripe subscription for a tenant that already has a
+    // live one (active or past_due). Re-subscribing is only allowed after cancellation.
     const existingSubscriptionId = String(tenantData.stripeSubscriptionId || '').trim();
     const billingStatus = String(tenantData.billingStatus || '').toLowerCase();
     if (existingSubscriptionId && billingStatus !== 'canceled') {
@@ -155,9 +174,57 @@ export async function POST(req: Request) {
       );
     }
 
-    const customerEmail =
-      typeof body?.customerEmail === 'string' ? body.customerEmail.trim().toLowerCase() : '';
-    const trialPeriodDays = body?.trialPeriodDays === 14 ? 14 : undefined;
+    const config = PLAN_CONFIGS[planKey];
+    const subscriptionState = String(tenantData.subscriptionState || '').toLowerCase();
+    const isInitialCheckout = subscriptionState === 'pending_checkout';
+
+    // TENANT-SAFETY PR2: during first activation the selected signup plan is server-owned.
+    // A modified browser request must not be able to pay Starter while retaining Enterprise
+    // entitlements (or vice versa). Later re-subscribe flows may intentionally select a new tier.
+    if (isInitialCheckout) {
+      const provisionedPlan = String(tenantData.plan || '').trim();
+      if (provisionedPlan !== config.plan) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Checkout plan does not match the plan selected during signup.',
+            code: 'signup_plan_mismatch',
+          },
+          { status: 409 },
+        );
+      }
+
+      const currency = String(tenantData.settings?.currency || '')
+        .trim()
+        .toUpperCase();
+      if (!currency) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Choose a workspace currency before starting checkout.',
+            code: 'currency_required',
+          },
+          { status: 409 },
+        );
+      }
+    }
+
+    // Billing identity is server-owned. Never let the browser choose the Stripe customer email.
+    const customerEmail = await resolveBillingEmail(tenantData, auth.user);
+    if (!customerEmail) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'A verified workspace owner email is required before checkout.',
+          code: 'billing_email_required',
+        },
+        { status: 409 },
+      );
+    }
+
+    // The free trial is a platform policy, not a request parameter. It is granted exactly once,
+    // on the first pending_checkout activation. Re-subscriptions do not get a second free trial.
+    const trialPeriodDays = isInitialCheckout ? INITIAL_TRIAL_DAYS : undefined;
     const appUrl = (
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.APP_URL ||
@@ -166,7 +233,6 @@ export async function POST(req: Request) {
     ).replace(/\/$/, '');
     const successUrl = resolveCheckoutUrl(body?.successUrl, `${appUrl}/billing?upgraded=1`, appUrl);
     const cancelUrl = resolveCheckoutUrl(body?.cancelUrl, `${appUrl}/billing`, appUrl);
-    const config = PLAN_CONFIGS[planKey];
     const stripe = getStripeClient();
     const priceId = getStripePriceId(planKey);
 
@@ -175,7 +241,8 @@ export async function POST(req: Request) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      customer_email: customerEmail || undefined,
+      client_reference_id: tenantId,
+      customer_email: customerEmail,
       automatic_tax: { enabled: true },
       billing_address_collection: 'required',
       metadata: {
