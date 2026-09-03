@@ -15,14 +15,12 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_EVENTS = new Set(['checkout.session.completed']);
-
-// Checkout sessions Bizosto itself originated (app signup, platform, marketing site).
-// Only these link a tenant; any other checkout.session.completed is ignored.
 const TRUSTED_CHECKOUT_SOURCES = new Set(['bizosto_app', 'bizosto_platform', 'bizosto_website']);
+const PAID_PLANS = new Set(['starter', 'pro', 'enterprise']);
 
 type BillingCycle = 'monthly' | 'annual';
-
 type BillingStatus = 'active' | 'past_due' | 'canceled';
+type PaidPlan = 'starter' | 'pro' | 'enterprise';
 
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -40,15 +38,14 @@ function requireWebhookSecret() {
   return secret;
 }
 
-function normalizeEmail(value: string | null | undefined) {
-  return String(value || '')
-    .trim()
-    .toLowerCase();
-}
-
 function parseBillingCycle(value: string | null | undefined): BillingCycle | null {
   if (value === 'monthly' || value === 'annual') return value;
   return null;
+}
+
+function parsePaidPlan(value: string | null | undefined): PaidPlan | null {
+  const plan = String(value || '').trim();
+  return PAID_PLANS.has(plan) ? (plan as PaidPlan) : null;
 }
 
 function normalizeBillingStatus(
@@ -107,26 +104,50 @@ async function linkExistingTenant({
   stripeCustomerId,
   stripeSubscriptionId,
   billingCycle,
+  plan,
+  subscription,
   eventId,
+  lockCurrency,
 }: {
   tenantId: string;
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   billingCycle: BillingCycle;
+  plan: PaidPlan;
+  subscription: Stripe.Subscription;
   eventId?: string;
+  lockCurrency: boolean;
 }): Promise<boolean> {
-  // Canonical billing state service: activates billing, stores Stripe IDs and
-  // billing cycle, and writes a billing_state_audit record. Returns false when
-  // the tenant does not exist.
   const result = await applySubscriptionState({
     tenantId,
     source: 'checkout.linked',
     eventId,
+    plan,
+    stripeStatus: subscription.status,
     stripeCustomerId,
     stripeSubscriptionId,
     billingCycle,
+    currentPeriodEnd: subscription.current_period_end,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    trialEnd: subscription.trial_end,
   });
-  return result.tenantExists;
+
+  if (!result.ok || !result.tenantExists) return false;
+
+  // Activation metadata is deliberately written only after the canonical billing transition
+  // succeeds. Currency becomes immutable on the first successful checkout activation.
+  const activationPayload: Record<string, unknown> = {
+    activationStatus: 'active',
+    activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (lockCurrency) {
+    activationPayload.currencyLockedAt = admin.firestore.FieldValue.serverTimestamp();
+    activationPayload.currencyLockedBy = 'stripe_checkout';
+  }
+  await adminDb.collection('tenants').doc(tenantId).set(activationPayload, { merge: true });
+
+  return true;
 }
 
 async function updateSubscriptionStatus({
@@ -244,7 +265,6 @@ async function updateSubscriptionStatus({
 }
 
 export async function POST(req: Request) {
-  // Hoisted so the outer catch can release a partial claim for Stripe retry.
   let claimedEventId: string | null = null;
   try {
     const signature = req.headers.get('stripe-signature');
@@ -258,8 +278,6 @@ export async function POST(req: Request) {
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
     if (!ALLOWED_EVENTS.has(event.type)) {
-      // Subscription/invoice events are owned solely by /api/stripe/subscription-webhook.
-      // Ack-and-ignore here so Stripe does not retry against this endpoint.
       return NextResponse.json({ ok: true, received: true });
     }
 
@@ -272,9 +290,11 @@ export async function POST(req: Request) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata || {};
+      const source = metadata.source || '';
 
-      if (!TRUSTED_CHECKOUT_SOURCES.has(metadata.source || '')) {
-        return NextResponse.json({ ok: true, received: true });
+      if (!TRUSTED_CHECKOUT_SOURCES.has(source)) {
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
       }
 
       const stripeCustomerId =
@@ -283,35 +303,110 @@ export async function POST(req: Request) {
         typeof session.subscription === 'string'
           ? session.subscription
           : session.subscription?.id || '';
-      const billingCycle = parseBillingCycle(metadata.billingCycle) || 'monthly';
+      const billingCycle = parseBillingCycle(metadata.billingCycle);
+      const metadataPlan = parsePaidPlan(metadata.bizosto_plan);
       const metadataTenantId =
         typeof metadata.tenantId === 'string' ? metadata.tenantId.trim() : '';
 
-      if (!stripeCustomerId || !stripeSubscriptionId) {
-        return NextResponse.json(
-          { ok: false, error: 'Missing checkout details.' },
-          { status: 400 },
-        );
-      }
-
-      // S39 single-provisioning invariant: /api/signup is the ONLY path that
-      // creates a tenant, admin user, claims, plan, and modules — always before
-      // Checkout, always stamping metadata.tenantId. This webhook therefore only
-      // LINKS an existing tenant to its Stripe subscription and activates billing.
-      // The former create-by-email fallback (ensureTenantForCheckout / ensureAdminUser)
-      // was removed: no code path originates a tenant-less checkout, so the fallback
-      // was dead and could only misfire — creating a duplicate tenant, inferring a
-      // company name from an email domain, or granting a plan from unauthenticated
-      // metadata. Missing or unknown tenantId now fails closed.
-      if (!metadataTenantId) {
-        // Trusted source but no tenant reference — cannot safely link. Ack so Stripe
-        // stops retrying; the mismatch is logged for investigation rather than
-        // silently provisioning a new workspace.
-        console.error('stripe webhook: checkout.session.completed missing metadata.tenantId', {
+      if (
+        !stripeCustomerId ||
+        !stripeSubscriptionId ||
+        !billingCycle ||
+        !metadataPlan ||
+        !metadataTenantId
+      ) {
+        console.error('stripe webhook: checkout session missing canonical metadata', {
           eventId: event.id,
           stripeCustomerId,
           stripeSubscriptionId,
-          source: metadata.source || '',
+          tenantId: metadataTenantId,
+          plan: metadata.bizosto_plan || '',
+          billingCycle: metadata.billingCycle || '',
+          source,
+        });
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
+      }
+
+      if (source === 'bizosto_app' && session.client_reference_id !== metadataTenantId) {
+        console.error('stripe webhook: checkout client_reference_id mismatch', {
+          eventId: event.id,
+          tenantId: metadataTenantId,
+          clientReferenceId: session.client_reference_id || null,
+        });
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
+      }
+
+      const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      const subscriptionCustomerId =
+        typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer.id;
+      const subscriptionMetadata = subscription.metadata || {};
+
+      if (
+        subscriptionCustomerId !== stripeCustomerId ||
+        subscriptionMetadata.tenantId !== metadataTenantId ||
+        subscriptionMetadata.bizosto_plan !== metadataPlan ||
+        subscriptionMetadata.billingCycle !== billingCycle ||
+        subscriptionMetadata.source !== source
+      ) {
+        console.error('stripe webhook: session/subscription metadata mismatch', {
+          eventId: event.id,
+          tenantId: metadataTenantId,
+          subscriptionId: stripeSubscriptionId,
+        });
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
+      }
+
+      const tenantRef = adminDb.collection('tenants').doc(metadataTenantId);
+      const tenantSnap = await tenantRef.get();
+      if (!tenantSnap.exists) {
+        console.error('stripe webhook: metadata.tenantId did not match any tenant', {
+          eventId: event.id,
+          tenantId: metadataTenantId,
+          stripeCustomerId,
+          stripeSubscriptionId,
+        });
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
+      }
+
+      const tenantData = tenantSnap.data() || {};
+      const isInitialCheckout = String(tenantData.subscriptionState || '') === 'pending_checkout';
+      if (isInitialCheckout) {
+        const provisionedPlan = String(tenantData.plan || '').trim();
+        const currency = String(tenantData.settings?.currency || '')
+          .trim()
+          .toUpperCase();
+
+        if (provisionedPlan !== metadataPlan || !currency) {
+          console.error('stripe webhook: signup activation invariant failed', {
+            eventId: event.id,
+            tenantId: metadataTenantId,
+            provisionedPlan,
+            paidPlan: metadataPlan,
+            currencyPresent: Boolean(currency),
+          });
+          await finalizeWebhookEvent(event.id, event.type);
+          return NextResponse.json({ ok: true, received: true, linked: false });
+        }
+      }
+
+      const currentSubscriptionId = String(tenantData.stripeSubscriptionId || '').trim();
+      const currentBillingStatus = String(tenantData.billingStatus || '').toLowerCase();
+      if (
+        currentSubscriptionId &&
+        currentSubscriptionId !== stripeSubscriptionId &&
+        currentBillingStatus !== 'canceled'
+      ) {
+        console.error('stripe webhook: refusing to replace a live tenant subscription', {
+          eventId: event.id,
+          tenantId: metadataTenantId,
+          currentSubscriptionId,
+          incomingSubscriptionId: stripeSubscriptionId,
         });
         await finalizeWebhookEvent(event.id, event.type);
         return NextResponse.json({ ok: true, received: true, linked: false });
@@ -322,14 +417,14 @@ export async function POST(req: Request) {
         stripeCustomerId,
         stripeSubscriptionId,
         billingCycle,
+        plan: metadataPlan,
+        subscription,
         eventId: event.id,
+        lockCurrency: isInitialCheckout,
       });
 
       if (!linked) {
-        // tenantId was present but no tenant document matched. Do NOT create one —
-        // ack, log, and let an operator reconcile. A retry cannot fix a nonexistent
-        // tenant, and creating one here would bypass the verified signup flow.
-        console.error('stripe webhook: metadata.tenantId did not match any tenant', {
+        console.error('stripe webhook: existing tenant could not be activated', {
           eventId: event.id,
           tenantId: metadataTenantId,
           stripeCustomerId,
@@ -343,16 +438,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, received: true, tenantId: metadataTenantId });
     }
 
-    // Defensive: ALLOWED_EVENTS currently admits only checkout.session.completed,
-    // so this path is unreachable today. Retained so that re-admitting subscription
-    // events here (instead of subscription-webhook) stays a one-line change.
     const subscription = event.data.object as Stripe.Subscription;
     await updateSubscriptionStatus({ subscription, eventType: event.type });
     await finalizeWebhookEvent(event.id, event.type);
     return NextResponse.json({ ok: true, received: true });
   } catch (err) {
     console.error('stripe webhook error:', err);
-    // Release any claim made in this delivery so Stripe's retry can re-process.
     if (claimedEventId) {
       await releaseWebhookEvent(claimedEventId);
     }
