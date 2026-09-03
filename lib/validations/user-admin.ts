@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ERP_ROLES } from '@/lib/erpAccess';
 
 /**
  * SOC2 F-06: the tail of the admin user-creation payload.
@@ -63,6 +64,49 @@ export const adminCreateUserProfileSchema = z
   // createUserSchema already covers are still present alongside it.
   .passthrough();
 
+/**
+ * SOC2 F-06: the admin user-update payload.
+ *
+ * `role` was the gap that mattered. The route lowercased whatever string arrived and
+ * wrote it to `users/{uid}.role`, with no check against the canonical role list. The
+ * surrounding guards are sound — role changes require ManageRoles, only a super_admin
+ * may touch or grant super_admin, and the tenant is checked — but none of them
+ * establishes that the value is a role the system recognises. `getCurrentUserOrThrow`
+ * fails closed only on an EMPTY role, so a user carrying `role: 'wizard'` would still
+ * authenticate, match no permission check, and land in a state no screen can recover.
+ * The role field is the single most important field on a user document and it was the
+ * least constrained.
+ *
+ * `status` and the numeric fields are bounded to match `adminCreateUserProfileSchema`.
+ * Before this, commission was capped at 100 on create and unbounded on update, so the
+ * same value could be rejected when creating a user and accepted when editing one.
+ *
+ * Named `adminUpdateUserSchema` rather than `updateUserSchema`: lib/validations/user.ts
+ * already exports the latter as `createUserSchema.partial()`, and two schemas with one
+ * name invite the wrong import.
+ */
+export const adminUpdateUserSchema = z
+  .object({
+    uid: z.string().trim().min(1, 'uid is required').max(128),
+    name: z.string().trim().min(1, 'Name is required').max(120),
+    email: z.string().trim().email().max(320).optional(),
+    // The role select is populated from INTERNAL_ROLE_OPTIONS, a strict subset of
+    // ERP_ROLES, so constraining to ERP_ROLES cannot reject anything the UI sends.
+    role: z.enum(ERP_ROLES).optional(),
+    department: z.string().trim().max(64).optional(),
+    managerId: z.string().trim().max(128).optional(),
+    phone: z.string().trim().max(40).optional(),
+    cnic: z.string().trim().max(40).optional(),
+    designation: z.string().trim().max(120).optional(),
+    dob: z.string().trim().max(40).nullable().optional(),
+    joiningDate: z.string().trim().max(40).nullable().optional(),
+    salary: z.number().finite().min(0).max(1_000_000_000).nullable().optional(),
+    monthlyTarget: z.number().finite().min(0).max(1_000_000_000).nullable().optional(),
+    commission: z.number().finite().min(0).max(100).nullable().optional(),
+    status: z.enum(USER_STATUSES).optional(),
+  })
+  .strict();
+
 export const deleteUserSchema = z
   .object({
     uid: z.string().trim().min(1, 'uid is required').max(128),
@@ -70,3 +114,4 @@ export const deleteUserSchema = z
   .strict();
 
 export type AdminCreateUserProfileInput = z.infer<typeof adminCreateUserProfileSchema>;
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;

@@ -4,6 +4,8 @@ import { getCurrentUser } from '../_utils';
 import { logEvent } from '@/lib/audit';
 import { assertPermission, Permission } from '../../../../lib/permissions';
 import { eligibleManagerRolesFor } from '@/lib/hierarchy';
+import { validateRequest } from '@/lib/validations/validate';
+import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 
 export const runtime = 'nodejs';
 
@@ -33,17 +35,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const body = await req.json().catch(() => ({}));
+    // SOC2 F-06: `role` was the gap that mattered. The route lowercased whatever
+    // string arrived and wrote it to users/{uid}.role with no check against the
+    // canonical list. The surrounding guards are sound — role changes require
+    // ManageRoles, only a super_admin may touch or grant super_admin, the tenant is
+    // checked — but none of them establishes that the value is a role the system
+    // recognises. getCurrentUserOrThrow fails closed only on an EMPTY role, so a user
+    // carrying `role: 'wizard'` would still authenticate, match no permission check,
+    // and land in a state no screen can recover.
+    const body = validateRequest(adminUpdateUserSchema, await req.json().catch(() => ({})));
 
-    const uid = String(body?.uid || '').trim();
-    const name = String(body?.name || '').trim();
-    const requestedEmail = String(body?.email || '').trim();
-    const requestedRole = String(body?.role || '').trim();
-    const requestedDepartment = String(body?.department || '').trim();
-
-    if (!uid || !name) {
-      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
-    }
+    const uid = body.uid;
+    const name = body.name;
+    const requestedEmail = String(body.email || '').trim();
+    const requestedRole = String(body.role || '').trim();
+    const requestedDepartment = String(body.department || '').trim();
 
     // Pull existing doc to enforce email restriction and preserve untouched fields
     const snap = await adminDb.collection('users').doc(uid).get();
