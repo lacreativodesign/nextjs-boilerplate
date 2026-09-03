@@ -35,6 +35,15 @@ function cleanString(value: string | undefined) {
   return String(value || '').trim();
 }
 
+async function assertPortalIdentityTenant(uid: string, tenantId: string) {
+  const userSnap = await adminDb.collection('users').doc(uid).get();
+  if (!userSnap.exists) return;
+  const storedTenantId = String(userSnap.data()?.tenantId || '').trim();
+  if (storedTenantId && normalizeTenantId(storedTenantId) !== tenantId) {
+    throw new Error('This email is already linked to another Bizosto workspace.');
+  }
+}
+
 export async function ensureClientAccountActivation({
   clientId,
   clientData,
@@ -59,12 +68,19 @@ export async function ensureClientAccountActivation({
     const existingUser = await adminAuth.getUser(portalUserUid).catch(() => null);
     if (!existingUser) {
       portalUserUid = '';
+    } else {
+      await assertPortalIdentityTenant(portalUserUid, scopedTenantId);
     }
   }
 
   let userRecord = portalUserUid ? null : await adminAuth.getUserByEmail(email).catch(() => null);
   if (!portalUserUid) {
-    if (!userRecord) {
+    if (userRecord) {
+      // Firebase Auth email identity is global in this project. Never silently move an
+      // existing user's tenant claim because a different tenant activated a client with
+      // the same email address.
+      await assertPortalIdentityTenant(userRecord.uid, scopedTenantId);
+    } else {
       userRecord = await adminAuth.createUser({
         email,
         password: crypto.randomBytes(16).toString('hex'),
@@ -149,15 +165,20 @@ export async function queueClientActivationInvite({
   }
 
   const scopedTenantId = normalizeTenantId(tenantId || clientData.tenantId || null);
+
+  // Keep the pre-existing two-field query shape so payment activation does not introduce
+  // a new production-only composite index. Tenant ownership is checked in memory.
   const existingUserSnap = await adminDb
     .collection('users')
     .where('clientId', '==', clientId)
-    .where('tenantId', '==', scopedTenantId)
     .where('role', '==', 'client')
-    .limit(1)
+    .limit(10)
     .get();
+  const existingSameTenant = existingUserSnap.docs.some(
+    (doc) => normalizeTenantId(doc.data()?.tenantId || null) === scopedTenantId,
+  );
 
-  if (!existingUserSnap.empty) {
+  if (existingSameTenant) {
     return { ok: true, created: false };
   }
 
