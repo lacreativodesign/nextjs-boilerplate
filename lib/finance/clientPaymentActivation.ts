@@ -5,7 +5,11 @@ import { queueEmailEvent } from '@/lib/emailEvents';
 import { queueClientActivationInvite } from '@/lib/clientActivation';
 import { createNotification, getUserIdsByRoles } from '@/lib/notifications';
 import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
-import { computeBalanceDue, computeInvoiceStatus, normalizeInvoiceStatus } from '@/lib/finance/status';
+import {
+  computeBalanceDue,
+  computeInvoiceStatus,
+  normalizeInvoiceStatus,
+} from '@/lib/finance/status';
 import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
 import { resolveAmountTotal, resolveTotalPaid } from '@/lib/finance/paymentSchedule';
 
@@ -225,6 +229,24 @@ export async function recordSuccessfulClientPayment(
     };
   });
 
+  // Activate/reuse the portal BEFORE creating the project. createProjectFromDeal then sees
+  // portalUserUid on the client record and can notify that same client about the kickoff.
+  if (result.clientId) {
+    const clientSnap = await adminDb.collection('clients').doc(result.clientId).get();
+    if (clientSnap.exists) {
+      const clientData = clientSnap.data() || {};
+      await queueClientActivationInvite({
+        clientId: result.clientId,
+        clientData,
+        tenantId,
+        createdByUid: input.actor.uid,
+        reason: 'first_successful_client_payment',
+      }).catch((error) => {
+        console.error('client payment portal activation error:', error);
+      });
+    }
+  }
+
   const currentInvoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
   const currentInvoice = (currentInvoiceSnap.data() || {}) as Record<string, unknown>;
 
@@ -252,42 +274,29 @@ export async function recordSuccessfulClientPayment(
     );
   }
 
-  if (result.clientId) {
+  if (result.newlyRecorded && result.clientId) {
     const clientSnap = await adminDb.collection('clients').doc(result.clientId).get();
-    if (clientSnap.exists) {
-      const clientData = clientSnap.data() || {};
-      await queueClientActivationInvite({
-        clientId: result.clientId,
-        clientData,
-        tenantId,
-        createdByUid: input.actor.uid,
-        reason: 'first_successful_client_payment',
+    const clientData = clientSnap.exists ? clientSnap.data() || {} : {};
+    const email = String(clientData.primaryContactEmail || '').trim();
+    if (email) {
+      await queueEmailEvent({
+        templateId: 'payment_confirmation',
+        to: email,
+        data: {
+          clientName: String(clientData.companyName || clientData.primaryContactName || ''),
+          invoiceId,
+          orderId: result.orderId,
+          // payment_confirmation is a receipt for THIS payment, not cumulative project paid.
+          totalPaidUsd: result.amountPaid,
+          cumulativePaidUsd: result.totalPaid,
+          balanceDueUsd: result.balanceDue,
+          paymentStatus: result.status,
+          projectId,
+        },
+        metadata: { tenantId, clientId: result.clientId, invoiceId, projectId },
       }).catch((error) => {
-        console.error('client payment portal activation error:', error);
+        console.error('payment confirmation email error:', error);
       });
-
-      if (result.newlyRecorded) {
-        const email = String(clientData.primaryContactEmail || '').trim();
-        if (email) {
-          await queueEmailEvent({
-            templateId: 'payment_confirmation',
-            to: email,
-            data: {
-              clientName: String(clientData.companyName || clientData.primaryContactName || ''),
-              invoiceId,
-              orderId: result.orderId,
-              amountPaidUsd: result.amountPaid,
-              totalPaidUsd: result.totalPaid,
-              balanceDueUsd: result.balanceDue,
-              paymentStatus: result.status,
-              projectId,
-            },
-            metadata: { tenantId, clientId: result.clientId, invoiceId, projectId },
-          }).catch((error) => {
-            console.error('payment confirmation email error:', error);
-          });
-        }
-      }
     }
   }
 
