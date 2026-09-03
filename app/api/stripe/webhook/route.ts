@@ -138,10 +138,12 @@ async function linkExistingTenant({
   // succeeds. Currency becomes immutable on the first successful checkout activation.
   const activationPayload: Record<string, unknown> = {
     activationStatus: 'active',
-    activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastBillingActivationAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   if (lockCurrency) {
+    // First activation only: preserve the original activation timestamp forever.
+    activationPayload.activatedAt = admin.firestore.FieldValue.serverTimestamp();
     activationPayload.currencyLockedAt = admin.firestore.FieldValue.serverTimestamp();
     activationPayload.currencyLockedBy = 'stripe_checkout';
   }
@@ -345,14 +347,28 @@ export async function POST(req: Request) {
           : subscription.customer.id;
       const subscriptionMetadata = subscription.metadata || {};
 
+      if (subscriptionCustomerId !== stripeCustomerId) {
+        console.error('stripe webhook: session/subscription customer mismatch', {
+          eventId: event.id,
+          tenantId: metadataTenantId,
+          subscriptionId: stripeSubscriptionId,
+        });
+        await finalizeWebhookEvent(event.id, event.type);
+        return NextResponse.json({ ok: true, received: true, linked: false });
+      }
+
+      // The app checkout is created in this repository and stamps the same immutable metadata
+      // on both Session and Subscription, so require an exact cross-check. Platform/website
+      // sources may be created by external surfaces that predate subscription metadata; keep
+      // those compatible while still requiring a signed event, trusted source and customer match.
       if (
-        subscriptionCustomerId !== stripeCustomerId ||
-        subscriptionMetadata.tenantId !== metadataTenantId ||
-        subscriptionMetadata.bizosto_plan !== metadataPlan ||
-        subscriptionMetadata.billingCycle !== billingCycle ||
-        subscriptionMetadata.source !== source
+        source === 'bizosto_app' &&
+        (subscriptionMetadata.tenantId !== metadataTenantId ||
+          subscriptionMetadata.bizosto_plan !== metadataPlan ||
+          subscriptionMetadata.billingCycle !== billingCycle ||
+          subscriptionMetadata.source !== source)
       ) {
-        console.error('stripe webhook: session/subscription metadata mismatch', {
+        console.error('stripe webhook: app session/subscription metadata mismatch', {
           eventId: event.id,
           tenantId: metadataTenantId,
           subscriptionId: stripeSubscriptionId,
