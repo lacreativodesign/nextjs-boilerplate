@@ -15,33 +15,39 @@ const read = (relative: string): string =>
 describe('money-path finance ledger gate', () => {
   const payRoute = read('app/api/public/invoice/[invoiceId]/pay/route.ts');
   const confirmRoute = read('app/api/public/invoice/[invoiceId]/confirm/route.ts');
+  const connectWebhook = read('app/api/stripe/connect/webhook/route.ts');
+  const paymentService = read('lib/finance/clientPaymentActivation.ts');
   const refundRoute = read('app/api/payments/refund/route.ts');
   const adminUpdateRoute = read('app/api/admin/finance/payments/update/route.ts');
   const adminPaymentsPage = read('app/admin/finance/payments/page.tsx');
 
-  describe('public invoice payment routes write ledger entries', () => {
+  describe('public invoice payment paths use one canonical ledgered service', () => {
     it.each([
       ['pay', payRoute],
       ['confirm', confirmRoute],
-    ])('%s route imports the ledger builder', (_name, source) => {
-      expect(source).toContain("import { buildFinanceLedgerEntry } from '@/lib/finance/ledger'");
+      ['connect webhook', connectWebhook],
+    ])('%s delegates successful payment reconciliation', (_name, source) => {
+      expect(source).toContain('recordSuccessfulClientPayment');
     });
 
-    it.each([
-      ['pay', payRoute],
-      ['confirm', confirmRoute],
-    ])('%s route writes payment.succeeded and invoice.mark_paid entries', (_name, source) => {
-      expect(source).toContain("type: 'payment.succeeded'");
-      expect(source).toContain("type: 'invoice.mark_paid'");
-      expect(source).toContain("collection('finance_ledger')");
+    it('the canonical service writes payment and invoice-application ledger entries', () => {
+      expect(paymentService).toContain("import { buildFinanceLedgerEntry } from '@/lib/finance/ledger'");
+      expect(paymentService).toContain("type: 'payment.succeeded'");
+      expect(paymentService).toContain("type: 'invoice.payment_applied'");
+      expect(paymentService).toContain("collection('finance_ledger')");
     });
 
-    it.each([
-      ['pay', payRoute],
-      ['confirm', confirmRoute],
-    ])('%s route uses deterministic ledger ids keyed to the PaymentIntent', (_name, source) => {
-      expect(source).toContain('payment_succeeded_${paymentIntent.id}');
-      expect(source).toContain('invoice_paid_${paymentIntent.id}');
+    it('uses deterministic ledger ids keyed to the provider payment id', () => {
+      expect(paymentService).toContain('payment_succeeded_${paymentId}');
+      expect(paymentService).toContain('invoice_payment_${paymentId}');
+    });
+
+    it('updates payment, invoice balance and ledger inside one transaction', () => {
+      const txStart = paymentService.indexOf('runTransaction');
+      expect(txStart).toBeGreaterThan(-1);
+      expect(paymentService.indexOf("collection('payments')", txStart)).toBeGreaterThan(txStart);
+      expect(paymentService.indexOf("collection('finance_ledger')", txStart)).toBeGreaterThan(txStart);
+      expect(paymentService.indexOf('tx.update(invoiceRef', txStart)).toBeGreaterThan(txStart);
     });
   });
 
