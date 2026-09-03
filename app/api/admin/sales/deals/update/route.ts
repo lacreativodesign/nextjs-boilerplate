@@ -26,12 +26,20 @@ function escapeHtml(value: string) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
 
-function formatOrderId(seq: number) {
-  return `LC-${String(seq).padStart(4, '0')}`;
+function normalizeOrderPrefix(value: unknown) {
+  const custom = String(value || '')
+    .trim()
+    .toUpperCase();
+  const prefix = custom || process.env.ERP_ORDER_PREFIX || 'INV-';
+  return prefix.endsWith('-') ? prefix : `${prefix}-`;
+}
+
+function formatOrderId(prefix: string, seq: number) {
+  return `${prefix}${String(seq).padStart(4, '0')}`;
 }
 
 function normalizeDateValue(value: unknown): Date | null {
@@ -183,9 +191,7 @@ export async function POST(req: Request) {
           paymentPlan === 'fifty_fifty' && balanceTriggerType === 'date'
             ? payload.balanceDueDate || data.balanceDueDate || null
             : null;
-        const balanceDueDate = rawBalanceDueDate
-          ? normalizeDateValue(rawBalanceDueDate)
-          : null;
+        const balanceDueDate = rawBalanceDueDate ? normalizeDateValue(rawBalanceDueDate) : null;
         const balanceMilestoneStage =
           paymentPlan === 'fifty_fifty' && balanceTriggerType === 'milestone'
             ? payload.balanceMilestoneStage || data.balanceMilestoneStage || null
@@ -211,20 +217,24 @@ export async function POST(req: Request) {
           totalPaid: 0,
         });
 
-        // Preserve the locked LC-0001 order-id format. Read the counter before staging any
-        // transaction writes so Firestore never encounters a read-after-write transaction.
+        // Closed Won uses the SAME tenant-configured prefix, starting number and invoice
+        // sequence as manual invoice creation. The prefix is tenant-owned Admin settings;
+        // LC- is not hardcoded here (or anywhere in this activation path).
         let orderId = String(data.orderId || '').trim();
         let orderCounterRef: FirebaseFirestore.DocumentReference | null = null;
         let nextOrderSeq: number | null = null;
         if (!orderId) {
-          orderCounterRef = adminDb
-            .collection('tenants')
-            .doc(tenantId)
-            .collection('counters')
-            .doc('orders');
-          const counterSnap = await tx.get(orderCounterRef);
-          nextOrderSeq = Number(counterSnap.data()?.seq || 0) + 1;
-          orderId = formatOrderId(nextOrderSeq);
+          const tenantRef = adminDb.collection('tenants').doc(tenantId);
+          orderCounterRef = tenantRef.collection('counters').doc('invoices');
+          const [tenantSnap, counterSnap] = await Promise.all([
+            tx.get(tenantRef),
+            tx.get(orderCounterRef),
+          ]);
+          const tenantData = tenantSnap.data() || {};
+          const startingNumber = Math.max(1, Number(tenantData.orderStartingNumber || 1));
+          const currentValue = Number(counterSnap.data()?.value || 0);
+          nextOrderSeq = currentValue > 0 ? currentValue + 1 : startingNumber;
+          orderId = formatOrderId(normalizeOrderPrefix(tenantData.orderPrefix), nextOrderSeq);
         }
 
         let invoiceId = String(data.invoiceId || '').trim();
@@ -265,7 +275,7 @@ export async function POST(req: Request) {
         }
 
         if (orderCounterRef && nextOrderSeq !== null) {
-          tx.set(orderCounterRef, { seq: nextOrderSeq }, { merge: true });
+          tx.set(orderCounterRef, { value: nextOrderSeq }, { merge: true });
         }
 
         if (!invoiceSnap?.exists) {
