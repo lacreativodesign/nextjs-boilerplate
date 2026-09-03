@@ -1,0 +1,49 @@
+name: PR2 Trial State Patch Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr2-signup-activation
+    paths:
+      - .github/workflows/pr2-trial-state-patch-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr2-signup-activation
+          fetch-depth: 0
+      - name: Preserve Stripe trial state through checkout linking
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          service = Path('lib/billing/apply-subscription-state.ts')
+          src = service.read_text()
+          old = """    if (input.source === 'checkout.linked') {\n      derived.subscriptionState = 'active';\n      derived.billingStatus = 'active';\n      derived.status = 'active';\n    }\n"""
+          new = """    if (input.source === 'checkout.linked') {\n      // When Stripe reports trialing, preserve the canonical trial state established above.\n      // checkout.linked means the workspace is operationally activated; it does not mean the\n      // 14-day trial has already converted to a paid active subscription. Legacy callers that\n      // do not supply stripeStatus still fall back to active for backward compatibility.\n      if (!input.stripeStatus) {\n        derived.subscriptionState = 'active';\n        derived.billingStatus = 'active';\n      }\n      derived.status = 'active';\n    }\n"""
+          if old not in src:
+              raise SystemExit('billing service target not found')
+          service.write_text(src.replace(old, new, 1))
+
+          test = Path('__tests__/lib/billing/apply-subscription-state.test.ts')
+          src = test.read_text()
+          marker = """  it('returns tenantExists=false and writes nothing for a missing tenant', async () => {\n"""
+          addition = """  it('checkout.linked preserves a real Stripe trial instead of promoting it to paid active', async () => {\n    await applySubscriptionState({\n      tenantId: 'tenant_a',\n      source: 'checkout.linked',\n      eventId: 'evt_trial_checkout',\n      plan: 'pro',\n      stripeStatus: 'trialing',\n      stripeCustomerId: 'cus_trial',\n      stripeSubscriptionId: 'sub_trial',\n      billingCycle: 'monthly',\n      trialEnd: 1798761600,\n    });\n\n    const t = await tenant();\n    expect(t.subscriptionState).toBe('trial');\n    expect(t.billingStatus).toBe('active');\n    expect(t.status).toBe('active');\n    expect(t.plan).toBe('pro');\n    expect(t.trialEndsAt).toBeTruthy();\n  });\n\n"""
+          if marker not in src:
+              raise SystemExit('billing test insertion target not found')
+          test.write_text(src.replace(marker, addition + marker, 1))
+          PY
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/pr2-trial-state-patch-once.yml
+          git config user.name "lacreativodesign"
+          git config user.email "lacreativodesign@gmail.com"
+          git add lib/billing/apply-subscription-state.ts __tests__/lib/billing/apply-subscription-state.test.ts .github/workflows/pr2-trial-state-patch-once.yml
+          git commit -m "fix(billing): preserve Stripe trial state after checkout"
+          git push origin HEAD:codex/tenant-safety-pr2-signup-activation
