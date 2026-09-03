@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { logEvent } from '@/lib/audit';
 import { createProjectFromDeal } from '@/lib/projects';
 import { normalizeInvoiceStatus } from '@/lib/finance/status';
+import { resolveTotalPaid } from '@/lib/finance/paymentSchedule';
 import { createNotification, getUserIdsByRoles } from '../notifications';
 
 export async function maybeAutoCreateProjectFromInvoice({
@@ -18,8 +19,11 @@ export async function maybeAutoCreateProjectFromInvoice({
 }) {
   if (!invoiceId) return null;
   const status = normalizeInvoiceStatus(invoiceData.status);
-  if (status !== 'paid') return null;
-  if (invoiceData.projectId) return null;
+  if (!['partially_paid', 'paid'].includes(status)) return null;
+  if (resolveTotalPaid(invoiceData) <= 0) return null;
+  if (invoiceData.projectId) {
+    return { id: String(invoiceData.projectId), data: null };
+  }
   const type = String(invoiceData.type || '').toLowerCase();
   if (!['service', 'retainer'].includes(type)) return null;
 
@@ -66,7 +70,7 @@ export async function maybeAutoCreateProjectFromInvoice({
     tenantId: tenantId || null,
     type: 'project_auto_created',
     title: 'Project auto-created',
-    description: `Project auto-created from paid invoice ${invoiceData.orderId || invoiceId}.`,
+    description: `Project auto-created from first successful payment on invoice ${invoiceData.orderId || invoiceId}.`,
     entityType: 'project',
     entityId: created.id,
     actor: actor || null,
@@ -83,7 +87,7 @@ export async function maybeAutoCreateProjectFromInvoice({
         createNotification({
           toUserId: uid,
           title: 'Project auto-created',
-          body: `Project created from paid invoice ${invoiceData.orderId || invoiceId}.`,
+          body: `Project created from first successful payment on invoice ${invoiceData.orderId || invoiceId}.`,
           type: 'success',
           entityType: 'project',
           entityId: created.id,
