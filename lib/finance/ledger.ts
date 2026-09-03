@@ -24,6 +24,7 @@ export type FinanceLedgerType =
   | 'invoice.deleted'
   | 'invoice_void'
   | 'invoice.mark_paid'
+  | 'invoice.payment_applied'
   | 'payment.created'
   | 'payment.succeeded'
   | 'payment.failed'
