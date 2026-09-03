@@ -30,6 +30,15 @@ export const dealCommercialUpdateSchema = z
   .superRefine((value, ctx) => {
     if (value.paymentPlan !== 'fifty_fifty') return;
 
+    if (!value.balanceTriggerType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['balanceTriggerType'],
+        message: '50/50 payment terms require a balance due date or project milestone.',
+      });
+      return;
+    }
+
     if (value.balanceTriggerType === 'date' && !value.balanceDueDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
