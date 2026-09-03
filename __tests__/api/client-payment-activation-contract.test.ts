@@ -15,10 +15,19 @@ describe('payment-gated commercial activation contract', () => {
   const reminderCron = read('app/api/cron/invoice-reminders/route.ts');
 
   it('Closed Won prepares payment but does not create a production project', () => {
-    expect(dealUpdate).toContain("engagementStatus = 'awaiting_payment'");
+    expect(dealUpdate).toContain("updates.engagementStatus = 'awaiting_payment'");
     expect(dealUpdate).toContain('projectCreated: false');
     expect(dealUpdate).not.toContain('createProjectFromDeal');
     expect(dealUpdate).not.toContain('maybeAutoCreateProjectFromInvoice');
+  });
+
+  it('Closed Won honors the tenant-configured order prefix and starting-number sequence', () => {
+    expect(dealUpdate).toContain('tenantData.orderPrefix');
+    expect(dealUpdate).toContain('tenantData.orderStartingNumber');
+    expect(dealUpdate).toContain(".doc('invoices')");
+    expect(dealUpdate).toContain('{ value: nextOrderSeq }');
+    expect(dealUpdate).not.toContain('return `LC-');
+    expect(dealUpdate).not.toContain(".doc('orders')");
   });
 
   it('both public payment routes and the Connect webhook use the canonical service', () => {
