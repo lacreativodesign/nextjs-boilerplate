@@ -49,10 +49,6 @@ const OWNERSHIP_EXEMPT_ROUTES: Record<string, string> = {
     'Bound by lead.createdBy === auth.user.uid, a stricter check than tenant equality.',
   'notifications/create':
     'Loads the recipient user and requires recipientTenantId === me.tenantId before writing.',
-  'public/invoice/[invoiceId]/confirm':
-    'Public payment surface authorised by the per-invoice payment token, not by session tenant.',
-  'public/invoice/[invoiceId]/pay':
-    'Public payment surface authorised by the per-invoice payment token, not by session tenant.',
   signup: 'Pre-authentication provisioning. Documents are keyed by email; no tenant exists yet.',
   'stripe/connect/callback':
     'Keyed by a server-generated single-use OAuth state nonce, not a tenant-owned record.',
