@@ -30,6 +30,26 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#039;');
 }
 
+function formatOrderId(seq: number) {
+  return `LC-${String(seq).padStart(4, '0')}`;
+}
+
+function normalizeDateValue(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) throw new Error('Invalid payment due date.');
+    return value;
+  }
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    const date = (value as { toDate: () => Date }).toDate();
+    if (Number.isNaN(date.getTime())) throw new Error('Invalid payment due date.');
+    return date;
+  }
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) throw new Error('Invalid payment due date.');
+  return date;
+}
+
 export async function POST(req: Request) {
   try {
     const auth = await requireAdmin();
@@ -63,9 +83,8 @@ export async function POST(req: Request) {
 
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(dealRef);
-      if (!snap.exists) {
-        throw new Error('Deal not found');
-      }
+      if (!snap.exists) throw new Error('Deal not found');
+
       const data = snap.data() || {};
       const tenantId = normalizeTenantId(data.tenantId || auth.user.tenantId);
       if (!isSuperAdmin && tenantId !== authTenantId) {
@@ -88,14 +107,16 @@ export async function POST(req: Request) {
       if (payload.ownerName !== undefined) updates.ownerName = payload.ownerName || null;
       if (payload.expectedCloseDate !== undefined) {
         updates.expectedCloseDate = payload.expectedCloseDate
-          ? new Date(payload.expectedCloseDate)
+          ? normalizeDateValue(payload.expectedCloseDate)
           : null;
       }
       if (payload.paymentPlan !== undefined) updates.paymentPlan = payload.paymentPlan;
       if (payload.balanceTriggerType !== undefined)
         updates.balanceTriggerType = payload.balanceTriggerType;
       if (payload.balanceDueDate !== undefined)
-        updates.balanceDueDate = payload.balanceDueDate ? new Date(payload.balanceDueDate) : null;
+        updates.balanceDueDate = payload.balanceDueDate
+          ? normalizeDateValue(payload.balanceDueDate)
+          : null;
       if (payload.balanceMilestoneStage !== undefined)
         updates.balanceMilestoneStage = payload.balanceMilestoneStage;
 
@@ -113,39 +134,39 @@ export async function POST(req: Request) {
       const shouldProcessClosedWon = nextStage === 'Closed Won' && !data.closedWonProcessed;
       if (shouldProcessClosedWon) {
         closedWonTriggered = true;
+
         const clientName =
           parseString(payload.clientName, '') ||
           parseString(data.clientName, '') ||
           parseString(data.leadName, '') ||
           'New Client';
-        const clientEmail = parseString(
+        let clientEmail = parseString(
           data.clientEmail || data.leadEmail || data.email || data.primaryContactEmail,
           '',
         )
           .trim()
           .toLowerCase();
 
-        let clientId = String(data.clientId || '').trim();
-        let clientRef = clientId ? adminDb.collection('clients').doc(clientId) : null;
-        if (clientRef) {
-          const clientSnap = await tx.get(clientRef);
-          if (!clientSnap.exists || docTenantId(clientSnap.data()) !== tenantId) {
-            throw new Error('Deal client does not belong to this tenant.');
-          }
-        } else {
-          clientRef = adminDb.collection('clients').doc();
-          clientId = clientRef.id;
-          tx.set(clientRef, {
-            tenantId,
-            companyName: clientName,
-            primaryContactEmail: clientEmail || null,
-            ownerAmUid: updates.ownerId || data.ownerId || null,
-            ownerAmName: updates.ownerName || data.ownerName || null,
-            accountStatus: 'PENDING_PAYMENT',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            isDeleted: false,
-          });
+        const existingClientId = String(data.clientId || '').trim();
+        const clientRef = existingClientId
+          ? adminDb.collection('clients').doc(existingClientId)
+          : adminDb.collection('clients').doc();
+        const clientId = clientRef.id;
+        const clientSnap = existingClientId ? await tx.get(clientRef) : null;
+        const clientData = clientSnap?.exists ? clientSnap.data() || {} : {};
+        if (existingClientId && (!clientSnap?.exists || docTenantId(clientData) !== tenantId)) {
+          throw new Error('Deal client does not belong to this tenant.');
+        }
+        if (!clientEmail) {
+          clientEmail = parseString(
+            clientData.primaryContactEmail || clientData.primaryContactEmailLower || clientData.email,
+            '',
+          )
+            .trim()
+            .toLowerCase();
+        }
+        if (!clientEmail) {
+          throw new Error('Client primary contact email is required before closing won.');
         }
 
         const amountTotal = parseNumber(payload.valueUsd, Number(data.valueUsd || 0));
@@ -158,10 +179,13 @@ export async function POST(req: Request) {
           paymentPlan === 'fifty_fifty'
             ? payload.balanceTriggerType || data.balanceTriggerType || null
             : null;
-        const balanceDueDate =
+        const rawBalanceDueDate =
           paymentPlan === 'fifty_fifty' && balanceTriggerType === 'date'
             ? payload.balanceDueDate || data.balanceDueDate || null
             : null;
+        const balanceDueDate = rawBalanceDueDate
+          ? normalizeDateValue(rawBalanceDueDate)
+          : null;
         const balanceMilestoneStage =
           paymentPlan === 'fifty_fifty' && balanceTriggerType === 'milestone'
             ? payload.balanceMilestoneStage || data.balanceMilestoneStage || null
@@ -186,21 +210,65 @@ export async function POST(req: Request) {
           paymentPlan,
           totalPaid: 0,
         });
-        const orderId = String(data.orderId || `DEAL-${id}`);
-        let invoiceId = String(data.invoiceId || '').trim();
-        let paymentToken = '';
 
-        if (invoiceId) {
-          const invoiceRef = adminDb.collection('invoices').doc(invoiceId);
-          const invoiceSnap = await tx.get(invoiceRef);
-          if (!invoiceSnap.exists || docTenantId(invoiceSnap.data()) !== tenantId) {
-            throw new Error('Deal invoice does not belong to this tenant.');
-          }
-          paymentToken = String(invoiceSnap.data()?.paymentToken || '');
+        // Preserve the locked LC-0001 order-id format. Read the counter before staging any
+        // transaction writes so Firestore never encounters a read-after-write transaction.
+        let orderId = String(data.orderId || '').trim();
+        let orderCounterRef: FirebaseFirestore.DocumentReference | null = null;
+        let nextOrderSeq: number | null = null;
+        if (!orderId) {
+          orderCounterRef = adminDb
+            .collection('tenants')
+            .doc(tenantId)
+            .collection('counters')
+            .doc('orders');
+          const counterSnap = await tx.get(orderCounterRef);
+          nextOrderSeq = Number(counterSnap.data()?.seq || 0) + 1;
+          orderId = formatOrderId(nextOrderSeq);
+        }
+
+        let invoiceId = String(data.invoiceId || '').trim();
+        const invoiceRef = invoiceId
+          ? adminDb.collection('invoices').doc(invoiceId)
+          : adminDb.collection('invoices').doc();
+        if (!invoiceId) invoiceId = invoiceRef.id;
+        const invoiceSnap = data.invoiceId ? await tx.get(invoiceRef) : null;
+        if (data.invoiceId && (!invoiceSnap?.exists || docTenantId(invoiceSnap.data()) !== tenantId)) {
+          throw new Error('Deal invoice does not belong to this tenant.');
+        }
+        let paymentToken = String(invoiceSnap?.data()?.paymentToken || '').trim();
+        if (!paymentToken) paymentToken = generateInvoiceToken();
+
+        // All reads are complete. Stage writes from here onward.
+        if (!existingClientId) {
+          tx.set(clientRef, {
+            tenantId,
+            companyName: clientName,
+            primaryContactEmail: clientEmail,
+            ownerAmUid: updates.ownerId || data.ownerId || null,
+            ownerAmName: updates.ownerName || data.ownerName || null,
+            accountStatus: 'PENDING_PAYMENT',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            isDeleted: false,
+          });
         } else {
-          const invoiceRef = adminDb.collection('invoices').doc();
-          invoiceId = invoiceRef.id;
-          paymentToken = generateInvoiceToken();
+          tx.set(
+            clientRef,
+            {
+              primaryContactEmail: clientEmail,
+              accountStatus: clientData.accountStatus || 'PENDING_PAYMENT',
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+
+        if (orderCounterRef && nextOrderSeq !== null) {
+          tx.set(orderCounterRef, { seq: nextOrderSeq }, { merge: true });
+        }
+
+        if (!invoiceSnap?.exists) {
           tx.set(invoiceRef, {
             tenantId,
             type: 'service',
@@ -212,7 +280,7 @@ export async function POST(req: Request) {
             paymentToken,
             currency: 'USD',
             amountSubtotalUsd: amountTotal,
-            amountTotal: amountTotal,
+            amountTotal,
             amountTotalUsd: amountTotal,
             amountTaxUsd: 0,
             status: 'issued',
@@ -223,13 +291,13 @@ export async function POST(req: Request) {
             paidAmount: 0,
             balanceDue: amountTotal,
             balanceTriggerType,
-            balanceDueDate: balanceDueDate ? new Date(String(balanceDueDate)) : null,
+            balanceDueDate,
             balanceMilestoneStage,
-            // The existing reminder engine chases issued/partially_paid invoices by dueDate.
-            // A milestone-based balance gets its dueDate when the milestone is reached.
+            // Date-based plans carry the second-half due date from day one; milestone plans
+            // receive dueDate only when the project reaches the configured stage.
             dueDate:
-              paymentPlan === 'fifty_fifty' && balanceTriggerType === 'date' && balanceDueDate
-                ? new Date(String(balanceDueDate))
+              paymentPlan === 'fifty_fifty' && balanceTriggerType === 'date'
+                ? balanceDueDate
                 : null,
             issuedAt: serverTimestamp(),
             notes:
@@ -240,6 +308,12 @@ export async function POST(req: Request) {
             updatedAt: serverTimestamp(),
             isDeleted: false,
           });
+        } else if (!invoiceSnap.data()?.paymentToken) {
+          tx.set(
+            invoiceRef,
+            { paymentToken, updatedAt: serverTimestamp() },
+            { merge: true },
+          );
         }
 
         updates.clientId = clientId;
@@ -248,7 +322,7 @@ export async function POST(req: Request) {
         updates.invoiceId = invoiceId;
         updates.paymentPlan = paymentPlan;
         updates.balanceTriggerType = balanceTriggerType;
-        updates.balanceDueDate = balanceDueDate ? new Date(String(balanceDueDate)) : null;
+        updates.balanceDueDate = balanceDueDate;
         updates.balanceMilestoneStage = balanceMilestoneStage;
         updates.paymentStatus = 'issued';
         updates.engagementStatus = 'awaiting_payment';
@@ -304,31 +378,29 @@ export async function POST(req: Request) {
       const client = clientSnap.data() || {};
       const tenant = tenantSnap.data() || {};
       const clientEmail = String(client.primaryContactEmail || '').trim();
-      if (clientEmail) {
-        const tenantName = String(tenant?.brand?.name || tenant.name || 'Your service provider');
-        const payUrl = invoicePaymentUrl(closedWonInvoiceId, closedWonPaymentToken);
-        const paymentLabel =
-          closedWonPaymentPlan === 'fifty_fifty'
-            ? `50% deposit (${closedWonPayableNow.toFixed(2)} USD)`
-            : `${closedWonPayableNow.toFixed(2)} USD`;
+      const tenantName = String(tenant?.brand?.name || tenant.name || 'Your service provider');
+      const payUrl = invoicePaymentUrl(closedWonInvoiceId, closedWonPaymentToken);
+      const paymentLabel =
+        closedWonPaymentPlan === 'fifty_fifty'
+          ? `50% deposit (${closedWonPayableNow.toFixed(2)} USD)`
+          : `${closedWonPayableNow.toFixed(2)} USD`;
 
-        await enqueueTenantEmail({
-          tenantId: closedWonTenantId,
-          tenant,
-          messageClass: 'invoice.closed_won_payment_request',
-          entityId: closedWonInvoiceId,
-          to: clientEmail,
-          subject: `Payment request — ${closedWonOrderId}`,
-          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#111827;line-height:1.6">
-            <h2 style="margin-bottom:8px">Your project is ready to start</h2>
-            <p>${escapeHtml(tenantName)} has prepared invoice <strong>${escapeHtml(closedWonOrderId)}</strong>.</p>
-            <p>Total project value: <strong>${closedWonAmountTotal.toFixed(2)} USD</strong><br/>Amount due now: <strong>${paymentLabel}</strong></p>
-            <p>Production will begin automatically as soon as this payment is confirmed.</p>
-            <p style="margin:24px 0"><a href="${payUrl}" style="display:inline-block;padding:12px 20px;background:#012167;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">View invoice &amp; pay securely</a></p>
-            <p style="font-size:12px;color:#6B7280">Payments are processed securely through the payment system provided by ${escapeHtml(tenantName)}.</p>
-          </div>`,
-        });
-      }
+      await enqueueTenantEmail({
+        tenantId: closedWonTenantId,
+        tenant,
+        messageClass: 'invoice.closed_won_payment_request',
+        entityId: closedWonInvoiceId,
+        to: clientEmail,
+        subject: `Payment request — ${closedWonOrderId}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#111827;line-height:1.6">
+          <h2 style="margin-bottom:8px">Your project is ready to start</h2>
+          <p>${escapeHtml(tenantName)} has prepared invoice <strong>${escapeHtml(closedWonOrderId)}</strong>.</p>
+          <p>Total project value: <strong>${closedWonAmountTotal.toFixed(2)} USD</strong><br/>Amount due now: <strong>${paymentLabel}</strong></p>
+          <p>Production will begin automatically as soon as this payment is confirmed.</p>
+          <p style="margin:24px 0"><a href="${payUrl}" style="display:inline-block;padding:12px 20px;background:#012167;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">View invoice &amp; pay securely</a></p>
+          <p style="font-size:12px;color:#6B7280">Payments are processed securely through the payment system provided by ${escapeHtml(tenantName)}.</p>
+        </div>`,
+      });
     }
 
     return NextResponse.json({
