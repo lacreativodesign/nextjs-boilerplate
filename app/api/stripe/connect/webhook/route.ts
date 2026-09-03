@@ -8,7 +8,7 @@ import {
   releaseWebhookEvent,
 } from '@/lib/stripe/webhook-idempotency';
 import { getStripeClient } from '@/lib/payments/stripe';
-import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
+import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActivation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,10 @@ async function findTenantByAccountId(accountId: string) {
   return query.docs[0];
 }
 
+function eventAccountId(event: Stripe.Event): string {
+  return typeof event.account === 'string' ? event.account.trim() : '';
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get('stripe-signature');
@@ -57,6 +61,7 @@ export async function POST(req: Request) {
   if (claim === 'duplicate') {
     return NextResponse.json({ ok: true, received: true });
   }
+
   try {
     if (event.type === 'account.updated') {
       const account = event.data.object as Stripe.Account;
@@ -108,91 +113,38 @@ export async function POST(req: Request) {
         }
       }
     } else if (event.type === 'payment_intent.succeeded') {
-      // Backstop: reconcile a client invoice payment if the synchronous pay/confirm
-      // path failed to record it (e.g. the customer's browser closed mid-redirect).
       const pi = event.data.object as Stripe.PaymentIntent;
       const invoiceId = String(pi.metadata?.invoiceId || '').trim();
       const tenantId = String(pi.metadata?.tenantId || '').trim();
+      const source = String(pi.metadata?.source || '').trim();
+      const accountId = eventAccountId(event);
 
-      if (pi.metadata?.source === 'client_payment_page' && invoiceId && tenantId) {
-        const invoiceRef = adminDb.collection('invoices').doc(invoiceId);
-        const invoiceSnap = await invoiceRef.get();
-        const alreadyPaid =
-          invoiceSnap.exists &&
-          String((invoiceSnap.data() as { status?: string }).status || '').toLowerCase() === 'paid';
-
-        if (invoiceSnap.exists && !alreadyPaid) {
-          const nowIso = new Date().toISOString();
-          const amountUsd = (pi.amount_received ?? pi.amount ?? 0) / 100;
-          const platformFeeUsd = (pi.application_fee_amount ?? 0) / 100;
-          // Deterministic id = PaymentIntent id, identical shape to the pay/confirm
-          // routes, so this backstop converges on a single record without duplicates.
-          const paymentRef = adminDb.collection('payments').doc(pi.id);
-
-          const batch = adminDb.batch();
-          batch.update(invoiceRef, {
-            status: 'paid',
-            paidAt: nowIso,
-            paidAmount: amountUsd,
-            paymentMethod: 'stripe',
-            stripePaymentIntentId: pi.id,
-            updatedAt: nowIso,
-          });
-          batch.set(paymentRef, {
-            tenantId,
-            clientId: String(pi.metadata?.clientId || '') || null,
-            invoiceId,
-            orderId: String(pi.metadata?.orderId || ''),
-            amountUsd,
-            platformFeeUsd,
-            currency: (pi.currency || 'usd').toUpperCase(),
-            status: 'succeeded',
-            method: 'stripe_checkout',
-            stripePaymentIntentId: pi.id,
-            paidAt: nowIso,
-            createdAt: nowIso,
-            updatedAt: nowIso,
-            isDeleted: false,
-          });
-          // Same deterministic ledger ids as the pay/confirm routes so this
-          // backstop converges on exactly one payment.succeeded and one
-          // invoice.mark_paid entry per PaymentIntent — no duplicates on replay,
-          // and no payment can be recorded without its ledger trail.
-          const previousStatus = String((invoiceSnap.data() as { status?: string }).status || '');
-          batch.set(
-            adminDb.collection('finance_ledger').doc(`payment_succeeded_${pi.id}`),
-            buildFinanceLedgerEntry({
-              tenantId,
-              type: 'payment.succeeded',
-              paymentId: pi.id,
-              invoiceId,
-              orderId: String(pi.metadata?.orderId || ''),
-              clientId: String(pi.metadata?.clientId || ''),
-              amountUsd,
-              previousStatus,
-              newStatus: 'succeeded',
-              method: 'stripe_checkout',
-              actor: { uid: 'system', name: 'Client payment (Stripe webhook backstop)' },
-            }),
-          );
-          batch.set(
-            adminDb.collection('finance_ledger').doc(`invoice_paid_${pi.id}`),
-            buildFinanceLedgerEntry({
-              tenantId,
-              type: 'invoice.mark_paid',
-              invoiceId,
-              orderId: String(pi.metadata?.orderId || ''),
-              clientId: String(pi.metadata?.clientId || ''),
-              amountUsd,
-              previousStatus,
-              newStatus: 'paid',
-              method: 'stripe',
-              reason: 'Paid online via client payment page',
-              actor: { uid: 'system', name: 'Client payment (Stripe webhook backstop)' },
-            }),
-          );
-          await batch.commit();
+      if (source === 'client_payment_page' && invoiceId && tenantId) {
+        // A signed Stripe payload is not enough to choose a tenant. Bind the event's actual
+        // connected account to the server-owned tenant record and require metadata to agree.
+        // This prevents an event from one Connect account being replayed against another
+        // tenant merely by carrying a different tenantId in metadata.
+        if (!accountId) {
+          throw new Error('Connect payment event is missing its account id.');
         }
+        const tenantDoc = await findTenantByAccountId(accountId);
+        if (!tenantDoc || tenantDoc.id !== tenantId) {
+          throw new Error('Connect payment tenant/account mismatch.');
+        }
+
+        const amountReceived = (pi.amount_received ?? pi.amount ?? 0) / 100;
+        await recordSuccessfulClientPayment({
+          invoiceId,
+          tenantId,
+          paymentId: pi.id,
+          amount: amountReceived,
+          platformFee: (pi.application_fee_amount ?? 0) / 100,
+          currency: pi.currency || 'usd',
+          method: 'stripe_checkout',
+          source: 'stripe_connect_webhook',
+          stripePaymentIntentId: pi.id,
+          actor: { uid: 'system', name: 'Client payment (Stripe webhook)' },
+        });
       }
     }
 
