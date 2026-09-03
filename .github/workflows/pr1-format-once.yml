@@ -1,0 +1,63 @@
+name: PR1 Format Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr1-payment-activation
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr1-payment-activation
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format PR1 files with pinned Prettier
+        run: |
+          npx prettier --write \
+            __tests__/api/finance/money-path-ledger.test.ts \
+            __tests__/finance/payment-schedule.test.ts \
+            app/admin/sales/deals/page.tsx \
+            app/api/admin/sales/deals/update/route.ts \
+            'app/api/public/invoice/[invoiceId]/pay/route.ts' \
+            app/api/public/invoice/shared.ts \
+            'app/pay/[invoiceId]/page.tsx' \
+            lib/finance/clientPaymentActivation.ts \
+            lib/finance/paymentSchedule.ts
+
+      - name: Commit formatting if needed
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            __tests__/api/finance/money-path-ledger.test.ts \
+            __tests__/finance/payment-schedule.test.ts \
+            app/admin/sales/deals/page.tsx \
+            app/api/admin/sales/deals/update/route.ts \
+            'app/api/public/invoice/[invoiceId]/pay/route.ts' \
+            app/api/public/invoice/shared.ts \
+            'app/pay/[invoiceId]/page.tsx' \
+            lib/finance/clientPaymentActivation.ts \
+            lib/finance/paymentSchedule.ts
+          git commit -m "chore: format tenant safety PR1"
+          git push origin HEAD:codex/tenant-safety-pr1-payment-activation
