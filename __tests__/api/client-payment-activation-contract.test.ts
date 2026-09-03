@@ -33,8 +33,8 @@ describe('payment-gated commercial activation contract', () => {
   });
 
   it('portal activation is reconciled before project creation', () => {
-    const portalIndex = paymentService.indexOf('queueClientActivationInvite');
-    const projectIndex = paymentService.indexOf('maybeAutoCreateProjectFromInvoice({');
+    const portalIndex = paymentService.indexOf('await queueClientActivationInvite({');
+    const projectIndex = paymentService.indexOf('await maybeAutoCreateProjectFromInvoice({');
     expect(portalIndex).toBeGreaterThan(-1);
     expect(projectIndex).toBeGreaterThan(portalIndex);
   });
