@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, formatUsd } from '@/components/finance/fina
 import { toastError } from '@/lib/toast';
 import { useOptimisticUpdate } from '@/lib/hooks/useOptimisticUpdate';
 import { PIPELINE_STAGES, toInputDate } from '@/lib/sales/utils';
+import { PROJECT_MILESTONE_STAGES } from '@/lib/finance/paymentSchedule';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import { apiFetch } from '@/lib/api/client';
@@ -17,6 +18,18 @@ const STAGE_OPTIONS = [
   { label: 'All Stages', value: '' },
   ...PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage })),
 ];
+
+const PAYMENT_PLAN_OPTIONS = [
+  { label: '100% Upfront', value: 'full' },
+  { label: '50% Deposit / 50% Balance', value: 'fifty_fifty' },
+];
+
+const BALANCE_TRIGGER_OPTIONS = [
+  { label: 'Specific Date', value: 'date' },
+  { label: 'Project Milestone', value: 'milestone' },
+];
+
+const MILESTONE_OPTIONS = PROJECT_MILESTONE_STAGES.map((stage) => ({ label: stage, value: stage }));
 
 type DealRecord = {
   id: string;
@@ -34,10 +47,13 @@ type DealRecord = {
   paymentStatus?: string | null;
   projectId?: string | null;
   projectCreated?: boolean;
+  paymentPlan?: 'full' | 'fifty_fifty';
+  balanceTriggerType?: 'date' | 'milestone' | null;
+  balanceDueDate?: string | null;
+  balanceMilestoneStage?: string | null;
 };
 
 type UserOption = { uid: string; name?: string; fullName?: string; role?: string };
-
 type ErrorState = { title: string; message: string };
 
 type DealFormState = {
@@ -50,6 +66,10 @@ type DealFormState = {
   ownerId: string;
   ownerName: string;
   expectedCloseDate: string;
+  paymentPlan: 'full' | 'fifty_fifty';
+  balanceTriggerType: 'date' | 'milestone';
+  balanceDueDate: string;
+  balanceMilestoneStage: string;
 };
 
 const defaultForm: DealFormState = {
@@ -61,6 +81,10 @@ const defaultForm: DealFormState = {
   ownerId: '',
   ownerName: '',
   expectedCloseDate: '',
+  paymentPlan: 'full',
+  balanceTriggerType: 'date',
+  balanceDueDate: '',
+  balanceMilestoneStage: 'Final',
 };
 
 export default function SalesDealsPage() {
@@ -185,6 +209,10 @@ export default function SalesDealsPage() {
       ownerId: deal.ownerId || '',
       ownerName: deal.ownerName || '',
       expectedCloseDate: toInputDate(deal.expectedCloseDate),
+      paymentPlan: deal.paymentPlan || 'full',
+      balanceTriggerType: deal.balanceTriggerType || 'date',
+      balanceDueDate: toInputDate(deal.balanceDueDate),
+      balanceMilestoneStage: deal.balanceMilestoneStage || 'Final',
     });
     setDrawerOpen(true);
   };
@@ -198,18 +226,59 @@ export default function SalesDealsPage() {
     }));
   };
 
+  function paymentTermsPayload() {
+    if (form.paymentPlan === 'full') {
+      return {
+        paymentPlan: 'full' as const,
+        balanceTriggerType: null,
+        balanceDueDate: null,
+        balanceMilestoneStage: null,
+      };
+    }
+
+    return {
+      paymentPlan: 'fifty_fifty' as const,
+      balanceTriggerType: form.balanceTriggerType,
+      balanceDueDate:
+        form.balanceTriggerType === 'date' ? form.balanceDueDate || null : null,
+      balanceMilestoneStage:
+        form.balanceTriggerType === 'milestone' ? form.balanceMilestoneStage || null : null,
+    };
+  }
+
   const handleSave = async () => {
     try {
       setActionLoading('save');
       const endpoint =
         drawerMode === 'create' ? '/api/admin/sales/deals/create' : '/api/admin/sales/deals/update';
+      const body =
+        drawerMode === 'create'
+          ? {
+              dealName: form.dealName,
+              clientName: form.clientName,
+              stage: form.stage,
+              valueUsd: form.valueUsd,
+              probability: form.probability,
+              ownerId: form.ownerId,
+              ownerName: form.ownerName,
+              expectedCloseDate: form.expectedCloseDate || null,
+            }
+          : {
+              id: form.id,
+              dealName: form.dealName,
+              clientName: form.clientName,
+              stage: form.stage,
+              valueUsd: form.valueUsd,
+              probability: form.probability,
+              ownerId: form.ownerId,
+              ownerName: form.ownerName,
+              expectedCloseDate: form.expectedCloseDate || null,
+              ...paymentTermsPayload(),
+            };
       const res = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          expectedCloseDate: form.expectedCloseDate || null,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -219,7 +288,7 @@ export default function SalesDealsPage() {
       await loadDeals();
     } catch (err) {
       console.error('Deal save error', err);
-      setError({ title: 'Unable to save deal', message: 'Please try again.' });
+      setError({ title: 'Unable to save deal', message: err instanceof Error ? err.message : 'Please try again.' });
     } finally {
       setActionLoading(null);
     }
@@ -255,7 +324,11 @@ export default function SalesDealsPage() {
     }
   };
 
-  const markClosed = async (deal: DealRecord, status: 'Closed Won' | 'Closed Lost') => {
+  const markClosed = async (
+    deal: DealRecord,
+    status: 'Closed Won' | 'Closed Lost',
+    terms?: ReturnType<typeof paymentTermsPayload>,
+  ) => {
     try {
       setActionLoading(`${deal.id}-${status}`);
       const previousDeals = deals;
@@ -272,19 +345,26 @@ export default function SalesDealsPage() {
           const res = await apiFetch('/api/admin/sales/deals/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: deal.id, stage: status }),
+            body: JSON.stringify({ id: deal.id, stage: status, ...(status === 'Closed Won' ? terms : {}) }),
           });
           const data = await res.json();
           if (!res.ok || !data.ok) {
             throw new Error(data?.error || 'Unable to update deal.');
           }
         },
-        successMessage: `Deal moved to ${status}.`,
+        successMessage:
+          status === 'Closed Won'
+            ? 'Deal closed won. Payment request prepared; project starts after payment.'
+            : `Deal moved to ${status}.`,
         errorMessage: 'Unable to update deal.',
       });
+      await loadDeals();
     } catch (err) {
       console.error('Deal close error', err);
-      setError({ title: 'Unable to update deal', message: 'Please try again.' });
+      setError({
+        title: 'Unable to update deal',
+        message: err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setActionLoading(null);
     }
@@ -294,7 +374,7 @@ export default function SalesDealsPage() {
     if (!form.id) return;
     const deal = deals.find((item) => item.id === form.id);
     if (deal) {
-      markClosed(deal, 'Closed Won');
+      markClosed(deal, 'Closed Won', paymentTermsPayload());
     }
   };
 
@@ -345,7 +425,7 @@ export default function SalesDealsPage() {
         <div>
           <h1 className="page-title">Deals</h1>
           <p className="page-subtitle mt-2">
-            Manage deal values, probabilities, and closing actions.
+            Manage deal values, payment terms, probabilities, and closing actions.
           </p>
         </div>
         <button className="btn" onClick={openCreate} style={{ borderRadius: 999 }}>
@@ -357,16 +437,8 @@ export default function SalesDealsPage() {
         <div style={{ flex: '1 1 240px', minWidth: 220 }}>
           <SmartSearchBar value={query} onChange={setQuery} />
         </div>
-        <MasterSelect
-          value={stageFilter}
-          onChange={(value) => setStageFilter(value)}
-          options={STAGE_OPTIONS}
-        />
-        <MasterSelect
-          value={ownerFilter}
-          onChange={(value) => setOwnerFilter(value)}
-          options={ownerOptions}
-        />
+        <MasterSelect value={stageFilter} onChange={setStageFilter} options={STAGE_OPTIONS} />
+        <MasterSelect value={ownerFilter} onChange={setOwnerFilter} options={ownerOptions} />
         <button
           type="button"
           className="btn"
@@ -386,115 +458,56 @@ export default function SalesDealsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1080 }}>
             <thead>
               <tr style={{ background: 'var(--surface-muted)' }}>
-                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
-                  Deal Name
-                </th>
-                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>
-                  Client / Lead
-                </th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>Deal Name</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700 }}>Client / Lead</th>
                 <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Stage</th>
-                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
-                  Value (USD)
-                </th>
-                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
-                  Probability %
-                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Value (USD)</th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Probability %</th>
                 <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Owner</th>
-                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
-                  Expected Close Date
-                </th>
-                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>
-                  Updated At
-                </th>
-                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>
-                  Actions
-                </th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Expected Close Date</th>
+                <th style={{ textAlign: 'right', padding: '14px 16px', fontWeight: 700 }}>Updated At</th>
+                <th style={{ textAlign: 'center', padding: '14px 16px', fontWeight: 700 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 24, textAlign: 'center' }}>
-                    Loading deals...
-                  </td>
+                  <td colSpan={9} style={{ padding: 24, textAlign: 'center' }}>Loading deals...</td>
                 </tr>
               ) : visibleDeals.length === 0 ? (
                 <tr>
                   <td colSpan={9}>
-                    <EmptyState
-                      variant="table"
-                      title="No deals yet"
-                      description="Convert a lead to open your first deal."
-                    />
+                    <EmptyState variant="table" title="No deals yet" description="Convert a lead to open your first deal." />
                   </td>
                 </tr>
               ) : (
                 visibleDeals.map((deal) => (
                   <tr key={deal.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 600 }}>{deal.dealName}</td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {deal.clientName || deal.leadName || '-'}
-                    </td>
+                    <td style={{ padding: '14px 16px' }}>{deal.clientName || deal.leadName || '-'}</td>
                     <td style={{ padding: '14px 16px', textAlign: 'right' }}>{deal.stage}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      {formatUsd(deal.valueUsd)}
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      {deal.probability}%
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      {deal.ownerName || 'Unassigned'}
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      {formatDate(deal.expectedCloseDate)}
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      {formatDateTime(deal.updatedAt)}
-                    </td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{formatUsd(deal.valueUsd)}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{deal.probability}%</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{deal.ownerName || 'Unassigned'}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{formatDate(deal.expectedCloseDate)}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>{formatDateTime(deal.updatedAt)}</td>
                     <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: 8,
-                          justifyContent: 'center',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          onClick={() => openEdit(deal)}
-                          style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
-                        >
-                          View
-                        </button>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn ghost" onClick={() => openEdit(deal)} style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}>View</button>
                         <button
                           type="button"
                           className="btn"
                           onClick={() => markClosed(deal, 'Closed Won')}
                           disabled={actionLoading === `${deal.id}-Closed Won`}
                           style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
+                          title="Uses saved payment terms, or 100% upfront if none were configured."
                         >
                           {actionLoading === `${deal.id}-Closed Won` ? 'Processing' : 'Closed Won'}
                         </button>
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          onClick={() => markClosed(deal, 'Closed Lost')}
-                          disabled={actionLoading === `${deal.id}-Closed Lost`}
-                          style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
-                        >
-                          {actionLoading === `${deal.id}-Closed Lost`
-                            ? 'Processing'
-                            : 'Closed Lost'}
+                        <button type="button" className="btn ghost" onClick={() => markClosed(deal, 'Closed Lost')} disabled={actionLoading === `${deal.id}-Closed Lost`} style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}>
+                          {actionLoading === `${deal.id}-Closed Lost` ? 'Processing' : 'Closed Lost'}
                         </button>
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          onClick={() => handleDelete(deal)}
-                          disabled={actionLoading === deal.id}
-                          style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}
-                        >
+                        <button type="button" className="btn ghost" onClick={() => handleDelete(deal)} disabled={actionLoading === deal.id} style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}>
                           {actionLoading === deal.id ? 'Deleting' : 'Delete'}
                         </button>
                       </div>
@@ -506,20 +519,11 @@ export default function SalesDealsPage() {
           </table>
         </div>
         {loading ? (
-          <div style={{ padding: 20 }}>
-            <TableSkeleton rows={6} columns={9} showHeader={false} />
-          </div>
+          <div style={{ padding: 20 }}><TableSkeleton rows={6} columns={9} showHeader={false} /></div>
         ) : null}
         {!loading && visibleCount < filteredDeals.length ? (
           <div className="flex items-center justify-center gap-3 border-t border-slate-200/80 p-4 dark:border-slate-800/80">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setVisibleCount((prev) => Math.min(prev + 20, filteredDeals.length))}
-              style={{ borderRadius: 999 }}
-            >
-              Load More
-            </button>
+            <button type="button" className="btn" onClick={() => setVisibleCount((prev) => Math.min(prev + 20, filteredDeals.length))} style={{ borderRadius: 999 }}>Load More</button>
             <div id="deals-infinite-scroll-sentinel" style={{ width: 1, height: 1 }} />
           </div>
         ) : null}
@@ -528,39 +532,23 @@ export default function SalesDealsPage() {
       {drawerOpen && (
         <SalesDrawer
           title={drawerMode === 'create' ? 'Create Deal' : 'Deal Details'}
-          subtitle={
-            drawerMode === 'create'
-              ? 'Add a new deal'
-              : formatDateTime(form.id ? deals.find((d) => d.id === form.id)?.updatedAt : null)
-          }
+          subtitle={drawerMode === 'create' ? 'Add a new deal' : formatDateTime(form.id ? deals.find((d) => d.id === form.id)?.updatedAt : null)}
           onClose={() => setDrawerOpen(false)}
           actions={
             <>
-              <button
-                className="btn"
-                onClick={handleSave}
-                disabled={actionLoading === 'save'}
-                style={{ borderRadius: 999 }}
-              >
+              <button className="btn" onClick={handleSave} disabled={actionLoading === 'save'} style={{ borderRadius: 999 }}>
                 {actionLoading === 'save' ? 'Saving' : 'Save Deal'}
               </button>
               {drawerMode === 'edit' && form.id && (
-                <button
-                  className="btn"
-                  onClick={handleDrawerClosedWon}
-                  style={{ borderRadius: 999 }}
-                >
-                  Mark Closed Won
+                <button className="btn" onClick={handleDrawerClosedWon} disabled={actionLoading === `${form.id}-Closed Won`} style={{ borderRadius: 999 }}>
+                  {actionLoading === `${form.id}-Closed Won` ? 'Preparing Invoice' : 'Mark Closed Won'}
                 </button>
               )}
               {drawerMode === 'edit' && selectedDeal && (
                 <button
                   className="btn"
                   onClick={() => handleMarkPaid(selectedDeal)}
-                  disabled={
-                    Boolean(selectedDeal.projectCreated || selectedDeal.projectId) ||
-                    actionLoading === `mark-paid-${selectedDeal.id}`
-                  }
+                  disabled={Boolean(selectedDeal.projectCreated || selectedDeal.projectId) || actionLoading === `mark-paid-${selectedDeal.id}`}
                   style={{ borderRadius: 999 }}
                 >
                   {actionLoading === `mark-paid-${selectedDeal.id}` ? 'Processing' : 'Mark Paid'}
@@ -574,106 +562,85 @@ export default function SalesDealsPage() {
             <div style={{ display: 'grid', gap: 12 }}>
               <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Deal Name</span>
-                <input
-                  className="input"
-                  placeholder="Deal name"
-                  value={form.dealName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, dealName: e.target.value }))}
-                />
+                <input className="input" placeholder="Deal name" value={form.dealName} onChange={(e) => setForm((prev) => ({ ...prev, dealName: e.target.value }))} />
               </label>
               <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Client / Lead</span>
-                <input
-                  className="input"
-                  placeholder="Client name"
-                  value={form.clientName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, clientName: e.target.value }))}
-                />
+                <input className="input" placeholder="Client name" value={form.clientName} onChange={(e) => setForm((prev) => ({ ...prev, clientName: e.target.value }))} />
               </label>
               <div style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Stage</span>
-                <MasterSelect
-                  value={form.stage}
-                  onChange={(value) => setForm((prev) => ({ ...prev, stage: value }))}
-                  options={PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage }))}
-                />
+                <MasterSelect value={form.stage} onChange={(value) => setForm((prev) => ({ ...prev, stage: value }))} options={PIPELINE_STAGES.map((stage) => ({ label: stage, value: stage }))} />
               </div>
               <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Value (USD)</span>
-                <input
-                  className="input"
-                  type="number"
-                  value={form.valueUsd}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, valueUsd: Number(e.target.value) }))
-                  }
-                />
+                <input className="input" type="number" value={form.valueUsd} onChange={(e) => setForm((prev) => ({ ...prev, valueUsd: Number(e.target.value) }))} />
               </label>
               <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Probability %</span>
-                <input
-                  className="input"
-                  type="number"
-                  value={form.probability}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, probability: Number(e.target.value) }))
-                  }
-                />
+                <input className="input" type="number" value={form.probability} onChange={(e) => setForm((prev) => ({ ...prev, probability: Number(e.target.value) }))} />
               </label>
               <div style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Owner</span>
-                <MasterSelect
-                  value={form.ownerId}
-                  onChange={handleOwnerChange}
-                  options={ownerOptions}
-                />
+                <MasterSelect value={form.ownerId} onChange={handleOwnerChange} options={ownerOptions} />
               </div>
               <label style={{ display: 'grid', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Expected Close Date</span>
-                <input
-                  className="input"
-                  type="date"
-                  value={form.expectedCloseDate}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, expectedCloseDate: e.target.value }))
-                  }
-                />
+                <input className="input" type="date" value={form.expectedCloseDate} onChange={(e) => setForm((prev) => ({ ...prev, expectedCloseDate: e.target.value }))} />
               </label>
             </div>
           </div>
+
+          {drawerMode === 'edit' && (
+            <div className="card" style={{ padding: 16, borderRadius: 14, marginTop: 12 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>Payment Terms</div>
+              <p style={{ margin: '0 0 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                Closed Won sends the invoice/payment link. Production starts only after the first successful payment.
+              </p>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>Payment Plan</span>
+                  <MasterSelect value={form.paymentPlan} onChange={(value) => setForm((prev) => ({ ...prev, paymentPlan: value as DealFormState['paymentPlan'] }))} options={PAYMENT_PLAN_OPTIONS} />
+                </div>
+                {form.paymentPlan === 'fifty_fifty' && (
+                  <>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>Remaining 50% Due By</span>
+                      <MasterSelect value={form.balanceTriggerType} onChange={(value) => setForm((prev) => ({ ...prev, balanceTriggerType: value as DealFormState['balanceTriggerType'] }))} options={BALANCE_TRIGGER_OPTIONS} />
+                    </div>
+                    {form.balanceTriggerType === 'date' ? (
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>Balance Due Date</span>
+                        <input className="input" type="date" value={form.balanceDueDate} onChange={(e) => setForm((prev) => ({ ...prev, balanceDueDate: e.target.value }))} />
+                      </label>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>Balance Milestone</span>
+                        <MasterSelect value={form.balanceMilestoneStage} onChange={(value) => setForm((prev) => ({ ...prev, balanceMilestoneStage: value }))} options={MILESTONE_OPTIONS} />
+                      </div>
+                    )}
+                    <div style={{ borderRadius: 10, padding: 12, background: 'var(--surface-muted)', fontSize: 12, color: 'var(--text-muted)' }}>
+                      First 50% payment creates the project, activates/reuses the client portal, and starts kickoff. The remaining 50% stays on the same project and invoice.
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {drawerMode === 'edit' && selectedDeal && (
             <div className="card" style={{ padding: 16, borderRadius: 14, marginTop: 12 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 8,
-                }}
-              >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ fontWeight: 700 }}>Project Automation</div>
                 {(selectedDeal.projectCreated || selectedDeal.projectId) && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '4px 10px',
-                      borderRadius: 999,
-                      background: 'rgba(34,197,94,0.12)',
-                      color: 'var(--success-strong)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                    }}
-                  >
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: 'rgba(34,197,94,0.12)', color: 'var(--success-strong)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     Project Created
                   </span>
                 )}
               </div>
               <div style={{ display: 'grid', gap: 10, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-                    Payment Status
-                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Payment Status</span>
                   <span style={{ fontWeight: 700 }}>{selectedDeal.paymentStatus || 'Unpaid'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
