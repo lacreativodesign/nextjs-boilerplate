@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 import { appUrl } from '@/lib/urls';
+import { normalizeTenantId } from '@/lib/tenant';
 
 // P0-4b: was a hardcoded constant with no env read, so it could not work on a preview
 // deployment. P0-5: resolved through the canonical app URL helper.
@@ -13,6 +14,7 @@ type ClientActivationData = {
   primaryContactName?: string;
   companyName?: string;
   portalUserUid?: string;
+  tenantId?: string;
 };
 
 type ClientActivationResult = {
@@ -36,10 +38,12 @@ function cleanString(value: string | undefined) {
 export async function ensureClientAccountActivation({
   clientId,
   clientData,
+  tenantId,
   createdByUid,
 }: {
   clientId: string;
   clientData: ClientActivationData;
+  tenantId?: string | null;
   createdByUid?: string | null;
 }): Promise<ClientActivationResult> {
   const email = normalizeEmail(clientData.primaryContactEmail);
@@ -47,6 +51,7 @@ export async function ensureClientAccountActivation({
     throw new Error('Primary contact email is required for account activation.');
   }
 
+  const scopedTenantId = normalizeTenantId(tenantId || clientData.tenantId || null);
   const existingPortalUserUid = cleanString(clientData.portalUserUid);
   let portalUserUid = existingPortalUserUid;
 
@@ -75,16 +80,25 @@ export async function ensureClientAccountActivation({
       role: 'client',
       status: 'active',
       clientId,
+      tenantId: scopedTenantId,
       email,
-      updatedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     },
     { merge: true },
   );
 
+  // Portal access is a tenant boundary. Claims must be present before the client can
+  // traverse middleware / Firestore rules; payment-triggered activation cannot create a
+  // user document that is missing the tenant claim.
+  await adminAuth.setCustomUserClaims(portalUserUid, {
+    role: 'client',
+    tenantId: scopedTenantId,
+  });
+
   let setPasswordLink: string | undefined;
   let activationPrepared = false;
-  const needsActivation = !existingPortalUserUid || !portalUserUid;
+  const needsActivation = !existingPortalUserUid;
 
   if (needsActivation) {
     const tokenData = await createPasswordSetupToken({
@@ -98,6 +112,7 @@ export async function ensureClientAccountActivation({
 
   await adminDb.collection('clients').doc(clientId).set(
     {
+      tenantId: scopedTenantId,
       portalUserUid,
       accountStatus: 'ACTIVE',
       accountActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -118,11 +133,13 @@ export async function ensureClientAccountActivation({
 export async function queueClientActivationInvite({
   clientId,
   clientData,
+  tenantId,
   createdByUid,
   reason,
 }: {
   clientId: string;
   clientData: ClientActivationData;
+  tenantId?: string | null;
   createdByUid?: string | null;
   reason?: string;
 }) {
@@ -131,9 +148,11 @@ export async function queueClientActivationInvite({
     throw new Error('Primary contact email is required for account activation.');
   }
 
+  const scopedTenantId = normalizeTenantId(tenantId || clientData.tenantId || null);
   const existingUserSnap = await adminDb
     .collection('users')
     .where('clientId', '==', clientId)
+    .where('tenantId', '==', scopedTenantId)
     .where('role', '==', 'client')
     .limit(1)
     .get();
@@ -145,6 +164,7 @@ export async function queueClientActivationInvite({
   const activation = await ensureClientAccountActivation({
     clientId,
     clientData,
+    tenantId: scopedTenantId,
     createdByUid,
   });
 
@@ -177,6 +197,7 @@ export async function queueClientActivationInvite({
 
     // The set-password link is a live credential and is deliberately not persisted here.
     await adminDb.collection('emails').add({
+      tenantId: scopedTenantId,
       to: email,
       template: 'clientActivation',
       subject: 'Activate your BIZOSTO client account',
