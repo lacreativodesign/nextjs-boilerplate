@@ -3,6 +3,12 @@ import { PIPELINE_STAGES } from '@/lib/sales/utils';
 import { PROJECT_MILESTONE_STAGES } from '@/lib/finance/paymentSchedule';
 
 const optionalString = z.string().trim().max(500).optional().nullable();
+const optionalDateInput = z
+  .string()
+  .trim()
+  .refine((value) => !Number.isNaN(Date.parse(value)), 'Invalid date')
+  .optional()
+  .nullable();
 
 export const dealCommercialUpdateSchema = z
   .object({
@@ -14,10 +20,10 @@ export const dealCommercialUpdateSchema = z
     probability: z.coerce.number().finite().min(0).max(100).optional(),
     ownerId: optionalString,
     ownerName: optionalString,
-    expectedCloseDate: z.string().datetime({ offset: true }).optional().nullable(),
+    expectedCloseDate: optionalDateInput,
     paymentPlan: z.enum(['full', 'fifty_fifty']).optional(),
     balanceTriggerType: z.enum(['date', 'milestone']).optional().nullable(),
-    balanceDueDate: z.string().datetime({ offset: true }).optional().nullable(),
+    balanceDueDate: optionalDateInput,
     balanceMilestoneStage: z.enum(PROJECT_MILESTONE_STAGES).optional().nullable(),
   })
   .strict()
