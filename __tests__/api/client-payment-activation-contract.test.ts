@@ -30,6 +30,14 @@ describe('payment-gated commercial activation contract', () => {
     expect(dealUpdate).not.toContain(".doc('orders')");
   });
 
+  it('labels the first installment from the actual amount due rather than closure-narrowed state', () => {
+    expect(dealUpdate).toContain(
+      'const isDepositPayment = closedWonPayableNow + 0.005 < closedWonAmountTotal;',
+    );
+    expect(dealUpdate).toContain('const paymentLabel = isDepositPayment');
+    expect(dealUpdate).not.toContain("closedWonPaymentPlan === 'fifty_fifty'");
+  });
+
   it('both public payment routes and the Connect webhook use the canonical service', () => {
     for (const source of [payRoute, confirmRoute, connectWebhook]) {
       expect(source).toContain('recordSuccessfulClientPayment');
