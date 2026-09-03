@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebaseAdmin';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { calculatePlatformFee } from '@/lib/stripe/connect';
 import { getInvoiceWithValidation, getTenantRecord } from '../../shared';
-import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
+import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActivation';
+import { validateRequest } from '@/lib/validations/validate';
+import { publicInvoicePaySchema } from '@/lib/validations/commercial-activation';
+import { resolveErrorResponse } from '@/lib/errors';
 
 export const runtime = 'nodejs';
-
-type Body = { paymentMethodId?: string; email?: string; token?: string };
 
 export async function POST(req: Request, { params }: { params: { invoiceId: string } }) {
   try {
@@ -16,18 +16,10 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       return NextResponse.json({ ok: false, error: 'Invoice id is required.' }, { status: 400 });
     }
 
-    const body = (await req.json().catch(() => ({}))) as Body;
-    const paymentMethodId = String(body.paymentMethodId || '').trim();
-    const email = String(body.email || '').trim();
-    const token =
-      String(body.token || '').trim() || new URL(req.url).searchParams.get('token') || undefined;
-
-    if (!paymentMethodId) {
-      return NextResponse.json(
-        { ok: false, error: 'paymentMethodId is required.' },
-        { status: 400 },
-      );
-    }
+    const body = validateRequest(publicInvoicePaySchema, await req.json().catch(() => ({})));
+    const paymentMethodId = body.paymentMethodId;
+    const email = body.email || '';
+    const token = body.token || new URL(req.url).searchParams.get('token') || undefined;
 
     const validation = await getInvoiceWithValidation(invoiceId, token);
     if ('error' in validation) {
@@ -63,9 +55,11 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       );
     }
 
-    const amountCents = Math.round(validation.payload.amount * 100);
+    // 100% invoices charge the outstanding balance. 50/50 invoices charge only the first
+    // 50% until that deposit is posted; the second visit charges the remaining balance.
+    const amountCents = Math.round(validation.payload.payableNow * 100);
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      return NextResponse.json({ ok: false, error: 'Invoice amount is invalid.' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invoice amount due is invalid.' }, { status: 400 });
     }
 
     const platformFee = calculatePlatformFee(amountCents);
@@ -85,93 +79,45 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
           clientId: validation.payload.clientId || '',
           orderId: validation.payload.orderId,
           source: 'client_payment_page',
+          paymentPlan: validation.payload.paymentPlan,
+          installmentSequence: String(validation.payload.installmentSequence),
+          expectedAmountCents: String(amountCents),
         },
         application_fee_amount: platformFee,
       },
       {
-        // Connect DIRECT charge: the PaymentIntent lives on the tenant's connected
-        // account (stripeAccount header). The tenant is the merchant of record and
-        // pays Stripe processing fees; the platform collects application_fee_amount
-        // (0.5%). Never add transfer_data.destination here — that is a
-        // destination-charge parameter and Stripe rejects it when combined with
-        // stripeAccount.
+        // Connect DIRECT charge: the PaymentIntent lives on the tenant's connected account.
         stripeAccount: connectAccountId,
-        idempotencyKey: `inv_pay_${invoiceId}_${paymentMethodId}`,
+        // Sequence is part of the key so the second 50% can use the same saved/card payment
+        // method without Stripe returning the already-completed deposit PaymentIntent.
+        idempotencyKey: `inv_pay_${invoiceId}_${validation.payload.installmentSequence}_${paymentMethodId}`,
       },
     );
 
     if (paymentIntent.status === 'succeeded') {
-      const nowIso = new Date().toISOString();
-      const invoiceAmount = validation.payload.amount;
-      // Deterministic id = PaymentIntent id makes the ledger write idempotent, so
-      // retries (and the confirm route / webhook backstop added later) converge on
-      // a single payment record instead of creating duplicates.
-      const paymentRef = adminDb.collection('payments').doc(paymentIntent.id);
-
-      const batch = adminDb.batch();
-      batch.update(adminDb.collection('invoices').doc(invoiceId), {
-        status: 'paid',
-        paidAt: nowIso,
-        paidAmount: invoiceAmount,
-        paymentMethod: 'stripe',
-        stripePaymentIntentId: paymentIntent.id,
-        updatedAt: nowIso,
-      });
-
-      batch.set(paymentRef, {
-        tenantId: validation.payload.tenantId,
-        clientId: validation.payload.clientId || null,
+      const applied = await recordSuccessfulClientPayment({
         invoiceId,
-        orderId: validation.payload.orderId,
-        amountUsd: invoiceAmount,
-        platformFeeUsd: platformFee / 100,
-        currency: validation.payload.currency,
-        status: 'succeeded',
+        tenantId: validation.payload.tenantId,
+        paymentId: paymentIntent.id,
+        amount: (paymentIntent.amount_received || paymentIntent.amount || amountCents) / 100,
+        platformFee: platformFee / 100,
+        currency: paymentIntent.currency || validation.payload.currency,
         method: 'stripe_checkout',
+        source: 'client_payment_page',
         stripePaymentIntentId: paymentIntent.id,
-        paidAt: nowIso,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        isDeleted: false,
+        actor: { uid: 'system', name: 'Client payment (Stripe)' },
       });
 
-      // Append-only finance ledger: deterministic ids keyed to the PaymentIntent so
-      // the pay route and the confirm route converge on exactly one entry each.
-      batch.set(
-        adminDb.collection('finance_ledger').doc(`payment_succeeded_${paymentIntent.id}`),
-        buildFinanceLedgerEntry({
-          tenantId: validation.payload.tenantId,
-          type: 'payment.succeeded',
-          paymentId: paymentIntent.id,
-          invoiceId,
-          orderId: validation.payload.orderId,
-          clientId: validation.payload.clientId || '',
-          amountUsd: invoiceAmount,
-          previousStatus: String(validation.payload.status || ''),
-          newStatus: 'succeeded',
-          method: 'stripe_checkout',
-          actor: { uid: 'system', name: 'Client payment (Stripe)' },
-        }),
-      );
-      batch.set(
-        adminDb.collection('finance_ledger').doc(`invoice_paid_${paymentIntent.id}`),
-        buildFinanceLedgerEntry({
-          tenantId: validation.payload.tenantId,
-          type: 'invoice.mark_paid',
-          invoiceId,
-          orderId: validation.payload.orderId,
-          clientId: validation.payload.clientId || '',
-          amountUsd: invoiceAmount,
-          previousStatus: String(validation.payload.status || ''),
-          newStatus: 'paid',
-          method: 'stripe',
-          reason: 'Paid online via client payment page',
-          actor: { uid: 'system', name: 'Client payment (Stripe)' },
-        }),
-      );
-      await batch.commit();
-
-      return NextResponse.json({ ok: true, status: 'succeeded', receiptUrl: null });
+      return NextResponse.json({
+        ok: true,
+        status: 'succeeded',
+        amountPaid: applied.amountPaid,
+        invoiceStatus: applied.status,
+        totalPaid: applied.totalPaid,
+        balanceDue: applied.balanceDue,
+        projectId: applied.projectId,
+        receiptUrl: null,
+      });
     }
 
     if (paymentIntent.status === 'requires_action') {
@@ -197,9 +143,9 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
     }
 
     console.error('public invoice pay error:', err);
-    return NextResponse.json(
-      { ok: false, error: 'Unable to process payment. Please try again.' },
-      { status: 500 },
-    );
+    const resolved = resolveErrorResponse(err, {
+      fallbackMessage: 'Unable to process payment. Please try again.',
+    });
+    return NextResponse.json(resolved.body, { status: resolved.status, headers: resolved.headers });
   }
 }
