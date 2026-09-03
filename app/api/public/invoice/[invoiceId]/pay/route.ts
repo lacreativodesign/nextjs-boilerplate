@@ -59,7 +59,10 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
     // 50% until that deposit is posted; the second visit charges the remaining balance.
     const amountCents = Math.round(validation.payload.payableNow * 100);
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      return NextResponse.json({ ok: false, error: 'Invoice amount due is invalid.' }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Invoice amount due is invalid.' },
+        { status: 400 },
+      );
     }
 
     const platformFee = calculatePlatformFee(amountCents);

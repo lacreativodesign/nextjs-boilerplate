@@ -31,9 +31,7 @@ export function normalizePaymentPlan(value: unknown): PaymentPlan {
   const token = String(value || '')
     .trim()
     .toLowerCase();
-  return token === 'fifty_fifty' || token === '50_50' || token === '50/50'
-    ? 'fifty_fifty'
-    : 'full';
+  return token === 'fifty_fifty' || token === '50_50' || token === '50/50' ? 'fifty_fifty' : 'full';
 }
 
 export function resolveAmountTotal(invoice: Record<string, unknown>): number {

@@ -31,7 +31,9 @@ describe('money-path finance ledger gate', () => {
     });
 
     it('the canonical service writes payment and invoice-application ledger entries', () => {
-      expect(paymentService).toContain("import { buildFinanceLedgerEntry } from '@/lib/finance/ledger'");
+      expect(paymentService).toContain(
+        "import { buildFinanceLedgerEntry } from '@/lib/finance/ledger'",
+      );
       expect(paymentService).toContain("type: 'payment.succeeded'");
       expect(paymentService).toContain("type: 'invoice.payment_applied'");
       expect(paymentService).toContain("collection('finance_ledger')");
@@ -46,7 +48,9 @@ describe('money-path finance ledger gate', () => {
       const txStart = paymentService.indexOf('runTransaction');
       expect(txStart).toBeGreaterThan(-1);
       expect(paymentService.indexOf("collection('payments')", txStart)).toBeGreaterThan(txStart);
-      expect(paymentService.indexOf("collection('finance_ledger')", txStart)).toBeGreaterThan(txStart);
+      expect(paymentService.indexOf("collection('finance_ledger')", txStart)).toBeGreaterThan(
+        txStart,
+      );
       expect(paymentService.indexOf('tx.update(invoiceRef', txStart)).toBeGreaterThan(txStart);
     });
   });

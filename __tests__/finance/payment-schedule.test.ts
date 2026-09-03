@@ -1,7 +1,4 @@
-import {
-  milestoneReached,
-  resolveInvoicePaymentSchedule,
-} from '@/lib/finance/paymentSchedule';
+import { milestoneReached, resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
 
 describe('client payment schedule', () => {
   it('charges a full invoice in one installment', () => {

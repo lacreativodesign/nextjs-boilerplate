@@ -1,8 +1,5 @@
 import { adminDb } from '@/lib/firebaseAdmin';
-import {
-  resolveAmountTotal,
-  resolveInvoicePaymentSchedule,
-} from '@/lib/finance/paymentSchedule';
+import { resolveAmountTotal, resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
 
 export type PublicInvoiceData = {
   id: string;

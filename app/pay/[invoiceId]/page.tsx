@@ -356,7 +356,9 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
   }
 
   const isFirstDeposit =
-    invoice.paymentPlan === 'fifty_fifty' && invoice.installmentSequence === 1 && invoice.totalPaid <= 0;
+    invoice.paymentPlan === 'fifty_fifty' &&
+    invoice.installmentSequence === 1 &&
+    invoice.totalPaid <= 0;
 
   return (
     <main
@@ -485,11 +487,13 @@ export default function PublicInvoicePaymentPage({ params }: { params: { invoice
               Remaining balance due: {dateValue(invoice.balanceDueDate)}
             </p>
           )}
-          {invoice.balanceTriggerType === 'milestone' && invoice.balanceMilestoneStage && isFirstDeposit && (
-            <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
-              Remaining balance due at milestone: {invoice.balanceMilestoneStage}
-            </p>
-          )}
+          {invoice.balanceTriggerType === 'milestone' &&
+            invoice.balanceMilestoneStage &&
+            isFirstDeposit && (
+              <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
+                Remaining balance due at milestone: {invoice.balanceMilestoneStage}
+              </p>
+            )}
           {invoice.dueDate && !isFirstDeposit && (
             <p style={{ marginTop: 10, color: 'var(--color-slate)' }}>
               Due: {dateValue(invoice.dueDate)}

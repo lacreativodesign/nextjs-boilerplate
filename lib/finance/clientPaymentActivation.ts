@@ -75,10 +75,7 @@ async function acquireOperationalActivationLease(params: {
     if (data.projectId) return false;
 
     const leaseUntil = dateMs(data.operationalActivationLeaseUntil);
-    if (
-      String(data.operationalActivationState || '') === 'processing' &&
-      leaseUntil > Date.now()
-    ) {
+    if (String(data.operationalActivationState || '') === 'processing' && leaseUntil > Date.now()) {
       return false;
     }
 
@@ -99,20 +96,27 @@ async function releaseOperationalActivationLease(params: {
   error?: unknown;
 }) {
   const errorMessage =
-    params.error instanceof Error ? params.error.message.slice(0, 500) : params.error ? 'Unknown error' : null;
-  await adminDb.collection('invoices').doc(params.invoiceId).set(
-    {
-      operationalActivationState: params.state,
-      operationalActivationLeasePaymentId: null,
-      operationalActivationLeaseUntil: null,
-      operationalActivationCompletedAt:
-        params.state === 'completed' ? new Date().toISOString() : null,
-      operationalActivationLastError: errorMessage,
-      ...(params.projectId ? { projectId: params.projectId } : {}),
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
+    params.error instanceof Error
+      ? params.error.message.slice(0, 500)
+      : params.error
+        ? 'Unknown error'
+        : null;
+  await adminDb
+    .collection('invoices')
+    .doc(params.invoiceId)
+    .set(
+      {
+        operationalActivationState: params.state,
+        operationalActivationLeasePaymentId: null,
+        operationalActivationLeaseUntil: null,
+        operationalActivationCompletedAt:
+          params.state === 'completed' ? new Date().toISOString() : null,
+        operationalActivationLastError: errorMessage,
+        ...(params.projectId ? { projectId: params.projectId } : {}),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true },
+    );
 }
 
 /**
@@ -129,7 +133,9 @@ export async function recordSuccessfulClientPayment(
   const invoiceId = String(input.invoiceId || '').trim();
   const tenantId = String(input.tenantId || '').trim();
   const paymentId = String(input.paymentId || '').trim();
-  const currency = String(input.currency || '').trim().toUpperCase();
+  const currency = String(input.currency || '')
+    .trim()
+    .toUpperCase();
   const amount = money(Number(input.amount || 0));
 
   if (!invoiceId || !tenantId || !paymentId) {
@@ -152,7 +158,9 @@ export async function recordSuccessfulClientPayment(
       throw new Error('Invoice tenant mismatch.');
     }
 
-    const invoiceCurrency = String(invoice.currency || 'USD').trim().toUpperCase();
+    const invoiceCurrency = String(invoice.currency || 'USD')
+      .trim()
+      .toUpperCase();
     if (currency && invoiceCurrency !== currency) {
       throw new Error('Payment currency does not match invoice currency.');
     }
@@ -191,7 +199,8 @@ export async function recordSuccessfulClientPayment(
     }
 
     if (currentStatus === 'void') throw new Error('Void invoices cannot accept payments.');
-    if (currentStatus === 'paid' || currentBalance <= 0) throw new Error('Invoice is already paid.');
+    if (currentStatus === 'paid' || currentBalance <= 0)
+      throw new Error('Invoice is already paid.');
     if (amount - currentBalance > 0.01) {
       throw new Error('Payment amount exceeds the outstanding invoice balance.');
     }
@@ -292,7 +301,11 @@ export async function recordSuccessfulClientPayment(
   });
 
   let projectId: string | null = null;
-  const hasActivationLease = await acquireOperationalActivationLease({ invoiceId, tenantId, paymentId });
+  const hasActivationLease = await acquireOperationalActivationLease({
+    invoiceId,
+    tenantId,
+    paymentId,
+  });
 
   if (hasActivationLease) {
     try {
@@ -338,7 +351,9 @@ export async function recordSuccessfulClientPayment(
         invoiceId,
         state: projectId ? 'completed' : 'pending',
         projectId,
-        error: projectId ? undefined : new Error('Project activation did not produce a project id.'),
+        error: projectId
+          ? undefined
+          : new Error('Project activation did not produce a project id.'),
       });
     } catch (activationError) {
       console.error('client payment operational activation error:', activationError);
@@ -373,7 +388,11 @@ export async function recordSuccessfulClientPayment(
   }
 
   if (result.newlyRecorded && result.clientId) {
-    const clientSnap = await adminDb.collection('clients').doc(result.clientId).get().catch(() => null);
+    const clientSnap = await adminDb
+      .collection('clients')
+      .doc(result.clientId)
+      .get()
+      .catch(() => null);
     const clientData = clientSnap?.exists ? clientSnap.data() || {} : {};
     const email = String(clientData.primaryContactEmail || '').trim();
     if (email) {

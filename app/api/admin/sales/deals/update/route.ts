@@ -167,7 +167,9 @@ export async function POST(req: Request) {
         }
         if (!clientEmail) {
           clientEmail = parseString(
-            clientData.primaryContactEmail || clientData.primaryContactEmailLower || clientData.email,
+            clientData.primaryContactEmail ||
+              clientData.primaryContactEmailLower ||
+              clientData.email,
             '',
           )
             .trim()
@@ -243,7 +245,10 @@ export async function POST(req: Request) {
           : adminDb.collection('invoices').doc();
         if (!invoiceId) invoiceId = invoiceRef.id;
         const invoiceSnap = data.invoiceId ? await tx.get(invoiceRef) : null;
-        if (data.invoiceId && (!invoiceSnap?.exists || docTenantId(invoiceSnap.data()) !== tenantId)) {
+        if (
+          data.invoiceId &&
+          (!invoiceSnap?.exists || docTenantId(invoiceSnap.data()) !== tenantId)
+        ) {
           throw new Error('Deal invoice does not belong to this tenant.');
         }
         let paymentToken = String(invoiceSnap?.data()?.paymentToken || '').trim();
@@ -319,11 +324,7 @@ export async function POST(req: Request) {
             isDeleted: false,
           });
         } else if (!invoiceSnap.data()?.paymentToken) {
-          tx.set(
-            invoiceRef,
-            { paymentToken, updatedAt: serverTimestamp() },
-            { merge: true },
-          );
+          tx.set(invoiceRef, { paymentToken, updatedAt: serverTimestamp() }, { merge: true });
         }
 
         updates.clientId = clientId;
