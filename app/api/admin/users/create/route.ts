@@ -5,6 +5,7 @@ import { getCurrentUser, isAdminRole } from '../_utils';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 import { assertPermission, Permission } from '../../../../lib/permissions';
 import { createUserSchema } from '@/lib/validations/user';
+import { adminCreateUserProfileSchema } from '@/lib/validations/user-admin';
 import { validateRequest } from '@/lib/validations/validate';
 import { checkRateLimit } from '@/lib/security';
 import { logEvent } from '@/lib/audit';
@@ -63,6 +64,13 @@ export async function POST(req: Request) {
       managerId: rawManagerId,
     } = validatedData;
 
+    // SOC2 F-06: these nine fields were destructured straight off the raw body and
+    // written to Firestore, while the seven above them went through a schema. That is
+    // worse than no validation, because the route reads as though its input is
+    // checked. `password` in particular was used verbatim as the initial credential
+    // with no policy, so the weakest passwords in the system were the ones handed out
+    // by administrators — while a user changing their own password had to satisfy
+    // changePasswordSchema.
     const {
       password,
       designation,
@@ -73,7 +81,7 @@ export async function POST(req: Request) {
       cnic,
       dob,
       status,
-    } = body || {};
+    } = validateRequest(adminCreateUserProfileSchema, body || {});
 
     try {
       assertPermission(currentRole, Permission.ManageRoles);

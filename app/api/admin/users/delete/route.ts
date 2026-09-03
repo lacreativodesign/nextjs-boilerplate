@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminRole, isSuperAdmin } from '../_utils';
 import { logEvent } from '@/lib/audit';
+import { validateRequest } from '@/lib/validations/validate';
+import { deleteUserSchema } from '@/lib/validations/user-admin';
 
 export const runtime = 'nodejs';
 
@@ -12,10 +14,11 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { uid } = await req.json();
-    if (!uid) {
-      return new NextResponse('Missing uid', { status: 400 });
-    }
+    // SOC2 F-06: `uid` was destructured from an unvalidated body. The truthiness
+    // check that followed accepted any non-empty value, including an object or an
+    // array, which would then be passed to adminAuth.deleteUser and a Firestore
+    // document path.
+    const { uid } = validateRequest(deleteUserSchema, await req.json().catch(() => ({})));
 
     const userDoc = await adminDb.collection('users').doc(uid).get();
     if (!userDoc.exists) {
