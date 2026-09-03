@@ -43,8 +43,76 @@ type PaymentMutationResult = {
   balanceDue: number;
 };
 
+const ACTIVATION_LEASE_MS = 2 * 60 * 1000;
+
 function money(value: number) {
   return Number((Number.isFinite(value) ? value : 0).toFixed(2));
+}
+
+function dateMs(value: unknown) {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+  const ms = Date.parse(String(value));
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+async function acquireOperationalActivationLease(params: {
+  invoiceId: string;
+  tenantId: string;
+  paymentId: string;
+}) {
+  return adminDb.runTransaction(async (tx) => {
+    const ref = adminDb.collection('invoices').doc(params.invoiceId);
+    const snap = await tx.get(ref);
+    if (!snap.exists) return false;
+    const data = snap.data() || {};
+    if (String(data.tenantId || '') !== params.tenantId) {
+      throw new Error('Invoice tenant mismatch during operational activation.');
+    }
+    if (data.projectId) return false;
+
+    const leaseUntil = dateMs(data.operationalActivationLeaseUntil);
+    if (
+      String(data.operationalActivationState || '') === 'processing' &&
+      leaseUntil > Date.now()
+    ) {
+      return false;
+    }
+
+    tx.update(ref, {
+      operationalActivationState: 'processing',
+      operationalActivationLeasePaymentId: params.paymentId,
+      operationalActivationLeaseUntil: new Date(Date.now() + ACTIVATION_LEASE_MS).toISOString(),
+      operationalActivationLastAttemptAt: new Date().toISOString(),
+    });
+    return true;
+  });
+}
+
+async function releaseOperationalActivationLease(params: {
+  invoiceId: string;
+  state: 'completed' | 'pending';
+  projectId?: string | null;
+  error?: unknown;
+}) {
+  const errorMessage =
+    params.error instanceof Error ? params.error.message.slice(0, 500) : params.error ? 'Unknown error' : null;
+  await adminDb.collection('invoices').doc(params.invoiceId).set(
+    {
+      operationalActivationState: params.state,
+      operationalActivationLeasePaymentId: null,
+      operationalActivationLeaseUntil: null,
+      operationalActivationCompletedAt:
+        params.state === 'completed' ? new Date().toISOString() : null,
+      operationalActivationLastError: errorMessage,
+      ...(params.projectId ? { projectId: params.projectId } : {}),
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true },
+  );
 }
 
 /**
@@ -76,9 +144,7 @@ export async function recordSuccessfulClientPayment(
     const paymentRef = adminDb.collection('payments').doc(paymentId);
     const [invoiceSnap, paymentSnap] = await Promise.all([tx.get(invoiceRef), tx.get(paymentRef)]);
 
-    if (!invoiceSnap.exists) {
-      throw new Error('Invoice not found.');
-    }
+    if (!invoiceSnap.exists) throw new Error('Invoice not found.');
 
     const invoice = (invoiceSnap.data() || {}) as Record<string, unknown>;
     const invoiceTenantId = String(invoice.tenantId || '').trim();
@@ -124,12 +190,8 @@ export async function recordSuccessfulClientPayment(
       };
     }
 
-    if (currentStatus === 'void') {
-      throw new Error('Void invoices cannot accept payments.');
-    }
-    if (currentStatus === 'paid' || currentBalance <= 0) {
-      throw new Error('Invoice is already paid.');
-    }
+    if (currentStatus === 'void') throw new Error('Void invoices cannot accept payments.');
+    if (currentStatus === 'paid' || currentBalance <= 0) throw new Error('Invoice is already paid.');
     if (amount - currentBalance > 0.01) {
       throw new Error('Payment amount exceeds the outstanding invoice balance.');
     }
@@ -229,54 +291,90 @@ export async function recordSuccessfulClientPayment(
     };
   });
 
-  // Activate/reuse the portal BEFORE creating the project. createProjectFromDeal then sees
-  // portalUserUid on the client record and can notify that same client about the kickoff.
-  if (result.clientId) {
-    const clientSnap = await adminDb.collection('clients').doc(result.clientId).get();
-    if (clientSnap.exists) {
-      const clientData = clientSnap.data() || {};
-      await queueClientActivationInvite({
-        clientId: result.clientId,
-        clientData,
+  let projectId: string | null = null;
+  const hasActivationLease = await acquireOperationalActivationLease({ invoiceId, tenantId, paymentId });
+
+  if (hasActivationLease) {
+    try {
+      // Activate/reuse the portal BEFORE creating the project. createProjectFromDeal then sees
+      // portalUserUid on the client record and can notify that same client about the kickoff.
+      if (result.clientId) {
+        const clientSnap = await adminDb.collection('clients').doc(result.clientId).get();
+        if (clientSnap.exists) {
+          const clientData = clientSnap.data() || {};
+          await queueClientActivationInvite({
+            clientId: result.clientId,
+            clientData,
+            tenantId,
+            createdByUid: input.actor.uid,
+            reason: 'first_successful_client_payment',
+          }).catch(async (error) => {
+            console.error('client payment portal activation error:', error);
+            await logEvent({
+              tenantId,
+              type: 'finance.client_portal_activation_failed',
+              title: 'Client portal activation requires attention',
+              description: `Payment succeeded for ${result.orderId}, but portal activation needs attention.`,
+              entityType: 'invoice',
+              entityId: invoiceId,
+              actor: input.actor,
+              metadata: { paymentId, clientId: result.clientId },
+            }).catch(() => null);
+          });
+        }
+      }
+
+      const currentInvoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
+      const currentInvoice = (currentInvoiceSnap.data() || {}) as Record<string, unknown>;
+      const project = await maybeAutoCreateProjectFromInvoice({
+        invoiceId,
+        invoiceData: currentInvoice,
         tenantId,
-        createdByUid: input.actor.uid,
-        reason: 'first_successful_client_payment',
-      }).catch((error) => {
-        console.error('client payment portal activation error:', error);
+        actor: input.actor,
       });
+      projectId = String(project?.id || currentInvoice.projectId || '') || null;
+
+      await releaseOperationalActivationLease({
+        invoiceId,
+        state: projectId ? 'completed' : 'pending',
+        projectId,
+        error: projectId ? undefined : new Error('Project activation did not produce a project id.'),
+      });
+    } catch (activationError) {
+      console.error('client payment operational activation error:', activationError);
+      await releaseOperationalActivationLease({
+        invoiceId,
+        state: 'pending',
+        error: activationError,
+      }).catch(() => null);
     }
+  } else {
+    const invoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
+    projectId = String(invoiceSnap.data()?.projectId || '') || null;
   }
 
-  const currentInvoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
-  const currentInvoice = (currentInvoiceSnap.data() || {}) as Record<string, unknown>;
-
-  // Any successful first payment (100% or 50% deposit) activates production. The helper
-  // is idempotent by invoice projectId + deal/order lookup, so retries cannot duplicate a
-  // project and a later balance payment stays on the same project.
-  const project = await maybeAutoCreateProjectFromInvoice({
-    invoiceId,
-    invoiceData: currentInvoice,
-    tenantId,
-    actor: input.actor,
-  });
-  const projectId = String(project?.id || currentInvoice.projectId || '') || null;
-
+  // Financial success is authoritative. All post-payment operational writes are best-effort
+  // and retryable; none is allowed to turn captured money into an HTTP "payment failed" response.
   if (result.dealId) {
-    await adminDb.collection('deals').doc(result.dealId).set(
-      {
-        projectId,
-        projectCreated: Boolean(projectId),
-        paymentStatus: result.status,
-        engagementStatus: result.totalPaid > 0 ? 'active' : 'awaiting_payment',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+    await adminDb
+      .collection('deals')
+      .doc(result.dealId)
+      .set(
+        {
+          projectId,
+          projectCreated: Boolean(projectId),
+          paymentStatus: result.status,
+          engagementStatus: result.totalPaid > 0 ? 'active' : 'awaiting_payment',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+      .catch((error) => console.error('client payment deal reconciliation error:', error));
   }
 
   if (result.newlyRecorded && result.clientId) {
-    const clientSnap = await adminDb.collection('clients').doc(result.clientId).get();
-    const clientData = clientSnap.exists ? clientSnap.data() || {} : {};
+    const clientSnap = await adminDb.collection('clients').doc(result.clientId).get().catch(() => null);
+    const clientData = clientSnap?.exists ? clientSnap.data() || {} : {};
     const email = String(clientData.primaryContactEmail || '').trim();
     if (email) {
       await queueEmailEvent({
@@ -284,9 +382,9 @@ export async function recordSuccessfulClientPayment(
         to: email,
         data: {
           clientName: String(clientData.companyName || clientData.primaryContactName || ''),
+          projectName: result.orderId,
           invoiceId,
           orderId: result.orderId,
-          // payment_confirmation is a receipt for THIS payment, not cumulative project paid.
           totalPaidUsd: result.amountPaid,
           cumulativePaidUsd: result.totalPaid,
           balanceDueUsd: result.balanceDue,
@@ -294,30 +392,32 @@ export async function recordSuccessfulClientPayment(
           projectId,
         },
         metadata: { tenantId, clientId: result.clientId, invoiceId, projectId },
-      }).catch((error) => {
-        console.error('payment confirmation email error:', error);
-      });
+      }).catch((error) => console.error('payment confirmation email error:', error));
     }
   }
 
   if (result.newlyRecorded) {
-    const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
-    await Promise.all(
-      financeIds.map((uid) =>
-        createNotification({
-          toUserId: uid,
-          title: result.status === 'paid' ? 'Invoice paid' : 'Partial payment received',
-          body: `${result.orderId}: ${result.amountPaid.toFixed(2)} received; ${result.balanceDue.toFixed(2)} remaining.`,
-          type: 'success',
-          entityType: 'invoice',
-          entityId: invoiceId,
-          deepLink: '/finance/invoices',
-          createdBy: input.actor,
-          tenantId,
-          roleTarget: 'finance',
-        }),
-      ),
-    );
+    try {
+      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
+      await Promise.all(
+        financeIds.map((uid) =>
+          createNotification({
+            toUserId: uid,
+            title: result.status === 'paid' ? 'Invoice paid' : 'Partial payment received',
+            body: `${result.orderId}: ${result.amountPaid.toFixed(2)} received; ${result.balanceDue.toFixed(2)} remaining.`,
+            type: 'success',
+            entityType: 'invoice',
+            entityId: invoiceId,
+            deepLink: '/finance/invoices',
+            createdBy: input.actor,
+            tenantId,
+            roleTarget: 'finance',
+          }),
+        ),
+      );
+    } catch (notifyError) {
+      console.error('client payment notification error:', notifyError);
+    }
 
     await logEvent({
       tenantId,
@@ -336,7 +436,7 @@ export async function recordSuccessfulClientPayment(
         totalPaid: result.totalPaid,
         balanceDue: result.balanceDue,
       },
-    });
+    }).catch((error) => console.error('client payment audit event error:', error));
   }
 
   return { ...result, projectId };
