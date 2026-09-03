@@ -6,6 +6,8 @@ import { requireSuperAdmin } from '../../../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { invalidateTenantPlanCache } from '@/app/lib/plan-enforcement';
 import { createRoleNotifications } from '@/lib/notifications';
+import { validateRequest } from '@/lib/validations/validate';
+import { updateTenantModulesSchema } from '@/lib/validations/tenant-admin';
 
 type ModuleMap = Record<string, boolean>;
 
@@ -30,12 +32,15 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
   try {
     const user = await requireSuperAdmin(req);
     const tenantId = params.tenantId;
-    const body = await req.json().catch(() => ({}));
-    const modulesEnabled = body?.modulesEnabled;
-
-    if (!modulesEnabled || typeof modulesEnabled !== 'object') {
-      return NextResponse.json({ ok: false, error: 'modulesEnabled is required' }, { status: 400 });
-    }
+    // SOC2 F-06: `typeof value === 'object'` was the only check, and the map was then
+    // written to the tenant document verbatim — any key, any value type. That map is
+    // read by resolveTenantModules and cached by the plan layer, so a malformed value
+    // becomes a stale entitlement decision that outlives the request. Keys are now
+    // constrained to the canonical module list and values to booleans.
+    const { modulesEnabled } = validateRequest(
+      updateTenantModulesSchema,
+      await req.json().catch(() => ({})),
+    );
 
     const tenantRef = adminDb.collection('tenants').doc(tenantId);
     const tenantSnap = await tenantRef.get();
