@@ -391,10 +391,10 @@ export async function POST(req: Request) {
       const clientEmail = String(client.primaryContactEmail || '').trim();
       const tenantName = String(tenant?.brand?.name || tenant.name || 'Your service provider');
       const payUrl = invoicePaymentUrl(closedWonInvoiceId, closedWonPaymentToken);
-      const paymentLabel =
-        closedWonPaymentPlan === 'fifty_fifty'
-          ? `50% deposit (${closedWonPayableNow.toFixed(2)} USD)`
-          : `${closedWonPayableNow.toFixed(2)} USD`;
+      const isDepositPayment = closedWonPayableNow + 0.005 < closedWonAmountTotal;
+      const paymentLabel = isDepositPayment
+        ? `50% deposit (${closedWonPayableNow.toFixed(2)} USD)`
+        : `${closedWonPayableNow.toFixed(2)} USD`;
 
       await enqueueTenantEmail({
         tenantId: closedWonTenantId,
