@@ -1,0 +1,55 @@
+name: PR2 Surgical Patch Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr2-signup-activation
+    paths:
+      - .github/workflows/pr2-surgical-patch-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr2-signup-activation
+          fetch-depth: 0
+      - name: Apply exact PR2 patches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          middleware = Path('middleware.ts')
+          src = middleware.read_text()
+          old = """  const requiresSubscriptionCheck =\n    Boolean(sessionToken) &&\n    (Boolean(pageRole) || isApiRequest || isProtectedPage) &&\n    !pathname.startsWith('/billing');\n"""
+          new = """  // A locked or pending-checkout tenant must still be able to reach the narrow\n  // billing-recovery surface. These routes remain authenticated, role-gated and CSRF-protected;\n  // only the subscription-state lock is bypassed so the customer can activate or restore billing.\n  const isBillingRecoveryRequest =\n    pathname.startsWith('/billing') ||\n    pathname === '/api/stripe/checkout' ||\n    pathname === '/api/billing/subscription' ||\n    pathname === '/api/billing/payment-method' ||\n    pathname === '/api/billing/address' ||\n    pathname === '/api/billing/portal' ||\n    pathname === '/api/billing/invoices';\n\n  const requiresSubscriptionCheck =\n    Boolean(sessionToken) &&\n    (Boolean(pageRole) || isApiRequest || isProtectedPage) &&\n    !isBillingRecoveryRequest;\n"""
+          if old not in src:
+              raise SystemExit('middleware target not found')
+          middleware.write_text(src.replace(old, new, 1))
+
+          webhook = Path('app/api/stripe/webhook/route.ts')
+          src = webhook.read_text()
+          old = """  const activationPayload: Record<string, unknown> = {\n    activationStatus: 'active',\n    activatedAt: admin.firestore.FieldValue.serverTimestamp(),\n    updatedAt: admin.firestore.FieldValue.serverTimestamp(),\n  };\n  if (lockCurrency) {\n    activationPayload.currencyLockedAt = admin.firestore.FieldValue.serverTimestamp();\n    activationPayload.currencyLockedBy = 'stripe_checkout';\n  }\n"""
+          new = """  const activationPayload: Record<string, unknown> = {\n    activationStatus: 'active',\n    lastBillingActivationAt: admin.firestore.FieldValue.serverTimestamp(),\n    updatedAt: admin.firestore.FieldValue.serverTimestamp(),\n  };\n  if (lockCurrency) {\n    // First activation only: preserve the original activation timestamp forever.\n    activationPayload.activatedAt = admin.firestore.FieldValue.serverTimestamp();\n    activationPayload.currencyLockedAt = admin.firestore.FieldValue.serverTimestamp();\n    activationPayload.currencyLockedBy = 'stripe_checkout';\n  }\n"""
+          if old not in src:
+              raise SystemExit('activation payload target not found')
+          src = src.replace(old, new, 1)
+
+          old = """      if (\n        subscriptionCustomerId !== stripeCustomerId ||\n        subscriptionMetadata.tenantId !== metadataTenantId ||\n        subscriptionMetadata.bizosto_plan !== metadataPlan ||\n        subscriptionMetadata.billingCycle !== billingCycle ||\n        subscriptionMetadata.source !== source\n      ) {\n        console.error('stripe webhook: session/subscription metadata mismatch', {\n          eventId: event.id,\n          tenantId: metadataTenantId,\n          subscriptionId: stripeSubscriptionId,\n        });\n        await finalizeWebhookEvent(event.id, event.type);\n        return NextResponse.json({ ok: true, received: true, linked: false });\n      }\n"""
+          new = """      if (subscriptionCustomerId !== stripeCustomerId) {\n        console.error('stripe webhook: session/subscription customer mismatch', {\n          eventId: event.id,\n          tenantId: metadataTenantId,\n          subscriptionId: stripeSubscriptionId,\n        });\n        await finalizeWebhookEvent(event.id, event.type);\n        return NextResponse.json({ ok: true, received: true, linked: false });\n      }\n\n      // The app checkout is created in this repository and stamps the same immutable metadata\n      // on both Session and Subscription, so require an exact cross-check. Platform/website\n      // sources may be created by external surfaces that predate subscription metadata; keep\n      // those compatible while still requiring a signed event, trusted source and customer match.\n      if (\n        source === 'bizosto_app' &&\n        (subscriptionMetadata.tenantId !== metadataTenantId ||\n          subscriptionMetadata.bizosto_plan !== metadataPlan ||\n          subscriptionMetadata.billingCycle !== billingCycle ||\n          subscriptionMetadata.source !== source)\n      ) {\n        console.error('stripe webhook: app session/subscription metadata mismatch', {\n          eventId: event.id,\n          tenantId: metadataTenantId,\n          subscriptionId: stripeSubscriptionId,\n        });\n        await finalizeWebhookEvent(event.id, event.type);\n        return NextResponse.json({ ok: true, received: true, linked: false });\n      }\n"""
+          if old not in src:
+              raise SystemExit('subscription metadata target not found')
+          webhook.write_text(src.replace(old, new, 1))
+          PY
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/pr2-surgical-patch-once.yml
+          git config user.name "lacreativodesign"
+          git config user.email "lacreativodesign@gmail.com"
+          git add middleware.ts app/api/stripe/webhook/route.ts .github/workflows/pr2-surgical-patch-once.yml
+          git commit -m "fix(auth): allow secure billing recovery through activation lock"
+          git push origin HEAD:codex/tenant-safety-pr2-signup-activation
