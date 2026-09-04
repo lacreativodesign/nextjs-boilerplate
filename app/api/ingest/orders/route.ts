@@ -18,10 +18,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const auth = await authenticateIngest(req);
   if (!auth.ok) {
-    return NextResponse.json(
-      { ok: false, error: 'Invalid credentials.' },
-      { status: auth.status },
-    );
+    return NextResponse.json({ ok: false, error: 'Invalid credentials.' }, { status: auth.status });
   }
 
   void recordIngestUsage({

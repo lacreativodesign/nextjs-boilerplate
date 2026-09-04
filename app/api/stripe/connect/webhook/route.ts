@@ -42,7 +42,8 @@ function eventAccountId(event: Stripe.Event): string {
 }
 
 function isPermanentPaymentReconciliationError(error: unknown) {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return [
     'missing its account id',
     'tenant/account mismatch',
@@ -146,7 +147,9 @@ export async function POST(req: Request) {
       if (CLIENT_PAYMENT_SOURCES.has(source) && invoiceId && metadataTenantId) {
         let evidenceTenantId = metadataTenantId;
         const amountReceivedMinor = pi.amount_received ?? pi.amount ?? 0;
-        const currency = String(pi.currency || '').trim().toLowerCase();
+        const currency = String(pi.currency || '')
+          .trim()
+          .toLowerCase();
 
         try {
           if (!accountId) {
@@ -198,7 +201,9 @@ export async function POST(req: Request) {
 
           const currentPayableMinor = amountToMinorUnits(schedule.payableNow, currency);
           if (currentPayableMinor !== amountReceivedMinor) {
-            throw new Error('Connect payment amount does not match the current payable installment.');
+            throw new Error(
+              'Connect payment amount does not match the current payable installment.',
+            );
           }
 
           await recordSuccessfulClientPayment({

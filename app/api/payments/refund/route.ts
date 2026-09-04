@@ -103,7 +103,8 @@ export async function POST(req: Request) {
 
     await adminDb.runTransaction(async (tx) => {
       const freshPayment = await tx.get(paymentRef);
-      if (!freshPayment.exists) throw new Error('Payment disappeared during refund reconciliation.');
+      if (!freshPayment.exists)
+        throw new Error('Payment disappeared during refund reconciliation.');
       const current = freshPayment.data() || {};
       const invoiceId = String(current.invoiceId || '').trim();
       const invoiceRef = invoiceId ? adminDb.collection('invoices').doc(invoiceId) : null;
