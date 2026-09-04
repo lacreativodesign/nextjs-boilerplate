@@ -1,0 +1,33 @@
+name: PR3 Format Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr3-canonical-payment-success
+    paths:
+      - .github/workflows/pr3-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr3-canonical-payment-success
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Format PR3 files
+        run: npx --yes prettier@3.9.4 --write __tests__/api/tenant-safety-pr3-canonical-payment-success.test.ts app/api/admin/finance/payments/update/route.ts app/api/finance/payments/update/route.ts
+      - name: Commit formatting and remove helper
+        run: |
+          rm .github/workflows/pr3-format-once.yml
+          git config user.name "lacreativodesign"
+          git config user.email "lacreativodesign@gmail.com"
+          git add -A
+          git commit -m "style(pr3): format canonical payment paths"
+          git push origin HEAD:codex/tenant-safety-pr3-canonical-payment-success
