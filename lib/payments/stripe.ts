@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { amountToMinorUnits } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 
@@ -55,10 +56,10 @@ export async function createInvoiceCheckoutSession({
   platformFeeCents?: number;
   installmentSequence: number;
 }) {
-  const amountCents = Math.round(amountUsd * 100);
   const normalizedCurrency = String(currency || 'USD')
     .trim()
     .toLowerCase();
+  const amountCents = amountToMinorUnits(amountUsd, normalizedCurrency);
   const metadata = {
     tenantId,
     invoiceId,
@@ -67,6 +68,7 @@ export async function createInvoiceCheckoutSession({
     source: 'client_portal',
     installmentSequence: String(installmentSequence),
     expectedAmountCents: String(amountCents),
+    expectedCurrency: normalizedCurrency,
   };
 
   const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData = {
@@ -110,6 +112,7 @@ export async function createStripeRefund({
   stripe,
   paymentIntentId,
   amountUsd,
+  currency = 'USD',
   reason,
   stripeAccount,
   refundApplicationFee,
@@ -117,6 +120,7 @@ export async function createStripeRefund({
   stripe: Stripe;
   paymentIntentId: string;
   amountUsd?: number;
+  currency?: string;
   reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer';
   stripeAccount?: string;
   refundApplicationFee?: boolean;
@@ -126,18 +130,15 @@ export async function createStripeRefund({
   };
 
   if (typeof amountUsd === 'number' && amountUsd > 0) {
-    payload.amount = Math.round(amountUsd * 100);
+    payload.amount = amountToMinorUnits(amountUsd, currency);
   }
   if (reason) {
     payload.reason = reason;
   }
-  // For Connect direct charges, refund the platform application fee proportionally.
   if (refundApplicationFee) {
     payload.refund_application_fee = true;
   }
 
-  // When the PaymentIntent lives on a connected account, the refund must be issued
-  // on that account; otherwise it is a platform refund.
   const options: Stripe.RequestOptions | undefined = stripeAccount ? { stripeAccount } : undefined;
   return stripe.refunds.create(payload, options);
 }
