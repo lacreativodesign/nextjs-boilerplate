@@ -112,15 +112,7 @@ export async function PUT(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const tenantRef = adminDb.collection('tenants').doc(auth.user.tenantId);
-    const tenantSnap = await tenantRef.get();
-    if (!tenantSnap.exists) {
-      return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
-    }
-
-    const tenantData = tenantSnap.data() || {};
-    const currentCurrency = normalizeCurrency(tenantData.settings?.currency) || 'USD';
     const requestedCurrency = normalizeCurrency(body?.currency ?? body?.revenueCurrency);
-    const currencyLocked = Boolean(tenantData.currencyLockedAt);
 
     if (requestedCurrency && !SUPPORTED_CURRENCIES.has(requestedCurrency)) {
       return NextResponse.json(
@@ -129,27 +121,60 @@ export async function PUT(req: Request) {
       );
     }
 
-    if (currencyLocked && requestedCurrency && requestedCurrency !== currentCurrency) {
+    const currencyDecision = await adminDb.runTransaction(async (tx) => {
+      const tenantSnap = await tx.get(tenantRef);
+      if (!tenantSnap.exists) {
+        return { ok: false as const, code: 'tenant_not_found' as const };
+      }
+
+      const tenantData = tenantSnap.data() || {};
+      const currentCurrency = normalizeCurrency(tenantData.settings?.currency) || 'USD';
+      const currencyLocked = Boolean(tenantData.currencyLockedAt);
+
+      if (currencyLocked && requestedCurrency && requestedCurrency !== currentCurrency) {
+        return {
+          ok: false as const,
+          code: 'currency_locked' as const,
+          currentCurrency,
+        };
+      }
+
+      const currencyChanged =
+        !currencyLocked && Boolean(requestedCurrency) && requestedCurrency !== currentCurrency;
+      if (currencyChanged) {
+        tx.update(tenantRef, {
+          'settings.currency': requestedCurrency,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      return {
+        ok: true as const,
+        currentCurrency,
+        effectiveCurrency: requestedCurrency || currentCurrency,
+        currencyLocked,
+        currencyChanged,
+      };
+    });
+
+    if (!currencyDecision.ok) {
+      if (currencyDecision.code === 'tenant_not_found') {
+        return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+      }
       return NextResponse.json(
         {
           ok: false,
           error:
             'Workspace currency is locked after activation because all financial records share one base currency.',
           code: 'currency_locked',
-          currency: currentCurrency,
+          currency: currencyDecision.currentCurrency,
         },
         { status: 409 },
       );
     }
 
-    // Before first Stripe activation the founder may still correct the setup currency.
-    // Once currencyLockedAt exists this branch is unreachable for a changed currency.
-    if (!currencyLocked && requestedCurrency && requestedCurrency !== currentCurrency) {
-      await tenantRef.update({
-        'settings.currency': requestedCurrency,
-        updatedAt: serverTimestamp(),
-      });
-    }
+    const currentCurrency = currencyDecision.currentCurrency;
+    const currencyLocked = currencyDecision.currencyLocked;
 
     const payload = {
       companyName: parseString(body?.companyName, DEFAULT_SYSTEM_SETTINGS.companyName),
@@ -173,15 +198,14 @@ export async function PUT(req: Request) {
     await logSettingsChange({
       user: auth.user,
       section: 'system',
-      summary:
-        !currencyLocked && requestedCurrency && requestedCurrency !== currentCurrency
-          ? `System settings updated; base currency changed from ${currentCurrency} to ${requestedCurrency} before activation.`
-          : 'System settings updated.',
+      summary: currencyDecision.currencyChanged
+        ? `System settings updated; base currency changed from ${currentCurrency} to ${currencyDecision.effectiveCurrency} before activation.`
+        : 'System settings updated.',
     });
 
     return NextResponse.json({
       ok: true,
-      currency: requestedCurrency || currentCurrency,
+      currency: currencyDecision.effectiveCurrency,
       currencyLocked,
     });
   } catch (err) {

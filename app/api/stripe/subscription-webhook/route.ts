@@ -174,7 +174,7 @@ export async function POST(req: Request) {
         // Canonical billing state service: derives subscriptionState, billingStatus,
         // plan, modules, limits, period end and cancelAtPeriodEnd in one place, fails
         // closed on unknown tiers, and writes a billing_state_audit record.
-        await applySubscriptionState({
+        const transition = await applySubscriptionState({
           tenantId,
           source:
             event.type === 'customer.subscription.created'
@@ -188,6 +188,21 @@ export async function POST(req: Request) {
           cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
           trialEnd: subscription.trial_end ?? null,
         });
+
+        if (transition.disposition === 'deferred_pending_checkout') {
+          break;
+        }
+
+        if (!transition.ok) {
+          await deadLetterWebhookEvent(
+            event,
+            transition.disposition === 'subscription_conflict'
+              ? 'refusing to replace a different live tenant subscription'
+              : 'subscription transition failed canonical billing validation',
+          );
+          deadLettered = true;
+          break;
+        }
 
         if (updatedPlan) {
           sendEmail({

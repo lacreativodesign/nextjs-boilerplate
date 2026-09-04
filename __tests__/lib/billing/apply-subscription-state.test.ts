@@ -10,6 +10,7 @@ const buildSeed = () => ({
         subscriptionState: 'trial',
         billingStatus: 'trial',
         failedPaymentCount: 0,
+        settings: { currency: 'USD' },
       },
     },
   ],
@@ -167,6 +168,91 @@ describe('canonical billing state service (P0-3)', () => {
     expect(t.status).toBe('active');
     expect(t.plan).toBe('pro');
     expect(t.trialEndsAt).toBeTruthy();
+  });
+
+  it('defers a parallel subscription event until reconciled checkout atomically claims first activation', async () => {
+    await db.collection('tenants').doc('tenant_a').set(
+      {
+        plan: 'pro',
+        subscriptionState: 'pending_checkout',
+        activationStatus: 'pending_checkout',
+        activatedAt: null,
+        currencyLockedAt: null,
+        stripeSubscriptionId: null,
+      },
+      { merge: true },
+    );
+
+    const early = await applySubscriptionState({
+      tenantId: 'tenant_a',
+      source: 'subscription.updated',
+      eventId: 'evt_subscription_first',
+      plan: 'pro',
+      stripeStatus: 'trialing',
+      stripeSubscriptionId: 'sub_race',
+      trialEnd: 1798761600,
+    });
+
+    expect(early.disposition).toBe('deferred_pending_checkout');
+    let t = await tenant();
+    expect(t.subscriptionState).toBe('pending_checkout');
+    expect(t.stripeSubscriptionId).toBeNull();
+    expect(t.activatedAt).toBeNull();
+
+    const linked = await applySubscriptionState({
+      tenantId: 'tenant_a',
+      source: 'checkout.linked',
+      eventId: 'evt_checkout_after_subscription',
+      plan: 'pro',
+      stripeStatus: 'trialing',
+      stripeCustomerId: 'cus_race',
+      stripeSubscriptionId: 'sub_race',
+      billingCycle: 'monthly',
+      trialEnd: 1798761600,
+    });
+
+    expect(linked.disposition).toBe('applied');
+    t = await tenant();
+    expect(t.subscriptionState).toBe('trial');
+    expect(t.activationStatus).toBe('active');
+    expect(t.activatedAt).toBeTruthy();
+    expect(t.currencyLockedAt).toBeTruthy();
+    expect(t.currencyLockedBy).toBe('stripe_checkout');
+    expect(t.stripeSubscriptionId).toBe('sub_race');
+
+    const originalActivatedAt = t.activatedAt;
+    await applySubscriptionState({
+      tenantId: 'tenant_a',
+      source: 'checkout.linked',
+      eventId: 'evt_checkout_replay_new_event',
+      plan: 'pro',
+      stripeStatus: 'trialing',
+      stripeCustomerId: 'cus_race',
+      stripeSubscriptionId: 'sub_race',
+      billingCycle: 'monthly',
+    });
+    t = await tenant();
+    expect(t.activatedAt).toBe(originalActivatedAt);
+  });
+
+  it('refuses to replace a different live Stripe subscription in the canonical transaction', async () => {
+    await db
+      .collection('tenants')
+      .doc('tenant_a')
+      .set({ stripeSubscriptionId: 'sub_live', billingStatus: 'active' }, { merge: true });
+
+    const result = await applySubscriptionState({
+      tenantId: 'tenant_a',
+      source: 'subscription.updated',
+      eventId: 'evt_conflict',
+      plan: 'pro',
+      stripeStatus: 'active',
+      stripeSubscriptionId: 'sub_other',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.disposition).toBe('subscription_conflict');
+    expect((await tenant()).stripeSubscriptionId).toBe('sub_live');
   });
 
   it('returns tenantExists=false and writes nothing for a missing tenant', async () => {

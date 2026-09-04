@@ -608,7 +608,8 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     pathname === '/api/billing/payment-method' ||
     pathname === '/api/billing/address' ||
     pathname === '/api/billing/portal' ||
-    pathname === '/api/billing/invoices';
+    pathname === '/api/billing/invoices' ||
+    pathname === '/api/admin/settings/system';
 
   const requiresSubscriptionCheck =
     Boolean(sessionToken) &&

@@ -107,7 +107,6 @@ async function linkExistingTenant({
   plan,
   subscription,
   eventId,
-  lockCurrency,
 }: {
   tenantId: string;
   stripeCustomerId: string;
@@ -116,7 +115,6 @@ async function linkExistingTenant({
   plan: PaidPlan;
   subscription: Stripe.Subscription;
   eventId?: string;
-  lockCurrency: boolean;
 }): Promise<boolean> {
   const result = await applySubscriptionState({
     tenantId,
@@ -132,24 +130,7 @@ async function linkExistingTenant({
     trialEnd: subscription.trial_end,
   });
 
-  if (!result.ok || !result.tenantExists) return false;
-
-  // Activation metadata is deliberately written only after the canonical billing transition
-  // succeeds. Currency becomes immutable on the first successful checkout activation.
-  const activationPayload: Record<string, unknown> = {
-    activationStatus: 'active',
-    lastBillingActivationAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-  if (lockCurrency) {
-    // First activation only: preserve the original activation timestamp forever.
-    activationPayload.activatedAt = admin.firestore.FieldValue.serverTimestamp();
-    activationPayload.currencyLockedAt = admin.firestore.FieldValue.serverTimestamp();
-    activationPayload.currencyLockedBy = 'stripe_checkout';
-  }
-  await adminDb.collection('tenants').doc(tenantId).set(activationPayload, { merge: true });
-
-  return true;
+  return Boolean(result.ok && result.tenantExists);
 }
 
 async function updateSubscriptionStatus({
@@ -391,7 +372,8 @@ export async function POST(req: Request) {
       }
 
       const tenantData = tenantSnap.data() || {};
-      const isInitialCheckout = String(tenantData.subscriptionState || '') === 'pending_checkout';
+      const isInitialCheckout =
+        !tenantData.activatedAt && String(tenantData.activationStatus || '') === 'pending_checkout';
       if (isInitialCheckout) {
         const provisionedPlan = String(tenantData.plan || '').trim();
         const currency = String(tenantData.settings?.currency || '')
@@ -436,7 +418,6 @@ export async function POST(req: Request) {
         plan: metadataPlan,
         subscription,
         eventId: event.id,
-        lockCurrency: isInitialCheckout,
       });
 
       if (!linked) {
