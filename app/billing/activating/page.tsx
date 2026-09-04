@@ -70,7 +70,7 @@ export default function BillingActivatingPage() {
           className="mx-auto mb-5 h-10 w-10 animate-spin rounded-full border-4 border-[var(--border-subtle)] border-t-[var(--brand-blue)]"
           aria-hidden="true"
         />
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Activating Bizosto</h1>
+        <h1 className="page-title">Activating Bizosto</h1>
         <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]" aria-live="polite">
           {message}
         </p>
