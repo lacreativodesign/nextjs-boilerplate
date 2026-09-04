@@ -59,9 +59,12 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
 
   it('does not depend on webhook/redirect ordering after initial Stripe checkout', () => {
     expect(checkout).toContain("isInitialCheckout\n      ? `${appUrl}/billing/activating`");
+    expect(activationBridge).toContain('const MAX_ATTEMPTS = 60');
     expect(activationBridge).toContain("fetch('/api/subscription/status'");
     expect(activationBridge).toContain("state === 'trial' || state === 'active'");
+    expect(activationBridge).toContain("state !== 'pending_checkout'");
     expect(activationBridge).toContain("router.replace('/onboarding?signup=success')");
+    expect(activationBridge).toContain("router.replace('/billing')");
   });
 
   it('reconciles the signed app checkout against the actual Stripe subscription before activation', () => {
