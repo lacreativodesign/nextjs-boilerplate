@@ -81,15 +81,15 @@ async function record(params: {
 
 const describeWithEmulator = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip;
 
-beforeEach(async () => {
-  await resetDb();
-});
-
-afterAll(async () => {
-  await resetDb();
-});
-
 describeWithEmulator('canonical client payment engine — Firestore emulator', () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  afterAll(async () => {
+    await resetDb();
+  });
+
   it('finalizes pending and failed payments, replays succeeded idempotently, and rejects refunded', async () => {
     for (const initialStatus of ['pending', 'failed'] as const) {
       const invoiceId = `state-${initialStatus}`;
