@@ -23,6 +23,8 @@ import { normalizeRole } from '../../../_utils';
 import { dispatchWebhookEvent } from '@/lib/webhooks/webhook-delivery';
 import { writeFinanceLedgerEntry, writeInvoiceVoidLedgerEntry } from '@/lib/finance/ledger';
 
+import { recordManualClientPayment } from '@/lib/finance/manualClientPayment';
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
@@ -168,18 +170,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
 
-      const currentStatus = normalizeInvoiceStatus(invoice.status);
-      if (currentStatus === 'void') {
-        return NextResponse.json(
-          { ok: false, error: 'Void invoices cannot be marked paid.' },
-          { status: 400 },
-        );
-      }
-      if (currentStatus === 'paid') {
-        return NextResponse.json({ ok: false, error: 'Invoice is already paid.' }, { status: 400 });
-      }
-
-      // Manual mark-paid requires a payment method and reason (locked finance rule).
       const method = parseString(body?.method).trim();
       const reason = parseString(body?.reason).trim();
       if (!method || !reason) {
@@ -192,178 +182,87 @@ export async function POST(req: Request) {
         );
       }
 
-      const amountTotal = Number(invoice.amountTotalUsd || 0);
-      const nextPaid = amountTotal;
-      const nextStatus = computeInvoiceStatus({
-        currentStatus: invoice.status,
-        totalPaid: nextPaid,
-        totalAmount: amountTotal,
-      });
-      const balanceDue = computeBalanceDue(amountTotal, nextPaid);
-
-      // Ledger first: the paid state must never exist without its audit trail.
-      await writeFinanceLedgerEntry({
-        tenantId: String(invoice.tenantId || tenantId || ''),
-        type: 'invoice.mark_paid',
-        invoiceId: id,
-        orderId,
-        clientId,
-        amountUsd: amountTotal,
-        previousStatus: currentStatus,
-        newStatus: nextStatus,
-        reason,
-        method,
-        actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
-      });
-
-      await ref.update({
-        status: nextStatus,
-        totalPaid: nextPaid,
-        balanceDue,
-        paidAt: nextStatus === 'paid' ? serverTimestamp() : invoice.paidAt || null,
-        updatedAt: serverTimestamp(),
-      });
-
-      const paymentId = parseString(body?.paymentId).trim();
-      if (paymentId) {
-        const paymentRef = adminDb.collection('payments').doc(paymentId);
-        const paymentSnap = await paymentRef.get();
-        if (!paymentSnap.exists) {
-          return NextResponse.json({ ok: false, error: 'Payment not found.' }, { status: 404 });
-        }
-        const paymentData = paymentSnap.data() || {};
-        if (!isSuperAdmin && docTenantId(paymentData) !== tenantId) {
-          return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
-        }
-        await paymentRef.set(
-          {
-            status: 'succeeded',
-            paidAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
-      }
-
+      const scopedTenantId = String(invoice.tenantId || tenantId || '').trim();
+      const paymentId = parseString(body?.paymentId).trim() || null;
       const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
-      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
-      await Promise.all(
-        financeIds.map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: 'Invoice paid',
-            body: `Invoice ${orderId || id} marked paid.`,
-            type: 'success',
-            entityType: 'invoice',
-            entityId: id,
-            deepLink: '/admin/finance/invoices',
-            createdBy: { uid: auth.user.uid, name: actorName },
-            roleTarget: 'finance',
-            tenantId: auth.user.tenantId || null,
-          }),
-        ),
-      );
-
-      await createFinanceEvent({
-        type: 'finance.invoice_paid',
-        title: 'Invoice marked paid',
-        description: `Invoice ${orderId || id} marked paid.`,
-        entityType: 'invoice',
-        entityId: id,
-        createdByUid: auth.user.uid,
-        createdByName: actorName,
-        tenantId: auth.user.tenantId,
-      });
 
       try {
-        await logEvent({
-          type: 'finance.invoice_paid',
-          title: 'Invoice marked paid',
-          description: `Invoice ${orderId || id} marked paid.`,
-          entityType: 'invoice',
-          entityId: id,
+        const applied = await recordManualClientPayment({
+          invoiceId: id,
+          tenantId: scopedTenantId,
+          paymentId,
+          method,
+          reason,
+          source: 'admin_manual_invoice_payment',
           actor: { uid: auth.user.uid, name: actorName },
-          metadata: {
-            ip: getClientIp(req),
-            userAgent: req.headers.get('user-agent') || '',
-          },
-          audit: {
-            action: 'update',
-            resource: 'invoice',
-            resourceId: id,
-            changes: [
-              { field: 'status', oldValue: invoice.status || null, newValue: nextStatus },
-              { field: 'totalPaid', oldValue: invoice.totalPaid || 0, newValue: nextPaid },
-              { field: 'balanceDue', oldValue: invoice.balanceDue || 0, newValue: balanceDue },
-              {
-                field: 'paidAt',
-                oldValue: invoice.paidAt || null,
-                newValue: nextStatus === 'paid' ? 'serverTimestamp' : null,
+        });
+
+        if (applied.newlyRecorded) {
+          try {
+            await dispatchWebhookEvent({
+              tenantId: scopedTenantId,
+              event: applied.status === 'paid' ? 'invoice.paid' : 'invoice.updated',
+              entityType: 'invoice',
+              entityId: id,
+              payload: {
+                invoiceId: id,
+                orderId,
+                status: applied.status,
+                totalPaid: applied.totalPaid,
+                balanceDue: applied.balanceDue,
+                action: 'mark_paid',
               },
-            ],
-          },
-        });
-      } catch (auditError) {
-        console.error('audit log error:', auditError);
-      }
-
-      if (nextStatus === 'paid') {
-        try {
-          await maybeAutoCreateProjectFromInvoice({
-            invoiceId: id,
-            invoiceData: { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus },
-            tenantId: String(invoice.tenantId || tenantId || ''),
-            actor: { uid: auth.user.uid, name: actorName },
-          });
-        } catch (autoCreateError) {
-          console.error('project auto-create error:', autoCreateError);
+              actor: {
+                uid: auth.user.uid,
+                email: auth.user.email || null,
+                role: auth.user.role || null,
+              },
+            });
+            await dispatchWebhookEvent({
+              tenantId: scopedTenantId,
+              event: 'payment.received',
+              entityType: 'payment',
+              entityId: paymentId || `manual_invoice_${id}`,
+              payload: {
+                invoiceId: id,
+                orderId,
+                status: 'succeeded',
+                amountPaid: applied.amountPaid,
+                totalPaid: applied.totalPaid,
+                balanceDue: applied.balanceDue,
+              },
+              actor: {
+                uid: auth.user.uid,
+                email: auth.user.email || null,
+                role: auth.user.role || null,
+              },
+            });
+          } catch (webhookError) {
+            console.error('canonical invoice payment webhook dispatch error:', webhookError);
+          }
         }
-      }
 
-      const clientSnap = clientId ? await adminDb.collection('clients').doc(clientId).get() : null;
-      const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || '') : '';
-      if (email) {
-        queueFinanceEmail({
-          to: email,
-          template: 'payment_received',
-          subject: 'Payment received',
-          data: { invoiceId: id, orderId, clientName },
-          tenantId: auth.user.tenantId,
-        }).catch((error) => {
-          console.error('payment email queue error:', error);
+        return NextResponse.json({
+          ok: true,
+          invoiceStatus: applied.status,
+          amountPaid: applied.amountPaid,
+          totalPaid: applied.totalPaid,
+          balanceDue: applied.balanceDue,
+          projectId: applied.projectId,
+          newlyRecorded: applied.newlyRecorded,
+          deepLink: '/admin/finance/invoices',
         });
+      } catch (error: any) {
+        const message = String(error?.message || 'Unable to record payment.');
+        const status =
+          message.toLowerCase().includes('tenant mismatch') ||
+          message.toLowerCase().includes('bound to another invoice')
+            ? 403
+            : message.toLowerCase().includes('not found')
+              ? 404
+              : 400;
+        return NextResponse.json({ ok: false, error: message }, { status });
       }
-
-      try {
-        await dispatchWebhookEvent({
-          tenantId,
-          event: 'invoice.paid',
-          entityType: 'invoice',
-          entityId: id,
-          payload: { invoiceId: id, orderId, status: nextStatus, action: 'mark_paid', balanceDue },
-          actor: {
-            uid: auth.user.uid,
-            email: auth.user.email || null,
-            role: auth.user.role || null,
-          },
-        });
-        await dispatchWebhookEvent({
-          tenantId,
-          event: 'payment.received',
-          entityType: 'payment',
-          entityId: parseString(body?.paymentId).trim() || id,
-          payload: { invoiceId: id, orderId, status: 'succeeded', amountTotal },
-          actor: {
-            uid: auth.user.uid,
-            email: auth.user.email || null,
-            role: auth.user.role || null,
-          },
-        });
-      } catch (webhookError) {
-        console.error('invoice.paid/payment.received webhook dispatch error:', webhookError);
-      }
-
-      return NextResponse.json({ ok: true });
     }
 
     if (action === 'update_status') {
