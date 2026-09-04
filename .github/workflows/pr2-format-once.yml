@@ -1,0 +1,32 @@
+name: PR2 Format Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr2-signup-activation
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr2-signup-activation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Format PR2 regression test and remove helper
+        run: |
+          npx prettier --write __tests__/api/tenant-safety-pr2-signup-activation.test.ts
+          git rm .github/workflows/pr2-format-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add __tests__/api/tenant-safety-pr2-signup-activation.test.ts
+          git commit -m "style(pr2): apply repository prettier output"
+          git push origin HEAD:codex/tenant-safety-pr2-signup-activation
