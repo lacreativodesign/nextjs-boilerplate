@@ -18,7 +18,7 @@ Notes:
   or delimiter (e.g. `audit_logs` vs `auditLogs`) reflect real naming drift to
   reconcile, not generator noise.
 
-## Collections (192)
+## Collections (193)
 
 - `abandoned_signup_deletions`
 - `abandoned_signup_reminders`
@@ -205,6 +205,7 @@ Notes:
 - `throttle_exceptions`
 - `ticket_counter`
 - `time_entries`
+- `unapplied_client_payments`
 - `user_activity`
 - `user_invitations`
 - `user_profiles`
