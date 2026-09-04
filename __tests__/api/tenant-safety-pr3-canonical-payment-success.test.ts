@@ -3,6 +3,7 @@ import path from 'path';
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
 
+// Owner-authored CI verification trigger after formatter cleanup.
 describe('Tenant Safety PR3 — canonical client payment success', () => {
   const paymentService = read('lib/finance/clientPaymentActivation.ts');
   const manualAdapter = read('lib/finance/manualClientPayment.ts');
