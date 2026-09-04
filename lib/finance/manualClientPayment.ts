@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { normalizeInvoiceStatus, normalizePaymentStatus } from '@/lib/finance/status';
-import { resolveAmountTotal, resolveTotalPaid } from '@/lib/finance/paymentSchedule';
+import { resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
 import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActivation';
 
 type PaymentActor = { uid: string; name?: string };
@@ -19,16 +19,17 @@ function money(value: number) {
   return Number((Number.isFinite(value) ? value : 0).toFixed(2));
 }
 
-export function manualInvoicePaymentId(invoiceId: string) {
-  return `manual_invoice_${String(invoiceId || '').trim()}`;
+export function manualInvoicePaymentId(invoiceId: string, installmentSequence = 1) {
+  return `manual_invoice_${String(invoiceId || '').trim()}_${Math.max(1, Math.floor(installmentSequence))}`;
 }
 
 /**
  * Canonical adapter for an authorized human confirming an offline/manual client payment.
  *
  * - A supplied paymentId finalizes that existing payment record for its recorded amount.
- * - Without a paymentId, the remaining invoice balance is recorded using one deterministic
- *   id per invoice, making retries/double-clicks idempotent.
+ * - Without a paymentId, the invoice's current payable installment is recorded using a
+ *   deterministic installment-specific id, making retries/double-clicks idempotent while
+ *   still allowing the second 50/50 installment to become a distinct payment.
  * - The underlying recordSuccessfulClientPayment service remains the only writer that may
  *   apply client money to an invoice and activate the downstream project/portal workflow.
  */
@@ -59,7 +60,10 @@ export async function recordManualClientPayment(input: ManualClientPaymentInput)
     throw new Error('Invoice tenant mismatch.');
   }
 
-  const paymentId = String(input.paymentId || manualInvoicePaymentId(invoiceId)).trim();
+  const schedule = resolveInvoicePaymentSchedule(invoice);
+  const paymentId = String(
+    input.paymentId || manualInvoicePaymentId(invoiceId, schedule.installmentSequence),
+  ).trim();
   let amount = 0;
   let currency = String(invoice.currency || 'USD')
     .trim()
@@ -88,9 +92,7 @@ export async function recordManualClientPayment(input: ManualClientPaymentInput)
     if (currentStatus === 'void') {
       throw new Error('Void invoices cannot accept payments.');
     }
-    const amountTotal = resolveAmountTotal(invoice);
-    const totalPaid = Math.min(amountTotal, resolveTotalPaid(invoice));
-    amount = money(Math.max(0, amountTotal - totalPaid));
+    amount = money(schedule.payableNow);
   }
 
   if (amount <= 0) {
