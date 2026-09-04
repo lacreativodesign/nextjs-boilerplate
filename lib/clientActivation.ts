@@ -5,8 +5,6 @@ import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSe
 import { appUrl } from '@/lib/urls';
 import { normalizeTenantId } from '@/lib/tenant';
 
-// P0-4b: was a hardcoded constant with no env read, so it could not work on a preview
-// deployment. P0-5: resolved through the canonical app URL helper.
 const DASHBOARD_LOGIN_URL = appUrl('/login');
 
 type ClientActivationData = {
@@ -35,6 +33,17 @@ function cleanString(value: string | undefined) {
   return String(value || '').trim();
 }
 
+function requireActivationTenantId(
+  tenantId: string | null | undefined,
+  clientData: ClientActivationData,
+): string {
+  const rawTenantId = String(tenantId || clientData.tenantId || '').trim();
+  if (!rawTenantId) {
+    throw new Error('Tenant id is required for client account activation.');
+  }
+  return normalizeTenantId(rawTenantId);
+}
+
 async function assertPortalIdentityTenant(uid: string, tenantId: string) {
   const userSnap = await adminDb.collection('users').doc(uid).get();
   if (!userSnap.exists) return;
@@ -60,7 +69,7 @@ export async function ensureClientAccountActivation({
     throw new Error('Primary contact email is required for account activation.');
   }
 
-  const scopedTenantId = normalizeTenantId(tenantId || clientData.tenantId || null);
+  const scopedTenantId = requireActivationTenantId(tenantId, clientData);
   const existingPortalUserUid = cleanString(clientData.portalUserUid);
   let portalUserUid = existingPortalUserUid;
 
@@ -76,9 +85,6 @@ export async function ensureClientAccountActivation({
   let userRecord = portalUserUid ? null : await adminAuth.getUserByEmail(email).catch(() => null);
   if (!portalUserUid) {
     if (userRecord) {
-      // Firebase Auth email identity is global in this project. Never silently move an
-      // existing user's tenant claim because a different tenant activated a client with
-      // the same email address.
       await assertPortalIdentityTenant(userRecord.uid, scopedTenantId);
     } else {
       userRecord = await adminAuth.createUser({
@@ -104,9 +110,6 @@ export async function ensureClientAccountActivation({
     { merge: true },
   );
 
-  // Portal access is a tenant boundary. Claims must be present before the client can
-  // traverse middleware / Firestore rules; payment-triggered activation cannot create a
-  // user document that is missing the tenant claim.
   await adminAuth.setCustomUserClaims(portalUserUid, {
     role: 'client',
     tenantId: scopedTenantId,
@@ -164,10 +167,8 @@ export async function queueClientActivationInvite({
     throw new Error('Primary contact email is required for account activation.');
   }
 
-  const scopedTenantId = normalizeTenantId(tenantId || clientData.tenantId || null);
+  const scopedTenantId = requireActivationTenantId(tenantId, clientData);
 
-  // Keep the pre-existing two-field query shape so payment activation does not introduce
-  // a new production-only composite index. Tenant ownership is checked in memory.
   const existingUserSnap = await adminDb
     .collection('users')
     .where('clientId', '==', clientId)
@@ -190,11 +191,6 @@ export async function queueClientActivationInvite({
   });
 
   if (activation.activationPrepared) {
-    // P0-5: this used to write a row to `emails` with status 'pending' and stop. Nothing
-    // drains that collection, so the set-password link never reached the client and the
-    // portal account it had just created was unreachable. The link is now sent inline via
-    // the same helper the admin user-creation path already uses, and the row records what
-    // actually happened.
     let status: 'sent' | 'failed' | 'unroutable' = 'unroutable';
     let error: string | null = 'No set-password link was generated for this client.';
 
@@ -216,7 +212,6 @@ export async function queueClientActivationInvite({
       console.error(`[EMAIL] Client activation email not delivered for client=${clientId}:`, error);
     }
 
-    // The set-password link is a live credential and is deliberately not persisted here.
     await adminDb.collection('emails').add({
       tenantId: scopedTenantId,
       to: email,
