@@ -46,26 +46,23 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
     expect(verifyOtp).toContain('tx.delete(ref)');
   });
 
-  it(
-    'binds initial checkout plan, billing email and trial policy to server-owned tenant state',
-    () => {
-      expect(checkout).toContain(
-        "const isInitialCheckout = subscriptionState === 'pending_checkout'",
-      );
-      expect(checkout).toContain('if (provisionedPlan !== config.plan)');
-      expect(checkout).toContain("code: 'signup_plan_mismatch'");
-      expect(checkout).toContain(
-        'const customerEmail = await resolveBillingEmail(tenantData, auth.user)',
-      );
-      expect(checkout).not.toContain('body?.customerEmail');
-      expect(checkout).not.toContain('body?.trialPeriodDays');
-      expect(checkout).toContain('isInitialCheckout ? INITIAL_TRIAL_DAYS : undefined');
-      expect(checkout).toContain('client_reference_id: tenantId');
-    },
-  );
+  it('binds initial checkout plan, billing email and trial policy to server-owned tenant state', () => {
+    expect(checkout).toContain(
+      "const isInitialCheckout = subscriptionState === 'pending_checkout'",
+    );
+    expect(checkout).toContain('if (provisionedPlan !== config.plan)');
+    expect(checkout).toContain("code: 'signup_plan_mismatch'");
+    expect(checkout).toContain(
+      'const customerEmail = await resolveBillingEmail(tenantData, auth.user)',
+    );
+    expect(checkout).not.toContain('body?.customerEmail');
+    expect(checkout).not.toContain('body?.trialPeriodDays');
+    expect(checkout).toContain('isInitialCheckout ? INITIAL_TRIAL_DAYS : undefined');
+    expect(checkout).toContain('client_reference_id: tenantId');
+  });
 
   it('does not depend on webhook/redirect ordering after initial Stripe checkout', () => {
-    expect(checkout).toContain("isInitialCheckout\n      ? `${appUrl}/billing/activating`");
+    expect(checkout).toContain('isInitialCheckout\n      ? `${appUrl}/billing/activating`');
     expect(activationBridge).toContain('const MAX_ATTEMPTS = 60');
     expect(activationBridge).toContain("fetch('/api/subscription/status'");
     expect(activationBridge).toContain("state === 'trial' || state === 'active'");
@@ -74,28 +71,22 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
     expect(activationBridge).toContain("router.replace('/billing')");
   });
 
-  it(
-    'reconciles the signed app checkout against the actual Stripe subscription before activation',
-    () => {
-      expect(webhook).toContain('stripe.subscriptions.retrieve(stripeSubscriptionId)');
-      expect(webhook).toContain("source === 'bizosto_app'");
-      expect(webhook).toContain('subscriptionMetadata.tenantId !== metadataTenantId');
-      expect(webhook).toContain('subscriptionMetadata.bizosto_plan !== metadataPlan');
-      expect(webhook).toContain('subscriptionCustomerId !== stripeCustomerId');
-      expect(webhook).toContain('provisionedPlan !== metadataPlan');
-      expect(webhook).toContain('trialEnd: subscription.trial_end');
-    },
-  );
+  it('reconciles the signed app checkout against the actual Stripe subscription before activation', () => {
+    expect(webhook).toContain('stripe.subscriptions.retrieve(stripeSubscriptionId)');
+    expect(webhook).toContain("source === 'bizosto_app'");
+    expect(webhook).toContain('subscriptionMetadata.tenantId !== metadataTenantId');
+    expect(webhook).toContain('subscriptionMetadata.bizosto_plan !== metadataPlan');
+    expect(webhook).toContain('subscriptionCustomerId !== stripeCustomerId');
+    expect(webhook).toContain('provisionedPlan !== metadataPlan');
+    expect(webhook).toContain('trialEnd: subscription.trial_end');
+  });
 
-  it(
-    'locks currency only on first successful activation and preserves original activation time',
-    () => {
-      expect(webhook).toContain('lockCurrency: isInitialCheckout');
-      expect(webhook).toContain("activationPayload.currencyLockedBy = 'stripe_checkout'");
-      expect(webhook).toContain('activationPayload.activatedAt =');
-      expect(webhook).toContain('lastBillingActivationAt');
-    },
-  );
+  it('locks currency only on first successful activation and preserves original activation time', () => {
+    expect(webhook).toContain('lockCurrency: isInitialCheckout');
+    expect(webhook).toContain("activationPayload.currencyLockedBy = 'stripe_checkout'");
+    expect(webhook).toContain('activationPayload.activatedAt =');
+    expect(webhook).toContain('lastBillingActivationAt');
+  });
 
   it('rejects canonical currency changes after activation', () => {
     expect(settings).toContain('const currencyLocked = Boolean(tenantData.currencyLockedAt)');
@@ -106,15 +97,12 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
     );
   });
 
-  it(
-    'keeps pending/locked tenants blocked everywhere except the narrow billing recovery surface',
-    () => {
-      expect(middleware).toContain('const isBillingRecoveryRequest =');
-      expect(middleware).toContain("pathname === '/api/stripe/checkout'");
-      expect(middleware).toContain("pathname === '/api/billing/subscription'");
-      expect(middleware).toContain('!isBillingRecoveryRequest');
-      // The checkout API is not public: its route still requires an authenticated admin session.
-      expect(checkout).toContain('requireAdminOrSuperAdmin()');
-    },
-  );
+  it('keeps pending/locked tenants blocked everywhere except the narrow billing recovery surface', () => {
+    expect(middleware).toContain('const isBillingRecoveryRequest =');
+    expect(middleware).toContain("pathname === '/api/stripe/checkout'");
+    expect(middleware).toContain("pathname === '/api/billing/subscription'");
+    expect(middleware).toContain('!isBillingRecoveryRequest');
+    // The checkout API is not public: its route still requires an authenticated admin session.
+    expect(checkout).toContain('requireAdminOrSuperAdmin()');
+  });
 });
