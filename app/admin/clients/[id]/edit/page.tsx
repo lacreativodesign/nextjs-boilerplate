@@ -189,13 +189,6 @@ export default function EditClientPage() {
     };
   }, []);
 
-  function toMoneyNumber(v: string) {
-    const cleaned = (v || '').replace(/[^0-9.]/g, '');
-    const n = Number(cleaned || 0);
-    if (!Number.isFinite(n)) return 0;
-    return n;
-  }
-
   useEffect(() => {
     let alive = true;
 
@@ -299,10 +292,7 @@ export default function EditClientPage() {
         productionOwner: productionOwner.trim() || undefined,
 
         salesStage,
-        paymentStatus,
         retainerStatus,
-
-        totalPaidUsd: toMoneyNumber(totalPaidUsd),
       };
 
       const res = await apiFetch('/api/admin/clients/update', {
@@ -340,7 +330,7 @@ export default function EditClientPage() {
       <div className="mb-5">
         <h1 className="page-title">Edit Client</h1>
         <p className="page-subtitle mt-2">
-          Update client details and keep pipeline, payments and ownership aligned.
+          Update client profile, pipeline and ownership. Payment state is managed in Finance.
         </p>
       </div>
 
@@ -424,17 +414,11 @@ export default function EditClientPage() {
               </div>
 
               <div>
-                <div style={styles.label}>Initial Total Paid (USD)</div>
-                {/* ✅ spinner removed: use text input + numeric keyboard */}
-                <input
-                  className="input"
-                  inputMode="decimal"
-                  pattern="^[0-9]*[.]?[0-9]*$"
-                  value={totalPaidUsd}
-                  onChange={(e) => setTotalPaidUsd(e.target.value)}
-                  placeholder="0"
-                />
-                <div style={styles.help}>Optional. You can leave it as 0.</div>
+                <div style={styles.label}>Total Paid (USD)</div>
+                <input className="input" value={totalPaidUsd} readOnly aria-readonly="true" />
+                <div style={styles.help}>
+                  Read-only. Record payments in Finance; this value is derived from invoices.
+                </div>
               </div>
             </div>
           </div>
@@ -690,16 +674,10 @@ export default function EditClientPage() {
 
               <div>
                 <div style={styles.label}>Payment Status</div>
-                <select
-                  className="input"
-                  value={paymentStatus}
-                  onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
-                >
-                  <option value="Unpaid">Unpaid</option>
-                  <option value="Partially Paid">Partially Paid</option>
-                  <option value="Paid">Paid</option>
-                  <option value="Refunded">Refunded</option>
-                </select>
+                <input className="input" value={paymentStatus} readOnly aria-readonly="true" />
+                <div style={styles.help}>
+                  Read-only. Payment state is controlled by the Finance invoice/payment workflow.
+                </div>
               </div>
 
               <div>
