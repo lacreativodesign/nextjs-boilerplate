@@ -1,0 +1,45 @@
+name: PR3 Format Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr3-canonical-payment-success
+    paths:
+      - .github/workflows/pr3-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr3-canonical-payment-success
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format failing files
+        run: npx prettier --write app/api/ingest/orders/route.ts app/api/payments/refund/route.ts app/api/stripe/connect/webhook/route.ts
+
+      - name: Commit formatting
+        run: |
+          git config user.name lacreativodesign
+          git config user.email lacreativodesign@gmail.com
+          git add app/api/ingest/orders/route.ts app/api/payments/refund/route.ts app/api/stripe/connect/webhook/route.ts
+          if git diff --cached --quiet; then
+            echo "Nothing to format"
+          else
+            git commit -m "style(finance): format audited payment routes"
+            git push origin HEAD:codex/tenant-safety-pr3-canonical-payment-success
+          fi
