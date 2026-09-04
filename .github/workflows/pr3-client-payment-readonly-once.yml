@@ -1,0 +1,121 @@
+name: PR3 Client Payment Readonly Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr3-canonical-payment-success
+    paths:
+      - .github/workflows/pr3-client-payment-readonly-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr3-canonical-payment-success
+          fetch-depth: 0
+      - name: Make client payment fields read-only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('app/admin/clients/[id]/edit/page.tsx')
+          text = p.read_text()
+
+          old_money_fn = """  function toMoneyNumber(v: string) {
+            const cleaned = (v || '').replace(/[^0-9.]/g, '');
+            const n = Number(cleaned || 0);
+            if (!Number.isFinite(n)) return 0;
+            return n;
+          }
+
+"""
+          if old_money_fn not in text:
+              raise SystemExit('toMoneyNumber block not found')
+          text = text.replace(old_money_fn, '', 1)
+
+          old_payload = """        salesStage,
+                paymentStatus,
+                retainerStatus,
+
+                totalPaidUsd: toMoneyNumber(totalPaidUsd),
+"""
+          new_payload = """        salesStage,
+                retainerStatus,
+"""
+          if old_payload not in text:
+              raise SystemExit('payment payload block not found')
+          text = text.replace(old_payload, new_payload, 1)
+
+          old_paid = """              <div>
+                <div style={styles.label}>Initial Total Paid (USD)</div>
+                {/* ✅ spinner removed: use text input + numeric keyboard */}
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  pattern="^[0-9]*[.]?[0-9]*$"
+                  value={totalPaidUsd}
+                  onChange={(e) => setTotalPaidUsd(e.target.value)}
+                  placeholder="0"
+                />
+                <div style={styles.help}>Optional. You can leave it as 0.</div>
+              </div>
+"""
+          new_paid = """              <div>
+                <div style={styles.label}>Total Paid (USD)</div>
+                <input className="input" value={totalPaidUsd} readOnly aria-readonly="true" />
+                <div style={styles.help}>
+                  Read-only. Record payments in Finance; this value is derived from invoices.
+                </div>
+              </div>
+"""
+          if old_paid not in text:
+              raise SystemExit('total paid UI block not found')
+          text = text.replace(old_paid, new_paid, 1)
+
+          old_status = """              <div>
+                <div style={styles.label}>Payment Status</div>
+                <select
+                  className="input"
+                  value={paymentStatus}
+                  onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+                >
+                  <option value="Unpaid">Unpaid</option>
+                  <option value="Partially Paid">Partially Paid</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Refunded">Refunded</option>
+                </select>
+              </div>
+"""
+          new_status = """              <div>
+                <div style={styles.label}>Payment Status</div>
+                <input className="input" value={paymentStatus} readOnly aria-readonly="true" />
+                <div style={styles.help}>
+                  Read-only. Payment state is controlled by the Finance invoice/payment workflow.
+                </div>
+              </div>
+"""
+          if old_status not in text:
+              raise SystemExit('payment status UI block not found')
+          text = text.replace(old_status, new_status, 1)
+
+          text = text.replace(
+              'Update client details and keep pipeline, payments and ownership aligned.',
+              'Update client profile, pipeline and ownership. Payment state is managed in Finance.',
+              1,
+          )
+          p.write_text(text)
+          PY
+      - name: Format and commit
+        run: |
+          npx --yes prettier@3.9.4 --write 'app/admin/clients/[id]/edit/page.tsx'
+          rm .github/workflows/pr3-client-payment-readonly-once.yml
+          git config user.name "lacreativodesign"
+          git config user.email "lacreativodesign@gmail.com"
+          git add -A
+          git commit -m "fix(clients): make payment fields read-only in edit UI"
+          git push origin HEAD:codex/tenant-safety-pr3-canonical-payment-success
