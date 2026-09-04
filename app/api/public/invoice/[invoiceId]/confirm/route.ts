@@ -6,6 +6,7 @@ import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActiva
 import { validateRequest } from '@/lib/validations/validate';
 import { publicInvoiceConfirmSchema } from '@/lib/validations/commercial-activation';
 import { resolveErrorResponse } from '@/lib/errors';
+import { amountToMinorUnits, minorUnitsToAmount } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 
@@ -42,8 +43,6 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       stripeAccount: connectAccountId,
     });
 
-    // The PaymentIntent id is client-supplied: bind it to THIS invoice and tenant before
-    // recording anything, so a succeeded intent from another invoice/tenant cannot be replayed.
     if (
       String(paymentIntent.metadata?.invoiceId || '') !== invoiceId ||
       String(paymentIntent.metadata?.tenantId || '') !== validation.payload.tenantId ||
@@ -55,8 +54,35 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       );
     }
 
-    // Manual confirmation flow: after handleCardAction, the intent sits at
-    // requires_confirmation and must be confirmed server-side to capture funds.
+    const currency = String(paymentIntent.currency || validation.payload.currency || 'USD')
+      .trim()
+      .toLowerCase();
+    const expectedCurrency = String(paymentIntent.metadata?.expectedCurrency || '')
+      .trim()
+      .toLowerCase();
+    const currentExpectedMinor = amountToMinorUnits(validation.payload.payableNow, currency);
+    const metadataExpectedMinor = Number(paymentIntent.metadata?.expectedAmountCents || 0);
+    const metadataInstallmentSequence = Number(paymentIntent.metadata?.installmentSequence || 0);
+
+    if (
+      !expectedCurrency ||
+      expectedCurrency !== currency ||
+      !Number.isInteger(metadataExpectedMinor) ||
+      metadataExpectedMinor <= 0 ||
+      metadataExpectedMinor !== currentExpectedMinor ||
+      !Number.isInteger(metadataInstallmentSequence) ||
+      metadataInstallmentSequence !== validation.payload.installmentSequence
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'stale_payment_intent',
+          error: 'Invoice payment state changed. Start a new payment attempt.',
+        },
+        { status: 409 },
+      );
+    }
+
     if (paymentIntent.status === 'requires_confirmation') {
       paymentIntent = await stripe.paymentIntents.confirm(
         paymentIntentId,
@@ -69,17 +95,17 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
     }
 
     if (paymentIntent.status === 'succeeded') {
-      const receivedCents = paymentIntent.amount_received || paymentIntent.amount || 0;
-      const platformFeeCents =
-        paymentIntent.application_fee_amount ?? calculatePlatformFee(receivedCents);
+      const receivedMinor = paymentIntent.amount_received || paymentIntent.amount || 0;
+      const platformFeeMinor =
+        paymentIntent.application_fee_amount ?? calculatePlatformFee(receivedMinor);
 
       const applied = await recordSuccessfulClientPayment({
         invoiceId,
         tenantId: validation.payload.tenantId,
         paymentId: paymentIntent.id,
-        amount: receivedCents / 100,
-        platformFee: platformFeeCents / 100,
-        currency: paymentIntent.currency || validation.payload.currency,
+        amount: minorUnitsToAmount(receivedMinor, currency),
+        platformFee: minorUnitsToAmount(platformFeeMinor, currency),
+        currency,
         method: 'stripe_checkout',
         source: 'client_payment_page_confirm',
         stripePaymentIntentId: paymentIntent.id,
