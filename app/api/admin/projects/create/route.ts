@@ -145,6 +145,7 @@ export async function POST(req: Request) {
       activationResult = await ensureClientAccountActivation({
         clientId,
         clientData,
+        tenantId: me.tenantId,
         createdByUid: me.uid,
       });
     } catch (activationErr: any) {

@@ -19,7 +19,11 @@ const hasProject =
 let app: admin.app.App | null = null;
 
 try {
-  if (!admin.apps.length && hasProject) {
+  if (!admin.apps.length && process.env.FIRESTORE_EMULATOR_HOST) {
+    app = admin.initializeApp({
+      projectId: process.env.GCLOUD_PROJECT || 'demo-bizosto',
+    });
+  } else if (!admin.apps.length && hasProject) {
     app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });

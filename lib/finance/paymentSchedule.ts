@@ -1,4 +1,8 @@
-import { roundCurrencyAmount } from '@/lib/finance/minorUnits';
+import {
+  amountToMinorUnits,
+  minorUnitsToAmount,
+  roundCurrencyAmount,
+} from '@/lib/finance/minorUnits';
 
 export type PaymentPlan = 'full' | 'fifty_fifty';
 export type BalanceTriggerType = 'date' | 'milestone';
@@ -35,9 +39,7 @@ export function normalizePaymentPlan(value: unknown): PaymentPlan {
   const token = String(value || '')
     .trim()
     .toLowerCase();
-  return token === 'fifty_fifty' || token === '50_50' || token === '50/50'
-    ? 'fifty_fifty'
-    : 'full';
+  return token === 'fifty_fifty' || token === '50_50' || token === '50/50' ? 'fifty_fifty' : 'full';
 }
 
 export function resolveAmountTotal(invoice: Record<string, unknown>): number {
@@ -76,12 +78,14 @@ export function resolveInvoicePaymentSchedule(
   const configuredFirst = Number(
     invoice.firstInstallmentAmount ?? invoice.firstInstallmentAmountUsd ?? 0,
   );
+  const defaultFirstInstallment = minorUnitsToAmount(
+    Math.ceil(amountToMinorUnits(amountTotal, currency) / 2),
+    currency,
+  );
   const firstInstallmentAmount =
     paymentPlan === 'fifty_fifty'
       ? roundCurrencyAmount(
-          configuredFirst > 0
-            ? Math.min(configuredFirst, amountTotal)
-            : Math.ceil(amountTotal / 2),
+          configuredFirst > 0 ? Math.min(configuredFirst, amountTotal) : defaultFirstInstallment,
           currency,
         )
       : amountTotal;

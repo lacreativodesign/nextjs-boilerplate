@@ -81,6 +81,11 @@ export async function recordManualClientPayment(input: ManualClientPaymentInput)
     if (normalizePaymentStatus(payment.status) === 'refunded') {
       throw new Error('Refunded payments cannot be marked successful again.');
     }
+    const existingSource = String(payment.source || '').toLowerCase();
+    const existingMethod = String(payment.method || '').toLowerCase();
+    if (existingSource.includes('stripe') || existingMethod.includes('stripe')) {
+      throw new Error('Stripe-originated payments must be reconciled from signed Stripe evidence.');
+    }
 
     amount = money(Number(payment.amountUsd || 0));
     currency = String(payment.currency || currency)
