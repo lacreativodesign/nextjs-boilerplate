@@ -6,6 +6,9 @@ import { assertPermission, Permission } from '../../../lib/permissions';
 import { createStripeRefund, getStripeClient } from '@/lib/payments/stripe';
 import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
+import { minorUnitsToAmount } from '@/lib/finance/minorUnits';
+import { computeBalanceDue, normalizeInvoiceStatus } from '@/lib/finance/status';
+import { resolveAmountTotal, resolveTotalPaid } from '@/lib/finance/paymentSchedule';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,10 +66,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid refund amount.' }, { status: 400 });
     }
 
-    // Resolve which Stripe account the PaymentIntent lives on.
-    // Platform Checkout payments (create-intent) carry a stripeCheckoutSessionId and
-    // live on the platform account. Client-portal invoice payments (pay/confirm) are
-    // Connect DIRECT charges on the tenant's connected account.
     const isPlatformCharge = Boolean(String(payment.stripeCheckoutSessionId || '').trim());
     let stripeAccount: string | undefined;
     let refundApplicationFee = false;
@@ -82,33 +81,78 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      // Return the platform fee to the tenant proportionally on refund.
-      // Set this to false if the platform should RETAIN its fee on refunds.
       refundApplicationFee = true;
     }
 
+    const paymentCurrency = String(payment.currency || 'USD')
+      .trim()
+      .toUpperCase();
     const stripe = getStripeClient();
     const refund = await createStripeRefund({
       stripe,
       paymentIntentId: stripePaymentIntentId,
       amountUsd,
+      currency: paymentCurrency,
       reason,
       stripeAccount,
       refundApplicationFee,
     });
-    const refundAmountUsd = Number(refund.amount || 0) / 100;
+    const refundCurrency = String(refund.currency || paymentCurrency).toUpperCase();
+    const refundAmountUsd = minorUnitsToAmount(Number(refund.amount || 0), refundCurrency);
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     await adminDb.runTransaction(async (tx) => {
       const freshPayment = await tx.get(paymentRef);
+      if (!freshPayment.exists) throw new Error('Payment disappeared during refund reconciliation.');
       const current = freshPayment.data() || {};
+      const invoiceId = String(current.invoiceId || '').trim();
+      const invoiceRef = invoiceId ? adminDb.collection('invoices').doc(invoiceId) : null;
+      const invoiceSnap = invoiceRef ? await tx.get(invoiceRef) : null;
+
+      if (!invoiceRef || !invoiceSnap?.exists) {
+        throw new Error('Refunded client payment is missing its invoice.');
+      }
+      const invoice = invoiceSnap.data() || {};
+      if (String(invoice.tenantId || '') !== String(current.tenantId || '')) {
+        throw new Error('Refund invoice tenant mismatch.');
+      }
+
       const nextRefunded = Number(current.refundedAmountUsd || 0) + refundAmountUsd;
+      const paymentAmount = Number(current.amountUsd || 0);
+      const paymentStatus = nextRefunded >= paymentAmount ? 'refunded' : 'succeeded';
+
+      const invoiceTotal = resolveAmountTotal(invoice);
+      const invoicePaid = resolveTotalPaid(invoice);
+      const nextInvoicePaid = Math.max(0, invoicePaid - refundAmountUsd);
+      const nextBalanceDue = computeBalanceDue(invoiceTotal, nextInvoicePaid);
+      const previousInvoiceStatus = normalizeInvoiceStatus(invoice.status);
+      const nextInvoiceStatus =
+        previousInvoiceStatus === 'void'
+          ? 'void'
+          : nextInvoicePaid >= invoiceTotal
+            ? 'paid'
+            : nextInvoicePaid > 0
+              ? 'partially_paid'
+              : 'issued';
 
       tx.set(
         paymentRef,
         {
-          status: nextRefunded >= Number(current.amountUsd || 0) ? 'refunded' : 'succeeded',
+          status: paymentStatus,
           refundedAmountUsd: nextRefunded,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+
+      tx.set(
+        invoiceRef,
+        {
+          status: nextInvoiceStatus,
+          totalPaid: nextInvoicePaid,
+          paidAmount: nextInvoicePaid,
+          balanceDue: nextBalanceDue,
+          paidAt: nextInvoiceStatus === 'paid' ? invoice.paidAt || now : null,
           updatedAt: now,
         },
         { merge: true },
@@ -120,12 +164,12 @@ export async function POST(req: Request) {
           id: `refund_${refund.id}`,
           tenantId: String(current.tenantId || ''),
           clientId: String(current.clientId || ''),
-          invoiceId: String(current.invoiceId || ''),
+          invoiceId,
           paymentId,
           stripeRefundId: refund.id,
           stripePaymentIntentId,
           amountUsd: refundAmountUsd,
-          currency: String(refund.currency || 'usd').toUpperCase(),
+          currency: refundCurrency,
           status: String(refund.status || 'pending'),
           reason: reason || 'other',
           createdByUid: auth.user.uid,
@@ -135,16 +179,13 @@ export async function POST(req: Request) {
         { merge: true },
       );
 
-      // Append-only finance ledger, atomic with the refund state change.
-      // Deterministic ids keyed to the Stripe refund id keep retries idempotent.
-      const nextStatus = nextRefunded >= Number(current.amountUsd || 0) ? 'refunded' : 'succeeded';
       tx.set(
         adminDb.collection('finance_ledger').doc(`refund_created_${refund.id}`),
         buildFinanceLedgerEntry({
           tenantId: String(current.tenantId || ''),
           type: 'refund.created',
           paymentId,
-          invoiceId: String(current.invoiceId || ''),
+          invoiceId,
           clientId: String(current.clientId || ''),
           amountUsd: -refundAmountUsd,
           reason: reason || 'other',
@@ -157,12 +198,27 @@ export async function POST(req: Request) {
           tenantId: String(current.tenantId || ''),
           type: 'payment.refunded',
           paymentId,
-          invoiceId: String(current.invoiceId || ''),
+          invoiceId,
           clientId: String(current.clientId || ''),
           amountUsd: -refundAmountUsd,
           previousStatus: String(current.status || ''),
-          newStatus: nextStatus,
+          newStatus: paymentStatus,
           reason: reason || 'other',
+          actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
+        }),
+      );
+      tx.set(
+        adminDb.collection('finance_ledger').doc(`invoice_refund_${refund.id}`),
+        buildFinanceLedgerEntry({
+          tenantId: String(current.tenantId || ''),
+          type: 'invoice.refund_applied',
+          paymentId,
+          invoiceId,
+          clientId: String(current.clientId || ''),
+          amountUsd: -refundAmountUsd,
+          previousStatus: previousInvoiceStatus,
+          newStatus: nextInvoiceStatus,
+          reason: reason || 'Stripe refund reversed invoice paid aggregate.',
           actor: { uid: auth.user.uid, name: auth.user.name || auth.user.fullName || '' },
         }),
       );
@@ -177,7 +233,7 @@ export async function POST(req: Request) {
       tenantId: auth.user.tenantId,
       type: 'info',
       title: 'Refund issued',
-      message: `A refund of USD ${refundAmountUsd} was issued.`,
+      message: `A refund of ${refundCurrency} ${refundAmountUsd} was issued.`,
       entityType: 'payment',
       entityId: paymentId,
       deepLink: '/finance/payments',
