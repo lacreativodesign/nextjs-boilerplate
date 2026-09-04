@@ -1,0 +1,48 @@
+name: PR3 Normalize Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr3-canonical-payment-success
+    paths:
+      - .github/workflows/pr3-normalize-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr3-canonical-payment-success
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate Firestore inventory
+        run: npm run docs:schema
+
+      - name: Format audit-touched files
+        run: npx prettier --write lib/finance/minorUnits.ts app/api/ingest/orders/route.ts lib/stripe/webhook-idempotency.ts lib/clientActivation.ts lib/finance/paymentSchedule.ts lib/payments/stripe.ts lib/finance/unappliedClientPayment.ts app/api/stripe/connect/webhook/route.ts app/api/public/invoice/[invoiceId]/pay/route.ts app/api/public/invoice/[invoiceId]/confirm/route.ts app/api/payments/create-intent/route.ts app/api/payments/refund/route.ts lib/finance/operationalActivationReconciler.ts app/api/cron/daily-tasks/route.ts __tests__/integration/client-payment-engine.emulator.test.ts lib/zapier/service.ts app/api/finance/invoices/create/route.ts lib/finance/manualClientPayment.ts app/api/admin/projects/create/route.ts lib/firebaseAdmin.ts lib/projects.ts docs/database/collections.generated.md
+
+      - name: Commit normalized files
+        run: |
+          git config user.name lacreativodesign
+          git config user.email lacreativodesign@gmail.com
+          git add docs/database/collections.generated.md lib/finance/minorUnits.ts app/api/ingest/orders/route.ts lib/stripe/webhook-idempotency.ts lib/clientActivation.ts lib/finance/paymentSchedule.ts lib/payments/stripe.ts lib/finance/unappliedClientPayment.ts app/api/stripe/connect/webhook/route.ts app/api/public/invoice/[invoiceId]/pay/route.ts app/api/public/invoice/[invoiceId]/confirm/route.ts app/api/payments/create-intent/route.ts app/api/payments/refund/route.ts lib/finance/operationalActivationReconciler.ts app/api/cron/daily-tasks/route.ts __tests__/integration/client-payment-engine.emulator.test.ts lib/zapier/service.ts app/api/finance/invoices/create/route.ts lib/finance/manualClientPayment.ts app/api/admin/projects/create/route.ts lib/firebaseAdmin.ts lib/projects.ts
+          if git diff --cached --quiet; then
+            echo "Nothing to normalize"
+          else
+            git commit -m "chore(pr3): normalize audited payment changes"
+            git push origin HEAD:codex/tenant-safety-pr3-canonical-payment-success
+          fi
