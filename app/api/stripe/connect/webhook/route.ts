@@ -13,6 +13,8 @@ import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActiva
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const CLIENT_PAYMENT_SOURCES = new Set(['client_payment_page', 'client_portal']);
+
 function getConnectWebhookSecret(): string {
   const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
   if (!secret) {
@@ -119,11 +121,9 @@ export async function POST(req: Request) {
       const source = String(pi.metadata?.source || '').trim();
       const accountId = eventAccountId(event);
 
-      if (source === 'client_payment_page' && invoiceId && tenantId) {
+      if (CLIENT_PAYMENT_SOURCES.has(source) && invoiceId && tenantId) {
         // A signed Stripe payload is not enough to choose a tenant. Bind the event's actual
         // connected account to the server-owned tenant record and require metadata to agree.
-        // This prevents an event from one Connect account being replayed against another
-        // tenant merely by carrying a different tenantId in metadata.
         if (!accountId) {
           throw new Error('Connect payment event is missing its account id.');
         }
@@ -132,16 +132,25 @@ export async function POST(req: Request) {
           throw new Error('Connect payment tenant/account mismatch.');
         }
 
-        const amountReceived = (pi.amount_received ?? pi.amount ?? 0) / 100;
+        const amountReceivedCents = pi.amount_received ?? pi.amount ?? 0;
+        const expectedAmountCents = Number(pi.metadata?.expectedAmountCents || 0);
+        if (
+          expectedAmountCents > 0 &&
+          (!Number.isInteger(expectedAmountCents) || expectedAmountCents !== amountReceivedCents)
+        ) {
+          throw new Error('Connect payment amount does not match the server-issued amount.');
+        }
+
         await recordSuccessfulClientPayment({
           invoiceId,
           tenantId,
           paymentId: pi.id,
-          amount: amountReceived,
+          amount: amountReceivedCents / 100,
           platformFee: (pi.application_fee_amount ?? 0) / 100,
           currency: pi.currency || 'usd',
           method: 'stripe_checkout',
-          source: 'stripe_connect_webhook',
+          source: `stripe_connect_webhook:${source}`,
+          reason: 'Stripe Connect confirmed a successful client invoice payment.',
           stripePaymentIntentId: pi.id,
           actor: { uid: 'system', name: 'Client payment (Stripe webhook)' },
         });
