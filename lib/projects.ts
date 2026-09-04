@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import crypto from 'crypto';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { createNotification, getUserIdsByRoles } from '@/lib/notifications';
 import { logEvent } from '@/lib/audit';
@@ -45,6 +46,11 @@ async function getUserRole(uid: string) {
   return String(snap.data()?.role || '');
 }
 
+function deterministicProjectId(tenantId: string, stableKey: string) {
+  const digest = crypto.createHash('sha256').update(`${tenantId}:${stableKey}`).digest('hex');
+  return `auto_${digest.slice(0, 40)}`;
+}
+
 export async function createProjectFromDeal({
   tenantId,
   deal,
@@ -84,19 +90,25 @@ export async function createProjectFromDeal({
     return { id: existingByOrder[0].id, data: existingByOrder[0].data() };
   }
 
-  const orderId =
-    String(deal?.orderId || client?.orderId || '') || (await generateNextOrderId(scopedTenantId));
+  const preexistingOrderId = String(deal?.orderId || client?.orderId || '');
+  const orderId = preexistingOrderId || (await generateNextOrderId(scopedTenantId));
   const ownerAmUid =
     String(deal?.ownerId || client?.ownerAmUid || client?.accountManager || '') || null;
   const ownerAmName = String(deal?.ownerName || client?.ownerAmName || '') || null;
   const clientName = String(client?.companyName || deal?.clientName || deal?.leadName || 'Client');
   const projectName = String(deal?.dealName || deal?.leadName || clientName || 'New Project');
 
-  const projectRef = adminDb.collection('projects').doc();
+  // First-payment activation can be invoked concurrently (for example by a synchronous
+  // confirmation and a Stripe webhook). Queries above preserve compatibility with older
+  // random-id projects, while new auto-created projects use an atomic deterministic id.
+  // Two contenders for the same deal/order therefore converge on one Firestore document.
+  const stableProjectKey = dealId || preexistingOrderId;
+  const projectRef = stableProjectKey
+    ? adminDb.collection('projects').doc(deterministicProjectId(scopedTenantId, stableProjectKey))
+    : adminDb.collection('projects').doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
   const stage = stageOverride || 'Inquiry';
-
-  await projectRef.set({
+  const projectPayload = {
     tenantId: scopedTenantId,
     dealId: dealId || null,
     clientId: clientId || null,
@@ -114,7 +126,21 @@ export async function createProjectFromDeal({
     createdAt: now,
     updatedAt: now,
     isDeleted: false,
-  });
+  };
+
+  if (stableProjectKey) {
+    try {
+      await projectRef.create(projectPayload);
+    } catch (error) {
+      const racedProject = await projectRef.get();
+      if (racedProject.exists && docTenantId(racedProject.data()) === scopedTenantId) {
+        return { id: racedProject.id, data: racedProject.data() };
+      }
+      throw error;
+    }
+  } else {
+    await projectRef.set(projectPayload);
+  }
 
   await logEvent({
     tenantId: scopedTenantId,
