@@ -8,6 +8,27 @@ import { PLAN_MODULES } from '@/app/config/plans';
 
 export const runtime = 'nodejs';
 
+const SUPPORTED_CURRENCIES = new Set([
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'CHF',
+  'JPY',
+  'CNY',
+  'INR',
+  'AED',
+  'SAR',
+  'SGD',
+  'MYR',
+  'ZAR',
+  'BRL',
+  'MXN',
+  'NGN',
+  'EGP',
+]);
+
 const signupSchema = z.object({
   fullName: z.string().trim().min(2, 'Full name must be at least 2 characters'),
   email: z.string().trim().email('Please enter a valid email address'),
@@ -24,7 +45,7 @@ const signupSchema = z.object({
   country: z.string().trim().min(1, 'Country is required'),
   state: z.string().trim().optional().default(''),
   timezone: z.string().trim().optional().default(''),
-  currency: z.string().trim().optional().default(''),
+  currency: z.string().trim().length(3, 'Currency is required'),
   selectedPlan: z.enum(['starter', 'pro', 'enterprise']),
   referredBy: z.string().trim().min(1).nullable().optional().default(null),
   termsAccepted: z.literal(true, {
@@ -76,8 +97,47 @@ async function generateUniqueTenantId(companyName: string) {
   throw new Error('TENANT_ID_GENERATION_FAILED');
 }
 
+async function cleanupFailedSignup({
+  uid,
+  tenantId,
+}: {
+  uid: string | null;
+  tenantId: string | null;
+}) {
+  if (uid) {
+    try {
+      await adminDb.collection('users').doc(uid).delete();
+    } catch (cleanupError) {
+      console.error('signup POST user-doc cleanup error', cleanupError);
+    }
+  }
+
+  if (tenantId) {
+    try {
+      await adminDb.recursiveDelete(adminDb.collection('tenants').doc(tenantId));
+    } catch (cleanupError) {
+      console.error('signup POST tenant cleanup error', cleanupError);
+    }
+
+    try {
+      await adminDb.collection('scheduled_emails').doc(tenantId).delete();
+    } catch (cleanupError) {
+      console.error('signup POST scheduled-email cleanup error', cleanupError);
+    }
+  }
+
+  if (uid) {
+    try {
+      await adminAuth.deleteUser(uid);
+    } catch (cleanupError) {
+      console.error('signup POST auth cleanup error', cleanupError);
+    }
+  }
+}
+
 export async function POST(request: Request) {
   let createdUid: string | null = null;
+  let createdTenantId: string | null = null;
 
   try {
     const body = await request.json().catch(() => null);
@@ -93,17 +153,18 @@ export async function POST(request: Request) {
 
     const payload = parsed.data;
     const email = normalizeEmail(payload.email);
+    const currency = payload.currency.toUpperCase();
+    if (!SUPPORTED_CURRENCIES.has(currency)) {
+      return NextResponse.json(
+        { ok: false, error: 'Unsupported workspace currency.' },
+        { status: 400 },
+      );
+    }
+
     const nowIso = new Date().toISOString();
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
     // Verify-and-CONSUME-before-provision gate (E7): never create a tenant/user until the email is
     // proven via OTP, and burn the OTP atomically in the same transaction that validates it.
-    // Previously the OTP was only READ here and deleted at the very end, leaving a wide TOCTOU
-    // window: two concurrent requests both saw verified:true and both provisioned an Auth user and
-    // a tenant from a single code (duplicate tenants). A transaction makes the consume atomic —
-    // exactly one racing request can win, every other gets a clean 403.
-    // /api/auth/send-otp is rate-limited (3 per email per 10 min); /api/auth/verify-otp sets
-    // verified:true on email_otps/{email}.
     const otpRef = adminDb.collection('email_otps').doc(email);
     const otpGate = await adminDb.runTransaction(async (tx) => {
       const otpSnap = await tx.get(otpRef);
@@ -155,7 +216,6 @@ export async function POST(request: Request) {
       password: payload.password,
       displayName: payload.fullName,
       disabled: false,
-      // The email was proven via the verified OTP gate above — mark it verified at creation.
       emailVerified: true,
     });
     createdUid = authUser.uid;
@@ -167,8 +227,10 @@ export async function POST(request: Request) {
       email,
       plan: payload.selectedPlan,
       ownerId: authUser.uid,
-      trialEndsAt,
     });
+    // Only mark the tenant as ours to clean up after the workspace transaction succeeds.
+    // This avoids deleting somebody else's tenant in the extremely unlikely ID-generation race.
+    createdTenantId = tenantId;
 
     await adminDb.collection('users').doc(authUser.uid).set({
       uid: authUser.uid,
@@ -200,7 +262,7 @@ export async function POST(request: Request) {
           termsVersion: payload.termsVersion,
           settings: {
             timezone: payload.timezone,
-            currency: payload.currency,
+            currency,
             country: payload.country,
             state: payload.state,
           },
@@ -209,32 +271,19 @@ export async function POST(request: Request) {
           contactPhone: payload.phone,
           modulesEnabled,
           rolesEnabled: DEFAULT_ROLES,
+          plan: payload.selectedPlan,
+          // The actual Stripe trial clock starts at successful checkout. Until the signed
+          // checkout webhook supplies Stripe's trial_end, there is no authoritative end date.
+          trialEndsAt: null,
+          subscriptionState: 'pending_checkout',
+          activationStatus: 'pending_checkout',
+          currencyLockedAt: null,
+          referredBy: payload.referredBy || null,
+          modules: modulesEnabled,
           updatedAt: nowIso,
         },
         { merge: true },
       );
-
-    await adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .set(
-        {
-          plan: payload.selectedPlan,
-          trialEndsAt,
-          // S38: signup provisions the tenant but never grants live access. The tenant sits in
-          // `pending_checkout` (fails closed to hard_locked in normalizeSubscriptionState, so
-          // middleware blocks the app) until Stripe Checkout completes. The
-          // checkout.session.completed webhook — via linkExistingTenant → applySubscriptionState
-          // ('checkout.linked') — is the sole writer that flips this to 'active'.
-          subscriptionState: 'pending_checkout',
-          referredBy: payload.referredBy || null,
-          modules: modulesEnabled,
-        },
-        { merge: true },
-      );
-
-    // NOTE: the OTP was already consumed atomically in the transaction above, before any
-    // provisioning — there is nothing to delete here.
 
     return NextResponse.json({
       ok: true,
@@ -244,14 +293,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('signup POST error', error);
-
-    if (createdUid) {
-      try {
-        await adminAuth.deleteUser(createdUid);
-      } catch (cleanupError) {
-        console.error('signup POST cleanup error', cleanupError);
-      }
-    }
+    await cleanupFailedSignup({ uid: createdUid, tenantId: createdTenantId });
 
     return NextResponse.json({ ok: false, error: 'Unable to complete signup.' }, { status: 500 });
   }

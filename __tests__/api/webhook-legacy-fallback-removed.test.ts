@@ -5,15 +5,9 @@ import * as path from 'path';
  * Checkout webhook single-provisioning invariant (S39, audit P0-2).
  *
  * /api/signup is the ONLY code path that creates a tenant, admin user, claims,
- * plan, and modules — always before Stripe Checkout, always stamping
- * metadata.tenantId. The checkout.session.completed webhook must therefore only
- * LINK an existing tenant to its subscription. The former create-by-email
- * fallback (ensureTenantForCheckout / ensureAdminUser) was dead code: no path
- * originates a tenant-less checkout, and every marketing-site pricing CTA routes
- * through /signup. Left in place it could only misfire — duplicate tenant,
- * email-domain-guessed company name, or a plan granted from unauthenticated
- * metadata. These assertions keep the fallback from returning and keep the
- * missing/unknown-tenantId branches failing closed (link:false, never create).
+ * plan, and modules — always before Stripe Checkout. The signed checkout webhook
+ * may only reconcile and LINK an already-existing tenant; it must never create a
+ * tenant from Stripe metadata or customer email.
  */
 
 const read = (relative: string): string =>
@@ -23,8 +17,6 @@ describe('checkout webhook — legacy tenant-creation fallback removed (S39)', (
   const webhook = read('app/api/stripe/webhook/route.ts');
 
   it('no longer defines or calls the create-by-email fallback helpers', () => {
-    // Names may survive in an explanatory comment; what matters is that the
-    // functions are neither declared nor invoked.
     expect(webhook).not.toMatch(/function\s+ensureTenantForCheckout/);
     expect(webhook).not.toMatch(/function\s+ensureAdminUser/);
     expect(webhook).not.toMatch(/function\s+resolveCheckoutPlan/);
@@ -34,8 +26,6 @@ describe('checkout webhook — legacy tenant-creation fallback removed (S39)', (
   });
 
   it('never creates a tenant from checkout — no tenant-doc creation primitives remain in the checkout path', () => {
-    // The link path uses applySubscriptionState; it must not create tenants,
-    // password-setup tokens, or admin-invite users off a checkout event.
     expect(webhook).not.toContain('createPasswordSetupToken');
     expect(webhook).not.toContain('sendSetPasswordEmail');
     expect(webhook).not.toContain('runTransaction');
@@ -48,27 +38,29 @@ describe('checkout webhook — legacy tenant-creation fallback removed (S39)', (
     expect(webhook).toContain('linkExistingTenant');
   });
 
-  it('fails closed when metadata.tenantId is missing — acks without creating', () => {
-    const idx = webhook.indexOf('if (!metadataTenantId)');
-    expect(idx).toBeGreaterThan(-1);
+  it('fails closed when canonical checkout metadata is incomplete', () => {
+    expect(webhook).toContain('checkout session missing canonical metadata');
+    const idx = webhook.indexOf('checkout session missing canonical metadata');
     const block = webhook.slice(idx, idx + 900);
     expect(block).toContain('linked: false');
-    // Ack (finalize) so Stripe stops retrying an unlinkable event.
     expect(block).toContain('finalizeWebhookEvent');
   });
 
   it('fails closed when tenantId does not match any tenant — never falls through to create', () => {
-    const idx = webhook.indexOf('if (!linked)');
+    const idx = webhook.indexOf('if (!tenantSnap.exists)');
     expect(idx).toBeGreaterThan(-1);
-    const block = webhook.slice(idx, idx + 900);
+    const block = webhook.slice(idx, idx + 1100);
     expect(block).toContain('linked: false');
     expect(block).not.toMatch(/ensureTenantForCheckout\s*\(/);
-    // The dead fall-through comment must be gone.
     expect(webhook).not.toContain('fall through to legacy create-by-email');
   });
 
-  it('still restricts to trusted checkout sources and requires Stripe ids', () => {
+  it('restricts trusted sources and requires server-reconciled Stripe identifiers and metadata', () => {
     expect(webhook).toContain('TRUSTED_CHECKOUT_SOURCES');
-    expect(webhook).toContain('Missing checkout details.');
+    expect(webhook).toContain('stripeCustomerId');
+    expect(webhook).toContain('stripeSubscriptionId');
+    expect(webhook).toContain('metadataTenantId');
+    expect(webhook).toContain('metadataPlan');
+    expect(webhook).toContain('stripe.subscriptions.retrieve');
   });
 });

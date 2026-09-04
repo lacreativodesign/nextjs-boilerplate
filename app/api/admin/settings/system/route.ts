@@ -15,6 +15,33 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const SUPPORTED_CURRENCIES = new Set([
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'CHF',
+  'JPY',
+  'CNY',
+  'INR',
+  'AED',
+  'SAR',
+  'SGD',
+  'MYR',
+  'ZAR',
+  'BRL',
+  'MXN',
+  'NGN',
+  'EGP',
+]);
+
+function normalizeCurrency(value: unknown) {
+  return String(value || '')
+    .trim()
+    .toUpperCase();
+}
+
 export async function GET() {
   try {
     const auth = await requireAdmin();
@@ -23,8 +50,10 @@ export async function GET() {
     }
 
     const tenantSnap = await adminDb.collection('tenants').doc(auth.user.tenantId).get();
-    const tenantCurrency = String(tenantSnap.data()?.settings?.currency || 'USD').trim() || 'USD';
-    const tenantName = String(tenantSnap.data()?.name || '').trim();
+    const tenantData = tenantSnap.data() || {};
+    const tenantCurrency = normalizeCurrency(tenantData.settings?.currency) || 'USD';
+    const tenantName = String(tenantData.name || '').trim();
+    const currencyLockedAt = tenantData.currencyLockedAt || null;
 
     const snap = await adminDb
       .collection('tenants')
@@ -48,6 +77,8 @@ export async function GET() {
       },
       revenueCurrency: tenantCurrency,
       expenseCurrency: tenantCurrency,
+      currencyLocked: Boolean(currencyLockedAt),
+      currencyLockedAt: toISO(currencyLockedAt),
       fiscalMonthStart: parseNumber(
         data?.fiscalMonthStart,
         DEFAULT_SYSTEM_SETTINGS.fiscalMonthStart,
@@ -80,6 +111,71 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
+    const tenantRef = adminDb.collection('tenants').doc(auth.user.tenantId);
+    const requestedCurrency = normalizeCurrency(body?.currency ?? body?.revenueCurrency);
+
+    if (requestedCurrency && !SUPPORTED_CURRENCIES.has(requestedCurrency)) {
+      return NextResponse.json(
+        { ok: false, error: 'Unsupported workspace currency.', code: 'invalid_currency' },
+        { status: 400 },
+      );
+    }
+
+    const currencyDecision = await adminDb.runTransaction(async (tx) => {
+      const tenantSnap = await tx.get(tenantRef);
+      if (!tenantSnap.exists) {
+        return { ok: false as const, code: 'tenant_not_found' as const };
+      }
+
+      const tenantData = tenantSnap.data() || {};
+      const currentCurrency = normalizeCurrency(tenantData.settings?.currency) || 'USD';
+      const currencyLocked = Boolean(tenantData.currencyLockedAt);
+
+      if (currencyLocked && requestedCurrency && requestedCurrency !== currentCurrency) {
+        return {
+          ok: false as const,
+          code: 'currency_locked' as const,
+          currentCurrency,
+        };
+      }
+
+      const currencyChanged =
+        !currencyLocked && Boolean(requestedCurrency) && requestedCurrency !== currentCurrency;
+      if (currencyChanged) {
+        tx.update(tenantRef, {
+          'settings.currency': requestedCurrency,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      return {
+        ok: true as const,
+        currentCurrency,
+        effectiveCurrency: requestedCurrency || currentCurrency,
+        currencyLocked,
+        currencyChanged,
+      };
+    });
+
+    if (!currencyDecision.ok) {
+      if (currencyDecision.code === 'tenant_not_found') {
+        return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+      }
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Workspace currency is locked after activation because all financial records share one base currency.',
+          code: 'currency_locked',
+          currency: currencyDecision.currentCurrency,
+        },
+        { status: 409 },
+      );
+    }
+
+    const currentCurrency = currencyDecision.currentCurrency;
+    const currencyLocked = currencyDecision.currencyLocked;
+
     const payload = {
       companyName: parseString(body?.companyName, DEFAULT_SYSTEM_SETTINGS.companyName),
       timezone: parseString(body?.timezone, DEFAULT_SYSTEM_SETTINGS.timezone),
@@ -89,8 +185,6 @@ export async function PUT(req: Request) {
         start: parseString(body?.workingHours?.start, DEFAULT_SYSTEM_SETTINGS.workingHours.start),
         end: parseString(body?.workingHours?.end, DEFAULT_SYSTEM_SETTINGS.workingHours.end),
       },
-      revenueCurrency: parseString(body?.revenueCurrency, 'USD'),
-      expenseCurrency: parseString(body?.revenueCurrency, 'USD'),
       fiscalMonthStart: parseNumber(
         body?.fiscalMonthStart,
         DEFAULT_SYSTEM_SETTINGS.fiscalMonthStart,
@@ -99,20 +193,21 @@ export async function PUT(req: Request) {
       updatedBy: auth.user.uid,
     };
 
-    await adminDb
-      .collection('tenants')
-      .doc(auth.user.tenantId)
-      .collection('settings')
-      .doc('system')
-      .set(payload, { merge: true });
+    await tenantRef.collection('settings').doc('system').set(payload, { merge: true });
 
     await logSettingsChange({
       user: auth.user,
       section: 'system',
-      summary: 'System settings updated.',
+      summary: currencyDecision.currencyChanged
+        ? `System settings updated; base currency changed from ${currentCurrency} to ${currencyDecision.effectiveCurrency} before activation.`
+        : 'System settings updated.',
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      currency: currencyDecision.effectiveCurrency,
+      currencyLocked,
+    });
   } catch (err) {
     console.error('settings/system update error', err);
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });

@@ -194,6 +194,11 @@ export interface ApplyResult {
   ok: boolean;
   tenantExists: boolean;
   derived: Record<string, unknown>;
+  disposition?:
+    | 'applied'
+    | 'deferred_pending_checkout'
+    | 'subscription_conflict'
+    | 'activation_invariant_failed';
 }
 
 export async function applySubscriptionState(
@@ -212,7 +217,7 @@ export async function applySubscriptionState(
   let beforePlan: unknown = null;
   let beforeState: unknown = null;
 
-  const result = await adminDb.runTransaction(async (tx) => {
+  const result = await adminDb.runTransaction<ApplyResult>(async (tx) => {
     const snap = await tx.get(tenantRef);
     if (!snap.exists) {
       return { ok: false, tenantExists: false, derived: {} };
@@ -221,8 +226,48 @@ export async function applySubscriptionState(
     beforePlan = before.plan ?? null;
     beforeState = before.subscriptionState ?? null;
 
+    const currentSubscriptionId = String(before.stripeSubscriptionId || '').trim();
+    const incomingSubscriptionId = String(input.stripeSubscriptionId || '').trim();
+    const currentBillingStatus = String(before.billingStatus || '')
+      .trim()
+      .toLowerCase();
+
+    // One live Stripe subscription may own a tenant at a time. Keep this invariant in the
+    // canonical transaction so parallel webhook endpoints cannot race past route-local guards.
+    if (
+      incomingSubscriptionId &&
+      currentSubscriptionId &&
+      currentSubscriptionId !== incomingSubscriptionId &&
+      currentBillingStatus !== 'canceled'
+    ) {
+      return {
+        ok: false,
+        tenantExists: true,
+        derived: {},
+        disposition: 'subscription_conflict' as const,
+      };
+    }
+
+    const pendingCheckoutActivation =
+      !before.activatedAt && String(before.activationStatus || '') === 'pending_checkout';
+
+    // Stripe can deliver subscription events before checkout.session.completed. They must not
+    // unlock a pending workspace; the reconciled checkout event owns first activation.
+    if (
+      pendingCheckoutActivation &&
+      (input.source === 'subscription.created' || input.source === 'subscription.updated')
+    ) {
+      return {
+        ok: true,
+        tenantExists: true,
+        derived: {},
+        disposition: 'deferred_pending_checkout' as const,
+      };
+    }
+
     const derived: Record<string, unknown> = { updatedAt: nowIso };
     let auditWarning: string | null = null;
+    const rawPlan = String(input.plan || '').trim();
 
     if (input.stripeStatus) {
       derived.subscriptionState = mapStripeStatusToSubscriptionState(input.stripeStatus);
@@ -230,8 +275,33 @@ export async function applySubscriptionState(
     }
 
     if (input.source === 'checkout.linked') {
-      derived.subscriptionState = 'active';
-      derived.billingStatus = 'active';
+      // Claim first activation in the same transaction as billing state, using the immutable
+      // activatedAt marker plus signup-owned activationStatus rather than subscriptionState.
+      if (pendingCheckoutActivation) {
+        const provisionedPlan = String(before.plan || '').trim();
+        const settings = (before.settings || {}) as Record<string, unknown>;
+        const currency = String(settings.currency || '')
+          .trim()
+          .toUpperCase();
+        if (!currency || (rawPlan && provisionedPlan !== rawPlan)) {
+          return {
+            ok: false,
+            tenantExists: true,
+            derived: {},
+            disposition: 'activation_invariant_failed' as const,
+          };
+        }
+        derived.activatedAt = nowIso;
+        derived.currencyLockedAt = nowIso;
+        derived.currencyLockedBy = 'stripe_checkout';
+      }
+
+      derived.activationStatus = 'active';
+      derived.lastBillingActivationAt = nowIso;
+      if (!input.stripeStatus) {
+        derived.subscriptionState = 'active';
+        derived.billingStatus = 'active';
+      }
       derived.status = 'active';
     }
 
@@ -278,7 +348,6 @@ export async function applySubscriptionState(
       }
     }
 
-    const rawPlan = String(input.plan || '').trim();
     if (input.source !== 'subscription.deleted' && rawPlan) {
       if (isKnownPaidTier(rawPlan)) {
         // Modules and limits re-derived from the plan on every change.
@@ -317,34 +386,45 @@ export async function applySubscriptionState(
       at: nowIso,
     });
 
-    return { ok: true, tenantExists: true, derived };
+    return { ok: true, tenantExists: true, derived, disposition: 'applied' as const };
   });
 
   // Written AFTER the transaction resolves, never inside it. A Firestore
   // transaction retries on contention and AuditLogger.log performs its own
   // non-transactional write, so logging inside would emit one trail entry per
   // attempt and record transitions that never committed.
-  if (result.ok) {
+  if (result.ok && result.disposition !== 'deferred_pending_checkout') {
     const actor = resolveActor(input.actor, input.source);
-    await AuditLogger.log({
-      tenantId,
-      userId: actor.userId,
-      userEmail: actor.userEmail,
-      userName: actor.userName,
-      action: input.source === 'subscription.deleted' ? 'delete' : 'update',
-      resource: 'subscription',
-      resourceId: tenantId,
-      changes: [
-        { field: 'source', oldValue: null, newValue: input.source },
-        { field: 'plan', oldValue: beforePlan, newValue: result.derived.plan ?? beforePlan },
-        {
-          field: 'subscriptionState',
-          oldValue: beforeState,
-          newValue: result.derived.subscriptionState ?? beforeState,
-        },
-      ],
-      status: 'success',
-    });
+    try {
+      await AuditLogger.log({
+        tenantId,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        userName: actor.userName,
+        action: input.source === 'subscription.deleted' ? 'delete' : 'update',
+        resource: 'subscription',
+        resourceId: tenantId,
+        changes: [
+          { field: 'source', oldValue: null, newValue: input.source },
+          { field: 'plan', oldValue: beforePlan, newValue: result.derived.plan ?? beforePlan },
+          {
+            field: 'subscriptionState',
+            oldValue: beforeState,
+            newValue: result.derived.subscriptionState ?? beforeState,
+          },
+        ],
+        status: 'success',
+      });
+    } catch (error) {
+      // Canonical billing state and billing_state_audit already committed atomically. A
+      // secondary audit sink outage must not force Stripe to replay committed state changes.
+      console.error('[BILLING] Failed to mirror committed transition to AuditLogger', {
+        tenantId,
+        source: input.source,
+        eventId: input.eventId || null,
+        error,
+      });
+    }
   }
 
   return result;

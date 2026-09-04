@@ -598,10 +598,23 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     );
   }
 
+  // A locked or pending-checkout tenant must still be able to reach the narrow
+  // billing-recovery surface. These routes remain authenticated, role-gated and CSRF-protected;
+  // only the subscription-state lock is bypassed so the customer can activate or restore billing.
+  const isBillingRecoveryRequest =
+    pathname.startsWith('/billing') ||
+    pathname === '/api/stripe/checkout' ||
+    pathname === '/api/billing/subscription' ||
+    pathname === '/api/billing/payment-method' ||
+    pathname === '/api/billing/address' ||
+    pathname === '/api/billing/portal' ||
+    pathname === '/api/billing/invoices' ||
+    pathname === '/api/admin/settings/system';
+
   const requiresSubscriptionCheck =
     Boolean(sessionToken) &&
     (Boolean(pageRole) || isApiRequest || isProtectedPage) &&
-    !pathname.startsWith('/billing');
+    !isBillingRecoveryRequest;
 
   let sessionRole = normalizeRole(null);
   let subCacheValue: string | null = null;
