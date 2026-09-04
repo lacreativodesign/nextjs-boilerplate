@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+// PR2 lifecycle invariants are release-safety contracts and must remain enforced in CI.
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
 
 describe('Tenant Safety PR2 — signup and activation invariants', () => {
