@@ -6,6 +6,7 @@ import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActiva
 import { validateRequest } from '@/lib/validations/validate';
 import { publicInvoicePaySchema } from '@/lib/validations/commercial-activation';
 import { resolveErrorResponse } from '@/lib/errors';
+import { amountToMinorUnits, minorUnitsToAmount } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 
@@ -55,22 +56,23 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       );
     }
 
-    // 100% invoices charge the outstanding balance. 50/50 invoices charge only the first
-    // 50% until that deposit is posted; the second visit charges the remaining balance.
-    const amountCents = Math.round(validation.payload.payableNow * 100);
-    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    const currency = String(validation.payload.currency || 'USD')
+      .trim()
+      .toLowerCase();
+    const amountMinor = amountToMinorUnits(validation.payload.payableNow, currency);
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
       return NextResponse.json(
         { ok: false, error: 'Invoice amount due is invalid.' },
         { status: 400 },
       );
     }
 
-    const platformFee = calculatePlatformFee(amountCents);
+    const platformFee = calculatePlatformFee(amountMinor);
     const stripe = getStripeClient();
     const paymentIntent = await stripe.paymentIntents.create(
       {
-        amount: amountCents,
-        currency: validation.payload.currency.toLowerCase(),
+        amount: amountMinor,
+        currency,
         payment_method: paymentMethodId,
         confirmation_method: 'manual',
         confirm: true,
@@ -84,26 +86,25 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
           source: 'client_payment_page',
           paymentPlan: validation.payload.paymentPlan,
           installmentSequence: String(validation.payload.installmentSequence),
-          expectedAmountCents: String(amountCents),
+          expectedAmountCents: String(amountMinor),
+          expectedCurrency: currency,
         },
         application_fee_amount: platformFee,
       },
       {
-        // Connect DIRECT charge: the PaymentIntent lives on the tenant's connected account.
         stripeAccount: connectAccountId,
-        // Sequence is part of the key so the second 50% can use the same saved/card payment
-        // method without Stripe returning the already-completed deposit PaymentIntent.
         idempotencyKey: `inv_pay_${invoiceId}_${validation.payload.installmentSequence}_${paymentMethodId}`,
       },
     );
 
     if (paymentIntent.status === 'succeeded') {
+      const receivedMinor = paymentIntent.amount_received || paymentIntent.amount || amountMinor;
       const applied = await recordSuccessfulClientPayment({
         invoiceId,
         tenantId: validation.payload.tenantId,
         paymentId: paymentIntent.id,
-        amount: (paymentIntent.amount_received || paymentIntent.amount || amountCents) / 100,
-        platformFee: platformFee / 100,
+        amount: minorUnitsToAmount(receivedMinor, paymentIntent.currency || currency),
+        platformFee: minorUnitsToAmount(platformFee, paymentIntent.currency || currency),
         currency: paymentIntent.currency || validation.payload.currency,
         method: 'stripe_checkout',
         source: 'client_payment_page',
