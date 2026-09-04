@@ -37,8 +37,6 @@ export async function resolveZapierTenant(apiKeyRaw: unknown) {
   if (!apiKey) return null;
 
   const apiKeyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
-
-  // Try hashed lookup first
   const hashedSnap = await adminDb
     .collection('tenants')
     .where('apiKeyHash', '==', apiKeyHash)
@@ -49,7 +47,6 @@ export async function resolveZapierTenant(apiKeyRaw: unknown) {
     return { tenantId: tenantDoc.id, tenant: tenantDoc.data() || {} };
   }
 
-  // Fallback to plaintext for tenants not yet migrated
   const plainSnap = await adminDb
     .collection('tenants')
     .where('apiKey', '==', apiKey)
@@ -58,10 +55,7 @@ export async function resolveZapierTenant(apiKeyRaw: unknown) {
   if (plainSnap.empty) return null;
 
   const tenantDoc = plainSnap.docs[0];
-  return {
-    tenantId: tenantDoc.id,
-    tenant: tenantDoc.data() || {},
-  };
+  return { tenantId: tenantDoc.id, tenant: tenantDoc.data() || {} };
 }
 
 export async function createZapierHookSubscription(params: {
@@ -71,7 +65,6 @@ export async function createZapierHookSubscription(params: {
 }) {
   const ref = adminDb.collection(ZAPIER_HOOKS_COLLECTION).doc();
   const createdAt = nowIso();
-
   const record = {
     tenantId: params.tenantId,
     triggerKey: params.triggerKey,
@@ -109,7 +102,6 @@ export async function dispatchZapierTriggerEvent(params: {
 }) {
   const createdAt = nowIso();
   const eventRef = adminDb.collection(ZAPIER_EVENTS_COLLECTION).doc();
-
   const eventRecord = {
     id: eventRef.id,
     tenantId: params.tenantId,
@@ -138,7 +130,6 @@ export async function dispatchZapierTriggerEvent(params: {
     hooksSnap.docs.map(async (hookDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const hook = hookDoc.data() || {};
       const hookRef = adminDb.collection(ZAPIER_HOOKS_COLLECTION).doc(hookDoc.id);
-
       try {
         await fetch(String(hook.targetUrl || ''), {
           method: 'POST',
@@ -157,20 +148,10 @@ export async function dispatchZapierTriggerEvent(params: {
             ...params.payload,
           }),
         });
-
-        await hookRef.set(
-          {
-            lastTriggeredAt: createdAt,
-            updatedAt: createdAt,
-          },
-          { merge: true },
-        );
+        await hookRef.set({ lastTriggeredAt: createdAt, updatedAt: createdAt }, { merge: true });
       } catch (error: any) {
         await hookRef.set(
-          {
-            lastError: String(error?.message || 'Webhook push failed'),
-            updatedAt: createdAt,
-          },
+          { lastError: String(error?.message || 'Webhook push failed'), updatedAt: createdAt },
           { merge: true },
         );
       }
@@ -192,7 +173,6 @@ export async function executeZapierAction(params: {
       const ref = adminDb.collection('invoices').doc();
       const orderId = cleanString(params.input.orderId) || `ZAP-${Date.now()}`;
       const amountTotal = Number(params.input.amountTotal || 0);
-      const status = cleanString(params.input.status || 'draft').toLowerCase();
       const record = {
         tenantId: params.tenantId,
         orderId,
@@ -202,7 +182,11 @@ export async function executeZapierAction(params: {
         amountTotal,
         amountTotalUsd: amountTotal,
         currency: cleanString(params.input.currency || 'USD'),
-        status,
+        status: 'draft',
+        totalPaid: 0,
+        paidAmount: 0,
+        balanceDue: amountTotal,
+        paidAt: null,
         lineItems: Array.isArray(params.input.lineItems) ? params.input.lineItems : [],
         notes: cleanString(params.input.notes) || null,
         isDeleted: false,
@@ -248,20 +232,9 @@ export async function executeZapierAction(params: {
       return { id: ref.id, ...record };
     }
     case 'create_project': {
-      const ref = adminDb.collection('projects').doc();
-      const record = {
-        tenantId: params.tenantId,
-        projectName: cleanString(params.input.projectName),
-        clientId: cleanString(params.input.clientId),
-        clientName: cleanString(params.input.clientName),
-        stage: cleanString(params.input.stage || 'Kickoff'),
-        projectType: cleanString(params.input.projectType || 'Other'),
-        isDeleted: false,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await ref.set(record);
-      return { id: ref.id, ...record };
+      throw new Error(
+        'Zapier project creation is disabled. Production projects are activated by the canonical successful-payment flow.',
+      );
     }
     case 'update_invoice_status': {
       const invoiceId = cleanString(params.input.invoiceId);
@@ -272,7 +245,22 @@ export async function executeZapierAction(params: {
       const row = snap.data() || {};
       if (String(row.tenantId || '') !== params.tenantId) throw new Error('Forbidden');
 
-      const status = cleanString(params.input.status || 'draft').toLowerCase();
+      const requested = cleanString(params.input.status || 'draft').toLowerCase();
+      if (requested.includes('paid') || requested.includes('partial')) {
+        throw new Error(
+          'Zapier cannot set paid or partially-paid invoice state. Record successful payment through Finance.',
+        );
+      }
+      const status =
+        requested === 'sent' || requested === 'overdue' || requested === 'issue'
+          ? 'issued'
+          : requested === 'voided'
+            ? 'void'
+            : requested;
+      if (!new Set(['draft', 'issued', 'void']).has(status)) {
+        throw new Error('Unsupported invoice status.');
+      }
+
       await ref.set({ status, updatedAt: now }, { merge: true });
       return { id: invoiceId, status };
     }
