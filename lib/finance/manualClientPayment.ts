@@ -102,7 +102,7 @@ export async function recordManualClientPayment(input: ManualClientPaymentInput)
     throw new Error('A payment method is required to record a manual payment.');
   }
 
-  return recordSuccessfulClientPayment({
+  const applied = await recordSuccessfulClientPayment({
     invoiceId,
     tenantId,
     paymentId,
@@ -113,4 +113,6 @@ export async function recordManualClientPayment(input: ManualClientPaymentInput)
     reason,
     actor: input.actor,
   });
+
+  return { ...applied, paymentId };
 }
