@@ -9,6 +9,7 @@ import {
 import { normalizeInvoiceStatus } from '@/lib/finance/status';
 import { resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
 import { calculatePlatformFee } from '@/lib/stripe/connect';
+import { amountToMinorUnits } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,8 +55,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Enterprise client payments are direct charges on the tenant's connected Stripe account.
-    // The platform never creates a separate central charge for a tenant's customer invoice.
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     if (!tenantSnap.exists) {
       return NextResponse.json({ ok: false, error: 'Workspace not found.' }, { status: 404 });
@@ -73,11 +72,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const amountCents = Math.round(amountUsd * 100);
-    const platformFeeCents = calculatePlatformFee(amountCents);
     const currency = String(invoice.currency || 'USD')
       .trim()
       .toUpperCase();
+    const amountMinor = amountToMinorUnits(amountUsd, currency);
+    const platformFeeCents = calculatePlatformFee(amountMinor);
     const origin = resolveAppOrigin(req);
     const stripe = getStripeClient();
     const successUrl = `${origin}/client/billing/payment-success?invoiceId=${encodeURIComponent(invoiceId)}&session_id={CHECKOUT_SESSION_ID}`;
@@ -106,9 +105,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Do not pre-create a second payment record. Stripe's signed Connect
-    // payment_intent.succeeded event owns the authoritative payment id and feeds the
-    // canonical success engine. This avoids orphan pending rows and browser-success races.
     return NextResponse.json({
       ok: true,
       checkoutUrl: session.url,
