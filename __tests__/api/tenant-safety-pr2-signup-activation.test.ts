@@ -9,6 +9,7 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
   const verifyOtp = read('app/api/auth/verify-otp/route.ts');
   const checkout = read('app/api/stripe/checkout/route.ts');
   const webhook = read('app/api/stripe/webhook/route.ts');
+  const billingService = read('lib/billing/apply-subscription-state.ts');
   const settings = read('app/api/admin/settings/system/route.ts');
   const middleware = read('middleware.ts');
   const activationBridge = read('app/billing/activating/page.tsx');
@@ -82,17 +83,24 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
     expect(webhook).toContain('trialEnd: subscription.trial_end');
   });
 
-  it('locks currency only on first successful activation and preserves original activation time', () => {
-    expect(webhook).toContain('lockCurrency: isInitialCheckout');
-    expect(webhook).toContain("activationPayload.currencyLockedBy = 'stripe_checkout'");
-    expect(webhook).toContain('activationPayload.activatedAt =');
-    expect(webhook).toContain('lastBillingActivationAt');
+  it('atomically owns first activation and currency locking in the canonical billing transaction', () => {
+    expect(billingService).toContain('const pendingCheckoutActivation =');
+    expect(billingService).toContain("input.source === 'checkout.linked'");
+    expect(billingService).toContain('derived.activatedAt = nowIso');
+    expect(billingService).toContain('derived.currencyLockedAt = nowIso');
+    expect(billingService).toContain("derived.currencyLockedBy = 'stripe_checkout'");
+    expect(billingService).toContain('derived.lastBillingActivationAt = nowIso');
+    expect(billingService).toContain("disposition: 'deferred_pending_checkout' as const");
+    expect(billingService).toContain('tx.set(tenantRef, derived, { merge: true })');
   });
 
-  it('rejects canonical currency changes after activation', () => {
+  it('rejects canonical currency changes after activation inside one Firestore transaction', () => {
+    expect(settings).toContain('const currencyDecision = await adminDb.runTransaction');
+    expect(settings).toContain('const tenantSnap = await tx.get(tenantRef)');
     expect(settings).toContain('const currencyLocked = Boolean(tenantData.currencyLockedAt)');
     expect(settings).toContain("code: 'currency_locked'");
     expect(settings).toContain("'settings.currency': requestedCurrency");
+    expect(settings).toContain('tx.update(tenantRef');
     expect(settings.indexOf("code: 'currency_locked'")).toBeLessThan(
       settings.indexOf("'settings.currency': requestedCurrency"),
     );
