@@ -46,13 +46,17 @@ export async function POST(req: Request) {
 
       if (!invoiceId) {
         return NextResponse.json(
-          { ok: false, error: 'Client payments must be linked to an invoice before they can be recorded.' },
+          {
+            ok: false,
+            error: 'Client payments must be linked to an invoice before they can be recorded.',
+          },
           { status: 409 },
         );
       }
 
       const scopedTenantId = String(payment.tenantId || tenantId || '').trim();
-      const method = parseString(body?.method).trim() || String(payment.method || '').trim() || 'manual';
+      const method =
+        parseString(body?.method).trim() || String(payment.method || '').trim() || 'manual';
       const reason =
         parseString(body?.reason).trim() ||
         `Existing payment ${id} manually confirmed as received by an administrator.`;

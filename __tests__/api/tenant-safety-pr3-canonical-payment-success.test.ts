@@ -17,7 +17,13 @@ describe('Tenant Safety PR3 — canonical client payment success', () => {
 
   it('uses one canonical service for every successful client-money mutation', () => {
     expect(manualAdapter).toContain('recordSuccessfulClientPayment');
-    for (const source of [financePayment, adminPayment, financeInvoice, adminInvoice, dealPayment]) {
+    for (const source of [
+      financePayment,
+      adminPayment,
+      financeInvoice,
+      adminInvoice,
+      dealPayment,
+    ]) {
       expect(source).toContain('recordManualClientPayment');
     }
     expect(connectWebhook).toContain('recordSuccessfulClientPayment');
@@ -33,7 +39,9 @@ describe('Tenant Safety PR3 — canonical client payment success', () => {
   });
 
   it('keys manual 50/50 payments by installment and records only the current payable amount', () => {
-    expect(manualAdapter).toContain('manualInvoicePaymentId(invoiceId, schedule.installmentSequence)');
+    expect(manualAdapter).toContain(
+      'manualInvoicePaymentId(invoiceId, schedule.installmentSequence)',
+    );
     expect(manualAdapter).toContain('amount = money(schedule.payableNow)');
     expect(manualAdapter).toContain('manual_invoice_${');
     expect(manualAdapter).toContain('installmentSequence');
