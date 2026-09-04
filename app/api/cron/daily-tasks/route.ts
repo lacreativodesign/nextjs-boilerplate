@@ -8,6 +8,7 @@ import {
 import { getExchangeRates } from '@/lib/finance/exchangeRates';
 import { NotificationPreferenceService } from '@/lib/notifications/preferences';
 import { enqueueJob } from '@/lib/jobs/job-queue';
+import { reconcilePendingPaymentActivations } from '@/lib/finance/operationalActivationReconciler';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
       exchangeRateRefreshed,
       expiredSessionsRevoked,
       archivedProjects,
+      paymentActivations,
     ] = await Promise.all([
       runRetentionCleanupAcrossTenants(),
       generateWeeklyComplianceReports(),
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
       refreshExchangeRateCache(),
       cleanupExpiredSessions(),
       archiveCompletedProjectsOlderThan90Days(),
+      reconcilePendingPaymentActivations(),
     ]);
 
     const [scheduledReports, syncJobs] = await Promise.all([
@@ -56,6 +59,7 @@ export async function GET(request: NextRequest) {
         exchangeRateRefreshed,
         expiredSessionsRevoked,
         archivedProjects,
+        paymentActivations,
         scheduledReports,
         syncJobs,
       },
