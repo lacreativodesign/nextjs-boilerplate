@@ -1,0 +1,174 @@
+name: PR3 Canonical Invoice Patch Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr3-canonical-payment-success
+    paths:
+      - .github/workflows/pr3-manual-invoice-patch-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr3-canonical-payment-success
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Replace invoice mark-paid branches
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_block(path: str, admin: bool):
+              p = Path(path)
+              text = p.read_text()
+              import_line = "import { recordManualClientPayment } from '@/lib/finance/manualClientPayment';\n"
+              if import_line not in text:
+                  marker = "export const dynamic = 'force-dynamic';"
+                  text = text.replace(marker, import_line + "\n" + marker, 1)
+
+              start_marker = "    if (action === 'mark_paid') {"
+              end_marker = "    if (action === 'update_status') {"
+              start = text.index(start_marker)
+              end = text.index(end_marker, start)
+
+              deep_link = '/admin/finance/invoices' if admin else '/finance/invoices'
+              source = 'admin_manual_invoice_payment' if admin else 'finance_manual_invoice_payment'
+              extra = """
+        if (applied.newlyRecorded) {
+          try {
+            await dispatchWebhookEvent({
+              tenantId: scopedTenantId,
+              event: applied.status === 'paid' ? 'invoice.paid' : 'invoice.updated',
+              entityType: 'invoice',
+              entityId: id,
+              payload: {
+                invoiceId: id,
+                orderId,
+                status: applied.status,
+                totalPaid: applied.totalPaid,
+                balanceDue: applied.balanceDue,
+                action: 'mark_paid',
+              },
+              actor: {
+                uid: auth.user.uid,
+                email: auth.user.email || null,
+                role: auth.user.role || null,
+              },
+            });
+            await dispatchWebhookEvent({
+              tenantId: scopedTenantId,
+              event: 'payment.received',
+              entityType: 'payment',
+              entityId: paymentId || `manual_invoice_${id}`,
+              payload: {
+                invoiceId: id,
+                orderId,
+                status: 'succeeded',
+                amountPaid: applied.amountPaid,
+                totalPaid: applied.totalPaid,
+                balanceDue: applied.balanceDue,
+              },
+              actor: {
+                uid: auth.user.uid,
+                email: auth.user.email || null,
+                role: auth.user.role || null,
+              },
+            });
+          } catch (webhookError) {
+            console.error('canonical invoice payment webhook dispatch error:', webhookError);
+          }
+        }
+""" if admin else """
+        if (applied.newlyRecorded && applied.status === 'paid') {
+          await sendBizostoEventNotification({
+            type: 'invoice_paid',
+            tenantId: scopedTenantId,
+            invoiceNumber: orderId || id,
+            amountLabel: `${invoice.currency || 'USD'} ${applied.amountPaid.toFixed(2)}`,
+          }).catch((error) => {
+            console.error('slack invoice notification failed:', error);
+          });
+        }
+"""
+
+              block = f"""    if (action === 'mark_paid') {{
+      try {{
+        assertPermission(auth.user.role, Permission.MarkPaymentPaid);
+      }} catch {{
+        return NextResponse.json({{ ok: false, error: 'Forbidden' }}, {{ status: 403 }});
+      }}
+
+      const method = parseString(body?.method).trim();
+      const reason = parseString(body?.reason).trim();
+      if (!method || !reason) {{
+        return NextResponse.json(
+          {{
+            ok: false,
+            error: 'A payment method and reason are required to mark an invoice paid.',
+          }},
+          {{ status: 400 }},
+        );
+      }}
+
+      const scopedTenantId = String(invoice.tenantId || tenantId || '').trim();
+      const paymentId = parseString(body?.paymentId).trim() || null;
+      const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
+
+      try {{
+        const applied = await recordManualClientPayment({{
+          invoiceId: id,
+          tenantId: scopedTenantId,
+          paymentId,
+          method,
+          reason,
+          source: '{source}',
+          actor: {{ uid: auth.user.uid, name: actorName }},
+        }});
+{extra}
+        return NextResponse.json({{
+          ok: true,
+          invoiceStatus: applied.status,
+          amountPaid: applied.amountPaid,
+          totalPaid: applied.totalPaid,
+          balanceDue: applied.balanceDue,
+          projectId: applied.projectId,
+          newlyRecorded: applied.newlyRecorded,
+          deepLink: '{deep_link}',
+        }});
+      }} catch (error: any) {{
+        const message = String(error?.message || 'Unable to record payment.');
+        const status =
+          message.toLowerCase().includes('tenant mismatch') ||
+          message.toLowerCase().includes('bound to another invoice')
+            ? 403
+            : message.toLowerCase().includes('not found')
+              ? 404
+              : 400;
+        return NextResponse.json({{ ok: false, error: message }}, {{ status }});
+      }}
+    }}
+
+"""
+              text = text[:start] + block + text[end:]
+              p.write_text(text)
+
+          replace_block('app/api/finance/invoices/update/route.ts', False)
+          replace_block('app/api/admin/finance/invoices/update/route.ts', True)
+      - name: Format patched files
+        run: npx --yes prettier@3.9.4 --write app/api/finance/invoices/update/route.ts app/api/admin/finance/invoices/update/route.ts
+      - name: Commit patch and remove one-time workflow
+        run: |
+          rm .github/workflows/pr3-manual-invoice-patch-once.yml
+          git config user.name "lacreativodesign"
+          git config user.email "lacreativodesign@gmail.com"
+          git add -A
+          git commit -m "refactor(finance): canonicalize manual invoice payments"
+          git push origin HEAD:codex/tenant-safety-pr3-canonical-payment-success
