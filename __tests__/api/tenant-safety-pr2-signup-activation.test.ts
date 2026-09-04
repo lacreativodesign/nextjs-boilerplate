@@ -10,6 +10,7 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
   const webhook = read('app/api/stripe/webhook/route.ts');
   const settings = read('app/api/admin/settings/system/route.ts');
   const middleware = read('middleware.ts');
+  const activationBridge = read('app/billing/activating/page.tsx');
 
   it('keeps a newly provisioned tenant locked until signed Stripe activation', () => {
     expect(signup).toContain("subscriptionState: 'pending_checkout'");
@@ -54,6 +55,13 @@ describe('Tenant Safety PR2 — signup and activation invariants', () => {
     expect(checkout).not.toContain('body?.trialPeriodDays');
     expect(checkout).toContain('isInitialCheckout ? INITIAL_TRIAL_DAYS : undefined');
     expect(checkout).toContain('client_reference_id: tenantId');
+  });
+
+  it('does not depend on webhook/redirect ordering after initial Stripe checkout', () => {
+    expect(checkout).toContain("isInitialCheckout\n      ? `${appUrl}/billing/activating`");
+    expect(activationBridge).toContain("fetch('/api/subscription/status'");
+    expect(activationBridge).toContain("state === 'trial' || state === 'active'");
+    expect(activationBridge).toContain("router.replace('/onboarding?signup=success')");
   });
 
   it('reconciles the signed app checkout against the actual Stripe subscription before activation', () => {

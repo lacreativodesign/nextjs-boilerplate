@@ -231,7 +231,12 @@ export async function POST(req: Request) {
       new URL(req.url).origin ||
       'https://app.bizosto.com'
     ).replace(/\/$/, '');
-    const successUrl = resolveCheckoutUrl(body?.successUrl, `${appUrl}/billing?upgraded=1`, appUrl);
+    // Initial signup returns through an activation bridge instead of depending on webhook timing.
+    // The bridge polls the authenticated, server-owned subscription state and only enters
+    // onboarding after the signed Stripe webhook has moved pending_checkout to trial/active.
+    const successUrl = isInitialCheckout
+      ? `${appUrl}/billing/activating`
+      : resolveCheckoutUrl(body?.successUrl, `${appUrl}/billing?upgraded=1`, appUrl);
     const cancelUrl = resolveCheckoutUrl(body?.cancelUrl, `${appUrl}/billing`, appUrl);
     const stripe = getStripeClient();
     const priceId = getStripePriceId(planKey);
