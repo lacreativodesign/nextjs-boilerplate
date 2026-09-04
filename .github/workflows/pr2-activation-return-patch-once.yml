@@ -1,0 +1,55 @@
+name: PR2 Activation Return Patch Once
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr2-signup-activation
+    paths:
+      - .github/workflows/pr2-activation-return-patch-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/tenant-safety-pr2-signup-activation
+          fetch-depth: 0
+      - name: Make initial Stripe return wait for signed activation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          checkout = Path('app/api/stripe/checkout/route.ts')
+          src = checkout.read_text()
+          old = """    const successUrl = resolveCheckoutUrl(body?.successUrl, `${appUrl}/billing?upgraded=1`, appUrl);\n    const cancelUrl = resolveCheckoutUrl(body?.cancelUrl, `${appUrl}/billing`, appUrl);\n"""
+          new = """    // Initial signup returns through an activation bridge instead of depending on webhook timing.\n    // The bridge polls the authenticated, server-owned subscription state and only enters\n    // onboarding after the signed Stripe webhook has moved pending_checkout to trial/active.\n    const successUrl = isInitialCheckout\n      ? `${appUrl}/billing/activating`\n      : resolveCheckoutUrl(body?.successUrl, `${appUrl}/billing?upgraded=1`, appUrl);\n    const cancelUrl = resolveCheckoutUrl(body?.cancelUrl, `${appUrl}/billing`, appUrl);\n"""
+          if old not in src:
+              raise SystemExit('checkout return target not found')
+          checkout.write_text(src.replace(old, new, 1))
+
+          test = Path('__tests__/api/tenant-safety-pr2-signup-activation.test.ts')
+          src = test.read_text()
+          old = """  const middleware = read('middleware.ts');\n"""
+          new = """  const middleware = read('middleware.ts');\n  const activationBridge = read('app/billing/activating/page.tsx');\n"""
+          if old not in src:
+              raise SystemExit('test const target not found')
+          src = src.replace(old, new, 1)
+
+          marker = """  it('reconciles the signed app checkout against the actual Stripe subscription before activation', () => {\n"""
+          addition = """  it('does not depend on webhook/redirect ordering after initial Stripe checkout', () => {\n    expect(checkout).toContain("isInitialCheckout\\n      ? `${appUrl}/billing/activating`");\n    expect(activationBridge).toContain("fetch('/api/subscription/status'");\n    expect(activationBridge).toContain("state === 'trial' || state === 'active'");\n    expect(activationBridge).toContain("router.replace('/onboarding?signup=success')");\n  });\n\n"""
+          if marker not in src:
+              raise SystemExit('test insertion target not found')
+          test.write_text(src.replace(marker, addition + marker, 1))
+          PY
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/pr2-activation-return-patch-once.yml
+          git config user.name "lacreativodesign"
+          git config user.email "lacreativodesign@gmail.com"
+          git add app/api/stripe/checkout/route.ts __tests__/api/tenant-safety-pr2-signup-activation.test.ts .github/workflows/pr2-activation-return-patch-once.yml
+          git commit -m "fix(signup): wait for signed activation after Stripe return"
+          git push origin HEAD:codex/tenant-safety-pr2-signup-activation
