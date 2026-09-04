@@ -24,14 +24,15 @@ jobs:
         run: python3 .github/pr3_remaining.py
 
       - name: Format touched files
-        run: npx --yes prettier@3.9.4 --write app/api/finance/invoices/create/route.ts lib/finance/manualClientPayment.ts app/api/admin/projects/create/route.ts lib/finance/paymentSchedule.ts lib/firebaseAdmin.ts __tests__/integration/client-payment-engine.emulator.test.ts .github/workflows/test.yml
+        run: npx --yes prettier@3.9.4 --write app/api/finance/invoices/create/route.ts lib/finance/manualClientPayment.ts app/api/admin/projects/create/route.ts lib/finance/paymentSchedule.ts lib/firebaseAdmin.ts __tests__/integration/client-payment-engine.emulator.test.ts
 
-      - name: Commit and self-delete
+      - name: Commit application and test fixes
         run: |
+          git checkout -- .github/workflows/test.yml
           rm .github/pr3_remaining.py
-          rm .github/workflows/pr3-remaining-once.yml
           git config user.name lacreativodesign
           git config user.email lacreativodesign@gmail.com
           git add -A
+          git reset .github/workflows/pr3-remaining-once.yml
           git commit -m "fix(finance): complete audited payment safeguards"
           git push origin HEAD:codex/tenant-safety-pr3-canonical-payment-success
