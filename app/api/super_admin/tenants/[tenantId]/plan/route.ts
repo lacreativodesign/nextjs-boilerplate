@@ -10,8 +10,11 @@ import {
   resolvePlanModules,
   resolveTenantModules,
 } from '@/app/lib/plan-enforcement';
+import { PLAN_MODULES } from '@/app/config/plans';
+import { PURCHASABLE_PLAN_KEYS, type PurchasablePlanKey } from '@/lib/billing/plans';
 import { createRoleNotifications } from '@/lib/notifications';
 import {
+  BILLING_MODES,
   isComped,
   resolveBillingMode,
   validateCompedGrant,
@@ -19,6 +22,37 @@ import {
 } from '@/lib/billing/billing-mode';
 
 type ModuleMap = Record<string, boolean>;
+
+const VALID_MODULE_KEYS = new Set(Object.keys(PLAN_MODULES.starter));
+
+function parsePlan(value: unknown): PurchasablePlanKey | null {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  return (PURCHASABLE_PLAN_KEYS as readonly string[]).includes(normalized)
+    ? (normalized as PurchasablePlanKey)
+    : null;
+}
+
+function parseModuleOverrides(input: unknown):
+  | { ok: true; modules: ModuleMap }
+  | { ok: false; error: string } {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { ok: false, error: 'modules must be an object of module:boolean entries.' };
+  }
+
+  const modules: ModuleMap = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (!VALID_MODULE_KEYS.has(key)) {
+      return { ok: false, error: `Invalid module key: ${key}` };
+    }
+    if (typeof value !== 'boolean') {
+      return { ok: false, error: `Invalid module value for ${key}; expected boolean.` };
+    }
+    modules[key] = value;
+  }
+  return { ok: true, modules };
+}
 
 function diffModules(current: ModuleMap, next: ModuleMap) {
   const enabled: string[] = [];
@@ -71,15 +105,43 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
         { status: 403 },
       );
     }
-    if (isSelfTenant && billingModeProvided && resolveBillingMode(body?.billingMode) !== 'comped') {
-      return NextResponse.json(
-        { ok: false, error: 'Cannot move your own tenant onto Stripe billing.' },
-        { status: 403 },
-      );
+
+    if (billingModeProvided) {
+      const rawBillingMode = String(body?.billingMode || '')
+        .trim()
+        .toLowerCase();
+      if (!(BILLING_MODES as readonly string[]).includes(rawBillingMode)) {
+        return NextResponse.json(
+          { ok: false, error: `billingMode must be one of: ${BILLING_MODES.join(', ')}.` },
+          { status: 400 },
+        );
+      }
+      if (isSelfTenant && rawBillingMode !== 'comped') {
+        return NextResponse.json(
+          { ok: false, error: 'Cannot move your own tenant onto Stripe billing.' },
+          { status: 403 },
+        );
+      }
     }
 
     if (!planProvided && !modulesProvided && !billingModeProvided) {
       return NextResponse.json({ ok: false, error: 'No plan updates provided.' }, { status: 400 });
+    }
+
+    const requestedPlan = planProvided ? parsePlan(body?.plan) : null;
+    if (planProvided && !requestedPlan) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `plan must be one of: ${PURCHASABLE_PLAN_KEYS.join(', ')}. Trial is a subscription state, not a plan tier.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const parsedModules = modulesProvided ? parseModuleOverrides(body?.modules) : null;
+    if (parsedModules && !parsedModules.ok) {
+      return NextResponse.json({ ok: false, error: parsedModules.error }, { status: 400 });
     }
 
     const tenantRef = adminDb.collection('tenants').doc(tenantId);
@@ -96,10 +158,11 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
       legacyModulesEnabled: data.modulesEnabled,
     });
 
-    const nextPlan = planProvided ? normalizePlan(body?.plan) : currentPlan;
+    const nextPlan = requestedPlan || currentPlan;
+    const modulePatch = parsedModules?.ok ? parsedModules.modules : null;
     const nextModules = planProvided
-      ? resolvePlanModules(nextPlan, modulesProvided ? body?.modules : {})
-      : resolvePlanModules(currentPlan, modulesProvided ? body?.modules : currentModules);
+      ? resolvePlanModules(nextPlan, modulePatch || {})
+      : resolvePlanModules(currentPlan, modulePatch ? { ...currentModules, ...modulePatch } : currentModules);
 
     const updates: Record<string, unknown> = {
       plan: nextPlan,
@@ -170,12 +233,18 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     // converge on the 30s TTL.
     invalidateTenantPlanCache(tenantId);
 
+    const actionType = planProvided
+      ? 'tenant_plan_updated'
+      : modulesProvided
+        ? 'tenant_modules_override_updated'
+        : 'tenant_billing_mode_updated';
+
     await writeAuditLog({
       tenantId,
       actorUserId: user.uid,
       actorName: user.displayName || user.email || null,
       actorRole: user.role,
-      actionType: planProvided ? 'tenant_plan_updated' : 'tenant_modules_override_updated',
+      actionType,
       entityType: 'tenant',
       entityId: tenantId,
       metadata: {
