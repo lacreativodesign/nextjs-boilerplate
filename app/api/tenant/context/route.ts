@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUserOrThrow, getTenantIdForRequestOrThrow } from '@/lib/tenant/server';
 import { getTenantPlanState } from '@/app/lib/plan-enforcement';
 import { deriveSubscriptionState } from '@/lib/subscription';
+import { resolveTenantRoles } from '@/lib/tenant/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,8 +62,12 @@ export async function GET(req: NextRequest) {
             brand: tenant.brand || null,
             whiteLabel: tenant.whiteLabel || null,
             modulesEnabled: tenant.modulesEnabled || {},
-            rolesEnabled: tenant.rolesEnabled || {},
-            plan: planState?.plan || 'pro',
+            // Server and UI must see one role policy. A partial stored map is normalized
+            // here with the same fail-closed semantics used by user-creation routes.
+            rolesEnabled: resolveTenantRoles(tenant.rolesEnabled),
+            // getTenantPlanState already normalizes malformed/missing plans to Starter;
+            // keep the defensive fallback least-privilege too.
+            plan: planState?.plan || 'starter',
             modules: planState?.modules || {},
             subscriptionState,
             isTrial: String((tenant as any).subscriptionState || '').toLowerCase() === 'trial',
