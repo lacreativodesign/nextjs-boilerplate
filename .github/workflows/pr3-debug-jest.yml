@@ -1,0 +1,48 @@
+name: PR3 Jest Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/tenant-safety-pr3-canonical-payment-success
+    paths:
+      - .github/workflows/pr3-debug-jest.yml
+
+permissions:
+  contents: read
+
+jobs:
+  jest-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest and capture output
+        id: jest
+        shell: bash
+        run: |
+          set +e
+          npm test -- --runInBand --coverage=false 2>&1 | tee pr3-jest.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload Jest diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr3-jest-diagnostic
+          path: pr3-jest.log
+          retention-days: 1
+
+      - name: Reflect Jest result
+        if: steps.jest.outputs.exit_code != '0'
+        run: exit 1
