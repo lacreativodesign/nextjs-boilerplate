@@ -172,6 +172,13 @@ export async function POST(req: Request) {
         createdUid = null;
         throw provisionError;
       }
+
+      // Provisioning is complete and both planes agree. The steps that follow — the
+      // password-setup token, the email, the notifications — must not be able to undo
+      // it: the outer catch deletes the Auth identity, and deleting it after the
+      // Firestore write has landed would leave a users document that consumes a plan
+      // seat and belongs to nobody who can sign in.
+      createdUid = null;
     } finally {
       await releaseStaffSeat(seat);
     }

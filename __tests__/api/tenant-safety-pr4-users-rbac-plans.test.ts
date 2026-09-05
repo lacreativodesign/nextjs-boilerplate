@@ -326,4 +326,16 @@ describe('PR4 certification — provisioning failures never strand an identity',
       /adminAuth\.deleteUser\((authUser|userRecord)\.uid\)\.catch\(\(\) => \{\}\)/,
     );
   });
+
+  it('does not roll back an HR identity once both planes have committed', () => {
+    // The password-setup token, the email and the notifications all run after the
+    // identity is fully provisioned and can all throw. The outer catch deletes the Auth
+    // user, so leaving createdUid set there would strand a users document that consumes
+    // a plan seat and belongs to nobody who can sign in.
+    const src = read(HR_CREATE);
+    const provisioned = src.indexOf('createdUid = null;', src.indexOf('throw provisionError;'));
+    const tokenCall = src.indexOf('await createPasswordSetupToken(');
+    expect(provisioned).toBeGreaterThan(-1);
+    expect(tokenCall).toBeGreaterThan(provisioned);
+  });
 });
