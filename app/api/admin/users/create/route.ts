@@ -9,7 +9,7 @@ import { adminCreateUserProfileSchema } from '@/lib/validations/user-admin';
 import { validateRequest } from '@/lib/validations/validate';
 import { checkRateLimit } from '@/lib/security';
 import { logEvent } from '@/lib/audit';
-import { isRoleEnabled } from '@/lib/tenant/access';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { sendEmail } from '@/lib/email/email-service';
 import { getUsersByRoles } from '@/lib/notifications';
 import { eligibleManagerRolesFor } from '@/lib/hierarchy';
@@ -104,8 +104,10 @@ export async function POST(req: Request) {
     const passwordToUse = String(password || '').trim() || crypto.randomBytes(16).toString('hex');
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const tenantData = tenantDoc.data() || {};
-    const rolesEnabled = (tenantData.rolesEnabled || {}) as Record<string, boolean>;
+    if (!tenantDoc.exists) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+    const rolesEnabled = resolveTenantRoles(tenantDoc.data()?.rolesEnabled);
     if (!isRoleEnabled(rolesEnabled, targetRole)) {
       return NextResponse.json(
         { error: 'This role is not enabled for your workspace. Contact your administrator.' },
@@ -187,6 +189,7 @@ export async function POST(req: Request) {
         commission: commission ?? null,
         joiningDate: joiningDate || null,
         status: status || 'active',
+        isActive: status !== 'disabled',
         cnic: cnic || '',
         dob: dob || null,
         createdAt: new Date().toISOString(),
