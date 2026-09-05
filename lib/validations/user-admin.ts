@@ -65,17 +65,14 @@ export const adminCreateUserProfileSchema = z
   .passthrough();
 
 /**
- * SOC2 F-06: the admin user-update payload.
+ * SOC2 F-06: the tenant-admin user-update payload.
  *
  * `role` was the gap that mattered. The route lowercased whatever string arrived and
  * wrote it to `users/{uid}.role`, with no check against the canonical role list. The
- * surrounding guards are sound — role changes require ManageRoles, only a super_admin
- * may touch or grant super_admin, and the tenant is checked — but none of them
- * establishes that the value is a role the system recognises. `getCurrentUserOrThrow`
- * fails closed only on an EMPTY role, so a user carrying `role: 'wizard'` would still
- * authenticate, match no permission check, and land in a state no screen can recover.
- * The role field is the single most important field on a user document and it was the
- * least constrained.
+ * surrounding guards establish ManageRoles and tenant ownership, but they must not
+ * turn a tenant-scoped route into a platform-role provisioning surface. `super_admin`
+ * is therefore rejected here even when the actor is a platform Super Admin; promotion
+ * to that platform role belongs exclusively to `/api/super_admin/users/[uid]`.
  *
  * `status` and the numeric fields are bounded to match `adminCreateUserProfileSchema`.
  * Before this, commission was capped at 100 on create and unbounded on update, so the
@@ -90,9 +87,14 @@ export const adminUpdateUserSchema = z
     uid: z.string().trim().min(1, 'uid is required').max(128),
     name: z.string().trim().min(1, 'Name is required').max(120),
     email: z.string().trim().email().max(320).optional(),
-    // The role select is populated from INTERNAL_ROLE_OPTIONS, a strict subset of
-    // ERP_ROLES, so constraining to ERP_ROLES cannot reject anything the UI sends.
-    role: z.enum(ERP_ROLES).optional(),
+    // INTERNAL_ROLE_OPTIONS excludes the platform-only super_admin role. The API
+    // enforces the same boundary so a crafted request cannot bypass the UI.
+    role: z
+      .enum(ERP_ROLES)
+      .refine((role) => role !== 'super_admin', {
+        message: 'super_admin must be managed through the platform administration surface',
+      })
+      .optional(),
     department: z.string().trim().max(64).optional(),
     managerId: z.string().trim().max(128).optional(),
     phone: z.string().trim().max(40).optional(),
