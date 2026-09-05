@@ -6,6 +6,8 @@ const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'ut
 
 const INVITE_ROUTE = 'app/api/users/invite/route.ts';
 const USER_SERVICE = 'lib/users/user-service.ts';
+const LEGACY_CREATE = 'app/api/create-user/route.ts';
+const SSO_OAUTH = 'lib/auth/sso-oauth.ts';
 const LEGACY_UPDATE = 'app/api/admin/users/[uid]/update/route.ts';
 const ADMIN_UPDATE = 'app/api/admin/users/update/route.ts';
 const HR_UPDATE = 'app/api/hr/employees/update/route.ts';
@@ -74,6 +76,36 @@ describe('PR4 invitation authorization and provisioning', () => {
   });
 });
 
+describe('PR4 alternate provisioning surfaces inherit the same tenant policy', () => {
+  const legacyCreate = read(LEGACY_CREATE);
+  const ssoOauth = read(SSO_OAUTH);
+
+  it('hardens the legacy tenant create-user endpoint instead of allowing platform role minting', () => {
+    expect(legacyCreate).toContain('validateRequest(createUserSchema');
+    expect(legacyCreate).toContain('initialPasswordSchema.parse');
+    expect(legacyCreate).toContain("targetRole === 'super_admin'");
+    expect(legacyCreate).toContain('resolveTenantRoles(tenantDoc.data()?.rolesEnabled)');
+    expect(legacyCreate).toContain('await syncUserClaims({');
+    expect(legacyCreate).toContain('await adminAuth.deleteUser(userRecord.uid).catch(() => {});');
+  });
+
+  it('forces SSO auto-provisioning through role enablement, seat limits, and Auth claims', () => {
+    const roleCheck = ssoOauth.indexOf('resolveTenantRoles(tenantSnap.data()?.rolesEnabled)');
+    const seatCheck = ssoOauth.indexOf('await checkUserLimit(tenantId, targetRole)');
+    const createAuth = ssoOauth.indexOf('await adminAuth.createUser({', seatCheck);
+    const claimSync = ssoOauth.indexOf('await syncUserClaims({', createAuth);
+    const userWrite = ssoOauth.indexOf("adminDb.collection('users').doc(userRecord.uid).set", claimSync);
+
+    expect(roleCheck).toBeGreaterThan(-1);
+    expect(seatCheck).toBeGreaterThan(roleCheck);
+    expect(createAuth).toBeGreaterThan(seatCheck);
+    expect(claimSync).toBeGreaterThan(createAuth);
+    expect(userWrite).toBeGreaterThan(claimSync);
+    expect(ssoOauth).toContain('tenantId,\n      endSessions: false');
+    expect(ssoOauth).toContain('await adminAuth.deleteUser(userRecord.uid).catch(() => {});');
+  });
+});
+
 describe('PR4 user lifecycle uses one authorization and identity path', () => {
   const legacyUpdate = read(LEGACY_UPDATE);
   const adminUpdate = read(ADMIN_UPDATE);
@@ -101,6 +133,21 @@ describe('PR4 user lifecycle uses one authorization and identity path', () => {
     expect(hrUpdate).toContain('resolveTenantRoles(tenantSnap.data()?.rolesEnabled)');
     expect(hrUpdate).toContain('await syncUserClaims({');
     expect(hrUpdate).toContain('endSessions: true');
+  });
+
+  it('keeps profile editing separate from account disable/reactivation', () => {
+    expect(adminUpdate).toContain('Account status cannot be changed from the profile update endpoint.');
+    expect(hrUpdate).toContain('Account status cannot be changed from the employee profile.');
+    expect(adminUpdate).not.toContain('syncFirebaseUserAccessState');
+    expect(hrUpdate).not.toContain('syncFirebaseUserAccessState');
+  });
+
+  it('keeps reporting-manager relationships tenant-local even for Super Admin', () => {
+    expect(adminUpdate).toContain(
+      "const tenantMatch = String(managerData.tenantId || '') === targetTenantId;",
+    );
+    expect(adminUpdate).toContain('managerTenantId !== targetTenantId');
+    expect(adminUpdate).not.toContain('const tenantMatch = isSuperAdminRequester');
   });
 
   it('terminates an HR identity in Firebase as well as Firestore', () => {
