@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
+import { syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
 
 export const runtime = 'nodejs';
 
@@ -30,12 +31,23 @@ export async function POST(req: Request) {
     await adminDb.collection('users').doc(uid).set(
       {
         status: 'terminated',
+        isActive: false,
         isDeleted: true,
         updatedAt: serverTimestamp(),
         deletedAt: serverTimestamp(),
       },
       { merge: true },
     );
+
+    // Firestore-backed API guards are only one enforcement plane. Disable the Firebase
+    // identity and revoke live sessions too, otherwise an already-authenticated client
+    // can continue presenting valid credentials to direct Firebase services.
+    await syncFirebaseUserAccessState({
+      uid,
+      status: 'terminated',
+      isActive: false,
+      isDeleted: true,
+    });
 
     await createHrEvent({
       type: 'hr.employee_terminated',
