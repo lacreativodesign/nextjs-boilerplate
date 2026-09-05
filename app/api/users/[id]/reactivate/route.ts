@@ -1,20 +1,11 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
-import { getCurrentUser } from '@/app/api/admin/_utils';
+import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
 import { logEvent } from '@/lib/audit';
-import { assertPermission, Permission } from '@/app/lib/permissions';
+import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
 export const dynamic = 'force-dynamic';
-
-function canManageUsers(role: string): boolean {
-  try {
-    assertPermission(role, Permission.ManageUsers);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -23,7 +14,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!canManageUsers(me.role)) {
+    // Restoring login access is an IAM action, not a profile edit. HR may maintain
+    // employee records through ManageUsers, but only Admin/Super Admin may reactivate.
+    const requesterRole = String(me.role || '').toLowerCase();
+    if (!isAdminRole(requesterRole)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -35,6 +29,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const userData = userDoc.data() || {};
     if (userData.tenantId !== me.tenantId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const targetRole = String(userData.role || '').toLowerCase();
+    if (requesterRole !== 'super_admin' && targetRole === 'super_admin') {
+      return NextResponse.json(
+        { error: 'Only a Super Admin can reactivate a Super Admin account.' },
+        { status: 403 },
+      );
+    }
+
+    // Inactive identities do not consume staff seats. Reactivating one does, so enforce
+    // the current (or stricter pending-downgrade) ceiling before enabling Auth.
+    const seatCheck = await checkUserLimit(String(me.tenantId || ''), targetRole);
+    if (!seatCheck.ok) {
+      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
     }
 
     await UserService.reactivateUser(params.id);
