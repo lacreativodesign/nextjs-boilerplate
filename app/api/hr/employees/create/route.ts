@@ -5,7 +5,7 @@ import { requireHrAccess } from '../../_utils';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
-import { isRoleEnabled } from '@/lib/tenant/access';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     }
 
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-    const rolesEnabled = (tenantSnap.data()?.rolesEnabled || {}) as Record<string, boolean>;
+    const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
     if (!isRoleEnabled(rolesEnabled, role)) {
       return NextResponse.json(
         {
