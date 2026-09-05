@@ -5,6 +5,10 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { sendEmail } from '@/lib/email/email-service';
 import { checkUserLimit } from '@/lib/billing/user-limit';
+import { ERP_ROLES } from '@/lib/erpAccess';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
+import { syncUserClaims } from '@/lib/auth/sync-user-claims';
+import { syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
 import type {
   ActivityType,
   UserActivity,
@@ -24,6 +28,26 @@ export class UserService {
     invitedByEmail: string;
   }): Promise<string> {
     const normalizedEmail = params.email.toLowerCase();
+    const normalizedRole = String(params.role || '').trim().toLowerCase();
+
+    if (!(ERP_ROLES as readonly string[]).includes(normalizedRole) || normalizedRole === 'super_admin') {
+      throw new Error('Invalid invitation role');
+    }
+
+    const tenantSnap = await adminDb.collection('tenants').doc(params.tenantId).get();
+    if (!tenantSnap.exists) {
+      throw new Error('Tenant not found');
+    }
+
+    const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+    if (!isRoleEnabled(rolesEnabled, normalizedRole)) {
+      throw new Error('This role is not enabled for the workspace');
+    }
+
+    const seatCheck = await checkUserLimit(params.tenantId, normalizedRole);
+    if (!seatCheck.ok) {
+      throw new Error('This workspace has reached its plan limit for team members');
+    }
 
     const existingUser = await this.getUserByEmail(normalizedEmail, params.tenantId);
     if (existingUser) {
@@ -73,7 +97,7 @@ export class UserService {
     const invitation: Omit<UserInvitation, 'id'> = {
       tenantId: params.tenantId,
       email: normalizedEmail,
-      role: params.role,
+      role: normalizedRole,
       teamIds: params.teamIds,
       invitedBy: params.invitedBy,
       invitedByEmail: params.invitedByEmail,
@@ -137,13 +161,34 @@ export class UserService {
       throw new Error('Invitation has expired');
     }
 
+    const invitationRole = String(invitation.role || '').trim().toLowerCase();
+    if (
+      !(ERP_ROLES as readonly string[]).includes(invitationRole) ||
+      invitationRole === 'super_admin'
+    ) {
+      throw new Error('Invitation role is no longer valid');
+    }
+
+    const tenantSnap = await adminDb.collection('tenants').doc(invitation.tenantId).get();
+    if (!tenantSnap.exists) {
+      throw new Error('Invitation tenant no longer exists');
+    }
+
+    // Re-check role enablement at acceptance. A role may have been disabled after the
+    // invitation was issued; a stale token must not resurrect a role the tenant has
+    // explicitly turned off.
+    const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+    if (!isRoleEnabled(rolesEnabled, invitationRole)) {
+      throw new Error('This role is no longer enabled for the workspace');
+    }
+
     // S9: re-check the plan seat limit at ACCEPTANCE, not only at invite time.
     // The invite-time check is a point-in-time snapshot: seats can be consumed after an
     // invitation is issued (other invitations accepted, or the tenant downgraded), and
     // acceptance previously performed no check at all, so a tenant could be pushed past
     // its plan limit. Counting this invitation itself would double-count the seat it
     // already reserves, so it is excluded from the comparison.
-    const seatCheck = await checkUserLimit(invitation.tenantId, invitation.role);
+    const seatCheck = await checkUserLimit(invitation.tenantId, invitationRole);
     if (!seatCheck.ok && seatCheck.used > seatCheck.limit) {
       throw new Error(
         'This workspace has reached its plan limit for team members. Ask an administrator to upgrade the plan before accepting this invitation.',
@@ -158,11 +203,23 @@ export class UserService {
     });
 
     try {
+      // Firestore security rules read Firebase custom claims. Creating only the user
+      // document leaves invited users with an identity in one enforcement plane and no
+      // tenant/role in the other. Stamp both claims before the invitation becomes
+      // accepted so the account is never observable in a half-provisioned state.
+      await syncUserClaims({
+        uid: userRecord.uid,
+        role: invitationRole,
+        tenantId: invitation.tenantId,
+        endSessions: false,
+      });
+
       const userDoc = {
         email: invitation.email,
         name: params.name,
-        role: invitation.role,
+        role: invitationRole,
         tenantId: invitation.tenantId,
+        status: 'active',
         isActive: true,
         mfaEnabled: false,
         createdAt: Timestamp.now(),
@@ -173,7 +230,7 @@ export class UserService {
         tenantId: invitation.tenantId,
         email: invitation.email,
         name: params.name,
-        role: invitation.role,
+        role: invitationRole,
         teamIds: invitation.teamIds || [],
         preferences: {
           emailNotifications: true,
@@ -333,9 +390,16 @@ export class UserService {
   }
 
   static async deactivateUser(userId: string): Promise<void> {
-    await adminAuth.updateUser(userId, { disabled: true });
+    // Disable Auth first. If the Firestore write fails afterwards the account is still
+    // fail-closed, never left active in Firebase with an inactive application record.
+    await syncFirebaseUserAccessState({
+      uid: userId,
+      status: 'inactive',
+      isActive: false,
+    });
 
     await adminDb.collection('users').doc(userId).update({
+      status: 'inactive',
       isActive: false,
       deactivatedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -343,12 +407,22 @@ export class UserService {
   }
 
   static async reactivateUser(userId: string): Promise<void> {
-    await adminAuth.updateUser(userId, { disabled: false });
-
+    // Bring the application record back first while Firebase Auth is still disabled.
+    // If enabling Auth fails the user remains locked out rather than receiving partial
+    // access through the direct Firebase plane.
     await adminDb.collection('users').doc(userId).update({
+      status: 'active',
       isActive: true,
+      isDeleted: admin.firestore.FieldValue.delete(),
       deactivatedAt: admin.firestore.FieldValue.delete(),
       updatedAt: Timestamp.now(),
+    });
+
+    await syncFirebaseUserAccessState({
+      uid: userId,
+      status: 'active',
+      isActive: true,
+      isDeleted: false,
     });
   }
 
