@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { getCurrentUser } from '@/app/api/admin/_utils';
 import { isSupportedLocale } from '@/lib/i18n/config';
+import { assertPermission, Permission } from '@/app/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,14 +12,13 @@ const payloadSchema = z.object({
   locale: z.string().trim().min(2).max(10),
 });
 
-function canManageUsers(role: string) {
-  const normalized = normalizeRole(role);
-  return (
-    normalized === 'admin' ||
-    normalized === 'super_admin' ||
-    normalized === 'owner' ||
-    normalized === 'manager'
-  );
+function canManageUsers(role: string): boolean {
+  try {
+    assertPermission(role, Permission.ManageUsers);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
