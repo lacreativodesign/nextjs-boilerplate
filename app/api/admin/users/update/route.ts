@@ -7,6 +7,9 @@ import { eligibleManagerRolesFor } from '@/lib/hierarchy';
 import { validateRequest } from '@/lib/validations/validate';
 import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
+import { syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
+import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
 export const runtime = 'nodejs';
 
@@ -67,6 +70,7 @@ export async function POST(req: Request) {
       .trim()
       .toLowerCase();
     const existingDepartment = String(existing?.department || '').trim();
+    const existingStatus = String(existing?.status || 'active').trim().toLowerCase();
 
     const email = requestedEmail || existingEmail;
     const role = (requestedRole || existingRole || '').toLowerCase();
@@ -103,6 +107,31 @@ export async function POST(req: Request) {
         { ok: false, error: 'Admins/HR cannot modify or assign super_admin role.' },
         { status: 403 },
       );
+    }
+
+    const targetTenantId = String(existing.tenantId || current.tenantId || '').trim();
+
+    if (requestedRole && role !== existingRole && role !== 'super_admin') {
+      const tenantSnap = await adminDb.collection('tenants').doc(targetTenantId).get();
+      if (!tenantSnap.exists) {
+        return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+      }
+
+      const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+      if (!isRoleEnabled(rolesEnabled, role)) {
+        return NextResponse.json(
+          { ok: false, error: 'This role is not enabled for the workspace.' },
+          { status: 400 },
+        );
+      }
+
+      // Moving a client-portal identity into a staff role consumes a billable seat.
+      if (existingRole === 'client' && role !== 'client') {
+        const seatCheck = await checkUserLimit(targetTenantId, role);
+        if (!seatCheck.ok) {
+          return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
+        }
+      }
     }
 
     // if admin changes email -> update Auth email too
@@ -171,7 +200,6 @@ export async function POST(req: Request) {
           : '';
         if (!managerCheckSnap.exists || !eligibleForNewRole.includes(managerRole)) {
           // Old manager is no longer valid for new role — reset to tenant admin
-          const targetTenantId = String(existing.tenantId || '');
           const adminSnap = await adminDb
             .collection('users')
             .where('tenantId', '==', targetTenantId)
@@ -183,6 +211,9 @@ export async function POST(req: Request) {
       }
     }
 
+    const nextStatus = normalizeString(body?.status, existingStatus || 'active').toLowerCase();
+    const nextIsActive = nextStatus === 'active' && existing.isDeleted !== true;
+
     const updateData = {
       // core
       name,
@@ -191,7 +222,8 @@ export async function POST(req: Request) {
       cnic: normalizeString(body?.cnic, existing?.cnic),
       dob: normalizeDate(body?.dob, existing?.dob),
 
-      status: normalizeString(body?.status || existing?.status || 'active').toLowerCase(),
+      status: nextStatus,
+      isActive: nextIsActive,
       role,
       managerId,
       department,
@@ -217,7 +249,29 @@ export async function POST(req: Request) {
         newValue: value,
       }));
 
+    const accessStatusChanged = nextStatus !== existingStatus;
+
+    // For a disable, close Firebase Auth first so a failed Firestore write still leaves
+    // the account fail-closed. Reactivation is done in the opposite order below.
+    if (accessStatusChanged && nextStatus === 'disabled') {
+      await syncFirebaseUserAccessState({
+        uid,
+        status: nextStatus,
+        isActive: false,
+        isDeleted: existing.isDeleted,
+      });
+    }
+
     await adminDb.collection('users').doc(uid).update(updateData);
+
+    if (accessStatusChanged && nextStatus === 'active' && existing.isDeleted !== true) {
+      await syncFirebaseUserAccessState({
+        uid,
+        status: nextStatus,
+        isActive: true,
+        isDeleted: false,
+      });
+    }
 
     if (changes.length) {
       try {
@@ -249,7 +303,7 @@ export async function POST(req: Request) {
       await syncUserClaims({
         uid,
         role,
-        tenantId: String(existing.tenantId || current.tenantId || ''),
+        tenantId: targetTenantId,
         endSessions: true,
       });
 
