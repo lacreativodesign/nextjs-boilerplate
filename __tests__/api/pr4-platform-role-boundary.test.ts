@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createUserSchema, platformCreateUserSchema } from '@/lib/validations/user';
+import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 import { INTERNAL_ROLE_OPTIONS, USER_ROLE_VALUES } from '@/lib/userOptions';
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -9,6 +10,12 @@ const baseUser = {
   email: 'operator@example.com',
   displayName: 'Platform Operator',
   tenantId: 'tenant-a',
+};
+
+const baseUpdate = {
+  uid: 'user-1',
+  name: 'Tenant User',
+  department: 'admin',
 };
 
 describe('PR4 platform-role provisioning boundary', () => {
@@ -22,6 +29,13 @@ describe('PR4 platform-role provisioning boundary', () => {
       /platform administration surface/i,
     );
     expect(createUserSchema.parse({ ...baseUser, role: 'admin' }).role).toBe('admin');
+  });
+
+  it('rejects super_admin promotion through the tenant-admin update schema', () => {
+    expect(() => adminUpdateUserSchema.parse({ ...baseUpdate, role: 'super_admin' })).toThrow(
+      /platform administration surface/i,
+    );
+    expect(adminUpdateUserSchema.parse({ ...baseUpdate, role: 'admin' }).role).toBe('admin');
   });
 
   it('allows super_admin only through the explicit platform creation schema', () => {
