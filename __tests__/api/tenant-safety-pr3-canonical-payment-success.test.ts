@@ -101,11 +101,13 @@ describe('Tenant Safety PR3 — canonical client payment success', () => {
     expect(stripeHelpers).toContain('expectedAmountCents');
   });
 
-  it('reconciles both public and client-portal Connect events with tenant/account and amount binding', () => {
+  it('reconciles both public and client-portal Connect events with tenant/account, amount and installment binding', () => {
     expect(connectWebhook).toContain("new Set(['client_payment_page', 'client_portal'])");
     expect(connectWebhook).toContain('findTenantByAccountId(accountId)');
-    expect(connectWebhook).toContain('tenantDoc.id !== tenantId');
-    expect(connectWebhook).toContain('expectedAmountCents !== amountReceivedCents');
+    expect(connectWebhook).toContain('tenantDoc.id !== metadataTenantId');
+    expect(connectWebhook).toContain('expectedAmountMinor !== amountReceivedMinor');
+    expect(connectWebhook).toContain('installmentSequence !== schedule.installmentSequence');
     expect(connectWebhook).toContain('recordSuccessfulClientPayment');
+    expect(connectWebhook).toContain('recordUnappliedClientPayment');
   });
 });
