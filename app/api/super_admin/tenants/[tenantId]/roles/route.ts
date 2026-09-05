@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { requireSuperAdmin } from '../../../_utils';
+import { resolveTenantRoles } from '@/lib/tenant/access';
 
 export const runtime = 'nodejs';
 
@@ -53,9 +54,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { tenantId: 
       return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
     }
 
+    // PATCH means patch. Start from the tenant's normalized current policy so a caller
+    // changing one role cannot accidentally erase every unmentioned role. The stored
+    // result is always a complete canonical map, which also means downstream role
+    // checks never have to guess what an omitted key meant.
+    const currentRoles = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+    const nextRoles = {
+      ...currentRoles,
+      ...(rolesEnabled as Record<string, boolean>),
+    };
+
     await tenantRef.set(
       {
-        rolesEnabled,
+        rolesEnabled: nextRoles,
         updatedAt: now,
       },
       { merge: true },
@@ -67,10 +78,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { tenantId: 
       actionType: 'roles_updated',
       entityType: 'tenant_roles',
       entityId: tenantId,
-      metadata: { rolesEnabled },
+      metadata: { previousRolesEnabled: currentRoles, rolesEnabled: nextRoles },
     });
 
-    return NextResponse.json({ ok: true, rolesEnabled });
+    return NextResponse.json({ ok: true, rolesEnabled: nextRoles });
   } catch (error: any) {
     const message = error?.message || 'Server error';
     const status = message === 'Forbidden' ? 403 : 500;
