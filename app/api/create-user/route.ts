@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import { ERP_ROLES } from '@/lib/erpAccess';
-import { isRoleEnabled } from '@/lib/tenant/access';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
 export async function POST(req: Request) {
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     }
     if (targetRole !== 'super_admin') {
       const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-      const rolesEnabled = (tenantDoc.data()?.rolesEnabled || {}) as Record<string, boolean>;
+      const rolesEnabled = resolveTenantRoles(tenantDoc.data()?.rolesEnabled);
       if (!isRoleEnabled(rolesEnabled, targetRole)) {
         return NextResponse.json(
           { error: 'This role is not enabled for your workspace.' },
