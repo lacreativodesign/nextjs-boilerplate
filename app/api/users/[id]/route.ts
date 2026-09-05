@@ -3,8 +3,9 @@ import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
-import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { getCurrentUser } from '@/app/api/admin/_utils';
 import { logEvent } from '@/lib/audit';
+import { assertPermission, Permission } from '@/app/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,14 +41,13 @@ const updateSchema = z.object({
   github: z.string().url().optional().nullable(),
 });
 
-function canManageUsers(role: string) {
-  const normalized = normalizeRole(role);
-  return (
-    normalized === 'admin' ||
-    normalized === 'super_admin' ||
-    normalized === 'owner' ||
-    normalized === 'manager'
-  );
+function canManageUsers(role: string): boolean {
+  try {
+    assertPermission(role, Permission.ManageUsers);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
