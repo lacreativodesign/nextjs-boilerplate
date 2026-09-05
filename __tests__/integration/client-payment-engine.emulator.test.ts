@@ -1,3 +1,15 @@
+/**
+ * @jest-environment node
+ */
+
+// This suite drives the real Firestore emulator through the Firebase Admin SDK, whose
+// transport is gRPC (`google-gax` -> `@grpc/grpc-js`). That transport calls the Node-only
+// global `setImmediate` while resolving the emulator address. The project-wide
+// `testEnvironment: 'jest-fixed-jsdom'` does not define `setImmediate`, so every Firestore
+// round trip threw `ReferenceError: setImmediate is not defined` before any assertion ran.
+// Server-side payment code never executes in a browser realm, so the Node environment is
+// both the correct and the production-faithful runtime for these invariants.
+
 import { adminDb } from '@/lib/firebaseAdmin';
 import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActivation';
 
