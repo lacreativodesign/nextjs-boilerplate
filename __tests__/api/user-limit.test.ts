@@ -34,7 +34,12 @@ import {
 async function addUsers(
   tenantId: string,
   count: number,
-  opts: { role?: string; status?: string } = {},
+  opts: {
+    role?: string;
+    status?: string;
+    isActive?: boolean;
+    isDeleted?: boolean;
+  } = {},
 ) {
   for (let i = 0; i < count; i += 1) {
     const id = `${tenantId}_u_${opts.role || 'sales'}_${opts.status || 'active'}_${i}`;
@@ -46,6 +51,8 @@ async function addUsers(
         tenantId,
         role: opts.role || 'sales',
         status: opts.status || 'active',
+        ...(opts.isActive !== undefined ? { isActive: opts.isActive } : {}),
+        ...(opts.isDeleted !== undefined ? { isDeleted: opts.isDeleted } : {}),
       });
   }
 }
@@ -105,6 +112,31 @@ describe('checkUserLimit', () => {
     const check = await checkUserLimit('t_starter', 'sales');
     expect(check.ok).toBe(true);
     expect(check.used).toBe(3);
+  });
+
+  it.each(['inactive', 'terminated', 'suspended', 'deactivated'])(
+    'does not count %s users toward the seat limit',
+    async (status) => {
+      await addUsers('t_starter', 10, { role: 'sales', status });
+      await addUsers('t_starter', 2, { role: 'sales', status: 'active' });
+      const check = await checkUserLimit('t_starter', 'sales');
+      expect(check.ok).toBe(true);
+      expect(check.used).toBe(2);
+    },
+  );
+
+  it('does not count a user explicitly marked isActive=false', async () => {
+    await addUsers('t_starter', 10, { role: 'sales', status: 'active', isActive: false });
+    const check = await checkUserLimit('t_starter', 'sales');
+    expect(check.ok).toBe(true);
+    expect(check.used).toBe(0);
+  });
+
+  it('does not count a soft-deleted user even if its status field is stale', async () => {
+    await addUsers('t_starter', 10, { role: 'sales', status: 'active', isDeleted: true });
+    const check = await checkUserLimit('t_starter', 'sales');
+    expect(check.ok).toBe(true);
+    expect(check.used).toBe(0);
   });
 
   it('produces an upgrade-guidance body with the plan_limit_exceeded code', async () => {
