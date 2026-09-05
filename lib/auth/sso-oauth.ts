@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { checkUserLimit } from '@/lib/billing/user-limit';
+import { syncUserClaims } from '@/lib/auth/sync-user-claims';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 
 export type SsoProvider = 'google' | 'microsoft' | 'okta' | 'auth0';
 
@@ -386,27 +389,62 @@ async function upsertUserSsoMapping(params: {
 }
 
 async function autoProvisionUser(tenantId: string, identity: SsoIdentity) {
+  const targetRole = 'sales';
+  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+  if (!tenantSnap.exists) {
+    throw new Error('Tenant not found.');
+  }
+
+  const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+  if (!isRoleEnabled(rolesEnabled, targetRole)) {
+    throw new Error('Automatic SSO provisioning is unavailable because the sales role is disabled.');
+  }
+
+  const seatCheck = await checkUserLimit(tenantId, targetRole);
+  if (!seatCheck.ok) {
+    throw new Error('This workspace has reached its plan limit for team members.');
+  }
+
   const userRecord = await adminAuth.createUser({
     email: identity.email,
     displayName: identity.displayName,
     emailVerified: true,
   });
 
-  await adminDb.collection('users').doc(userRecord.uid).set(
-    {
-      email: identity.email,
-      name: identity.displayName,
-      role: 'sales',
-      status: 'active',
+  try {
+    // SSO must provision through the same two enforcement planes as every other staff
+    // creation path. Without role + tenant claims, the account exists in Firestore but
+    // cannot be trusted by Firestore rules or middleware.
+    await syncUserClaims({
+      uid: userRecord.uid,
+      role: targetRole,
       tenantId,
-      authProvider: 'sso',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
+      endSessions: false,
+    });
 
-  return userRecord.uid;
+    await adminDb.collection('users').doc(userRecord.uid).set(
+      {
+        uid: userRecord.uid,
+        email: identity.email,
+        name: identity.displayName,
+        displayName: identity.displayName,
+        role: targetRole,
+        status: 'active',
+        isActive: true,
+        isDeleted: false,
+        tenantId,
+        authProvider: 'sso',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true },
+    );
+
+    return userRecord.uid;
+  } catch (error) {
+    await adminAuth.deleteUser(userRecord.uid).catch(() => {});
+    throw error;
+  }
 }
 
 async function resolveOrProvisionUser(
