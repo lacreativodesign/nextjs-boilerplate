@@ -140,6 +140,10 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
     class: 'audit',
     reason: 'Append-only money ledger — the financial source of truth.',
   },
+  unapplied_client_payments: {
+    class: 'audit',
+    reason: 'Captured Stripe client payments awaiting Finance reconciliation.',
+  },
   auditLogs: { class: 'audit', reason: 'Privileged-action audit trail.' },
   audit_trail: { class: 'audit', reason: 'Secondary audit trail.' },
   admin_activity: { class: 'audit', reason: 'Admin action log (forensic).' },

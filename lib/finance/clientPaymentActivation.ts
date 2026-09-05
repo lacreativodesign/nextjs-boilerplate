@@ -9,6 +9,7 @@ import {
   computeBalanceDue,
   computeInvoiceStatus,
   normalizeInvoiceStatus,
+  normalizePaymentStatus,
 } from '@/lib/finance/status';
 import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
 import { resolveAmountTotal, resolveTotalPaid } from '@/lib/finance/paymentSchedule';
@@ -24,6 +25,7 @@ type SuccessfulClientPaymentInput = {
   method: string;
   source: string;
   actor: PaymentActor;
+  reason?: string;
   platformFee?: number;
   stripePaymentIntentId?: string | null;
 };
@@ -122,10 +124,10 @@ async function releaseOperationalActivationLease(params: {
 /**
  * Canonical client-payment mutation.
  *
- * Every successful client payment source (Stripe synchronous confirmation, Stripe webhook
- * backstop, and future payment providers) must come through this service. The payment,
- * invoice balance and append-only finance ledger land atomically. Operational side effects
- * are reconciled afterwards and are independently idempotent.
+ * Every successful client payment source (Stripe synchronous confirmation, Stripe webhook,
+ * authorized offline/manual confirmation, and future payment providers) must come through
+ * this service. The payment, invoice balance and append-only finance ledger land atomically.
+ * Operational side effects are reconciled afterwards and are independently idempotent.
  */
 export async function recordSuccessfulClientPayment(
   input: SuccessfulClientPaymentInput,
@@ -173,29 +175,51 @@ export async function recordSuccessfulClientPayment(
     const dealId = String(invoice.dealId || '');
     const orderId = String(invoice.orderId || invoiceId);
 
+    const existingPayment = paymentSnap.exists ? paymentSnap.data() || {} : {};
+    const previousPaymentStatus = paymentSnap.exists
+      ? normalizePaymentStatus(existingPayment.status)
+      : 'pending';
+
     if (paymentSnap.exists) {
-      const existing = paymentSnap.data() || {};
       if (
-        String(existing.invoiceId || '') !== invoiceId ||
-        String(existing.tenantId || '') !== tenantId
+        String(existingPayment.invoiceId || '') !== invoiceId ||
+        String(existingPayment.tenantId || '') !== tenantId
       ) {
         throw new Error('Payment id is already bound to another invoice.');
       }
 
-      return {
-        newlyRecorded: false,
-        invoiceId,
-        tenantId,
-        clientId,
-        dealId,
-        orderId,
-        previousStatus: currentStatus,
-        status: currentStatus,
-        amountTotal,
-        amountPaid: Number(existing.amountUsd || amount),
-        totalPaid: currentPaid,
-        balanceDue: currentBalance,
-      };
+      const existingCurrency = String(existingPayment.currency || invoiceCurrency)
+        .trim()
+        .toUpperCase();
+      if (existingCurrency !== invoiceCurrency) {
+        throw new Error('Existing payment currency does not match invoice currency.');
+      }
+
+      const existingAmount = money(Number(existingPayment.amountUsd || amount));
+      if (existingAmount <= 0 || Math.abs(existingAmount - amount) > 0.01) {
+        throw new Error('Existing payment amount does not match the successful payment amount.');
+      }
+
+      if (previousPaymentStatus === 'refunded') {
+        throw new Error('Refunded payments cannot be marked successful again.');
+      }
+
+      if (previousPaymentStatus === 'succeeded') {
+        return {
+          newlyRecorded: false,
+          invoiceId,
+          tenantId,
+          clientId,
+          dealId,
+          orderId,
+          previousStatus: currentStatus,
+          status: currentStatus,
+          amountTotal,
+          amountPaid: existingAmount,
+          totalPaid: currentPaid,
+          balanceDue: currentBalance,
+        };
+      }
     }
 
     if (currentStatus === 'void') throw new Error('Void invoices cannot accept payments.');
@@ -213,29 +237,38 @@ export async function recordSuccessfulClientPayment(
       totalAmount: amountTotal,
     });
     const nowIso = new Date().toISOString();
+    const platformFeeUsd =
+      input.platformFee === undefined
+        ? money(Number(existingPayment.platformFeeUsd || 0))
+        : money(Number(input.platformFee || 0));
+    const stripePaymentIntentId =
+      input.stripePaymentIntentId || String(existingPayment.stripePaymentIntentId || '') || null;
 
-    tx.set(
-      paymentRef,
-      {
-        tenantId,
-        clientId: clientId || null,
-        invoiceId,
-        dealId: dealId || null,
-        orderId,
-        amountUsd: amount,
-        platformFeeUsd: money(Number(input.platformFee || 0)),
-        currency: invoiceCurrency,
-        status: 'succeeded',
-        method: input.method,
-        source: input.source,
-        stripePaymentIntentId: input.stripePaymentIntentId || null,
-        paidAt: nowIso,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        isDeleted: false,
-      },
-      { merge: false },
-    );
+    const paymentPayload = {
+      tenantId,
+      clientId: clientId || null,
+      invoiceId,
+      dealId: dealId || null,
+      orderId,
+      amountUsd: amount,
+      platformFeeUsd,
+      currency: invoiceCurrency,
+      status: 'succeeded',
+      method: input.method,
+      source: input.source,
+      reason: input.reason || existingPayment.reason || null,
+      stripePaymentIntentId,
+      paidAt: nowIso,
+      createdAt: existingPayment.createdAt || nowIso,
+      updatedAt: nowIso,
+      isDeleted: false,
+    };
+
+    if (paymentSnap.exists) {
+      tx.set(paymentRef, paymentPayload, { merge: true });
+    } else {
+      tx.set(paymentRef, paymentPayload, { merge: false });
+    }
 
     tx.update(invoiceRef, {
       status: nextStatus,
@@ -245,7 +278,7 @@ export async function recordSuccessfulClientPayment(
       firstPaymentAt: currentPaid <= 0 ? nowIso : invoice.firstPaymentAt || null,
       paidAt: nextStatus === 'paid' ? nowIso : invoice.paidAt || null,
       paymentMethod: input.method,
-      stripePaymentIntentId: input.stripePaymentIntentId || invoice.stripePaymentIntentId || null,
+      stripePaymentIntentId: stripePaymentIntentId || invoice.stripePaymentIntentId || null,
       paymentIds: admin.firestore.FieldValue.arrayUnion(paymentId),
       updatedAt: nowIso,
     });
@@ -260,9 +293,10 @@ export async function recordSuccessfulClientPayment(
         orderId,
         clientId,
         amountUsd: amount,
-        previousStatus: currentStatus,
+        previousStatus: previousPaymentStatus,
         newStatus: 'succeeded',
         method: input.method,
+        reason: input.reason || 'Successful client payment recorded.',
         actor: input.actor,
       }),
     );
@@ -279,7 +313,7 @@ export async function recordSuccessfulClientPayment(
         previousStatus: currentStatus,
         newStatus: nextStatus,
         method: input.method,
-        reason: 'Successful client payment applied to invoice balance.',
+        reason: input.reason || 'Successful client payment applied to invoice balance.',
         actor: input.actor,
       }),
     );
@@ -454,6 +488,8 @@ export async function recordSuccessfulClientPayment(
         amountPaid: result.amountPaid,
         totalPaid: result.totalPaid,
         balanceDue: result.balanceDue,
+        source: input.source,
+        reason: input.reason || null,
       },
     }).catch((error) => console.error('client payment audit event error:', error));
   }

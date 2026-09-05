@@ -275,14 +275,16 @@ export async function POST(req: Request) {
     }
 
     const clientName = parseString(client.companyName || client.name).trim();
-    const totalPaid = parseNumber(body?.totalPaid, 0);
-    if (totalPaid < 0 || totalPaid > totalInCurrency) {
+    const requestedTotalPaid = parseNumber(body?.totalPaid, 0);
+    if (requestedTotalPaid !== 0 || statusInput === 'paid' || statusInput === 'partially_paid') {
       throw new AppError({
-        message: 'Total paid must be between 0 and the invoice total.',
+        message:
+          'Invoice creation cannot record successful payment. Create the invoice unpaid, then reconcile payment through Finance.',
         code: 'VALIDATION_ERROR',
         status: 400,
       });
     }
+    const totalPaid = 0;
     const status = computeInvoiceStatus({
       currentStatus: statusInput,
       totalPaid,

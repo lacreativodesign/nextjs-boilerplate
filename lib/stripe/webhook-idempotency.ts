@@ -1,48 +1,71 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 
 /**
- * Transactional webhook idempotency (audit P1).
+ * Transactional webhook idempotency.
  *
- * The previous pattern was read-then-write: get(eventId) → if exists return →
- * ...process... → set(eventId). Two concurrent deliveries of the SAME Stripe
- * event both read "not exists" and both process — a race that can double-apply
- * money movement or billing state.
- *
- * This helper claims the event atomically. Firestore's create() fails if the
- * document already exists, so exactly one caller wins the claim; any concurrent
- * or later delivery of the same event id loses and is treated as a duplicate.
- *
- * Lifecycle:
- *   1. claimWebhookEvent(id, type) — atomic. Returns 'claimed' | 'duplicate'.
- *   2. On success:  finalizeWebhookEvent(id, type)  — marks status 'processed'.
- *   3. On failure:  releaseWebhookEvent(id)         — deletes the claim so the
- *                   next Stripe retry can re-process (return non-2xx as well).
+ * Claims are leases rather than permanent "processing" tombstones. A worker that dies
+ * after claiming an event must not suppress Stripe retries forever; once the lease is
+ * stale, exactly one later delivery may reclaim it transactionally.
  */
 
 const COLLECTION = 'processed_webhook_events';
+const CLAIM_STALE_MS = 10 * 60 * 1000;
 
 export type WebhookClaim = 'claimed' | 'duplicate';
 
+function toMillis(value: unknown): number {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export async function claimWebhookEvent(eventId: string, type: string): Promise<WebhookClaim> {
   const ref = adminDb.collection(COLLECTION).doc(eventId);
-  try {
-    await ref.create({
-      eventId,
-      type,
-      status: 'processing',
-      claimedAt: new Date().toISOString(),
-    });
-    return 'claimed';
-  } catch (err: unknown) {
-    // ALREADY_EXISTS (gRPC code 6) means another delivery already claimed it.
-    const code = (err as { code?: number | string })?.code;
-    if (code === 6 || code === 'already-exists') {
+
+  return adminDb.runTransaction<WebhookClaim>(async (tx) => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    const nowIso = new Date(now).toISOString();
+
+    if (!snap.exists) {
+      tx.create(ref, {
+        eventId,
+        type,
+        status: 'processing',
+        claimedAt: nowIso,
+        claimAttempts: 1,
+      });
+      return 'claimed';
+    }
+
+    const data = snap.data() || {};
+    if (String(data.status || '') === 'processed') {
       return 'duplicate';
     }
-    // Any other error is a real failure — surface it so the route returns 500
-    // and Stripe retries rather than silently dropping the event.
-    throw err;
-  }
+
+    const claimedAtMs = toMillis(data.claimedAt);
+    if (claimedAtMs > 0 && now - claimedAtMs < CLAIM_STALE_MS) {
+      return 'duplicate';
+    }
+
+    tx.set(
+      ref,
+      {
+        eventId,
+        type,
+        status: 'processing',
+        claimedAt: nowIso,
+        reclaimedAt: nowIso,
+        claimAttempts: Math.max(1, Number(data.claimAttempts || 1)) + 1,
+      },
+      { merge: true },
+    );
+    return 'claimed';
+  });
 }
 
 export async function finalizeWebhookEvent(eventId: string, type: string): Promise<void> {
@@ -61,9 +84,8 @@ export async function releaseWebhookEvent(eventId: string): Promise<void> {
   try {
     await adminDb.collection(COLLECTION).doc(eventId).delete();
   } catch (err) {
-    // Best-effort: if the release fails, the claim doc lingers as 'processing'.
-    // Stripe will retry; the lingering doc simply means that specific retry is
-    // treated as a duplicate. Logged so it is visible, never thrown.
+    // Best-effort. A failed delete no longer suppresses retries permanently because stale
+    // processing claims can be reclaimed by claimWebhookEvent().
     console.error('[WEBHOOK] Failed to release event claim', eventId, err);
   }
 }

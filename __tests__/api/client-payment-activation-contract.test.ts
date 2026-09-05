@@ -65,7 +65,7 @@ describe('payment-gated commercial activation contract', () => {
 
   it('Connect payments bind the signed event account to the server-owned tenant', () => {
     expect(connectWebhook).toContain('findTenantByAccountId(accountId)');
-    expect(connectWebhook).toContain('tenantDoc.id !== tenantId');
+    expect(connectWebhook).toContain('tenantDoc.id !== metadataTenantId');
     expect(connectWebhook).toContain('Connect payment tenant/account mismatch');
   });
 

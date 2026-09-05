@@ -40,6 +40,13 @@ jest.mock('@/lib/tenant', () => ({
 jest.mock('@/lib/finance/invoiceActions', () => ({
   maybeAutoCreateProjectFromInvoice: jest.fn(async () => undefined),
 }));
+jest.mock('@/lib/finance/manualClientPayment', () => ({
+  recordManualClientPayment: jest.fn(),
+}));
+
+const manualPaymentMock = jest.requireMock('@/lib/finance/manualClientPayment') as {
+  recordManualClientPayment: jest.Mock;
+};
 
 const URL = 'https://app.local/api/finance/invoices/update';
 
@@ -68,25 +75,45 @@ const clearLedger = async () => {
 
 describe('finance invoice ledger + paid immutability (P0-4)', () => {
   beforeEach(async () => {
+    manualPaymentMock.recordManualClientPayment.mockReset();
+    manualPaymentMock.recordManualClientPayment.mockImplementation(
+      async ({ invoiceId }: { invoiceId: string }) => {
+        if (invoiceId === 'inv_paid') throw new Error('Invoice is already paid.');
+        return {
+          paymentId: `manual_invoice_${invoiceId}_1`,
+          newlyRecorded: true,
+          invoiceId,
+          tenantId: 'tenant_a',
+          status: 'paid',
+          previousStatus: 'issued',
+          amountTotal: 500,
+          amountPaid: 500,
+          totalPaid: 500,
+          balanceDue: 0,
+          projectId: 'project_a',
+        };
+      },
+    );
+
     await clearLedger();
     await seedInvoice('inv_sent', { status: 'sent' });
     await seedInvoice('inv_paid', { status: 'paid', totalPaid: 500 });
   });
 
-  it('rejects mark_paid without a method and reason, writing no ledger entry', async () => {
+  it('rejects mark_paid without a method and reason before the canonical adapter', async () => {
     const { POST } = await import('@/app/api/finance/invoices/update/route');
     const res = await POST(jsonRequest(URL, { id: 'inv_sent', action: 'mark_paid' }));
     expect(res.status).toBe(400);
-    expect(await ledgerEntries()).toHaveLength(0);
+    expect(manualPaymentMock.recordManualClientPayment).not.toHaveBeenCalled();
 
     const partial = await POST(
       jsonRequest(URL, { id: 'inv_sent', action: 'mark_paid', method: 'cash' }),
     );
     expect(partial.status).toBe(400);
-    expect(await ledgerEntries()).toHaveLength(0);
+    expect(manualPaymentMock.recordManualClientPayment).not.toHaveBeenCalled();
   });
 
-  it('mark_paid with method and reason pays the invoice and writes invoice.mark_paid ledger', async () => {
+  it('mark_paid delegates method, reason and invoice identity to the canonical payment adapter', async () => {
     const { POST } = await import('@/app/api/finance/invoices/update/route');
     const res = await POST(
       jsonRequest(URL, {
@@ -97,23 +124,24 @@ describe('finance invoice ledger + paid immutability (P0-4)', () => {
       }),
     );
     expect(res.status).toBe(200);
+    expect(manualPaymentMock.recordManualClientPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoiceId: 'inv_sent',
+        tenantId: 'tenant_a',
+        method: 'bank transfer',
+        reason: 'Client paid offline via wire',
+        source: 'finance_manual_invoice_payment',
+        actor: expect.objectContaining({ uid: 'fin_a' }),
+      }),
+    );
 
-    const invoice = (await db.collection('invoices').doc('inv_sent').get()).data() as any;
-    expect(invoice.status).toBe('paid');
-    expect(invoice.totalPaid).toBe(500);
-    expect(invoice.balanceDue).toBe(0);
-
-    const entries = await ledgerEntries();
-    expect(entries).toHaveLength(1);
-    expect(entries[0].type).toBe('invoice.mark_paid');
-    expect(entries[0].method).toBe('bank transfer');
-    expect(entries[0].reason).toBe('Client paid offline via wire');
-    expect(entries[0].amountUsd).toBe(500);
-    expect(entries[0].tenantId).toBe('tenant_a');
-    expect(entries[0].actorUid).toBe('fin_a');
+    // The route itself no longer mutates money or writes an invoice.mark_paid ledger entry.
+    // Those writes belong to recordSuccessfulClientPayment and are covered by the canonical
+    // payment money-path contract tests.
+    expect(await ledgerEntries()).toHaveLength(0);
   });
 
-  it('rejects mark_paid on an already-paid invoice', async () => {
+  it('surfaces canonical rejection when an already-paid invoice is submitted again', async () => {
     const { POST } = await import('@/app/api/finance/invoices/update/route');
     const res = await POST(
       jsonRequest(URL, { id: 'inv_paid', action: 'mark_paid', method: 'cash', reason: 'dup' }),

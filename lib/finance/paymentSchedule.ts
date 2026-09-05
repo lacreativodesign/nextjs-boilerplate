@@ -1,3 +1,9 @@
+import {
+  amountToMinorUnits,
+  minorUnitsToAmount,
+  roundCurrencyAmount,
+} from '@/lib/finance/minorUnits';
+
 export type PaymentPlan = 'full' | 'fifty_fifty';
 export type BalanceTriggerType = 'date' | 'milestone';
 
@@ -23,8 +29,10 @@ export type InvoicePaymentSchedule = {
   secondInstallmentAmount: number;
 };
 
-function roundMoney(value: number) {
-  return Number((Number.isFinite(value) ? value : 0).toFixed(2));
+function invoiceCurrency(invoice: Record<string, unknown>) {
+  return String(invoice.currency || 'USD')
+    .trim()
+    .toUpperCase();
 }
 
 export function normalizePaymentPlan(value: unknown): PaymentPlan {
@@ -36,39 +44,55 @@ export function normalizePaymentPlan(value: unknown): PaymentPlan {
 
 export function resolveAmountTotal(invoice: Record<string, unknown>): number {
   const value = Number(
-    invoice.amountTotalUsd ??
-      invoice.amountTotal ??
+    invoice.amountTotal ??
       invoice.totalAmount ??
       invoice.amount ??
+      invoice.amountSubtotal ??
+      invoice.amountTotalUsd ??
       invoice.amountSubtotalUsd ??
       0,
   );
-  return roundMoney(Math.max(0, Number.isFinite(value) ? value : 0));
+  return roundCurrencyAmount(
+    Math.max(0, Number.isFinite(value) ? value : 0),
+    invoiceCurrency(invoice),
+  );
 }
 
 export function resolveTotalPaid(invoice: Record<string, unknown>): number {
   const value = Number(invoice.totalPaid ?? invoice.paidAmount ?? 0);
-  return roundMoney(Math.max(0, Number.isFinite(value) ? value : 0));
+  return roundCurrencyAmount(
+    Math.max(0, Number.isFinite(value) ? value : 0),
+    invoiceCurrency(invoice),
+  );
 }
 
 export function resolveInvoicePaymentSchedule(
   invoice: Record<string, unknown>,
 ): InvoicePaymentSchedule {
+  const currency = invoiceCurrency(invoice);
   const paymentPlan = normalizePaymentPlan(invoice.paymentPlan);
   const amountTotal = resolveAmountTotal(invoice);
   const totalPaid = Math.min(amountTotal, resolveTotalPaid(invoice));
-  const balanceDue = roundMoney(Math.max(0, amountTotal - totalPaid));
+  const balanceDue = roundCurrencyAmount(Math.max(0, amountTotal - totalPaid), currency);
 
-  const configuredFirst = Number(invoice.firstInstallmentAmountUsd ?? 0);
+  const configuredFirst = Number(
+    invoice.firstInstallmentAmount ?? invoice.firstInstallmentAmountUsd ?? 0,
+  );
+  const defaultFirstInstallment = minorUnitsToAmount(
+    Math.ceil(amountToMinorUnits(amountTotal, currency) / 2),
+    currency,
+  );
   const firstInstallmentAmount =
     paymentPlan === 'fifty_fifty'
-      ? roundMoney(
-          configuredFirst > 0
-            ? Math.min(configuredFirst, amountTotal)
-            : Math.ceil(amountTotal * 50) / 100,
+      ? roundCurrencyAmount(
+          configuredFirst > 0 ? Math.min(configuredFirst, amountTotal) : defaultFirstInstallment,
+          currency,
         )
       : amountTotal;
-  const secondInstallmentAmount = roundMoney(Math.max(0, amountTotal - firstInstallmentAmount));
+  const secondInstallmentAmount = roundCurrencyAmount(
+    Math.max(0, amountTotal - firstInstallmentAmount),
+    currency,
+  );
 
   let payableNow = balanceDue;
   let installmentSequence = totalPaid > 0 ? 2 : 1;
@@ -83,7 +107,7 @@ export function resolveInvoicePaymentSchedule(
     amountTotal,
     totalPaid,
     balanceDue,
-    payableNow: roundMoney(payableNow),
+    payableNow: roundCurrencyAmount(payableNow, currency),
     installmentSequence,
     firstInstallmentAmount,
     secondInstallmentAmount,

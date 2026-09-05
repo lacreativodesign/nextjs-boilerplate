@@ -1,26 +1,13 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import {
-  createFinanceEvent,
-  parseString,
-  queueFinanceEmail,
-  requireFinance,
-  serverTimestamp,
-} from '../../_utils';
+import { createFinanceEvent, parseString, requireFinance, serverTimestamp } from '../../_utils';
 import { createNotification, getUserIdsByRoles } from '@/lib/notifications';
 import { logEvent } from '@/lib/audit';
 import { getClientIp } from '@/lib/security';
 import { assertPermission, Permission } from '../../../../lib/permissions';
 import { docTenantId, normalizeTenantId } from '@/lib/tenant';
-import {
-  computeBalanceDue,
-  computeInvoiceStatus,
-  normalizeInvoiceStatus,
-  normalizePaymentStatus,
-} from '@/lib/finance/status';
-import { maybeAutoCreateProjectFromInvoice } from '@/lib/finance/invoiceActions';
 import { normalizeRole } from '../../../admin/_utils';
-import { buildFinanceLedgerEntry } from '@/lib/finance/ledger';
+import { recordManualClientPayment } from '@/lib/finance/manualClientPayment';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,8 +32,7 @@ export async function POST(req: Request) {
     }
 
     const payment = snap.data() || {};
-    const invoiceId = String(payment.invoiceId || '');
-    const clientId = String(payment.clientId || '');
+    const invoiceId = String(payment.invoiceId || '').trim();
     const clientName = String(payment.clientName || '');
     const actorName = auth.user.name || auth.user.fullName || auth.user.displayName || '';
     const isSuperAdmin = normalizeRole(auth.user.role || '') === 'super_admin';
@@ -63,201 +49,55 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
 
-      let invoiceStatusBefore = '';
-      let invoiceStatusAfter = '';
-      let invoiceSnapshotData: Record<string, any> | null = null;
-      let invoiceTenantId: string | null = null;
-      let paymentAlreadySucceeded = false;
-
-      try {
-        await adminDb.runTransaction(async (tx) => {
-          const paymentSnap = await tx.get(ref);
-          if (!paymentSnap.exists) {
-            throw new Error('Payment not found.');
-          }
-
-          const paymentData = paymentSnap.data() || {};
-          const currentPaymentStatus = normalizePaymentStatus(paymentData.status);
-          if (currentPaymentStatus === 'succeeded') {
-            paymentAlreadySucceeded = true;
-            return;
-          }
-
-          tx.update(ref, {
-            status: 'succeeded',
-            paidAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-
-          // Ledger entry lands atomically with the payment mutation.
-          tx.set(
-            adminDb.collection('finance_ledger').doc(),
-            buildFinanceLedgerEntry({
-              tenantId: String(paymentData.tenantId || tenantId || ''),
-              type: 'payment.succeeded',
-              paymentId: id,
-              invoiceId,
-              clientId,
-              amountUsd: Number(paymentData.amountUsd || 0),
-              previousStatus: currentPaymentStatus,
-              newStatus: 'succeeded',
-              method: String(paymentData.method || ''),
-              actor: { uid: auth.user.uid, name: actorName },
-            }),
-          );
-
-          if (!invoiceId) {
-            return;
-          }
-
-          const invoiceRef = adminDb.collection('invoices').doc(invoiceId);
-          const invoiceSnap = await tx.get(invoiceRef);
-          if (!invoiceSnap.exists) {
-            return;
-          }
-
-          const invoice = invoiceSnap.data() || {};
-          const invoiceStatus = normalizeInvoiceStatus(invoice.status);
-          invoiceStatusBefore = invoiceStatus;
-          invoiceTenantId = String(invoice.tenantId || auth.user.tenantId || '');
-          if (!isSuperAdmin && docTenantId(invoice) !== tenantId) {
-            throw new Error('Forbidden');
-          }
-          if (invoiceStatus === 'void') {
-            throw new Error('Void invoices cannot accept payments.');
-          }
-
-          const amountTotal = Number(invoice.amountTotalUsd || 0);
-          const existingPaid = Number(invoice.totalPaid || 0);
-          const paymentAmount = Number(paymentData.amountUsd || 0);
-          const nextPaid = existingPaid + paymentAmount;
-          const nextStatus = computeInvoiceStatus({
-            currentStatus: invoice.status,
-            totalPaid: nextPaid,
-            totalAmount: amountTotal,
-          });
-          const balanceDue = computeBalanceDue(amountTotal, nextPaid);
-
-          invoiceStatusAfter = nextStatus;
-          invoiceSnapshotData = { ...invoice, totalPaid: nextPaid, balanceDue, status: nextStatus };
-
-          tx.set(
-            invoiceRef,
-            {
-              totalPaid: nextPaid,
-              balanceDue,
-              status: nextStatus,
-              paidAt: nextStatus === 'paid' ? serverTimestamp() : invoice.paidAt || null,
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true },
-          );
-        });
-      } catch (updateError: any) {
-        console.error('finance/payments update transaction error:', updateError);
-        const message = String(updateError?.message || '');
-        if (message.toLowerCase().includes('forbidden')) {
-          return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
-        }
+      if (!invoiceId) {
         return NextResponse.json(
-          { ok: false, error: 'Unable to update payment.' },
-          { status: 500 },
+          {
+            ok: false,
+            error: 'Client payments must be linked to an invoice before they can be recorded.',
+          },
+          { status: 409 },
         );
       }
 
-      if (
-        !paymentAlreadySucceeded &&
-        invoiceId &&
-        invoiceStatusAfter === 'paid' &&
-        invoiceStatusBefore !== 'paid' &&
-        invoiceSnapshotData
-      ) {
-        try {
-          await maybeAutoCreateProjectFromInvoice({
-            invoiceId,
-            invoiceData: invoiceSnapshotData,
-            tenantId: invoiceTenantId,
-            actor: { uid: auth.user.uid, name: actorName },
-          });
-        } catch (autoCreateError) {
-          console.error('project auto-create error:', autoCreateError);
-        }
-      }
-
-      if (paymentAlreadySucceeded) {
-        return NextResponse.json({ ok: true });
-      }
-
-      const financeIds = await getUserIdsByRoles(['finance', 'admin', 'super_admin'], tenantId);
-      await Promise.all(
-        financeIds.map((uid) =>
-          createNotification({
-            toUserId: uid,
-            title: 'Payment marked paid',
-            body: `Payment ${id} marked paid for ${clientName || 'client'}.`,
-            type: 'success',
-            entityType: 'payment',
-            entityId: id,
-            deepLink: '/finance/payments',
-            createdBy: { uid: auth.user.uid, name: actorName },
-            roleTarget: 'finance',
-            tenantId: auth.user.tenantId || null,
-          }),
-        ),
-      );
-
-      await createFinanceEvent({
-        type: 'finance.payment_paid',
-        title: 'Payment marked paid',
-        description: `Payment ${id} marked paid for ${clientName || 'client'}.`,
-        entityType: 'payment',
-        entityId: id,
-        createdByUid: auth.user.uid,
-        createdByName: actorName,
-        tenantId: auth.user.tenantId,
-      });
+      const scopedTenantId = String(payment.tenantId || tenantId || '').trim();
+      const method =
+        parseString(body?.method).trim() || String(payment.method || '').trim() || 'manual';
+      const reason =
+        parseString(body?.reason).trim() ||
+        `Existing payment ${id} manually confirmed as received by Finance.`;
 
       try {
-        await logEvent({
-          type: 'finance.payment_paid',
-          title: 'Payment marked paid',
-          description: `Payment ${id} marked paid for ${clientName || 'client'}.`,
-          entityType: 'payment',
-          entityId: id,
+        const applied = await recordManualClientPayment({
+          invoiceId,
+          tenantId: scopedTenantId,
+          paymentId: id,
+          method,
+          reason,
+          source: 'finance_manual_payment_confirmation',
           actor: { uid: auth.user.uid, name: actorName },
-          metadata: {
-            ip: getClientIp(req),
-            userAgent: req.headers.get('user-agent') || '',
-          },
-          audit: {
-            action: 'update',
-            resource: 'payment',
-            resourceId: id,
-            changes: [
-              { field: 'status', oldValue: payment.status || null, newValue: 'succeeded' },
-              { field: 'paidAt', oldValue: payment.paidAt || null, newValue: 'serverTimestamp' },
-            ],
-          },
         });
-      } catch (auditError) {
-        console.error('audit log error:', auditError);
-      }
 
-      const clientSnap = clientId ? await adminDb.collection('clients').doc(clientId).get() : null;
-      const email = clientSnap?.exists ? String(clientSnap.data()?.primaryContactEmail || '') : '';
-      if (email) {
-        queueFinanceEmail({
-          to: email,
-          template: 'payment_received',
-          subject: 'Payment received',
-          data: { paymentId: id, invoiceId },
-          tenantId: auth.user.tenantId,
-        }).catch((error) => {
-          console.error('payment email queue error:', error);
+        return NextResponse.json({
+          ok: true,
+          paymentId: id,
+          invoiceId,
+          invoiceStatus: applied.status,
+          totalPaid: applied.totalPaid,
+          balanceDue: applied.balanceDue,
+          projectId: applied.projectId,
+          newlyRecorded: applied.newlyRecorded,
         });
+      } catch (error: any) {
+        const message = String(error?.message || 'Unable to record payment.');
+        const status =
+          message.toLowerCase().includes('tenant mismatch') ||
+          message.toLowerCase().includes('bound to another invoice')
+            ? 403
+            : message.toLowerCase().includes('not found')
+              ? 404
+              : 400;
+        return NextResponse.json({ ok: false, error: message }, { status });
       }
-
-      return NextResponse.json({ ok: true });
     }
 
     if (action === 'update_notes') {
@@ -298,6 +138,7 @@ export async function POST(req: Request) {
 
       try {
         await logEvent({
+          tenantId: auth.user.tenantId,
           type: 'finance.payment_note',
           title: 'Payment note updated',
           description: `Payment ${id} note updated for ${clientName || 'client'}.`,

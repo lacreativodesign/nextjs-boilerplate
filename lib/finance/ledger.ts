@@ -25,10 +25,12 @@ export type FinanceLedgerType =
   | 'invoice_void'
   | 'invoice.mark_paid'
   | 'invoice.payment_applied'
+  | 'invoice.refund_applied'
   | 'payment.created'
   | 'payment.succeeded'
   | 'payment.failed'
   | 'payment.refunded'
+  | 'payment.unapplied'
   | 'refund.created'
   | 'credit_note.created'
   | 'adjustment.created';

@@ -137,7 +137,6 @@ Notes:
 - `orders`
 - `otp_rate_limits`
 - `outlookTracking`
-- `payment_intents`
 - `payment_refunds`
 - `paymentRequests`
 - `payments`
@@ -206,6 +205,7 @@ Notes:
 - `throttle_exceptions`
 - `ticket_counter`
 - `time_entries`
+- `unapplied_client_payments`
 - `user_activity`
 - `user_invitations`
 - `user_profiles`

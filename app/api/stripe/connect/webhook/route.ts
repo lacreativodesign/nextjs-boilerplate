@@ -9,9 +9,14 @@ import {
 } from '@/lib/stripe/webhook-idempotency';
 import { getStripeClient } from '@/lib/payments/stripe';
 import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActivation';
+import { recordUnappliedClientPayment } from '@/lib/finance/unappliedClientPayment';
+import { resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
+import { amountToMinorUnits, minorUnitsToAmount } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const CLIENT_PAYMENT_SOURCES = new Set(['client_payment_page', 'client_portal']);
 
 function getConnectWebhookSecret(): string {
   const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
@@ -28,15 +33,35 @@ async function findTenantByAccountId(accountId: string) {
     .limit(1)
     .get();
 
-  if (query.empty) {
-    return null;
-  }
-
+  if (query.empty) return null;
   return query.docs[0];
 }
 
 function eventAccountId(event: Stripe.Event): string {
   return typeof event.account === 'string' ? event.account.trim() : '';
+}
+
+function isPermanentPaymentReconciliationError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return [
+    'missing its account id',
+    'tenant/account mismatch',
+    'server-issued amount',
+    'expected amount metadata',
+    'expected currency metadata',
+    'currency does not match',
+    'invoice not found',
+    'invoice tenant mismatch',
+    'installment sequence',
+    'payment id is already bound',
+    'existing payment currency',
+    'existing payment amount',
+    'refunded payments',
+    'void invoices',
+    'invoice is already paid',
+    'exceeds the outstanding invoice balance',
+  ].some((fragment) => message.includes(fragment));
 }
 
 export async function POST(req: Request) {
@@ -115,36 +140,102 @@ export async function POST(req: Request) {
     } else if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent;
       const invoiceId = String(pi.metadata?.invoiceId || '').trim();
-      const tenantId = String(pi.metadata?.tenantId || '').trim();
+      const metadataTenantId = String(pi.metadata?.tenantId || '').trim();
       const source = String(pi.metadata?.source || '').trim();
       const accountId = eventAccountId(event);
 
-      if (source === 'client_payment_page' && invoiceId && tenantId) {
-        // A signed Stripe payload is not enough to choose a tenant. Bind the event's actual
-        // connected account to the server-owned tenant record and require metadata to agree.
-        // This prevents an event from one Connect account being replayed against another
-        // tenant merely by carrying a different tenantId in metadata.
-        if (!accountId) {
-          throw new Error('Connect payment event is missing its account id.');
-        }
-        const tenantDoc = await findTenantByAccountId(accountId);
-        if (!tenantDoc || tenantDoc.id !== tenantId) {
-          throw new Error('Connect payment tenant/account mismatch.');
-        }
+      if (CLIENT_PAYMENT_SOURCES.has(source) && invoiceId && metadataTenantId) {
+        let evidenceTenantId = metadataTenantId;
+        const amountReceivedMinor = pi.amount_received ?? pi.amount ?? 0;
+        const currency = String(pi.currency || '')
+          .trim()
+          .toLowerCase();
 
-        const amountReceived = (pi.amount_received ?? pi.amount ?? 0) / 100;
-        await recordSuccessfulClientPayment({
-          invoiceId,
-          tenantId,
-          paymentId: pi.id,
-          amount: amountReceived,
-          platformFee: (pi.application_fee_amount ?? 0) / 100,
-          currency: pi.currency || 'usd',
-          method: 'stripe_checkout',
-          source: 'stripe_connect_webhook',
-          stripePaymentIntentId: pi.id,
-          actor: { uid: 'system', name: 'Client payment (Stripe webhook)' },
-        });
+        try {
+          if (!accountId) {
+            throw new Error('Connect payment event is missing its account id.');
+          }
+
+          const tenantDoc = await findTenantByAccountId(accountId);
+          if (tenantDoc) evidenceTenantId = tenantDoc.id;
+          if (!tenantDoc || tenantDoc.id !== metadataTenantId) {
+            throw new Error('Connect payment tenant/account mismatch.');
+          }
+
+          const expectedAmountMinor = Number(pi.metadata?.expectedAmountCents || 0);
+          if (!Number.isInteger(expectedAmountMinor) || expectedAmountMinor <= 0) {
+            throw new Error('Connect payment expected amount metadata is invalid.');
+          }
+          if (expectedAmountMinor !== amountReceivedMinor) {
+            throw new Error('Connect payment amount does not match the server-issued amount.');
+          }
+
+          const expectedCurrency = String(pi.metadata?.expectedCurrency || '')
+            .trim()
+            .toLowerCase();
+          if (!expectedCurrency) {
+            throw new Error('Connect payment expected currency metadata is missing.');
+          }
+          if (expectedCurrency !== currency) {
+            throw new Error('Connect payment currency does not match server-issued currency.');
+          }
+
+          const invoiceSnap = await adminDb.collection('invoices').doc(invoiceId).get();
+          if (!invoiceSnap.exists || invoiceSnap.data()?.isDeleted) {
+            throw new Error('Invoice not found.');
+          }
+          const invoice = (invoiceSnap.data() || {}) as Record<string, unknown>;
+          if (String(invoice.tenantId || '').trim() !== metadataTenantId) {
+            throw new Error('Invoice tenant mismatch.');
+          }
+
+          const schedule = resolveInvoicePaymentSchedule(invoice);
+          const installmentSequence = Number(pi.metadata?.installmentSequence || 0);
+          if (
+            !Number.isInteger(installmentSequence) ||
+            installmentSequence <= 0 ||
+            installmentSequence !== schedule.installmentSequence
+          ) {
+            throw new Error('Connect payment installment sequence is stale or invalid.');
+          }
+
+          const currentPayableMinor = amountToMinorUnits(schedule.payableNow, currency);
+          if (currentPayableMinor !== amountReceivedMinor) {
+            throw new Error(
+              'Connect payment amount does not match the current payable installment.',
+            );
+          }
+
+          await recordSuccessfulClientPayment({
+            invoiceId,
+            tenantId: metadataTenantId,
+            paymentId: pi.id,
+            amount: minorUnitsToAmount(amountReceivedMinor, currency),
+            platformFee: minorUnitsToAmount(pi.application_fee_amount ?? 0, currency),
+            currency,
+            method: 'stripe_checkout',
+            source: `stripe_connect_webhook:${source}`,
+            reason: 'Stripe Connect confirmed a successful client invoice payment.',
+            stripePaymentIntentId: pi.id,
+            actor: { uid: 'system', name: 'Client payment (Stripe webhook)' },
+          });
+        } catch (error) {
+          if (!isPermanentPaymentReconciliationError(error)) throw error;
+
+          await recordUnappliedClientPayment({
+            paymentId: pi.id,
+            eventId: event.id,
+            tenantId: evidenceTenantId,
+            invoiceId,
+            accountId,
+            amount: minorUnitsToAmount(amountReceivedMinor, currency),
+            currency,
+            source: `stripe_connect_webhook:${source}`,
+            error,
+          });
+          await finalizeWebhookEvent(event.id, event.type);
+          return NextResponse.json({ ok: false, received: true, deadLettered: true });
+        }
       }
     }
 
@@ -152,7 +243,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, received: true });
   } catch (error) {
     console.error('[STRIPE_CONNECT] Webhook handling failed', error);
-    // Release the claim so the next Stripe retry can re-process; return non-2xx.
     await releaseWebhookEvent(event.id);
     return NextResponse.json({ ok: false, error: 'handler failed' }, { status: 500 });
   }

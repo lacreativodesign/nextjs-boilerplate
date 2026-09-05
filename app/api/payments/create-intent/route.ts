@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireClient } from '../../client/_utils';
 import {
@@ -8,6 +7,9 @@ import {
   resolveAppOrigin,
 } from '@/lib/payments/stripe';
 import { normalizeInvoiceStatus } from '@/lib/finance/status';
+import { resolveInvoicePaymentSchedule } from '@/lib/finance/paymentSchedule';
+import { calculatePlatformFee } from '@/lib/stripe/connect';
+import { amountToMinorUnits } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
     }
 
     const invoice = invoiceSnap.data() || {};
-    const tenantId = String(auth.tenantId || '');
+    const tenantId = String(auth.tenantId || '').trim();
     if (
       String(invoice.tenantId || '') !== tenantId ||
       String(invoice.clientId || '') !== auth.clientId
@@ -44,7 +46,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invoice is not payable.' }, { status: 400 });
     }
 
-    const amountUsd = Math.max(0, Number(invoice.balanceDue ?? invoice.amountTotalUsd ?? 0));
+    const schedule = resolveInvoicePaymentSchedule(invoice);
+    const amountUsd = schedule.payableNow;
     if (amountUsd <= 0) {
       return NextResponse.json(
         { ok: false, error: 'Invoice has no outstanding balance.' },
@@ -52,6 +55,28 @@ export async function POST(req: Request) {
       );
     }
 
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantSnap.exists) {
+      return NextResponse.json({ ok: false, error: 'Workspace not found.' }, { status: 404 });
+    }
+    const tenant = tenantSnap.data() || {};
+    const stripeConnectAccountId = String(tenant.stripeConnectAccountId || '').trim();
+    if (!stripeConnectAccountId || tenant.stripeConnectChargesEnabled !== true) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Online invoice payments are not enabled for this workspace.',
+          code: 'stripe_connect_required',
+        },
+        { status: 409 },
+      );
+    }
+
+    const currency = String(invoice.currency || 'USD')
+      .trim()
+      .toUpperCase();
+    const amountMinor = amountToMinorUnits(amountUsd, currency);
+    const platformFeeCents = calculatePlatformFee(amountMinor);
     const origin = resolveAppOrigin(req);
     const stripe = getStripeClient();
     const successUrl = `${origin}/client/billing/payment-success?invoiceId=${encodeURIComponent(invoiceId)}&session_id={CHECKOUT_SESSION_ID}`;
@@ -60,6 +85,7 @@ export async function POST(req: Request) {
     const session = await createInvoiceCheckoutSession({
       stripe,
       amountUsd,
+      currency,
       orderId: String(invoice.orderId || invoiceId),
       tenantId,
       invoiceId,
@@ -67,72 +93,25 @@ export async function POST(req: Request) {
       customerEmail: String(auth.user.email || '').trim() || undefined,
       successUrl,
       cancelUrl,
+      stripeAccount: stripeConnectAccountId,
+      platformFeeCents,
+      installmentSequence: schedule.installmentSequence,
     });
 
-    const paymentIntentId = String(session.payment_intent || '');
-    if (!paymentIntentId || !session.url) {
+    if (!session.url) {
       return NextResponse.json(
         { ok: false, error: 'Unable to initialize Stripe checkout.' },
         { status: 500 },
       );
     }
 
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    const paymentId = `stripe_pi_${paymentIntentId}`;
-
-    const batch = adminDb.batch();
-
-    batch.set(
-      adminDb.collection('payments').doc(paymentId),
-      {
-        id: paymentId,
-        tenantId,
-        clientId: auth.clientId,
-        invoiceId,
-        orderId: String(invoice.orderId || ''),
-        amountUsd,
-        currency: 'USD',
-        status: 'pending',
-        method: 'stripe_checkout',
-        stripePaymentIntentId: paymentIntentId,
-        stripeCheckoutSessionId: session.id,
-        stripeCustomerId: session.customer ? String(session.customer) : null,
-        receiptUrl: null,
-        refundedAmountUsd: 0,
-        createdByUid: auth.user.uid,
-        isDeleted: false,
-        createdAt: now,
-        updatedAt: now,
-      },
-      { merge: true },
-    );
-
-    batch.set(
-      adminDb.collection('payment_intents').doc(`pi_${paymentIntentId}`),
-      {
-        id: `pi_${paymentIntentId}`,
-        tenantId,
-        clientId: auth.clientId,
-        invoiceId,
-        paymentId,
-        stripePaymentIntentId: paymentIntentId,
-        stripeCheckoutSessionId: session.id,
-        amountUsd,
-        currency: 'USD',
-        status: 'requires_payment_method',
-        createdAt: now,
-        updatedAt: now,
-      },
-      { merge: true },
-    );
-
-    await batch.commit();
-
     return NextResponse.json({
       ok: true,
-      paymentId,
       checkoutUrl: session.url,
-      stripePaymentIntentId: paymentIntentId,
+      checkoutSessionId: session.id,
+      amountDue: amountUsd,
+      currency,
+      installmentSequence: schedule.installmentSequence,
     });
   } catch (err: any) {
     console.error('payments/create-intent error:', err);

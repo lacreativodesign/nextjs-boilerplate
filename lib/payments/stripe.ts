@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { amountToMinorUnits } from '@/lib/finance/minorUnits';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,7 @@ export function resolveAppOrigin(req: Request) {
 export async function createInvoiceCheckoutSession({
   stripe,
   amountUsd,
+  currency,
   orderId,
   tenantId,
   invoiceId,
@@ -36,9 +38,13 @@ export async function createInvoiceCheckoutSession({
   customerEmail,
   successUrl,
   cancelUrl,
+  stripeAccount,
+  platformFeeCents,
+  installmentSequence,
 }: {
   stripe: Stripe;
   amountUsd: number;
+  currency: string;
   orderId: string;
   tenantId: string;
   invoiceId: string;
@@ -46,49 +52,67 @@ export async function createInvoiceCheckoutSession({
   customerEmail?: string;
   successUrl: string;
   cancelUrl: string;
+  stripeAccount: string;
+  platformFeeCents?: number;
+  installmentSequence: number;
 }) {
-  return stripe.checkout.sessions.create({
-    mode: 'payment',
-    customer_email: customerEmail || undefined,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: 'usd',
-          unit_amount: Math.round(amountUsd * 100),
-          product_data: {
-            name: `Invoice ${orderId}`,
-            description: `Client portal payment for invoice ${orderId}`,
+  const normalizedCurrency = String(currency || 'USD')
+    .trim()
+    .toLowerCase();
+  const amountCents = amountToMinorUnits(amountUsd, normalizedCurrency);
+  const metadata = {
+    tenantId,
+    invoiceId,
+    clientId,
+    orderId,
+    source: 'client_portal',
+    installmentSequence: String(installmentSequence),
+    expectedAmountCents: String(amountCents),
+    expectedCurrency: normalizedCurrency,
+  };
+
+  const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData = {
+    metadata,
+  };
+  if (typeof platformFeeCents === 'number' && platformFeeCents > 0) {
+    paymentIntentData.application_fee_amount = Math.round(platformFeeCents);
+  }
+
+  return stripe.checkout.sessions.create(
+    {
+      mode: 'payment',
+      customer_email: customerEmail || undefined,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: normalizedCurrency,
+            unit_amount: amountCents,
+            product_data: {
+              name: `Invoice ${orderId}`,
+              description: `Client portal payment for invoice ${orderId}`,
+            },
           },
         },
-      },
-    ],
-    metadata: {
-      tenantId,
-      invoiceId,
-      clientId,
-      orderId,
-      source: 'client_portal',
+      ],
+      metadata,
+      payment_intent_data: paymentIntentData,
     },
-    payment_intent_data: {
-      metadata: {
-        tenantId,
-        invoiceId,
-        clientId,
-        orderId,
-        source: 'client_portal',
-      },
+    {
+      stripeAccount,
+      idempotencyKey: `client_portal_checkout_${invoiceId}_${installmentSequence}`,
     },
-  });
+  );
 }
 
 export async function createStripeRefund({
   stripe,
   paymentIntentId,
   amountUsd,
+  currency = 'USD',
   reason,
   stripeAccount,
   refundApplicationFee,
@@ -96,6 +120,7 @@ export async function createStripeRefund({
   stripe: Stripe;
   paymentIntentId: string;
   amountUsd?: number;
+  currency?: string;
   reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer';
   stripeAccount?: string;
   refundApplicationFee?: boolean;
@@ -105,18 +130,15 @@ export async function createStripeRefund({
   };
 
   if (typeof amountUsd === 'number' && amountUsd > 0) {
-    payload.amount = Math.round(amountUsd * 100);
+    payload.amount = amountToMinorUnits(amountUsd, currency);
   }
   if (reason) {
     payload.reason = reason;
   }
-  // For Connect direct charges, refund the platform application fee proportionally.
   if (refundApplicationFee) {
     payload.refund_application_fee = true;
   }
 
-  // When the PaymentIntent lives on a connected account, the refund must be issued
-  // on that account; otherwise it is a platform refund.
   const options: Stripe.RequestOptions | undefined = stripeAccount ? { stripeAccount } : undefined;
   return stripe.refunds.create(payload, options);
 }

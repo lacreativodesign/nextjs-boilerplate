@@ -52,6 +52,13 @@ jobs:
         env:
           TZ: Asia/Karachi
 
+      - name: Payment engine Firestore emulator invariants
+        run: >-
+          npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-bizosto
+          "npx jest __tests__/integration/client-payment-engine.emulator.test.ts --runInBand --coverage=false"
+        env:
+          GCLOUD_PROJECT: demo-bizosto
+
       - name: Build application
         run: npm run build
         env:
