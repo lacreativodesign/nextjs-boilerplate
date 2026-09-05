@@ -10,6 +10,7 @@ const LEGACY_CREATE = 'app/api/create-user/route.ts';
 const SSO_OAUTH = 'lib/auth/sso-oauth.ts';
 const LEGACY_UPDATE = 'app/api/admin/users/[uid]/update/route.ts';
 const ADMIN_UPDATE = 'app/api/admin/users/update/route.ts';
+const HR_CREATE = 'app/api/hr/employees/create/route.ts';
 const HR_UPDATE = 'app/api/hr/employees/update/route.ts';
 const HR_DELETE = 'app/api/hr/employees/delete/route.ts';
 const USER_LIMIT = 'lib/billing/user-limit.ts';
@@ -79,6 +80,7 @@ describe('PR4 invitation authorization and provisioning', () => {
 describe('PR4 alternate provisioning surfaces inherit the same tenant policy', () => {
   const legacyCreate = read(LEGACY_CREATE);
   const ssoOauth = read(SSO_OAUTH);
+  const hrCreate = read(HR_CREATE);
 
   it('hardens the legacy tenant create-user endpoint instead of allowing platform role minting', () => {
     expect(legacyCreate).toContain('validateRequest(createUserSchema');
@@ -103,6 +105,15 @@ describe('PR4 alternate provisioning surfaces inherit the same tenant policy', (
     expect(userWrite).toBeGreaterThan(claimSync);
     expect(ssoOauth).toContain('tenantId,\n      endSessions: false');
     expect(ssoOauth).toContain('await adminAuth.deleteUser(userRecord.uid).catch(() => {});');
+  });
+
+  it('does not let the HR employee UI mint login identities without Admin authority', () => {
+    expect(hrCreate).toContain('const requesterRole = normalizeRole(access.user.role);');
+    expect(hrCreate).toContain('if (!isAdminLike(requesterRole))');
+    expect(hrCreate).toContain('Only Admin or Super Admin can create user accounts.');
+    expect(hrCreate).toContain('await syncUserClaims({');
+    expect(hrCreate).toContain("status: 'active'");
+    expect(hrCreate).toContain('isActive: true');
   });
 });
 
@@ -150,11 +161,18 @@ describe('PR4 user lifecycle uses one authorization and identity path', () => {
     expect(adminUpdate).not.toContain('const tenantMatch = isSuperAdminRequester');
   });
 
-  it('terminates an HR identity in Firebase as well as Firestore', () => {
+  it('terminates an identity fail-closed and protects privileged accounts', () => {
+    const disableAt = hrDelete.indexOf('await syncFirebaseUserAccessState({');
+    const firestoreAt = hrDelete.indexOf("await adminDb.collection('users').doc(uid).set", disableAt);
+
     expect(hrDelete).toContain("status: 'terminated'");
     expect(hrDelete).toContain('isDeleted: true');
     expect(hrDelete).toContain('isActive: false');
-    expect(hrDelete).toContain('await syncFirebaseUserAccessState({');
+    expect(hrDelete).toContain("requesterRole !== 'super_admin' && targetRole === 'super_admin'");
+    expect(hrDelete).toContain("requesterRole === 'hr' && targetRole === 'admin'");
+    expect(hrDelete).toContain('You cannot terminate your own account.');
+    expect(disableAt).toBeGreaterThan(-1);
+    expect(firestoreAt).toBeGreaterThan(disableAt);
   });
 
   it('revokes live sessions whenever access is disabled', () => {
