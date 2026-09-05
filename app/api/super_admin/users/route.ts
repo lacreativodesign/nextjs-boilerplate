@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
-import { createUserSchema } from '@/lib/validations/user';
+import { platformCreateUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { planLimitResponseBody } from '@/lib/billing/user-limit';
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Invalid user status' }, { status: 400 });
     }
 
-    const validated = validateRequest(createUserSchema, {
+    const validated = validateRequest(platformCreateUserSchema, {
       email: body?.email,
       displayName: body?.displayName,
       role: body?.role,
