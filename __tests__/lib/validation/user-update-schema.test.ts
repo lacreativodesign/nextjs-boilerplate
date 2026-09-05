@@ -5,26 +5,29 @@ import { INTERNAL_ROLE_OPTIONS } from '@/lib/userOptions';
 import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 
 /**
- * SOC2 F-06 — the admin user-update payload.
+ * SOC2 F-06 — the tenant-admin user-update payload.
  *
  * `role` was the gap that mattered. The route lowercased whatever string arrived and
  * wrote it to `users/{uid}.role`, with no check against the canonical role list.
  *
- * The surrounding guards are sound: changing a role requires ManageRoles, only a
- * super_admin may touch or grant super_admin, and the target's tenant is verified.
- * None of them establishes that the value is a role the system RECOGNISES.
- * `getCurrentUserOrThrow` reads the role from the Firestore document and fails closed
- * only on an EMPTY role, so a user carrying `role: 'wizard'` would still
- * authenticate, satisfy no permission check, and land in a state no screen can
- * recover from. This is not privilege escalation — an unknown role grants nothing —
- * it is a lockout, and the role field is the single most important field on a user.
+ * The tenant-admin surface now has two independent constraints: the value must be a
+ * recognised ERP role, and it must not be the platform-only `super_admin` role. A
+ * Super Admin actor may administer tenant users, but platform-role provisioning and
+ * promotion belongs to the dedicated `/api/super_admin/users` surfaces.
  */
 
 const base = { uid: 'user_1', name: 'Ayesha M.' };
+const TENANT_UPDATE_ROLES = ERP_ROLES.filter((role) => role !== 'super_admin');
 
-describe('role is constrained to the canonical list', () => {
-  it.each(ERP_ROLES)('accepts the real role %s', (role) => {
+describe('role is constrained to the canonical tenant role list', () => {
+  it.each(TENANT_UPDATE_ROLES)('accepts the tenant role %s', (role) => {
     expect(() => adminUpdateUserSchema.parse({ ...base, role })).not.toThrow();
+  });
+
+  it('rejects the platform-only super_admin role on the tenant-admin update surface', () => {
+    expect(() => adminUpdateUserSchema.parse({ ...base, role: 'super_admin' })).toThrow(
+      /platform administration surface/i,
+    );
   });
 
   it('rejects a role the system does not recognise', () => {
@@ -34,10 +37,11 @@ describe('role is constrained to the canonical list', () => {
   });
 
   it('accepts every role the edit form can actually submit', () => {
-    // The select is populated from INTERNAL_ROLE_OPTIONS. If that list ever gains a
-    // value outside ERP_ROLES, this fails here rather than in production.
+    // The tenant staff select is populated from INTERNAL_ROLE_OPTIONS. If that list ever
+    // gains an unknown or platform-only role, this fails here rather than in production.
     for (const role of INTERNAL_ROLE_OPTIONS) {
       expect(ERP_ROLES).toContain(role);
+      expect(role).not.toBe('super_admin');
       expect(() => adminUpdateUserSchema.parse({ ...base, role })).not.toThrow();
     }
   });
