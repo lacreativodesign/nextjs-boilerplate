@@ -54,9 +54,22 @@ describe('USAGE-2: the call is attributed to the authenticated workspace', () =>
 
   it.each(INGEST_ROUTES)('%s uses the tenant the KEY resolved to', (rel) => {
     const src = active(rel);
-    // Not a header, not a body field — the value authenticateIngest returned.
-    expect(src).toMatch(/tenantId:\s*(?:tenantId|auth\.tenantId)/);
-    expect(src).not.toMatch(/tenantId:\s*(?:body\.|req\.headers)/);
+    const usageAt = src.indexOf('recordIngestUsage(');
+    const usageEnd = src.indexOf(');', usageAt);
+    const usageCall = src.slice(usageAt, usageEnd + 2);
+
+    // Routes may pass auth.tenantId directly or capture it once as `tenantId` and use
+    // object-property shorthand. Both forms must come from authenticateIngest(), never
+    // from a request body or header supplied as tenant identity.
+    const usesAuthenticatedTenantDirectly = usageCall.includes('tenantId: auth.tenantId');
+    const capturesAuthenticatedTenant =
+      src.slice(0, usageAt).includes('const tenantId = auth.tenantId;') &&
+      /\{\s*tenantId(?:\s*,|\s*\})/.test(usageCall.slice(usageCall.indexOf('{')));
+
+    expect(usageAt).toBeGreaterThan(-1);
+    expect(usageEnd).toBeGreaterThan(usageAt);
+    expect(usesAuthenticatedTenantDirectly || capturesAuthenticatedTenant).toBe(true);
+    expect(usageCall).not.toMatch(/tenantId:\s*(?:body\.|req\.headers)/);
   });
 
   it.each(INGEST_ROUTES)('%s records only AFTER authenticating', (rel) => {
