@@ -7,7 +7,6 @@ import { eligibleManagerRolesFor } from '@/lib/hierarchy';
 import { validateRequest } from '@/lib/validations/validate';
 import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
-import { syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 
@@ -73,6 +72,20 @@ export async function POST(req: Request) {
     const existingStatus = String(existing?.status || 'active')
       .trim()
       .toLowerCase();
+
+    // Profile editing is not an access-state operation. Even Admin/Super Admin must use
+    // the dedicated deactivate/reactivate/termination flows so Firebase Auth, session
+    // revocation, deleted-user rules and plan-seat checks stay in one canonical path.
+    if (body.status !== undefined && String(body.status).toLowerCase() !== existingStatus) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Account status cannot be changed from the profile update endpoint. Use the dedicated deactivate, reactivate, or termination action.',
+        },
+        { status: 409 },
+      );
+    }
 
     const email = requestedEmail || existingEmail;
     const role = (requestedRole || existingRole || '').toLowerCase();
@@ -167,9 +180,9 @@ export async function POST(req: Request) {
         );
       }
       const managerData = managerSnap.data() || {};
-      const tenantMatch = isSuperAdminRequester
-        ? true
-        : String(managerData.tenantId || '') === String(current.tenantId || '');
+      // Super Admin is allowed to administer any tenant, but a reporting relationship
+      // is still tenant-local. Never let platform authority create a cross-tenant edge.
+      const tenantMatch = String(managerData.tenantId || '') === targetTenantId;
       if (!tenantMatch) {
         return NextResponse.json(
           { ok: false, error: 'Invalid manager selection.' },
@@ -187,9 +200,8 @@ export async function POST(req: Request) {
       managerExplicitlySet = true;
     }
 
-    // Re-validate preserved managerId against the NEW role.
-    // Handles role promotions (e.g. sales→sales_manager) where the old manager is no longer
-    // in the eligible list. Skipped when the admin explicitly supplied a validated managerId above.
+    // Re-validate preserved managerId against the NEW role and tenant.
+    // Handles role promotions and cleans up any stale cross-tenant relationship.
     if (!managerExplicitlySet) {
       const eligibleForNewRole = eligibleManagerRolesFor(role);
       if (eligibleForNewRole.length === 0) {
@@ -197,11 +209,15 @@ export async function POST(req: Request) {
         managerId = '';
       } else if (managerId) {
         const managerCheckSnap = await adminDb.collection('users').doc(managerId).get();
-        const managerRole = managerCheckSnap.exists
-          ? String((managerCheckSnap.data() || {}).role || '')
-          : '';
-        if (!managerCheckSnap.exists || !eligibleForNewRole.includes(managerRole)) {
-          // Old manager is no longer valid for new role — reset to tenant admin
+        const managerData = managerCheckSnap.exists ? managerCheckSnap.data() || {} : {};
+        const managerRole = String(managerData.role || '');
+        const managerTenantId = String(managerData.tenantId || '');
+        if (
+          !managerCheckSnap.exists ||
+          managerTenantId !== targetTenantId ||
+          !eligibleForNewRole.includes(managerRole)
+        ) {
+          // Old manager is no longer valid for the target role/tenant — reset to tenant admin
           const adminSnap = await adminDb
             .collection('users')
             .where('tenantId', '==', targetTenantId)
@@ -213,9 +229,6 @@ export async function POST(req: Request) {
       }
     }
 
-    const nextStatus = normalizeString(body?.status, existingStatus || 'active').toLowerCase();
-    const nextIsActive = nextStatus === 'active' && existing.isDeleted !== true;
-
     const updateData = {
       // core
       name,
@@ -224,8 +237,6 @@ export async function POST(req: Request) {
       cnic: normalizeString(body?.cnic, existing?.cnic),
       dob: normalizeDate(body?.dob, existing?.dob),
 
-      status: nextStatus,
-      isActive: nextIsActive,
       role,
       managerId,
       department,
@@ -251,29 +262,7 @@ export async function POST(req: Request) {
         newValue: value,
       }));
 
-    const accessStatusChanged = nextStatus !== existingStatus;
-
-    // For a disable, close Firebase Auth first so a failed Firestore write still leaves
-    // the account fail-closed. Reactivation is done in the opposite order below.
-    if (accessStatusChanged && nextStatus === 'disabled') {
-      await syncFirebaseUserAccessState({
-        uid,
-        status: nextStatus,
-        isActive: false,
-        isDeleted: existing.isDeleted,
-      });
-    }
-
     await adminDb.collection('users').doc(uid).update(updateData);
-
-    if (accessStatusChanged && nextStatus === 'active' && existing.isDeleted !== true) {
-      await syncFirebaseUserAccessState({
-        uid,
-        status: nextStatus,
-        isActive: true,
-        isDeleted: false,
-      });
-    }
 
     if (changes.length) {
       try {
