@@ -170,7 +170,6 @@ const KNOWN_UNVALIDATED = [
   'app/api/client/profile/route.ts',
   'app/api/client/profile/update/route.ts',
   'app/api/client/projects/approve/route.ts',
-  'app/api/create-user/route.ts',
   'app/api/crm/deals/[id]/discount-request/route.ts',
   'app/api/crm/deals/[id]/route.ts',
   'app/api/crm/discount-requests/[id]/review/route.ts',

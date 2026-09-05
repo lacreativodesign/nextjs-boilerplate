@@ -201,6 +201,11 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
   tenant_stats: { class: 'ephemeral', reason: 'Derived per-tenant statistics.' },
   support_meta: { class: 'ephemeral', reason: 'Derived support metadata.' },
   counters_meta: { class: 'ephemeral', reason: 'Counter metadata.' },
+  tenant_seat_ledgers: {
+    class: 'ephemeral',
+    reason:
+      'Serialization anchor for in-flight staff-seat reservations. Holds no business data and every entry expires within minutes; restoring one would re-park capacity that is no longer being provisioned.',
+  },
 
   // ---- subcollection: reached only under a parent document, never at the root ----
   counters: {
@@ -210,6 +215,10 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
   messages: {
     class: 'subcollection',
     reason: 'Lives under projects/{id}/messages — not a top-level collection.',
+  },
+  reservations: {
+    class: 'subcollection',
+    reason: 'Lives under tenant_seat_ledgers/{tenantId}/reservations — not a top-level collection.',
   },
   _: {
     class: 'subcollection',

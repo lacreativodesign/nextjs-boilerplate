@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { checkUserLimit } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeat } from '@/lib/billing/seat-reservation';
+import { isUserAccessDisabled } from '@/lib/auth/user-access-state';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 
@@ -340,11 +341,36 @@ function assertAllowedDomain(email: string, allowedDomains: string[]) {
   }
 }
 
-async function findUserByEmail(email: string) {
-  const snap = await adminDb.collection('users').where('email', '==', email).limit(1).get();
-  if (snap.empty) return null;
-  const doc = snap.docs[0];
-  return { uid: doc.id, data: doc.data() as Record<string, unknown> };
+/**
+ * Resolves the SSO subject inside the tenant that is signing them in, and separately
+ * reports whether the address is already claimed by another workspace.
+ *
+ * The lookup used to be a single unscoped `limit(1)` query on email. With one address
+ * present in two workspaces it returned an arbitrary one of them, so a legitimate
+ * member of tenant B could be refused because tenant A's record happened to be first.
+ * Scoping the match to the signing-in tenant fixes that WITHOUT relaxing the boundary:
+ * an address that exists only in another tenant is still refused.
+ */
+async function findTenantUserByEmail(tenantId: string, email: string) {
+  const [scopedSnap, anySnap] = await Promise.all([
+    adminDb
+      .collection('users')
+      .where('email', '==', email)
+      .where('tenantId', '==', tenantId)
+      .limit(1)
+      .get(),
+    adminDb.collection('users').where('email', '==', email).limit(1).get(),
+  ]);
+
+  if (!scopedSnap.empty) {
+    const doc = scopedSnap.docs[0];
+    return {
+      match: { uid: doc.id, data: doc.data() as Record<string, unknown> },
+      existsInAnotherTenant: false,
+    };
+  }
+
+  return { match: null, existsInAnotherTenant: !anySnap.empty };
 }
 
 async function upsertUserSsoMapping(params: {
@@ -397,53 +423,61 @@ async function autoProvisionUser(tenantId: string, identity: SsoIdentity) {
 
   const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
   if (!isRoleEnabled(rolesEnabled, targetRole)) {
-    throw new Error('Automatic SSO provisioning is unavailable because the sales role is disabled.');
+    throw new Error(
+      'Automatic SSO provisioning is unavailable because the sales role is disabled.',
+    );
   }
 
-  const seatCheck = await checkUserLimit(tenantId, targetRole);
-  if (!seatCheck.ok) {
+  // Atomic staff-seat reservation. An unauthenticated identity provider callback can
+  // arrive many times at once, so this is the seat path most exposed to concurrency.
+  const seat = await reserveStaffSeat(tenantId, targetRole, 'sso_auto_provision');
+  if (!seat.ok) {
     throw new Error('This workspace has reached its plan limit for team members.');
   }
 
-  const userRecord = await adminAuth.createUser({
-    email: identity.email,
-    displayName: identity.displayName,
-    emailVerified: true,
-  });
-
   try {
-    // SSO must provision through the same two enforcement planes as every other staff
-    // creation path. Without role + tenant claims, the account exists in Firestore but
-    // cannot be trusted by Firestore rules or middleware.
-    await syncUserClaims({
-      uid: userRecord.uid,
-      role: targetRole,
-      tenantId,
-      endSessions: false,
+    const userRecord = await adminAuth.createUser({
+      email: identity.email,
+      displayName: identity.displayName,
+      emailVerified: true,
     });
 
-    await adminDb.collection('users').doc(userRecord.uid).set(
-      {
+    try {
+      // SSO must provision through the same two enforcement planes as every other staff
+      // creation path. Without role + tenant claims, the account exists in Firestore but
+      // cannot be trusted by Firestore rules or middleware.
+      await syncUserClaims({
         uid: userRecord.uid,
-        email: identity.email,
-        name: identity.displayName,
-        displayName: identity.displayName,
         role: targetRole,
-        status: 'active',
-        isActive: true,
-        isDeleted: false,
         tenantId,
-        authProvider: 'sso',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+        endSessions: false,
+      });
 
-    return userRecord.uid;
-  } catch (error) {
-    await adminAuth.deleteUser(userRecord.uid).catch(() => {});
-    throw error;
+      await adminDb.collection('users').doc(userRecord.uid).set(
+        {
+          uid: userRecord.uid,
+          email: identity.email,
+          name: identity.displayName,
+          displayName: identity.displayName,
+          role: targetRole,
+          status: 'active',
+          isActive: true,
+          isDeleted: false,
+          tenantId,
+          authProvider: 'sso',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
+
+      return userRecord.uid;
+    } catch (error) {
+      await adminAuth.deleteUser(userRecord.uid).catch(() => {});
+      throw error;
+    }
+  } finally {
+    await releaseStaffSeat(seat);
   }
 }
 
@@ -452,13 +486,24 @@ async function resolveOrProvisionUser(
   identity: SsoIdentity,
   autoProvision: boolean,
 ) {
-  const existing = await findUserByEmail(identity.email);
-  if (existing) {
-    const tenantMatch = String(existing.data.tenantId || '') === tenantId;
-    if (!tenantMatch) {
-      throw new Error('User belongs to a different tenant.');
+  const { match, existsInAnotherTenant } = await findTenantUserByEmail(tenantId, identity.email);
+
+  if (match) {
+    // SSO is an authentication route into an EXISTING identity, so it inherits that
+    // identity's access state. Without this, a deactivated, suspended, terminated or
+    // soft-deleted user whose Firebase Auth record was never disabled — legacy records
+    // predate the Auth/Firestore sync, and any single-plane write can drift — could sign
+    // in through the identity provider and be handed a custom token, bypassing the
+    // deactivation the workspace performed. Fails closed on the application record
+    // rather than trusting the other plane to have been updated.
+    if (isUserAccessDisabled(match.data)) {
+      throw new Error('This account is not active. Contact your administrator.');
     }
-    return existing.uid;
+    return match.uid;
+  }
+
+  if (existsInAnotherTenant) {
+    throw new Error('User belongs to a different tenant.');
   }
 
   if (!autoProvision) {

@@ -94,7 +94,14 @@ describe('S10: creating an employee creates a user', () => {
   });
 
   it('stamps BOTH role and tenantId in the custom claims', () => {
-    expect(src).toContain('setCustomUserClaims(userRecord.uid, { role, tenantId })');
+    // The raw setCustomUserClaims call was replaced by the canonical syncUserClaims
+    // helper, which installs the same two claims and additionally owns the session
+    // revocation policy. The invariant is unchanged: an employee identity is never
+    // published without both claims.
+    const claimCall = src.slice(src.indexOf('await syncUserClaims({'));
+    expect(claimCall).toContain('uid: userRecord.uid');
+    expect(claimCall).toContain('role,');
+    expect(claimCall).toContain('tenantId,');
   });
 
   it('takes tenantId from the session, never the request body', () => {
@@ -102,13 +109,17 @@ describe('S10: creating an employee creates a user', () => {
     expect(src).not.toMatch(/body\??\.\s*tenantId/);
   });
 
-  it('checks the seat limit before the Auth user exists', () => {
-    const seatIdx = src.indexOf('checkUserLimit(');
+  it('reserves the seat atomically before the Auth user exists', () => {
+    // Stronger than the read-only checkUserLimit this used to pin: the seat is now
+    // reserved in a serialized Firestore transaction and held across provisioning, so
+    // two concurrent HR creations cannot both take the tenant's last seat.
+    const seatIdx = src.indexOf('reserveStaffSeat(');
     const createIdx = src.indexOf('adminAuth.createUser(');
     expect(seatIdx).toBeGreaterThan(-1);
     expect(createIdx).toBeGreaterThan(-1);
     expect(seatIdx).toBeLessThan(createIdx);
-    expect(src).toContain('planLimitResponseBody(seatCheck)');
+    expect(src).toContain('planLimitResponseBody(seat)');
+    expect(src).toContain('releaseStaffSeat(seat)');
   });
 
   it('honours the tenant role allow-list', () => {
@@ -137,8 +148,12 @@ describe('S10: HR cannot mint a privileged account', () => {
   });
 
   it('rejects a role outside the allow-list with a 403', () => {
+    // The refusal is no longer phrased as "HR cannot": creating a login identity on this
+    // surface now requires Admin/Super Admin regardless of who is asking, so the message
+    // names the surface rather than the requester's role.
     expect(src).toContain('HR_CREATABLE_ROLES as readonly string[]).includes(role)');
-    expect(src).toContain('HR cannot create an account with that role.');
+    expect(src).toContain('This surface cannot create an account with that role.');
+    expect(src).toContain('{ status: 403 }');
   });
 
   it('only lists real ERP roles, so a typo cannot create an unreachable account', () => {

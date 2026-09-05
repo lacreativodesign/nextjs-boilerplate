@@ -8,7 +8,12 @@ import { validateRequest } from '@/lib/validations/validate';
 import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  releaseStaffSeat,
+  reserveStaffSeat,
+  type StaffSeatReservation,
+} from '@/lib/billing/seat-reservation';
 
 export const runtime = 'nodejs';
 
@@ -126,6 +131,11 @@ export async function POST(req: Request) {
 
     const targetTenantId = String(existing.tenantId || current.tenantId || '').trim();
 
+    // Moving a client-portal identity into a staff role is the one profile edit that
+    // consumes plan capacity. Detected here, reserved immediately before the write.
+    const convertsClientToStaff =
+      Boolean(requestedRole) && existingRole === 'client' && role !== 'client';
+
     if (requestedRole && role !== existingRole && role !== 'super_admin') {
       const tenantSnap = await adminDb.collection('tenants').doc(targetTenantId).get();
       if (!tenantSnap.exists) {
@@ -138,14 +148,6 @@ export async function POST(req: Request) {
           { ok: false, error: 'This role is not enabled for the workspace.' },
           { status: 400 },
         );
-      }
-
-      // Moving a client-portal identity into a staff role consumes a billable seat.
-      if (existingRole === 'client' && role !== 'client') {
-        const seatCheck = await checkUserLimit(targetTenantId, role);
-        if (!seatCheck.ok) {
-          return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
-        }
       }
     }
 
@@ -262,7 +264,23 @@ export async function POST(req: Request) {
         newValue: value,
       }));
 
-    await adminDb.collection('users').doc(uid).update(updateData);
+    // Reserved immediately before the write, so a request that fails validation never
+    // parks capacity, and two concurrent conversions cannot both take the last seat.
+    let seat: StaffSeatReservation | null = null;
+    if (convertsClientToStaff) {
+      seat = await reserveStaffSeat(targetTenantId, role, 'role_conversion');
+      if (!seat.ok) {
+        return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+      }
+    }
+
+    try {
+      await adminDb.collection('users').doc(uid).update(updateData);
+    } finally {
+      // Released once the role write is committed: from here the identity itself is
+      // counted as a staff seat, so holding the reservation would double-count it.
+      await releaseStaffSeat(seat);
+    }
 
     if (changes.length) {
       try {

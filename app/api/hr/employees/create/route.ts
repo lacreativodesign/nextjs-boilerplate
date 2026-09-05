@@ -6,7 +6,8 @@ import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSe
 import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeat } from '@/lib/billing/seat-reservation';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 
@@ -85,10 +86,7 @@ export async function POST(req: Request) {
 
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     if (!tenantSnap.exists) {
-      return NextResponse.json(
-        { success: false, message: 'Tenant not found.' },
-        { status: 404 },
-      );
+      return NextResponse.json({ success: false, message: 'Tenant not found.' }, { status: 404 });
     }
 
     const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
@@ -100,11 +98,6 @@ export async function POST(req: Request) {
         },
         { status: 400 },
       );
-    }
-
-    const seatCheck = await checkUserLimit(tenantId, role);
-    if (!seatCheck.ok) {
-      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
     }
 
     const existingUser = await adminAuth.getUserByEmail(email).catch((err: any) => {
@@ -127,49 +120,60 @@ export async function POST(req: Request) {
       .get();
     const managerId = adminSnap.empty ? access.user.uid : adminSnap.docs[0].id;
 
-    const userRecord = await adminAuth.createUser({
-      email,
-      password: crypto.randomBytes(16).toString('hex'),
-      displayName,
-      disabled: false,
-    });
-    createdUid = userRecord.uid;
+    // Atomic staff-seat reservation, held until the identity is committed.
+    const seat = await reserveStaffSeat(tenantId, role, 'hr_create');
+    if (!seat.ok) {
+      return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+    }
 
+    let userRecord;
     try {
-      await syncUserClaims({
-        uid: userRecord.uid,
-        role,
-        tenantId,
-        endSessions: false,
+      userRecord = await adminAuth.createUser({
+        email,
+        password: crypto.randomBytes(16).toString('hex'),
+        displayName,
+        disabled: false,
       });
+      createdUid = userRecord.uid;
 
-      const nowIso = new Date().toISOString();
-      await adminDb
-        .collection('users')
-        .doc(userRecord.uid)
-        .set({
+      try {
+        await syncUserClaims({
           uid: userRecord.uid,
-          name: displayName,
-          displayName,
-          email,
           role,
-          managerId,
           tenantId,
-          phone: phone || '',
-          department: department || '',
-          designation: String(body?.designation || ''),
-          status: 'active',
-          isActive: true,
-          isDeleted: false,
-          joiningDate: body?.joiningDate || null,
-          createdAt: nowIso,
-          updatedAt: nowIso,
-          createdBy: access.user.uid,
+          endSessions: false,
         });
-    } catch (provisionError) {
-      await adminAuth.deleteUser(userRecord.uid).catch(() => {});
-      createdUid = null;
-      throw provisionError;
+
+        const nowIso = new Date().toISOString();
+        await adminDb
+          .collection('users')
+          .doc(userRecord.uid)
+          .set({
+            uid: userRecord.uid,
+            name: displayName,
+            displayName,
+            email,
+            role,
+            managerId,
+            tenantId,
+            phone: phone || '',
+            department: department || '',
+            designation: String(body?.designation || ''),
+            status: 'active',
+            isActive: true,
+            isDeleted: false,
+            joiningDate: body?.joiningDate || null,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            createdBy: access.user.uid,
+          });
+      } catch (provisionError) {
+        await adminAuth.deleteUser(userRecord.uid).catch(() => {});
+        createdUid = null;
+        throw provisionError;
+      }
+    } finally {
+      await releaseStaffSeat(seat);
     }
 
     const tokenData = await createPasswordSetupToken({

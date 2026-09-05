@@ -6,9 +6,14 @@ import { requireSuperAdmin } from '../../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { ERP_ROLES } from '@/lib/erpAccess';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  releaseStaffSeat,
+  reserveStaffSeat,
+  type StaffSeatReservation,
+} from '@/lib/billing/seat-reservation';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
-import { syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
+import { isUserAccessDisabled, syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
 
 export async function PATCH(req: NextRequest, { params }: { params: { uid: string } }) {
   try {
@@ -83,13 +88,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { uid: strin
           { status: 400 },
         );
       }
-
-      if (existingRole === 'client' && nextRole !== 'client') {
-        const seatCheck = await checkUserLimit(existingTenantId, nextRole);
-        if (!seatCheck.ok) {
-          return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
-        }
-      }
     }
     if (body?.role !== undefined) updates.role = nextRole;
 
@@ -127,8 +125,41 @@ export async function PATCH(req: NextRequest, { params }: { params: { uid: strin
       });
     }
 
+    // Two edits here restore or create billable staff capacity and must both be
+    // measured against the tenant's plan:
+    //
+    //  - client -> staff conversion, which turns a free portal identity into a seat;
+    //  - re-enabling a disabled identity, which is a reactivation by another name.
+    //    Disabled users are excluded from the seat count, so without this a Super Admin
+    //    could flip a disabled user back to active on a tenant already at its ceiling
+    //    and step around the dedicated reactivation endpoint's seat check.
+    //
+    // The reservation is atomic and is held until the write commits.
+    const convertsClientToStaff = roleChanged && existingRole === 'client' && nextRole !== 'client';
+    // Derived from the access state, not from the status string alone, so a record whose
+    // `status` and `isActive` have drifted apart is still recognised as disabled.
+    const restoresAccess =
+      isUserAccessDisabled(existing) && body?.status !== undefined && nextStatus === 'active';
+    const seatRole = nextRole || existingRole;
+
+    let seat: StaffSeatReservation | null = null;
+    if (existingTenantId && (convertsClientToStaff || restoresAccess)) {
+      seat = await reserveStaffSeat(
+        existingTenantId,
+        seatRole,
+        convertsClientToStaff ? 'role_conversion' : 'reactivation',
+      );
+      if (!seat.ok) {
+        return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+      }
+    }
+
     updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-    await adminDb.collection('users').doc(uid).set(updates, { merge: true });
+    try {
+      await adminDb.collection('users').doc(uid).set(updates, { merge: true });
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     if (updates.displayName) {
       await adminAuth.updateUser(uid, { displayName: updates.displayName as string });

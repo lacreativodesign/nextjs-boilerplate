@@ -59,6 +59,16 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-bizosto
 
+      # Plan seat ceilings are only meaningful if they hold when two requests arrive at
+      # once. The in-memory Firestore double used by the unit suites cannot model
+      # transaction contention, so these invariants must run against the real emulator.
+      - name: Staff seat concurrency Firestore emulator invariants
+        run: >-
+          npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-bizosto
+          "npx jest __tests__/integration/staff-seat-concurrency.emulator.test.ts --runInBand --coverage=false"
+        env:
+          GCLOUD_PROJECT: demo-bizosto
+
       - name: Build application
         run: npm run build
         env:

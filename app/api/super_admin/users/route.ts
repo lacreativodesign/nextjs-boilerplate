@@ -7,7 +7,12 @@ import { writeAuditLog } from '@/lib/tenant/audit';
 import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  releaseStaffSeat,
+  reserveStaffSeat,
+  type StaffSeatReservation,
+} from '@/lib/billing/seat-reservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +63,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
     }
 
+    // A platform Super Admin is not a tenant staff seat, so it neither needs the tenant
+    // role allow-list nor consumes plan capacity. Every other role does both.
+    let seat: StaffSeatReservation | null = null;
     if (role !== 'super_admin') {
       const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
       if (!isRoleEnabled(rolesEnabled, role)) {
@@ -67,47 +75,53 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const seatCheck = await checkUserLimit(tenantId, role);
-      if (!seatCheck.ok) {
-        return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
+      // Atomic reservation: platform authority does not exempt a tenant from its plan.
+      seat = await reserveStaffSeat(tenantId, role, 'super_admin_create');
+      if (!seat.ok) {
+        return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
       }
     }
 
-    const authUser = await adminAuth.createUser({
-      email,
-      displayName,
-      disabled: status === 'disabled',
-    });
-
+    let authUser;
     try {
-      // Claims are installed before the Firestore identity is published, so a newly
-      // created account is never visible with a tenant document but missing its RBAC
-      // enforcement-plane claims.
-      await adminAuth.setCustomUserClaims(authUser.uid, { role, tenantId });
+      authUser = await adminAuth.createUser({
+        email,
+        displayName,
+        disabled: status === 'disabled',
+      });
 
-      const now = admin.firestore.FieldValue.serverTimestamp();
-      await adminDb
-        .collection('users')
-        .doc(authUser.uid)
-        .set(
-          {
-            uid: authUser.uid,
-            email,
-            displayName,
-            name: displayName,
-            role,
-            tenantId,
-            status,
-            isActive: status === 'active',
-            createdAt: now,
-            updatedAt: now,
-            createdBy: user.uid,
-          },
-          { merge: true },
-        );
-    } catch (provisionError) {
-      await adminAuth.deleteUser(authUser.uid).catch(() => {});
-      throw provisionError;
+      try {
+        // Claims are installed before the Firestore identity is published, so a newly
+        // created account is never visible with a tenant document but missing its RBAC
+        // enforcement-plane claims.
+        await adminAuth.setCustomUserClaims(authUser.uid, { role, tenantId });
+
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await adminDb
+          .collection('users')
+          .doc(authUser.uid)
+          .set(
+            {
+              uid: authUser.uid,
+              email,
+              displayName,
+              name: displayName,
+              role,
+              tenantId,
+              status,
+              isActive: status === 'active',
+              createdAt: now,
+              updatedAt: now,
+              createdBy: user.uid,
+            },
+            { merge: true },
+          );
+      } catch (provisionError) {
+        await adminAuth.deleteUser(authUser.uid).catch(() => {});
+        throw provisionError;
+      }
+    } finally {
+      await releaseStaffSeat(seat);
     }
 
     await writeAuditLog({

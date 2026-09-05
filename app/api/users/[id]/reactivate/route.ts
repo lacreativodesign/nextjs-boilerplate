@@ -3,7 +3,8 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
 import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
 import { logEvent } from '@/lib/audit';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeat } from '@/lib/billing/seat-reservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,14 +40,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
-    // Inactive identities do not consume staff seats. Reactivating one does, so enforce
-    // the current (or stricter pending-downgrade) ceiling before enabling Auth.
-    const seatCheck = await checkUserLimit(String(me.tenantId || ''), targetRole);
-    if (!seatCheck.ok) {
-      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
+    // Inactive identities do not consume staff seats. Reactivating one does, so reserve
+    // the seat atomically against the current (or stricter pending-downgrade) ceiling
+    // before enabling Auth — otherwise two concurrent reactivations, or a reactivation
+    // racing a creation, could both claim the tenant's last free seat.
+    const seat = await reserveStaffSeat(String(me.tenantId || ''), targetRole, 'reactivation');
+    if (!seat.ok) {
+      return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
     }
 
-    await UserService.reactivateUser(params.id);
+    try {
+      await UserService.reactivateUser(params.id);
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     await UserService.logActivity({
       tenantId: me.tenantId,

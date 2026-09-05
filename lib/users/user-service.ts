@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { sendEmail } from '@/lib/email/email-service';
 import { checkUserLimit } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeatOrThrow } from '@/lib/billing/seat-reservation';
 import { ERP_ROLES } from '@/lib/erpAccess';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
@@ -49,11 +50,30 @@ export class UserService {
       throw new Error('This role is not enabled for the workspace');
     }
 
-    const seatCheck = await checkUserLimit(params.tenantId, normalizedRole);
-    if (!seatCheck.ok) {
-      throw new Error('This workspace has reached its plan limit for team members');
-    }
+    // A pending invitation IS a reserved seat, so issuing one consumes capacity and
+    // must be serialized against every other seat-consuming path. Held until the
+    // invitation document exists, at which point the invitation itself is counted.
+    const seat = await reserveStaffSeatOrThrow(params.tenantId, normalizedRole, 'invitation');
 
+    try {
+      return await this.createInvitation(params, normalizedEmail, normalizedRole);
+    } finally {
+      await releaseStaffSeat(seat);
+    }
+  }
+
+  private static async createInvitation(
+    params: {
+      tenantId: string;
+      email: string;
+      role: string;
+      teamIds?: string[];
+      invitedBy: string;
+      invitedByEmail: string;
+    },
+    normalizedEmail: string,
+    normalizedRole: string,
+  ): Promise<string> {
     const existingUser = await this.getUserByEmail(normalizedEmail, params.tenantId);
     if (existingUser) {
       throw new Error('User already exists in this tenant');
@@ -195,6 +215,11 @@ export class UserService {
     // acceptance previously performed no check at all, so a tenant could be pushed past
     // its plan limit. Counting this invitation itself would double-count the seat it
     // already reserves, so it is excluded from the comparison.
+    //
+    // Acceptance takes NO seat reservation on purpose. The pending invitation already
+    // holds one, and the batch below turns it into an active user and marks the
+    // invitation accepted together, so the tenant's seat count does not move. Reserving
+    // here would consume a second seat for the same person.
     const seatCheck = await checkUserLimit(invitation.tenantId, invitationRole);
     if (!seatCheck.ok && seatCheck.used > seatCheck.limit) {
       throw new Error(
