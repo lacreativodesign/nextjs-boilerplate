@@ -3,6 +3,12 @@ import { recordSuccessfulClientPayment } from '@/lib/finance/clientPaymentActiva
 
 const TENANT = 'emulator-tenant';
 const ACTOR = { uid: 'system:test', name: 'Firestore emulator' };
+const EMULATOR_TIMEOUT_MS = 30_000;
+
+// Real Firestore emulator round trips are intentionally slower than the in-memory unit-test
+// doubles. Give this integration suite enough time to exercise transaction contention and
+// project activation instead of failing in setup/teardown under Jest's 5-second default.
+jest.setTimeout(EMULATOR_TIMEOUT_MS);
 
 async function clearCollection(name: string) {
   for (;;) {
@@ -15,7 +21,7 @@ async function clearCollection(name: string) {
 }
 
 async function resetDb() {
-  for (const collection of [
+  const collections = [
     'invoices',
     'payments',
     'finance_ledger',
@@ -25,9 +31,11 @@ async function resetDb() {
     'audit_logs',
     'notifications',
     'emails',
-  ]) {
-    await clearCollection(collection);
-  }
+  ];
+
+  // These collections are independent. Clearing them concurrently keeps CI setup bounded
+  // while preserving the same clean-database invariant before every behavioral test.
+  await Promise.all(collections.map(clearCollection));
 }
 
 async function seedInvoice(params: {
