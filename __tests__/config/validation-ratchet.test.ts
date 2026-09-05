@@ -284,7 +284,6 @@ const KNOWN_UNVALIDATED = [
   'app/api/super_admin/tenants/route.ts',
   'app/api/super_admin/tickets/[ticketId]/route.ts',
   'app/api/super_admin/users/[uid]/route.ts',
-  'app/api/super_admin/users/route.ts',
   'app/api/support/help-feedback/route.ts',
   'app/api/support/tickets/[id]/messages/route.ts',
   'app/api/support/tickets/route.ts',

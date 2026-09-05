@@ -41,7 +41,10 @@ describe('S9: acceptance re-checks the seat limit', () => {
   const src = read('lib/users/user-service.ts');
 
   it('checks the limit before creating the auth user', () => {
-    expect(src).toContain('checkUserLimit(invitation.tenantId, invitation.role)');
+    // Acceptance re-checks the seat limit with the NORMALIZED role — the same value
+    // that is validated against ERP_ROLES, rejected for super_admin and written to the
+    // user document — rather than the raw stored `invitation.role`.
+    expect(src).toContain('checkUserLimit(invitation.tenantId, invitationRole)');
     const checkAt = src.indexOf('checkUserLimit(invitation.tenantId');
     const createAt = src.indexOf('adminAuth.createUser(');
     expect(checkAt).toBeGreaterThan(-1);
