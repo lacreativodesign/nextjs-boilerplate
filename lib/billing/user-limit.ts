@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { normalizePlan, type PlanTier } from '@/lib/tenant/plan-access';
 import { plans, normalizePlanKey } from '@/lib/billing/plans';
+import { isUserAccessDisabled } from '@/lib/auth/user-access-state';
 
 /**
  * Plan user-limit enforcement (audit P1).
@@ -37,8 +38,8 @@ function seatLimitForPlan(plan: PlanTier): number {
  *
  * S9: pending invitations previously consumed no seat. A Starter tenant sitting at
  * 9 of 10 seats could therefore issue an unlimited number of invitations — every one
- * of them passed the check, because each was measured against a count that ignored
- * the invitations already in flight — and end up far over its plan once they were
+ * of them passed the check, because each was measured against a count that ignored the
+ * invitations already in flight — and end up far over its plan once they were
  * accepted. An invitation is a reserved seat and must be counted as one.
  *
  * Accepting an invitation flips its status to 'accepted' in the same batch that
@@ -63,9 +64,8 @@ async function countBillableSeats(tenantId: string): Promise<number> {
   for (const doc of usersSnap.docs) {
     const data = doc.data() || {};
     const role = String(data.role || '').toLowerCase();
-    const status = String(data.status || 'active').toLowerCase();
     if (role === 'client') continue;
-    if (status === 'disabled' || status === 'deleted') continue;
+    if (isUserAccessDisabled(data)) continue;
     count += 1;
   }
 
