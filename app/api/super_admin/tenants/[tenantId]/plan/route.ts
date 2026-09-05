@@ -12,6 +12,7 @@ import {
 } from '@/app/lib/plan-enforcement';
 import { PLAN_MODULES } from '@/app/config/plans';
 import { PURCHASABLE_PLAN_KEYS, type PurchasablePlanKey } from '@/lib/billing/plans';
+import { getBillableSeatUsage, getSeatLimitForPlan } from '@/lib/billing/user-limit';
 import { createRoleNotifications } from '@/lib/notifications';
 import {
   BILLING_MODES,
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
 
     const data = snap.data() || {};
     const currentPlan = normalizePlan(data.plan);
+    const currentBillingMode = resolveBillingMode(data.billingMode);
     const currentModules = resolveTenantModules({
       plan: currentPlan,
       modules: data.modules,
@@ -159,10 +161,47 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     });
 
     const nextPlan = requestedPlan || currentPlan;
+
+    if (planProvided && requestedPlan && requestedPlan !== currentPlan) {
+      const liveSubscriptionId = String(data.stripeSubscriptionId || '').trim();
+      if (currentBillingMode === 'stripe' && liveSubscriptionId) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              'This workspace has a Stripe subscription. Change its plan through the subscription workflow so Stripe pricing and Bizosto entitlements stay synchronized.',
+            code: 'plan_change_requires_subscription_flow',
+          },
+          { status: 409 },
+        );
+      }
+
+      const targetSeatLimit = getSeatLimitForPlan(requestedPlan);
+      if (targetSeatLimit >= 0) {
+        const usedSeats = await getBillableSeatUsage(tenantId);
+        if (usedSeats > targetSeatLimit) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: `This workspace currently uses ${usedSeats} team seats, but ${requestedPlan} allows ${targetSeatLimit}. Reduce active/reserved staff seats before changing the plan.`,
+              code: 'plan_change_seat_limit_exceeded',
+              used: usedSeats,
+              limit: targetSeatLimit,
+              plan: requestedPlan,
+            },
+            { status: 409 },
+          );
+        }
+      }
+    }
+
     const modulePatch = parsedModules?.ok ? parsedModules.modules : null;
     const nextModules = planProvided
       ? resolvePlanModules(nextPlan, modulePatch || {})
-      : resolvePlanModules(currentPlan, modulePatch ? { ...currentModules, ...modulePatch } : currentModules);
+      : resolvePlanModules(
+          currentPlan,
+          modulePatch ? { ...currentModules, ...modulePatch } : currentModules,
+        );
 
     const updates: Record<string, unknown> = {
       plan: nextPlan,
@@ -177,7 +216,6 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     // are made together — "Enterprise, internally managed" is one thought, not two.
     // `plan` stays the answer to what the workspace can do; `billingMode` answers who
     // pays for it. Neither field has to lie about the other.
-    const currentBillingMode = resolveBillingMode(data.billingMode);
     let nextBillingMode: BillingMode = currentBillingMode;
 
     if (billingModeProvided) {
