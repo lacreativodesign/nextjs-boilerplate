@@ -1,9 +1,5 @@
 import { adminDb } from '@/lib/firebaseAdmin';
-import {
-  normalizePlan,
-  resolvePlanTier,
-  type PlanTier,
-} from '@/lib/tenant/plan-access';
+import { normalizePlan, resolvePlanTier, type PlanTier } from '@/lib/tenant/plan-access';
 import { plans, normalizePlanKey } from '@/lib/billing/plans';
 import { isUserAccessDisabled } from '@/lib/auth/user-access-state';
 

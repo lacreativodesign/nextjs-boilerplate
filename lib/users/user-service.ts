@@ -28,9 +28,14 @@ export class UserService {
     invitedByEmail: string;
   }): Promise<string> {
     const normalizedEmail = params.email.toLowerCase();
-    const normalizedRole = String(params.role || '').trim().toLowerCase();
+    const normalizedRole = String(params.role || '')
+      .trim()
+      .toLowerCase();
 
-    if (!(ERP_ROLES as readonly string[]).includes(normalizedRole) || normalizedRole === 'super_admin') {
+    if (
+      !(ERP_ROLES as readonly string[]).includes(normalizedRole) ||
+      normalizedRole === 'super_admin'
+    ) {
       throw new Error('Invalid invitation role');
     }
 
@@ -161,7 +166,9 @@ export class UserService {
       throw new Error('Invitation has expired');
     }
 
-    const invitationRole = String(invitation.role || '').trim().toLowerCase();
+    const invitationRole = String(invitation.role || '')
+      .trim()
+      .toLowerCase();
     if (
       !(ERP_ROLES as readonly string[]).includes(invitationRole) ||
       invitationRole === 'super_admin'

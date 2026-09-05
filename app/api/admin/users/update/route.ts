@@ -70,7 +70,9 @@ export async function POST(req: Request) {
       .trim()
       .toLowerCase();
     const existingDepartment = String(existing?.department || '').trim();
-    const existingStatus = String(existing?.status || 'active').trim().toLowerCase();
+    const existingStatus = String(existing?.status || 'active')
+      .trim()
+      .toLowerCase();
 
     const email = requestedEmail || existingEmail;
     const role = (requestedRole || existingRole || '').toLowerCase();

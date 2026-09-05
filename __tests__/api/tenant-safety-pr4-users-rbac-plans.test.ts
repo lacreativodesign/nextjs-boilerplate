@@ -129,7 +129,9 @@ describe('PR4 plan and seat enforcement', () => {
 
   it('does not silently normalize an invalid operator plan into a valid tier', () => {
     expect(planRoute).toContain('PURCHASABLE_PLAN_KEYS');
-    expect(planRoute).toContain('const requestedPlan = planProvided ? parsePlan(body?.plan) : null;');
+    expect(planRoute).toContain(
+      'const requestedPlan = planProvided ? parsePlan(body?.plan) : null;',
+    );
     expect(planRoute).toContain('Trial is a subscription state, not a plan tier.');
   });
 

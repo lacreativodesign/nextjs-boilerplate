@@ -35,9 +35,9 @@ function parsePlan(value: unknown): PurchasablePlanKey | null {
     : null;
 }
 
-function parseModuleOverrides(input: unknown):
-  | { ok: true; modules: ModuleMap }
-  | { ok: false; error: string } {
+function parseModuleOverrides(
+  input: unknown,
+): { ok: true; modules: ModuleMap } | { ok: false; error: string } {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { ok: false, error: 'modules must be an object of module:boolean entries.' };
   }

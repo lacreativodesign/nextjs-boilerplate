@@ -86,22 +86,25 @@ export async function POST(req: NextRequest) {
       await adminAuth.setCustomUserClaims(authUser.uid, { role, tenantId });
 
       const now = admin.firestore.FieldValue.serverTimestamp();
-      await adminDb.collection('users').doc(authUser.uid).set(
-        {
-          uid: authUser.uid,
-          email,
-          displayName,
-          name: displayName,
-          role,
-          tenantId,
-          status,
-          isActive: status === 'active',
-          createdAt: now,
-          updatedAt: now,
-          createdBy: user.uid,
-        },
-        { merge: true },
-      );
+      await adminDb
+        .collection('users')
+        .doc(authUser.uid)
+        .set(
+          {
+            uid: authUser.uid,
+            email,
+            displayName,
+            name: displayName,
+            role,
+            tenantId,
+            status,
+            isActive: status === 'active',
+            createdAt: now,
+            updatedAt: now,
+            createdBy: user.uid,
+          },
+          { merge: true },
+        );
     } catch (provisionError) {
       await adminAuth.deleteUser(authUser.uid).catch(() => {});
       throw provisionError;

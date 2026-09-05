@@ -16,7 +16,9 @@ export function isUserAccessDisabled(input: {
 }): boolean {
   if (input.isDeleted === true) return true;
   if (input.isActive === false) return true;
-  const status = String(input.status || 'active').trim().toLowerCase();
+  const status = String(input.status || 'active')
+    .trim()
+    .toLowerCase();
   return ACCESS_DISABLED_STATUSES.has(status);
 }
 
