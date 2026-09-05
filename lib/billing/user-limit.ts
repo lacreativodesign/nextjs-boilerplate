@@ -1,5 +1,9 @@
 import { adminDb } from '@/lib/firebaseAdmin';
-import { normalizePlan, type PlanTier } from '@/lib/tenant/plan-access';
+import {
+  normalizePlan,
+  resolvePlanTier,
+  type PlanTier,
+} from '@/lib/tenant/plan-access';
 import { plans, normalizePlanKey } from '@/lib/billing/plans';
 import { isUserAccessDisabled } from '@/lib/auth/user-access-state';
 
@@ -25,7 +29,7 @@ export interface UserLimitCheck {
   plan: PlanTier;
 }
 
-function seatLimitForPlan(plan: PlanTier): number {
+export function getSeatLimitForPlan(plan: PlanTier): number {
   // trial mirrors starter seats; paid tiers come straight from plans.ts.
   const key = normalizePlanKey(plan);
   const limit = plans[key]?.limits?.users;
@@ -49,7 +53,7 @@ function seatLimitForPlan(plan: PlanTier): number {
  * Client-portal invitations are the tenant's own customers, not staff seats, so they
  * are excluded exactly as client users are.
  */
-async function countBillableSeats(tenantId: string): Promise<number> {
+export async function getBillableSeatUsage(tenantId: string): Promise<number> {
   const [usersSnap, invitesSnap] = await Promise.all([
     adminDb.collection('users').where('tenantId', '==', tenantId).get(),
     adminDb
@@ -87,27 +91,55 @@ async function countBillableSeats(tenantId: string): Promise<number> {
 }
 
 /**
- * Checks whether the tenant can add one more billable seat of `targetRole`.
- * Client seats are always allowed (they are not staff seats). Unlimited plans
- * (limit < 0) always pass. Reads the tenant's plan from its Firestore doc.
+ * A scheduled downgrade takes effect at period end, but once it is scheduled the
+ * workspace must not be allowed to grow past the future tier's capacity. Otherwise a
+ * Pro tenant could schedule Starter at 8 seats, add another 12 users before period end,
+ * and arrive on Starter with 20 billable users. Existing access is not removed early;
+ * this only caps NEW reservations at the stricter of the current and pending plans.
  */
-export async function checkUserLimit(
+function resolveSeatEnforcementPlan(data: Record<string, unknown>): PlanTier {
+  const currentPlan = normalizePlan(data.plan);
+  const pendingPlan = resolvePlanTier(data.pendingDowngradePlan);
+  if (!pendingPlan || pendingPlan === 'trial') return currentPlan;
+
+  const currentLimit = getSeatLimitForPlan(currentPlan);
+  const pendingLimit = getSeatLimitForPlan(pendingPlan);
+
+  if (currentLimit < 0) return pendingPlan;
+  if (pendingLimit < 0) return currentPlan;
+  return pendingLimit < currentLimit ? pendingPlan : currentPlan;
+}
+
+export async function checkUserLimitForPlan(
   tenantId: string,
   targetRole: string,
+  plan: PlanTier,
 ): Promise<UserLimitCheck> {
   const role = String(targetRole || '').toLowerCase();
-
-  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-  const plan = normalizePlan(tenantSnap.data()?.plan);
-  const limit = seatLimitForPlan(plan);
+  const limit = getSeatLimitForPlan(plan);
 
   // Client portal users and unlimited plans are never seat-limited.
   if (role === 'client' || limit < 0) {
     return { ok: true, limit, used: 0, plan };
   }
 
-  const used = await countBillableSeats(tenantId);
+  const used = await getBillableSeatUsage(tenantId);
   return { ok: used < limit, limit, used, plan };
+}
+
+/**
+ * Checks whether the tenant can add one more billable seat of `targetRole`.
+ * Client seats are always allowed (they are not staff seats). Unlimited plans
+ * (limit < 0) always pass. Reads the tenant's current plan and any scheduled
+ * downgrade from Firestore, enforcing whichever has the stricter seat ceiling.
+ */
+export async function checkUserLimit(
+  tenantId: string,
+  targetRole: string,
+): Promise<UserLimitCheck> {
+  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+  const plan = resolveSeatEnforcementPlan((tenantSnap.data() || {}) as Record<string, unknown>);
+  return checkUserLimitForPlan(tenantId, targetRole, plan);
 }
 
 /**
