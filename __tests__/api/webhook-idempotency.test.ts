@@ -65,11 +65,7 @@ const fakeDb = {
           writes.push(() => ref.create(data));
           return tx;
         },
-        set: (
-          ref: FakeDoc,
-          data: Record<string, unknown>,
-          opts?: { merge?: boolean },
-        ) => {
+        set: (ref: FakeDoc, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
           writes.push(() => ref.set(data, opts));
           return tx;
         },

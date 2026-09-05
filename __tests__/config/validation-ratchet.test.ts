@@ -215,7 +215,6 @@ const KNOWN_UNVALIDATED = [
   'app/api/hr/settings/route.ts',
   'app/api/import/parse/route.ts',
   'app/api/ingest/briefs/route.ts',
-  'app/api/ingest/orders/route.ts',
   'app/api/integrations/docusign/oauth/route.ts',
   'app/api/integrations/docusign/send/route.ts',
   'app/api/integrations/google/calendar/sync/route.ts',

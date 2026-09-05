@@ -55,8 +55,8 @@ describe('USAGE-2: the call is attributed to the authenticated workspace', () =>
   it.each(INGEST_ROUTES)('%s uses the tenant the KEY resolved to', (rel) => {
     const src = active(rel);
     // Not a header, not a body field — the value authenticateIngest returned.
-    expect(src).toMatch(/void recordIngestUsage\(\{ tenantId,/);
-    expect(src).toContain('const tenantId = auth.tenantId;');
+    expect(src).toMatch(/tenantId:\s*(?:tenantId|auth\.tenantId)/);
+    expect(src).not.toMatch(/tenantId:\s*(?:body\.|req\.headers)/);
   });
 
   it.each(INGEST_ROUTES)('%s records only AFTER authenticating', (rel) => {

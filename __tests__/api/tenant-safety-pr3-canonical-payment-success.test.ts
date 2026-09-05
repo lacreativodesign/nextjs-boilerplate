@@ -87,7 +87,8 @@ describe('Tenant Safety PR3 — canonical client payment success', () => {
     expect(clientPortalCheckout).toContain('schedule.payableNow');
     expect(clientPortalCheckout).toContain('tenant.stripeConnectAccountId');
     expect(clientPortalCheckout).toContain('tenant.stripeConnectChargesEnabled !== true');
-    expect(clientPortalCheckout).toContain('calculatePlatformFee(amountCents)');
+    expect(clientPortalCheckout).toContain('amountToMinorUnits(amountUsd, currency)');
+    expect(clientPortalCheckout).toContain('calculatePlatformFee(amountMinor)');
     expect(clientPortalCheckout).toContain('stripeAccount: stripeConnectAccountId');
     expect(clientPortalCheckout).toContain('installmentSequence: schedule.installmentSequence');
     expect(clientPortalCheckout).not.toContain("collection('payments')");

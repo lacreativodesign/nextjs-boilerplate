@@ -219,6 +219,11 @@ class MockTransaction {
     return this;
   }
 
+  create(ref: MockDocRef, data: FirestoreRecord) {
+    this.writes.push(() => ref.create(data));
+    return this;
+  }
+
   update(ref: MockDocRef, data: FirestoreRecord) {
     this.writes.push(() => ref.update(data));
     return this;
