@@ -8,11 +8,8 @@ import { ERP_ROLES } from '@/lib/erpAccess';
 import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
-import { syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
 
 export const runtime = 'nodejs';
-
-const HR_EDITABLE_STATUSES = new Set(['active', 'inactive', 'disabled', 'terminated']);
 
 function normalizeString(incoming: any, existingValue: any = '') {
   if (incoming === undefined || incoming === null || incoming === '')
@@ -76,6 +73,24 @@ export async function POST(req: Request) {
       );
     }
 
+    // HR profile maintenance must never become a second account-disable/reactivation
+    // surface. Access state is an IAM operation and must go through the dedicated
+    // deactivate, reactivate or termination flows, where Firebase Auth and seat checks
+    // are enforced consistently.
+    if (body?.status !== undefined) {
+      const requestedStatus = normalizeString(body.status, existingStatus).toLowerCase();
+      if (requestedStatus !== existingStatus) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              'Account status cannot be changed from the employee profile. Use the dedicated deactivate, reactivate, or termination action.',
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const requestedRole = normalizeRole(body?.role || existingRole || '');
     if (!(ERP_ROLES as readonly string[]).includes(requestedRole)) {
       return NextResponse.json({ ok: false, error: 'Invalid role.' }, { status: 400 });
@@ -120,35 +135,12 @@ export async function POST(req: Request) {
     }
 
     const email = String(existing?.email || '').trim();
-    const status = normalizeString(body?.status, existingStatus).toLowerCase();
-    if (!HR_EDITABLE_STATUSES.has(status)) {
-      return NextResponse.json({ ok: false, error: 'Invalid user status.' }, { status: 400 });
-    }
-
-    if (status === 'terminated' && existingStatus !== 'terminated') {
-      return NextResponse.json(
-        { ok: false, error: 'Use the employee termination action to terminate access.' },
-        { status: 400 },
-      );
-    }
-
-    if (existing?.isDeleted === true && status === 'active') {
-      return NextResponse.json(
-        { ok: false, error: 'Use the reactivation action to restore a terminated user.' },
-        { status: 409 },
-      );
-    }
-
-    const nextIsActive = status === 'active' && existing?.isDeleted !== true;
-
     const updateData = {
       name: normalizeString(body?.name, existing?.name),
       email,
       phone: normalizeString(body?.phone, existing?.phone),
       cnic: normalizeString(body?.cnic, existing?.cnic),
       dob: normalizeDate(body?.dob, existing?.dob),
-      status,
-      isActive: nextIsActive,
       role: requestedRole || existingRole,
       department: normalizeString(body?.department, existing?.department),
       designation: normalizeString(body?.designation, existing?.designation),
@@ -163,26 +155,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    const accessStatusChanged = status !== existingStatus;
-    if (accessStatusChanged && status !== 'active') {
-      await syncFirebaseUserAccessState({
-        uid,
-        status,
-        isActive: false,
-        isDeleted: existing?.isDeleted,
-      });
-    }
-
     await adminDb.collection('users').doc(uid).update(updateData);
-
-    if (accessStatusChanged && status === 'active' && existing?.isDeleted !== true) {
-      await syncFirebaseUserAccessState({
-        uid,
-        status,
-        isActive: true,
-        isDeleted: false,
-      });
-    }
 
     if (requestedRole && requestedRole !== existingRole) {
       await syncUserClaims({
