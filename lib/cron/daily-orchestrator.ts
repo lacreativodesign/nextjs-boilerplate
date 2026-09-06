@@ -13,6 +13,23 @@ type ScheduledTask = {
   cadence: 'daily' | 'monthly';
 };
 
+const TRIAL_EMAILS: ScheduledTask = { path: '/api/cron/trial-emails', cadence: 'daily' };
+const INVOICE_REMINDERS: ScheduledTask = {
+  path: '/api/cron/invoice-reminders',
+  cadence: 'daily',
+};
+const ABANDONED_SIGNUPS: ScheduledTask = {
+  path: '/api/cron/abandoned-signups',
+  cadence: 'daily',
+};
+const BILLING_LOCKS: ScheduledTask = { path: '/api/cron/billing-locks', cadence: 'daily' };
+const BACKUP: ScheduledTask = { path: '/api/cron/backup', cadence: 'daily' };
+const EMAIL_OUTBOX: ScheduledTask = { path: '/api/cron/email-outbox', cadence: 'daily' };
+const GENERATE_INVOICES: ScheduledTask = {
+  path: '/api/cron/generate-invoices',
+  cadence: 'monthly',
+};
+
 /**
  * Vercel Hobby gives Bizosto one dependable scheduled trigger per day. Keep that trigger
  * on `/api/cron/daily-tasks` and fan out from it to the existing authenticated cron
@@ -22,18 +39,11 @@ type ScheduledTask = {
  * The dedicated routes remain available for manual recovery runs, but `vercel.json` must
  * schedule only the orchestrator. Monthly jobs are dispatched on the first UTC day, which
  * preserves their previous calendar cadence without consuming extra platform cron slots.
+ *
+ * Ordering is intentional: monthly invoices are generated before reminder evaluation;
+ * trial transitions happen before billing-lock enforcement; and the durable email outbox
+ * drains last so failures queued by the preceding jobs are visible to the retry worker.
  */
-const DAILY_TASKS: ScheduledTask[] = [
-  { path: '/api/cron/trial-emails', cadence: 'daily' },
-  { path: '/api/cron/invoice-reminders', cadence: 'daily' },
-  { path: '/api/cron/abandoned-signups', cadence: 'daily' },
-  { path: '/api/cron/billing-locks', cadence: 'daily' },
-  { path: '/api/cron/backup', cadence: 'daily' },
-];
-
-const MONTHLY_TASKS: ScheduledTask[] = [
-  { path: '/api/cron/generate-invoices', cadence: 'monthly' },
-];
 
 function safeError(value: unknown): string {
   const message = value instanceof Error ? value.message : String(value || 'Unknown cron error');
@@ -70,6 +80,14 @@ async function dispatchOne(
   }
 }
 
+async function dispatchPhase(
+  origin: string,
+  authorization: string,
+  tasks: ScheduledTask[],
+): Promise<CronDispatchResult[]> {
+  return Promise.all(tasks.map((task) => dispatchOne(origin, authorization, task)));
+}
+
 export async function dispatchScheduledCronTasks(
   request: NextRequest,
   now = new Date(),
@@ -79,31 +97,39 @@ export async function dispatchScheduledCronTasks(
     throw new Error('Cron orchestrator requires the authenticated Authorization header.');
   }
 
-  const tasks = [
-    ...DAILY_TASKS,
-    ...(now.getUTCDate() === 1 ? MONTHLY_TASKS : []),
-  ];
-
   const origin = request.nextUrl.origin;
-  const primary = await Promise.all(
-    tasks.map((task) => dispatchOne(origin, authorization, task)),
+  const firstOfMonth = now.getUTCDate() === 1;
+  const results: CronDispatchResult[] = [];
+
+  // Phase 1: independent work plus invoice generation when its monthly cadence is due.
+  results.push(
+    ...(await dispatchPhase(origin, authorization, [
+      ...(firstOfMonth ? [GENERATE_INVOICES] : []),
+      TRIAL_EMAILS,
+      ABANDONED_SIGNUPS,
+      BACKUP,
+    ])),
   );
 
-  // Drain the durable outbox after the business jobs have had a chance to enqueue mail.
-  // It still performs each first delivery inline; this pass exists for due retries and for
-  // a queued record left behind by a process crash between persistence and first send.
-  const outbox = await dispatchOne(origin, authorization, {
-    path: '/api/cron/email-outbox',
-    cadence: 'daily',
-  });
+  // Phase 2 depends on state produced in phase 1.
+  results.push(
+    ...(await dispatchPhase(origin, authorization, [INVOICE_REMINDERS, BILLING_LOCKS])),
+  );
 
-  return [...primary, outbox];
+  // Last: retry durable tenant mail after all business jobs had a chance to enqueue it.
+  results.push(await dispatchOne(origin, authorization, EMAIL_OUTBOX));
+
+  return results;
 }
 
 export function scheduledCronPathsForDate(now = new Date()): string[] {
   return [
-    ...DAILY_TASKS,
-    ...(now.getUTCDate() === 1 ? MONTHLY_TASKS : []),
-    { path: '/api/cron/email-outbox', cadence: 'daily' as const },
+    ...(now.getUTCDate() === 1 ? [GENERATE_INVOICES] : []),
+    TRIAL_EMAILS,
+    ABANDONED_SIGNUPS,
+    BACKUP,
+    INVOICE_REMINDERS,
+    BILLING_LOCKS,
+    EMAIL_OUTBOX,
   ].map((task) => task.path);
 }
