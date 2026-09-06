@@ -1,17 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-/**
- * Q10 — Disaster Recovery runbook / code sync guard.
- * Pins the runbook's endpoints and paths to strings that must also exist in the
- * real backup/restore code, so the runbook can't silently drift out of sync.
- */
-
 const read = (rel: string): string => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
 const RUNBOOK = 'docs/runbooks/disaster-recovery.md';
 const BACKUP_ROUTE = 'app/api/cron/backup/route.ts';
 const RESTORE_ROUTE = 'app/api/super_admin/restore/route.ts';
+const ORCHESTRATOR = 'lib/cron/daily-orchestrator.ts';
 
 describe('DR runbook exists and is substantive', () => {
   const doc = read(RUNBOOK);
@@ -26,6 +21,10 @@ describe('DR runbook exists and is substantive', () => {
     expect(doc).toMatch(/RTO/);
     expect(doc).toMatch(/[Ww]itnessed restore drill/);
   });
+
+  it('does not claim a deployed restore drill happened without evidence', () => {
+    expect(doc).toContain('Do not state that a deployed restore drill has been completed');
+  });
 });
 
 describe('runbook references match the real backup/restore code', () => {
@@ -33,11 +32,22 @@ describe('runbook references match the real backup/restore code', () => {
   const backup = read(BACKUP_ROUTE);
   const restore = read(RESTORE_ROUTE);
 
-  it('backup endpoint and schedule are accurate', () => {
+  it('documents the single scheduler and its daily backup fanout', () => {
+    expect(doc).toContain('/api/cron/daily-tasks');
+    expect(doc).toContain('0 0 * * *');
     expect(doc).toContain('/api/cron/backup');
-    const vercel = read('vercel.json');
-    expect(doc).toContain('0 2 * * *');
-    expect(vercel).toContain('0 2 * * *');
+
+    const vercel = JSON.parse(read('vercel.json')) as {
+      crons: Array<{ path: string; schedule: string }>;
+    };
+    expect(vercel.crons).toEqual([{ path: '/api/cron/daily-tasks', schedule: '0 0 * * *' }]);
+    expect(read(ORCHESTRATOR)).toContain("path: '/api/cron/backup'");
+  });
+
+  it('documents Bearer CRON_SECRET rather than the spoofable x-vercel-cron header', () => {
+    expect(doc).toContain('Authorization: Bearer <CRON_SECRET>');
+    expect(doc).toContain('is **not** authorization');
+    expect(backup).toContain('Bearer ${secret}');
   });
 
   it('restore endpoint is accurate and super_admin-gated', () => {
