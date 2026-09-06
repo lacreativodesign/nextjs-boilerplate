@@ -61,7 +61,9 @@ describe('DS-33: the workflow is parseable', () => {
   it('the sonar coverage and scan steps are unconditional once the token gate passes', () => {
     const sonarJob = source.slice(source.indexOf('\n  sonar:'));
     expect(sonarJob).toContain('- name: Test coverage\n        run: npm test');
-    expect(sonarJob).toContain('- name: SonarQube Scan\n        uses: SonarSource/sonarqube-scan-action@v2');
+    expect(sonarJob).toContain(
+      '- name: SonarQube Scan\n        uses: SonarSource/sonarqube-scan-action@v2',
+    );
   });
 
   it('the quality job still runs every gate it was meant to', () => {
