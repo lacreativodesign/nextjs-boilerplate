@@ -6,13 +6,19 @@ Operational procedures for backing up and restoring Bizosto tenant data. This ru
 
 - **What is protected:** the canonical top-level Firestore collections that hold tenant business data — `users`, `clients`, `invoices`, `projects`, `products`, `payments`, `documents` — backed up per tenant.
 - **What is not covered here:** Firebase Auth users, Storage file blobs, and Stripe state. Auth and billing state are reconstructable from their sources of truth; file blobs live in Cloud Storage and are not exported by this job.
-- **RPO (recovery point objective):** up to 24 hours — backups run nightly.
+- **RPO (recovery point objective):** up to 24 hours — the single daily scheduler dispatches the backup job once per UTC day.
 - **RTO (recovery time objective):** restore into isolated collections completes in minutes; promoting verified data back to live is a deliberate manual step.
+
+## Scheduler architecture
+
+Bizosto uses one production Vercel schedule: `/api/cron/daily-tasks` at `0 0 * * *` (00:00 UTC daily). `lib/cron/daily-orchestrator.ts` fans that authenticated trigger out to the existing dedicated cron handlers as separate serverless invocations. `/api/cron/backup` remains the canonical backup handler and is dispatched every day. The route can also be invoked manually for recovery/testing with the same Bearer secret.
+
+All cron execution, whether scheduled, orchestrated or manual, requires `Authorization: Bearer <CRON_SECRET>`. A client-supplied `x-vercel-cron` header is **not** authorization.
 
 ## Backup system
 
-- **Endpoint / job:** `/api/cron/backup`, run by Vercel Cron on schedule `0 2 * * *` (02:00 UTC daily).
-- **Authentication:** `Authorization: Bearer <CRON_SECRET>` (or the `x-vercel-cron` header Vercel sends). Manual invocation requires the Bearer token.
+- **Endpoint / job:** `/api/cron/backup`, dispatched daily by `/api/cron/daily-tasks`.
+- **Authentication:** `Authorization: Bearer <CRON_SECRET>` only.
 - **Bucket:** resolved by `getBackupBucketName()` — `FIREBASE_STORAGE_BUCKET` then `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` then SDK default. Set `FIREBASE_STORAGE_BUCKET` explicitly in production so this is never ambiguous.
 - **Layout:** one JSON file per tenant per collection at `backups/<runDate>/<tenantId>/<collection>.json`, plus a single `backups/<runDate>/manifest.json`.
 - **Integrity:** the manifest lists every file with its record count and a **sha256** checksum of the exact bytes written. Restore refuses to apply anything whose bytes do not match.
@@ -20,11 +26,11 @@ Operational procedures for backing up and restoring Bizosto tenant data. This ru
 
 ### Verify a backup is healthy
 
-1. Confirm the nightly run left `backups/<today>/manifest.json` in the bucket.
+1. Confirm the daily run left `backups/<today>/manifest.json` in the bucket.
 2. Confirm `dead_letter_backups` has **no** new entries for that run date.
 3. Spot-check `manifest.json`: `totalRecords > 0` and every entry has a `sha256`.
 
-If the manifest is missing or `dead_letter_backups` has an entry, treat the nightly backup as failed and investigate before relying on it.
+If the manifest is missing or `dead_letter_backups` has an entry, treat the daily backup as failed and investigate before relying on it.
 
 ## Restore procedure
 
@@ -52,14 +58,16 @@ Restore intentionally stops at the isolated collections so a human can inspect t
 
 ## Witnessed restore drill (quarterly / pre-diligence)
 
-Run against the **demo tenant** so live tenants are never touched. Store the output in the diligence room as evidence of a working recovery path.
+Run against the **demo tenant** so live tenants are never touched. Store the output in the diligence room as evidence of a working recovery path. The repository's automated restore tests prove the checksum/dry-run/isolated-write mechanics; this operational drill proves the deployed credentials, bucket and environment work together.
 
-1. Trigger a backup (or use the latest nightly): confirm `backups/<runDate>/manifest.json` exists.
+1. Trigger a backup through `/api/cron/backup` with the Bearer secret (or use the latest daily run) and confirm `backups/<runDate>/manifest.json` exists.
 2. As super_admin, run the **dry run** for that manifest scoped to the demo tenant (`&tenantId=<demo>`). Capture the response showing 0 mismatches.
 3. Run the **apply** (POST) scoped to the demo tenant. Capture the response and the new `restore_<runDate>__*` collections.
 4. Verify a `restore_audit` entry with status `applied` (not `aborted`).
 5. Spot-check a few restored documents against the live demo data.
 6. Save the dry-run response, apply response, and `restore_audit` entry, with the date and the operator's name, to the diligence room.
+
+Do not state that a deployed restore drill has been completed unless the evidence above has actually been captured. A passing repository test is not a substitute for the operational drill.
 
 ## Incident scenarios
 
@@ -69,6 +77,6 @@ Run against the **demo tenant** so live tenants are never touched. Store the out
 
 ## Roles and escalation
 
-- **Backups:** automated (Vercel Cron). Monitored via `dead_letter_backups` + email.
+- **Backups:** automated through the single daily Vercel scheduler. Monitored via `dead_letter_backups` + email.
 - **Restore / promotion:** super_admin only.
-- **Escalation:** a failed nightly backup or an aborted restore is a P1 — investigate before the next nightly window so the RPO does not silently widen.
+- **Escalation:** a failed daily backup or an aborted restore is a P1 — investigate before the next daily window so the RPO does not silently widen.

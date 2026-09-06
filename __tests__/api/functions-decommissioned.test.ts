@@ -1,26 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-/**
- * Decommission gate for the legacy Node-18 functions/ directory (OPS-01).
- *
- * Baseline findings:
- *  - The functions/ directory held Firebase Cloud Functions (pollEmailInboxes,
- *    purgeAuditLogs, sendScheduledReports, scheduledInvoiceGeneration) pinned to
- *    Node 18, with no lockfile and outside the root CI/typecheck/lint.
- *  - firebase.json carries NO functions block, so none of it was ever deployed —
- *    it was untested dead code and an audit/diligence risk.
- *  - Its deployable responsibilities are covered by Vercel crons:
- *    compliance-retention (audit-log purge), generate-invoices (invoice
- *    generation), and backup.
- *
- * This gate proves the directory is gone, firebase.json declares no functions
- * target, and the replacing Vercel crons are present — so the directory cannot
- * quietly return.
- */
-
 const FIREBASE = 'firebase.json';
 const VERCEL = 'vercel.json';
+const ORCHESTRATOR = 'lib/cron/daily-orchestrator.ts';
 
 const read = (relative: string): string =>
   fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
@@ -35,14 +18,30 @@ describe('legacy Node-18 functions/ directory is decommissioned (OPS-01)', () =>
     expect(firebase).not.toHaveProperty('functions');
   });
 
-  it('covers the deployable jobs with Vercel crons (compliance-retention, generate-invoices, backup)', () => {
+  it('keeps exactly one Vercel schedule and fans legacy responsibilities from it', () => {
     const vercel = JSON.parse(read(VERCEL)) as { crons: Array<{ path: string; schedule: string }> };
+    expect(vercel.crons).toEqual([{ path: '/api/cron/daily-tasks', schedule: '0 0 * * *' }]);
+
+    const orchestrator = read(ORCHESTRATOR);
     for (const cronPath of [
-      '/api/cron/compliance-retention',
       '/api/cron/generate-invoices',
       '/api/cron/backup',
+      '/api/cron/email-outbox',
     ]) {
-      expect(vercel.crons.some((entry) => entry.path === cronPath)).toBe(true);
+      expect(orchestrator).toContain(`path: '${cronPath}'`);
+    }
+
+    // Compliance retention/reporting are already executed directly by daily-tasks itself,
+    // so scheduling their old standalone routes as well would double-run them.
+    const dailyTasks = read('app/api/cron/daily-tasks/route.ts');
+    expect(dailyTasks).toContain('runRetentionCleanupAcrossTenants()');
+    expect(dailyTasks).toContain('generateWeeklyComplianceReports()');
+
+    // The other half of that reasoning, asserted rather than assumed: dispatching the
+    // standalone routes as well would run the audit-log purge and the compliance report
+    // twice a day. The routes stay deployed for manual recovery runs, unscheduled.
+    for (const alsoInline of ['/api/cron/compliance-retention', '/api/cron/compliance-report']) {
+      expect(orchestrator).not.toContain(alsoInline);
     }
   });
 });

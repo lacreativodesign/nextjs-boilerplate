@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getCurrentUser } from '@/app/api/admin/_utils';
 import { USER_NOTIFICATION_EVENT_TYPES } from '@/lib/notifications/preferences-config';
 import { NotificationPreferenceService } from '@/lib/notifications/preferences';
+import { parseNotificationUnsubscribeToken } from '@/lib/notifications/unsubscribe-token';
 import { normalizeTenantId } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
@@ -33,7 +34,9 @@ export async function POST(request: NextRequest) {
     let eventType = payload.eventType;
 
     if (payload.token) {
-      const parsed = NotificationPreferenceService.parseUnsubscribeToken(payload.token);
+      // PR5: public unsubscribe links are authenticated by an HMAC signature. The old
+      // token was plain base64url text and could be forged for another tenant/user/event.
+      const parsed = parseNotificationUnsubscribeToken(payload.token);
       if (!parsed) {
         return NextResponse.json({ error: 'Invalid unsubscribe token' }, { status: 400 });
       }

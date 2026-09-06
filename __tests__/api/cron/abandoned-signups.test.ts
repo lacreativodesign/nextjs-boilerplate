@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { classifyAbandonedTenant, deletionDateIso } from '@/lib/tenant/abandoned-signups';
+import { scheduledCronPathsForDate } from '@/lib/cron/daily-orchestrator';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.parse('2026-07-05T00:00:00.000Z');
@@ -116,8 +117,23 @@ describe('signup OTP hardening — static gates (P0-2)', () => {
     );
   });
 
-  it('cron is registered in vercel.json', () => {
-    const vercel = fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8');
-    expect(vercel).toContain('/api/cron/abandoned-signups');
+  it('cron is actually scheduled in production', () => {
+    // PR5 consolidated scheduling onto the single daily trigger the hosting plan gives us,
+    // so this job is no longer its own `crons` entry. The invariant is unchanged — the job
+    // must really run every day — so it is now checked where it is now true: the one
+    // scheduled trigger is the orchestrator, and the orchestrator dispatches this path on
+    // every daily run. Asserting only the vercel.json string would have passed for a route
+    // that is scheduled but never reached, and failed for one that runs correctly.
+    const vercel = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8')) as {
+      crons: Array<{ path: string; schedule: string }>;
+    };
+
+    expect(vercel.crons).toHaveLength(1);
+    expect(vercel.crons[0].path).toBe('/api/cron/daily-tasks');
+
+    // A non-first-of-month date, so this proves daily cadence rather than monthly.
+    expect(scheduledCronPathsForDate(new Date('2026-02-17T00:00:00Z'))).toContain(
+      '/api/cron/abandoned-signups',
+    );
   });
 });

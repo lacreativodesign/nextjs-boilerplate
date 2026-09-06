@@ -6,7 +6,11 @@ import {
   USER_NOTIFICATION_EVENT_TYPES,
 } from '@/lib/notifications/preferences-config';
 import { normalizeTenantId } from '@/lib/tenant';
-import { sendEmail } from '@/lib/email/email-service';
+import { processNotificationDigestBatch } from '@/lib/notifications/digest-worker';
+import {
+  buildNotificationUnsubscribeToken,
+  parseNotificationUnsubscribeToken,
+} from '@/lib/notifications/unsubscribe-token';
 import {
   NotificationFrequency,
   NotificationDigestItem,
@@ -222,49 +226,13 @@ export class NotificationPreferenceService {
     } satisfies Omit<NotificationDigestItem, 'id'>);
   }
 
+  /** Backward-compatible facade; the safe worker owns delivery and per-group deletion now. */
   static async processDigestBatch(
     frequency: 'daily' | 'weekly',
     now = new Date(),
   ): Promise<number> {
-    const snapshot = await adminDb
-      .collection(DIGEST_COLLECTION)
-      .where('frequency', '==', frequency)
-      .where('scheduledFor', '<=', Timestamp.fromDate(now))
-      .orderBy('scheduledFor', 'asc')
-      .limit(200)
-      .get();
-
-    if (snapshot.empty) return 0;
-
-    const grouped = new Map<string, Array<NotificationDigestItem & { id: string }>>();
-    snapshot.docs.forEach((doc) => {
-      const item = { id: doc.id, ...(doc.data() as Omit<NotificationDigestItem, 'id'>) };
-      const key = `${item.tenantId}:${item.userId}`;
-      const current = grouped.get(key) || [];
-      current.push(item);
-      grouped.set(key, current);
-    });
-
-    for (const [, items] of grouped.entries()) {
-      const [first] = items;
-      const userDoc = await adminDb.collection('users').doc(first.userId).get();
-      const userEmail = String(userDoc.data()?.email || '').trim();
-      if (!userEmail) continue;
-
-      const html = this.buildDigestHtml(items, frequency);
-      await sendEmail({
-        to: userEmail,
-        subject: frequency === 'daily' ? 'Daily notification digest' : 'Weekly notification digest',
-        html,
-        text: this.buildDigestText(items, frequency),
-      });
-    }
-
-    const batch = adminDb.batch();
-    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-
-    return snapshot.size;
+    const result = await processNotificationDigestBatch(frequency, now);
+    return result.deleted;
   }
 
   static async unsubscribe(params: {
@@ -293,34 +261,22 @@ export class NotificationPreferenceService {
     });
   }
 
+  /** Deprecated facade retained for callers; implementation is now signed and tamper-evident. */
   static buildUnsubscribeToken(params: {
     userId: string;
     tenantId: string;
     eventType: UserNotificationEventType;
   }) {
-    return Buffer.from(
-      `${normalizeTenantId(params.tenantId)}:${params.userId}:${params.eventType}`,
-    ).toString('base64url');
+    return buildNotificationUnsubscribeToken({
+      ...params,
+      tenantId: normalizeTenantId(params.tenantId),
+    });
   }
 
   static parseUnsubscribeToken(
     token: string,
   ): { userId: string; tenantId: string; eventType: UserNotificationEventType } | null {
-    try {
-      const raw = Buffer.from(token, 'base64url').toString('utf8');
-      const [tenantId, userId, eventType] = raw.split(':');
-      if (
-        !tenantId ||
-        !userId ||
-        !eventType ||
-        !USER_NOTIFICATION_EVENT_TYPES.includes(eventType as UserNotificationEventType)
-      ) {
-        return null;
-      }
-      return { tenantId, userId, eventType: eventType as UserNotificationEventType };
-    } catch {
-      return null;
-    }
+    return parseNotificationUnsubscribeToken(token);
   }
 
   static isInQuietHours(preferences: UserNotificationPreferences, now: Date): boolean {
@@ -437,57 +393,5 @@ export class NotificationPreferenceService {
       hour: Number(parts.find((part) => part.type === 'hour')?.value || '0'),
       minute: Number(parts.find((part) => part.type === 'minute')?.value || '0'),
     };
-  }
-
-  private static buildDigestHtml(
-    items: Array<NotificationDigestItem & { id: string }>,
-    frequency: 'daily' | 'weekly',
-  ) {
-    const grouped = this.groupDigestItems(items);
-    const groupsHtml = Object.entries(grouped)
-      .map(
-        ([eventType, notifications]) =>
-          `<h3>${eventType.replace(/_/g, ' ')}</h3><ul>${notifications
-            .map(
-              (item) =>
-                `<li><strong>${item.title}</strong><p>${item.message}</p>${
-                  item.actionUrl
-                    ? `<a href="${item.actionUrl}">${item.actionLabel || 'Open'}</a>`
-                    : ''
-                }</li>`,
-            )
-            .join('')}</ul>`,
-      )
-      .join('');
-
-    return `<html><body><h2>${frequency === 'daily' ? 'Daily' : 'Weekly'} Digest</h2>${groupsHtml}</body></html>`;
-  }
-
-  private static buildDigestText(
-    items: Array<NotificationDigestItem & { id: string }>,
-    frequency: 'daily' | 'weekly',
-  ) {
-    const grouped = this.groupDigestItems(items);
-    const lines: string[] = [`${frequency === 'daily' ? 'Daily' : 'Weekly'} notification digest`];
-
-    Object.entries(grouped).forEach(([eventType, notifications]) => {
-      lines.push(`\n${eventType.replace(/_/g, ' ')}:`);
-      notifications.forEach((item) => {
-        lines.push(`- ${item.title}: ${item.message}`);
-      });
-    });
-
-    return lines.join('\n');
-  }
-
-  private static groupDigestItems(items: Array<NotificationDigestItem & { id: string }>) {
-    return items.reduce<Record<string, Array<NotificationDigestItem & { id: string }>>>(
-      (acc, item) => {
-        if (!acc[item.eventType]) acc[item.eventType] = [];
-        acc[item.eventType].push(item);
-        return acc;
-      },
-      {},
-    );
   }
 }

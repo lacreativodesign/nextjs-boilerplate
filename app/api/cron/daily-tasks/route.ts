@@ -6,9 +6,10 @@ import {
   runRetentionCleanupAcrossTenants,
 } from '@/lib/compliance/data-retention';
 import { getExchangeRates } from '@/lib/finance/exchangeRates';
-import { NotificationPreferenceService } from '@/lib/notifications/preferences';
+import { processNotificationDigestBatch } from '@/lib/notifications/digest-worker';
 import { enqueueJob } from '@/lib/jobs/job-queue';
 import { reconcilePendingPaymentActivations } from '@/lib/finance/operationalActivationReconciler';
+import { dispatchScheduledCronTasks } from '@/lib/cron/daily-orchestrator';
 
 export const runtime = 'nodejs';
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       runRetentionCleanupAcrossTenants(),
       generateWeeklyComplianceReports(),
-      NotificationPreferenceService.processDigestBatch('daily'),
+      processNotificationDigestBatch('daily'),
       refreshExchangeRateCache(),
       cleanupExpiredSessions(),
       archiveCompletedProjectsOlderThan90Days(),
@@ -50,20 +51,30 @@ export async function GET(request: NextRequest) {
       enqueueDailyIntegrationSyncJobs(),
     ]);
 
-    return NextResponse.json({
-      ok: true,
-      summary: {
-        cleanupSummary,
-        complianceReports,
-        dailyDigestSent,
-        exchangeRateRefreshed,
-        expiredSessionsRevoked,
-        archivedProjects,
-        paymentActivations,
-        scheduledReports,
-        syncJobs,
+    const childCrons = await dispatchScheduledCronTasks(request);
+    const childFailures = childCrons.filter((result) => !result.ok);
+
+    return NextResponse.json(
+      {
+        ok: childFailures.length === 0,
+        summary: {
+          cleanupSummary,
+          complianceReports,
+          dailyDigestSent,
+          exchangeRateRefreshed,
+          expiredSessionsRevoked,
+          archivedProjects,
+          paymentActivations,
+          scheduledReports,
+          syncJobs,
+          childCrons,
+        },
+        ...(childFailures.length
+          ? { error: `${childFailures.length} scheduled child task(s) failed.` }
+          : {}),
       },
-    });
+      { status: childFailures.length ? 500 : 200 },
+    );
   } catch (error: any) {
     console.error('cron/daily-tasks error', error);
     return NextResponse.json(

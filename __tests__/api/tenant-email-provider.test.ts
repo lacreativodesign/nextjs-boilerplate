@@ -158,8 +158,29 @@ describe('MAIL-6: queued mail routes the same way on every retry', () => {
 
   it('reads it back when retrying rather than re-deciding', () => {
     // A retry must leave through the same account as the original attempt, even if the
-    // tenant changed providers in between.
-    expect(src).toContain('...(record.tenantId ? { tenantId: record.tenantId } : {})');
+    // tenant changed providers in between. The delivery path therefore takes the routing
+    // fields off the leased row and never re-resolves the tenant's provider. Behavioural
+    // proof — a retry after the tenant swapped providers still uses the stored identity —
+    // is in __tests__/api/pr5-email-outbox-behaviour.test.ts.
+    const delivery = src.slice(src.indexOf('async function attemptDelivery'));
+    expect(delivery).toContain('...(claim.tenantId ? { tenantId: claim.tenantId } : {})');
+    expect(delivery).toContain('...(claim.identity || {})');
+    expect(delivery).not.toContain('resolveTenantSender');
+  });
+
+  it('platform mail cannot inherit a tenant identity from its caller', () => {
+    // Only messages carrying a tenantId are eligible for a tenant's provider. Platform mail
+    // builds its durable record field by field rather than spreading the caller's object,
+    // so a caller holding an extra tenantId/identity cannot widen a Bizosto security email
+    // into one that leaves through a third party's account and lands in their sending logs.
+    const platform = src.slice(
+      src.indexOf('export async function enqueuePlatformEmail'),
+      src.indexOf('async function persistRecord'),
+    );
+    expect(platform).not.toContain('enqueueDurableEmail(input)');
+    expect(platform).not.toContain('...input');
+    expect(platform).not.toContain('tenantId');
+    expect(platform).not.toContain('identity');
   });
 });
 
