@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/app/api/super_admin/_utils';
+
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
     await requireSuperAdmin(req);
-    const { seedDemoTenant } = await import('@/lib/demo/seed');
-    const result = await seedDemoTenant({ tenantId: 'bizosto-demo' });
+    const { seedDemoEnvironment } = await import('@/lib/demo/seed');
+    const result = await seedDemoEnvironment({ tenantId: 'bizosto-demo', reset: true });
 
     return NextResponse.json({
       ok: true,
