@@ -1,4 +1,4 @@
-import { DEMO_PASSWORD, seedDemoEnvironment } from '../lib/demo/seed';
+import { seedDemoEnvironment } from '../lib/demo/seed';
 
 function parseArgs(argv: string[]) {
   const parsed: { reset: boolean; tenantId: string } = {
@@ -18,22 +18,23 @@ async function run() {
   const args = parseArgs(process.argv.slice(2));
   const result = await seedDemoEnvironment({ tenantId: args.tenantId, reset: args.reset });
 
-  console.log('\n✅ Demo environment seeded successfully');
+  console.log('\nDemo environment seeded successfully');
   console.log(`Tenant ID: ${result.tenantId}`);
   console.log('Demo users:');
   result.users.forEach((user) => {
-    console.log(`- ${user.email} (${user.role}) | password: ${DEMO_PASSWORD}`);
+    console.log(`- ${user.email} (${user.role})`);
   });
   console.log('Counts:');
   Object.entries(result.counts).forEach(([key, value]) => {
     console.log(`- ${key}: ${value}`);
   });
+  console.log('Demo credentials are supplied through E2E_DEMO_PASSWORD and are never printed.');
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   console.log(`Access URL: ${appUrl}/login\n`);
 }
 
 run().catch((error) => {
-  console.error('❌ Demo tenant seed failed:', error);
+  console.error('Demo tenant seed failed:', error);
   process.exit(1);
 });
