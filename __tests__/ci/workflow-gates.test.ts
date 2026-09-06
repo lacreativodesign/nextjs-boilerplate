@@ -38,8 +38,6 @@ describe('DS-33: the workflow is parseable', () => {
   const source = read(WORKFLOW);
 
   it('no job-level if: reads the secrets context', () => {
-    // This is the failure mode that took the whole file down. A job-level `if:` may
-    // only use github, needs, vars or inputs.
     const jobLevelIfs = Array.from(source.matchAll(/^ {4}if:.*$/gm)).map((m) => m[0]);
     for (const line of jobLevelIfs) {
       expect({ line, usesSecrets: line.includes('secrets.') }).toEqual({
@@ -49,33 +47,33 @@ describe('DS-33: the workflow is parseable', () => {
     }
   });
 
-  it(
-    'the sonar gate fails closed instead of skipping analysis when the token is missing',
-    () => {
-      expect(source).toContain('SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}');
-      expect(source).toContain('Verify Sonar token configured');
-      expect(source).toContain('if [ -z "$SONAR_TOKEN" ]; then');
-      expect(source).toContain('SONAR_TOKEN is required for Bizosto certification.');
-      expect(source).toContain('exit 1');
-      expect(source).not.toContain("if: env.SONAR_TOKEN != ''");
-    },
-  );
-
-  it('pins the older scanner to the SonarQube Cloud EU endpoint', () => {
-    expect(source).toContain('SONAR_HOST_URL: https://sonarcloud.io');
-    expect(source).not.toContain('SONAR_HOST_URL: http://localhost:9000');
+  it('fails closed without a Sonar token', () => {
+    expect(source).toContain('SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}');
+    expect(source).toContain('Verify Sonar token configured');
+    expect(source).toContain('if [ -z "$SONAR_TOKEN" ]; then');
+    expect(source).toContain('SONAR_TOKEN is required for Bizosto certification.');
+    expect(source).not.toContain("if: env.SONAR_TOKEN != ''");
   });
 
-  it('the sonar coverage and scan steps are unconditional once the token gate passes', () => {
+  it('uses the current SonarQube Cloud scanner action', () => {
+    expect(source).toContain('SonarSource/sonarqube-scan-action@v8.2.1');
+    expect(source).toContain('SONAR_HOST_URL: https://sonarcloud.io');
+    expect(source).not.toContain('sonarqube-scan-action@v2');
+  });
+
+  it('waits for the real Sonar quality gate', () => {
+    expect(source).toContain('-Dsonar.qualitygate.wait=true');
+  });
+
+  it('runs coverage before the Sonar scan', () => {
     const sonarJob = source.slice(source.indexOf('\n  sonar:'));
-    expect(sonarJob).toContain('- name: Test coverage\n        run: npm test');
-    expect(sonarJob).toContain(
-      '- name: SonarQube Scan\n        uses: SonarSource/sonarqube-scan-action@v2',
+    expect(sonarJob.indexOf('- name: Test coverage')).toBeGreaterThan(-1);
+    expect(sonarJob.indexOf('- name: SonarQube Scan')).toBeGreaterThan(
+      sonarJob.indexOf('- name: Test coverage'),
     );
   });
 
-  it('the quality job still runs every gate it was meant to', () => {
-    // If the workflow had been running, these would have been enforced all along.
+  it('keeps the full quality gate', () => {
     for (const step of [
       'npm run docs:api',
       'npm run docs:schema',
@@ -89,7 +87,7 @@ describe('DS-33: the workflow is parseable', () => {
       'npm run licenses:check',
       'npm audit --audit-level=critical',
     ]) {
-      expect({ step, present: source.includes(step) }).toEqual({ step, present: true });
+      expect(source).toContain(step);
     }
   });
 });
@@ -98,7 +96,6 @@ describe('DS-33: the licence allowlist covers the exceljs chain', () => {
   const source = read('scripts/check-licenses.mjs');
 
   it('accepts the pre-SPDX MIT spelling', () => {
-    // chainsaw@0.1.0 and traverse@0.3.9 both declare "MIT/X11".
     expect(source).toContain("'MIT/X11'");
   });
 

@@ -95,14 +95,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # This repository still uses sonarqube-scan-action@v2 / SonarScanner 5.x.
-      # Older scanners default to localhost:9000 unless the cloud endpoint is explicit.
       SONAR_HOST_URL: https://sonarcloud.io
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # SonarQube Cloud uses SCM history for accurate PR/new-code attribution.
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -114,8 +111,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # PR5 certification requires a real Sonar analysis. Never allow this job to
-      # report green merely because the repository secret was omitted or removed.
       - name: Verify Sonar token configured
         run: |
           if [ -z "$SONAR_TOKEN" ]; then
@@ -126,5 +121,7 @@ jobs:
       - name: Test coverage
         run: npm test
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v2
+      - name: SonarQube Scan and Quality Gate
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
+        with:
+          args: -Dsonar.qualitygate.wait=true
