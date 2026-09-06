@@ -9,6 +9,7 @@ import { getExchangeRates } from '@/lib/finance/exchangeRates';
 import { NotificationPreferenceService } from '@/lib/notifications/preferences';
 import { enqueueJob } from '@/lib/jobs/job-queue';
 import { reconcilePendingPaymentActivations } from '@/lib/finance/operationalActivationReconciler';
+import { dispatchScheduledCronTasks } from '@/lib/cron/daily-orchestrator';
 
 export const runtime = 'nodejs';
 
@@ -50,20 +51,33 @@ export async function GET(request: NextRequest) {
       enqueueDailyIntegrationSyncJobs(),
     ]);
 
-    return NextResponse.json({
-      ok: true,
-      summary: {
-        cleanupSummary,
-        complianceReports,
-        dailyDigestSent,
-        exchangeRateRefreshed,
-        expiredSessionsRevoked,
-        archivedProjects,
-        paymentActivations,
-        scheduledReports,
-        syncJobs,
+    // PR5: Vercel schedules only THIS route. The orchestrator fans out to the other
+    // authenticated cron handlers as separate function invocations, preserving monthly
+    // cadence and dependency order while staying within the one-daily-trigger constraint.
+    const childCrons = await dispatchScheduledCronTasks(request);
+    const childFailures = childCrons.filter((result) => !result.ok);
+
+    return NextResponse.json(
+      {
+        ok: childFailures.length === 0,
+        summary: {
+          cleanupSummary,
+          complianceReports,
+          dailyDigestSent,
+          exchangeRateRefreshed,
+          expiredSessionsRevoked,
+          archivedProjects,
+          paymentActivations,
+          scheduledReports,
+          syncJobs,
+          childCrons,
+        },
+        ...(childFailures.length
+          ? { error: `${childFailures.length} scheduled child task(s) failed.` }
+          : {}),
       },
-    });
+      { status: childFailures.length ? 500 : 200 },
+    );
   } catch (error: any) {
     console.error('cron/daily-tasks error', error);
     return NextResponse.json(
