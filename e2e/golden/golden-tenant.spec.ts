@@ -54,12 +54,14 @@ test.describe('Golden tenant — integrated launch journey', () => {
     const overview = await getJson(page, '/api/client/overview');
     const projects = await getJson(page, '/api/client/projects/list');
 
-    expect(overview.kpis.activeProjects, 'client should have an active golden project').toBeGreaterThan(
-      0,
-    );
-    expect(projects.projects.length, 'client should see at least one linked project').toBeGreaterThan(
-      0,
-    );
+    expect(
+      overview.kpis.activeProjects,
+      'client should have an active golden project',
+    ).toBeGreaterThan(0);
+    expect(
+      projects.projects.length,
+      'client should see at least one linked project',
+    ).toBeGreaterThan(0);
     expect(
       projects.projects.some((project: any) => project.projectName === 'TechVision Brand Refresh'),
     ).toBe(true);
@@ -71,7 +73,9 @@ test.describe('Golden tenant — integrated launch journey', () => {
     expect([401, 403], 'client must be denied internal finance').toContain(finance.status());
   });
 
-  test('finance can read invoices but cannot cross into admin client management', async ({ page }) => {
+  test('finance can read invoices but cannot cross into admin client management', async ({
+    page,
+  }) => {
     await loginAs(page, 'finance');
 
     const invoices = await getJson(page, '/api/finance/invoices/list');

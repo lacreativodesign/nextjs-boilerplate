@@ -1,23 +1,10 @@
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { DEMO_TENANT_ID, DEMO_USERS } from './users';
 
-export const DEMO_TENANT_ID = 'bizosto-demo';
-
-export const DEMO_USERS = [
-  { email: 'demo_admin@bizosto.com', role: 'admin', name: 'Alex Admin' },
-  { email: 'demo_sales@bizosto.com', role: 'sales', name: 'Sam Sales' },
-  { email: 'demo_sales_manager@bizosto.com', role: 'sales_manager', name: 'Sarah Manager' },
-  { email: 'demo_am@bizosto.com', role: 'am', name: 'Adam Account' },
-  { email: 'demo_am_manager@bizosto.com', role: 'am_manager', name: 'Amy Head' },
-  { email: 'demo_production@bizosto.com', role: 'production', name: 'Pete Production' },
-  {
-    email: 'demo_production_manager@bizosto.com',
-    role: 'production_manager',
-    name: 'Paula Manager',
-  },
-  { email: 'demo_finance@bizosto.com', role: 'finance', name: 'Frank Finance' },
-  { email: 'demo_hr@bizosto.com', role: 'hr', name: 'Hannah HR' },
-  { email: 'demo_client@bizosto.com', role: 'client', name: 'Chris Client' },
-] as const;
+// The roster lives in `./users` so the Super Admin demo page can import it
+// without `firebaseAdmin`; re-exported here so this module stays the single
+// entry point for the seeding domain.
+export { DEMO_TENANT_ID, DEMO_USERS };
 
 const DEMO_COLLECTIONS = [
   'clients',
@@ -43,7 +30,13 @@ function daysFromNow(n: number): string {
   return d.toISOString();
 }
 
-export function requireDemoPassword(env: NodeJS.ProcessEnv = process.env): string {
+/**
+ * Fails closed: the golden tenant password comes from configuration only, so a
+ * missing or weak value is an error rather than a default. The parameter is
+ * typed to the single key it reads, which keeps callers (and tests) from having
+ * to fabricate a whole `NodeJS.ProcessEnv`.
+ */
+export function requireDemoPassword(env: Record<string, string | undefined> = process.env): string {
   const password = String(env.E2E_DEMO_PASSWORD || '').trim();
   if (password.length < 16) {
     throw new Error('E2E_DEMO_PASSWORD must be configured with at least 16 characters');
@@ -172,53 +165,65 @@ export async function seedDemoTenant(options: SeedOptions = {}) {
   const financeUser = userFor('finance');
   const clientUser = userFor('client');
 
-  const clients = [
-    {
-      id: 'demo-client-techvision',
-      companyName: 'TechVision Inc',
-      email: 'demo_client@bizosto.com',
-      phone: '+1 (555) 201-0101',
-      industry: 'Technology',
-      status: 'active',
-      tier: 'enterprise',
-    },
-    {
-      id: 'demo-client-bloom',
-      companyName: 'Bloom Beauty Co',
-      email: 'hello@bloombeauty.com',
-      phone: '+1 (555) 202-0202',
-      industry: 'Retail',
-      status: 'active',
-      tier: 'pro',
-    },
-    {
-      id: 'demo-client-summit',
-      companyName: 'Summit Partners',
-      email: 'ops@summitpartners.com',
-      phone: '+1 (555) 203-0303',
-      industry: 'Consulting',
-      status: 'active',
-      tier: 'pro',
-    },
-    {
-      id: 'demo-client-clearpath',
-      companyName: 'ClearPath Logistics',
-      email: 'info@clearpath.com',
-      phone: '+1 (555) 204-0404',
-      industry: 'Logistics',
-      status: 'active',
-      tier: 'starter',
-    },
-    {
-      id: 'demo-client-nova',
-      companyName: 'Nova Media Group',
-      email: 'team@novamedia.com',
-      phone: '+1 (555) 205-0505',
-      industry: 'Media',
-      status: 'inactive',
-      tier: 'starter',
-    },
-  ];
+  // Columns: id, companyName, primary contact email, phone, industry, status, tier.
+  // Tabular like the other fixtures below, so a column is added in one place.
+  const clientRows = [
+    [
+      'demo-client-techvision',
+      'TechVision Inc',
+      'demo_client@bizosto.com',
+      '+1 (555) 201-0101',
+      'Technology',
+      'active',
+      'enterprise',
+    ],
+    [
+      'demo-client-bloom',
+      'Bloom Beauty Co',
+      'hello@bloombeauty.com',
+      '+1 (555) 202-0202',
+      'Retail',
+      'active',
+      'pro',
+    ],
+    [
+      'demo-client-summit',
+      'Summit Partners',
+      'ops@summitpartners.com',
+      '+1 (555) 203-0303',
+      'Consulting',
+      'active',
+      'pro',
+    ],
+    [
+      'demo-client-clearpath',
+      'ClearPath Logistics',
+      'info@clearpath.com',
+      '+1 (555) 204-0404',
+      'Logistics',
+      'active',
+      'starter',
+    ],
+    [
+      'demo-client-nova',
+      'Nova Media Group',
+      'team@novamedia.com',
+      '+1 (555) 205-0505',
+      'Media',
+      'inactive',
+      'starter',
+    ],
+  ] as const;
+
+  const clients = clientRows.map(([id, companyName, email, phone, industry, status, tier]) => ({
+    id,
+    companyName,
+    email,
+    phone,
+    industry,
+    status,
+    tier,
+  }));
 
   const usersBatch = adminDb.batch();
   for (const user of resolvedUsers) {
@@ -276,11 +281,56 @@ export async function seedDemoTenant(options: SeedOptions = {}) {
   await clientsBatch.commit();
 
   const leads = [
-    ['demo-lead-apex', 'Jordan Bell', 'Apex Digital', 'jordan@apexdigital.com', 'New', 'Website', 8500, 3],
-    ['demo-lead-greenfield', 'Priya Sharma', 'Greenfield Tech', 'priya@greenfield.io', 'New', 'Referral', 12000, 5],
-    ['demo-lead-bluesky', 'Marcus Chen', 'BlueSky Ventures', 'marcus@bluesky.vc', 'Contacted', 'LinkedIn', 6500, 12],
-    ['demo-lead-coastal', 'Sofia Ramirez', 'Coastal Brands', 'sofia@coastalbrands.com', 'Contacted', 'Cold Outreach', 4200, 15],
-    ['demo-lead-spark', 'Ethan Park', 'Spark Digital', 'ethan@sparkdigital.com', 'Qualified', 'Website', 18000, 22],
+    [
+      'demo-lead-apex',
+      'Jordan Bell',
+      'Apex Digital',
+      'jordan@apexdigital.com',
+      'New',
+      'Website',
+      8500,
+      3,
+    ],
+    [
+      'demo-lead-greenfield',
+      'Priya Sharma',
+      'Greenfield Tech',
+      'priya@greenfield.io',
+      'New',
+      'Referral',
+      12000,
+      5,
+    ],
+    [
+      'demo-lead-bluesky',
+      'Marcus Chen',
+      'BlueSky Ventures',
+      'marcus@bluesky.vc',
+      'Contacted',
+      'LinkedIn',
+      6500,
+      12,
+    ],
+    [
+      'demo-lead-coastal',
+      'Sofia Ramirez',
+      'Coastal Brands',
+      'sofia@coastalbrands.com',
+      'Contacted',
+      'Cold Outreach',
+      4200,
+      15,
+    ],
+    [
+      'demo-lead-spark',
+      'Ethan Park',
+      'Spark Digital',
+      'ethan@sparkdigital.com',
+      'Qualified',
+      'Website',
+      18000,
+      22,
+    ],
   ] as const;
 
   const leadsBatch = adminDb.batch();
@@ -308,27 +358,30 @@ export async function seedDemoTenant(options: SeedOptions = {}) {
   }
   await leadsBatch.commit();
 
-  await adminDb.collection('deals').doc('demo-deal-techvision').set({
-    id: 'demo-deal-techvision',
-    tenantId,
-    leadId: 'demo-lead-apex',
-    customerId: clients[0].id,
-    customerName: clients[0].companyName,
-    title: 'TechVision Brand Refresh Deal',
-    name: 'TechVision Brand Refresh Deal',
-    valueUSD: 28000,
-    value: 28000,
-    currency: 'USD',
-    stage: 'negotiation',
-    stageName: 'Negotiation',
-    ownerId: salesUser.uid,
-    ownerName: salesUser.name,
-    assignedSalesId: salesUser.uid,
-    isDeleted: false,
-    createdAt: daysAgo(40),
-    updatedAt: now,
-    isDemo: true,
-  });
+  await adminDb
+    .collection('deals')
+    .doc('demo-deal-techvision')
+    .set({
+      id: 'demo-deal-techvision',
+      tenantId,
+      leadId: 'demo-lead-apex',
+      customerId: clients[0].id,
+      customerName: clients[0].companyName,
+      title: 'TechVision Brand Refresh Deal',
+      name: 'TechVision Brand Refresh Deal',
+      valueUSD: 28000,
+      value: 28000,
+      currency: 'USD',
+      stage: 'negotiation',
+      stageName: 'Negotiation',
+      ownerId: salesUser.uid,
+      ownerName: salesUser.name,
+      assignedSalesId: salesUser.uid,
+      isDeleted: false,
+      createdAt: daysAgo(40),
+      updatedAt: now,
+      isDemo: true,
+    });
 
   const projects = [
     ['demo-project-techvision', 'TechVision Brand Refresh', clients[0], 'Kickoff', 28000, 21],
@@ -441,7 +494,13 @@ export async function seedDemoTenant(options: SeedOptions = {}) {
   await employeesBatch.commit();
 
   const productionJobs = [
-    ['demo-production-techvision', 'Website Redesign Assets', clients[0], projects[0], 'in_progress'],
+    [
+      'demo-production-techvision',
+      'Website Redesign Assets',
+      clients[0],
+      projects[0],
+      'in_progress',
+    ],
     ['demo-production-bloom', 'E-commerce QA Pack', clients[1], projects[1], 'review'],
     ['demo-production-summit', 'Brand Style Guide', clients[2], projects[2], 'completed'],
   ] as const;
@@ -468,10 +527,34 @@ export async function seedDemoTenant(options: SeedOptions = {}) {
   await productionBatch.commit();
 
   const notifications = [
-    ['demo-notification-admin', adminUser.uid, 'Invoice overdue', 'INV-0003 is overdue.', 'invoice'],
-    ['demo-notification-sales', salesUser.uid, 'New lead assigned', 'Apex Digital is assigned to you.', 'lead'],
-    ['demo-notification-finance', financeUser.uid, 'Invoice review', 'INV-0004 needs attention.', 'invoice'],
-    ['demo-notification-client', clientUser.uid, 'Project kickoff', 'TechVision Brand Refresh is active.', 'project'],
+    [
+      'demo-notification-admin',
+      adminUser.uid,
+      'Invoice overdue',
+      'INV-0003 is overdue.',
+      'invoice',
+    ],
+    [
+      'demo-notification-sales',
+      salesUser.uid,
+      'New lead assigned',
+      'Apex Digital is assigned to you.',
+      'lead',
+    ],
+    [
+      'demo-notification-finance',
+      financeUser.uid,
+      'Invoice review',
+      'INV-0004 needs attention.',
+      'invoice',
+    ],
+    [
+      'demo-notification-client',
+      clientUser.uid,
+      'Project kickoff',
+      'TechVision Brand Refresh is active.',
+      'project',
+    ],
   ] as const;
 
   const notificationsBatch = adminDb.batch();
@@ -493,18 +576,21 @@ export async function seedDemoTenant(options: SeedOptions = {}) {
   }
   await notificationsBatch.commit();
 
-  await adminDb.collection('auditLogs').doc('demo-audit-seeded').set({
-    tenantId,
-    actorUserId: 'system',
-    actorName: 'Demo Seeder',
-    actorRole: 'super_admin',
-    actionType: 'demo.seeded',
-    entityType: 'tenant',
-    entityId: tenantId,
-    metadata: { seededAt: now },
-    createdAt: now,
-    isDemo: true,
-  });
+  await adminDb
+    .collection('auditLogs')
+    .doc('demo-audit-seeded')
+    .set({
+      tenantId,
+      actorUserId: 'system',
+      actorName: 'Demo Seeder',
+      actorRole: 'super_admin',
+      actionType: 'demo.seeded',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: { seededAt: now },
+      createdAt: now,
+      isDemo: true,
+    });
 
   return {
     tenantId,

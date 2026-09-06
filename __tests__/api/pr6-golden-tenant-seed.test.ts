@@ -66,14 +66,27 @@ beforeEach(() => {
 });
 
 describe('PR6 golden tenant seed', () => {
+  it('carries exactly the ten approved tenant roles', () => {
+    expect(DEMO_USERS.map((user) => user.role)).toEqual([
+      'admin',
+      'sales',
+      'sales_manager',
+      'am',
+      'am_manager',
+      'production',
+      'production_manager',
+      'finance',
+      'hr',
+      'client',
+    ]);
+  });
+
   it('fails closed when the demo password is missing or weak', () => {
-    expect(() => requireDemoPassword({} as NodeJS.ProcessEnv)).toThrow(/E2E_DEMO_PASSWORD/);
-    expect(() =>
-      requireDemoPassword({ E2E_DEMO_PASSWORD: 'too-short' } as NodeJS.ProcessEnv),
-    ).toThrow(/at least 16/);
-    expect(
-      requireDemoPassword({ E2E_DEMO_PASSWORD: 'a-secure-test-password' } as NodeJS.ProcessEnv),
-    ).toBe('a-secure-test-password');
+    expect(() => requireDemoPassword({})).toThrow(/E2E_DEMO_PASSWORD/);
+    expect(() => requireDemoPassword({ E2E_DEMO_PASSWORD: 'too-short' })).toThrow(/at least 16/);
+    expect(requireDemoPassword({ E2E_DEMO_PASSWORD: 'a-secure-test-password' })).toBe(
+      'a-secure-test-password',
+    );
   });
 
   it('seeds a canonical, linked revenue-to-delivery fixture', async () => {
