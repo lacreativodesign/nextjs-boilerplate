@@ -21,6 +21,10 @@ function safeErrorSummary(error: unknown): string {
   return message.replace(/[\w.+-]+@[\w.-]+/g, '[address]').slice(0, 300);
 }
 
+function dedupeDocumentId(key: string): string {
+  return `dedupe_${crypto.createHash('sha256').update(key).digest('hex')}`;
+}
+
 export type TenantEmailInput = {
   tenantId: string;
   to: string;
@@ -39,6 +43,8 @@ export type PlatformEmailInput = {
   text?: string;
   messageClass: string;
   entityId?: string;
+  /** Stable key for callers that must survive a retry after their own commit/delete fails. */
+  idempotencyKey?: string;
 };
 
 export type EnqueueResult = {
@@ -57,6 +63,7 @@ type DurableEmailInput = {
   messageClass: string;
   entityId?: string;
   identity?: OutboxIdentity;
+  idempotencyKey?: string;
 };
 
 type OutboxRecord = {
@@ -94,22 +101,48 @@ export async function enqueueTenantEmail(input: TenantEmailInput): Promise<Enque
 }
 
 /**
- * Platform mail intentionally carries no tenantId, so password/security/app-notification
- * messages are sent through Bizosto's own provider rather than a tenant-controlled account.
+ * Platform mail intentionally carries no tenantId, so security/app-notification messages
+ * are sent through Bizosto's own provider rather than a tenant-controlled account.
  */
 export async function enqueuePlatformEmail(input: PlatformEmailInput): Promise<EnqueueResult> {
   return enqueueDurableEmail(input);
+}
+
+async function persistRecord(
+  ref: FirebaseFirestore.DocumentReference,
+  record: Record<string, unknown>,
+  idempotent: boolean,
+): Promise<{ created: boolean; existing?: OutboxRecord }> {
+  if (!idempotent) {
+    await ref.set(record);
+    return { created: true };
+  }
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists) {
+      return { created: false, existing: snap.data() as OutboxRecord };
+    }
+    tx.set(ref, record);
+    return { created: true };
+  });
 }
 
 /**
  * Persists BEFORE calling the provider. A process dying after persistence but before the
  * first provider call leaves a queued row that the worker can reclaim. This function never
  * throws into the already-committed business mutation.
+ *
+ * When an idempotency key is supplied, the outbox document id is deterministic and its
+ * creation is transactional. This lets a caller safely retry after its own post-enqueue
+ * commit fails without creating a second outbound message.
  */
 async function enqueueDurableEmail(input: DurableEmailInput): Promise<EnqueueResult> {
   const now = new Date();
   const identity = input.identity || {};
-  const ref = adminDb.collection(OUTBOX_COLLECTION).doc();
+  const ref = input.idempotencyKey
+    ? adminDb.collection(OUTBOX_COLLECTION).doc(dedupeDocumentId(input.idempotencyKey))
+    : adminDb.collection(OUTBOX_COLLECTION).doc();
   const record = {
     ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     to: input.to,
@@ -129,8 +162,9 @@ async function enqueueDurableEmail(input: DurableEmailInput): Promise<EnqueueRes
     updatedAt: now.toISOString(),
   };
 
+  let persisted: { created: boolean; existing?: OutboxRecord };
   try {
-    await ref.set(record);
+    persisted = await persistRecord(ref, record, Boolean(input.idempotencyKey));
   } catch (error) {
     console.error('[OUTBOX] failed to persist message:', safeErrorSummary(error));
     try {
@@ -146,6 +180,15 @@ async function enqueueDurableEmail(input: DurableEmailInput): Promise<EnqueueRes
     } catch {
       return { id: '', status: 'failed' };
     }
+  }
+
+  if (!persisted.created && persisted.existing) {
+    const existing = persisted.existing;
+    if (existing.status === 'sent' || existing.status === 'dead_letter') {
+      return { id: ref.id, status: existing.status };
+    }
+    const retried = await attemptDelivery(ref.id, existing, now);
+    return { id: ref.id, status: retried || existing.status };
   }
 
   const status = (await attemptDelivery(ref.id, record, now)) || 'queued';
