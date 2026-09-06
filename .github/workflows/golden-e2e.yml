@@ -1,16 +1,17 @@
-name: E2E Smoke (per-role + golden tenant)
+name: Golden Tenant E2E
 
-# Manual deployment certification suite. This workflow already exists on main,
-# so it can be dispatched against a PR ref before merge. Missing credentials are
-# a hard failure: skipped authenticated tests must never be launch evidence.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: golden-tenant-e2e
+  cancel-in-progress: false
+
 jobs:
-  smoke:
+  golden:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -47,10 +48,10 @@ jobs:
       - name: Run golden tenant and per-role suites
         run: npx playwright test e2e/golden e2e/smoke
 
-      - name: Upload report
+      - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: golden-tenant-playwright-report
           path: playwright-report/
           retention-days: 14

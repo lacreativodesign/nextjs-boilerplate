@@ -25,6 +25,14 @@ const customJestConfig = {
     // most safety-critical route in the change as entirely untested. Add a route here when
     // it earns a suite of its own, never to move a number.
     'app/api/super_admin/restore/route.ts',
+    // Same exception, same reason: PR6 rewrote both Super Admin demo endpoints and added a
+    // behavioural suite that drives each one end to end through the shared handler
+    // (__tests__/api/pr6-demo-route-contract) — including the path where authorization fails
+    // and no tenant data may be touched. That coverage is real; without these entries it never
+    // reaches coverage/lcov.info and Sonar scores a destructive endpoint as entirely untested.
+    'app/api/super_admin/demo/_handler.ts',
+    'app/api/super_admin/demo/seed/route.ts',
+    'app/api/super_admin/demo/reset/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],

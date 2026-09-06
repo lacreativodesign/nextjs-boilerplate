@@ -9,20 +9,23 @@ export async function GET(req: NextRequest) {
     await requireSuperAdmin(req);
     const tenantId = 'bizosto-demo';
 
-    const [clients, leads, invoices, projects, productionJobs, employees] = await Promise.all([
-      adminDb.collection('clients').where('tenantId', '==', tenantId).count().get(),
-      adminDb.collection('leads').where('tenantId', '==', tenantId).count().get(),
-      adminDb.collection('invoices').where('tenantId', '==', tenantId).count().get(),
-      adminDb.collection('projects').where('tenantId', '==', tenantId).count().get(),
-      adminDb.collection('production_jobs').where('tenantId', '==', tenantId).count().get(),
-      adminDb.collection('employees').where('tenantId', '==', tenantId).count().get(),
-    ]);
+    const [clients, leads, deals, invoices, projects, productionJobs, employees] =
+      await Promise.all([
+        adminDb.collection('clients').where('tenantId', '==', tenantId).count().get(),
+        adminDb.collection('leads').where('tenantId', '==', tenantId).count().get(),
+        adminDb.collection('deals').where('tenantId', '==', tenantId).count().get(),
+        adminDb.collection('invoices').where('tenantId', '==', tenantId).count().get(),
+        adminDb.collection('projects').where('tenantId', '==', tenantId).count().get(),
+        adminDb.collection('production_jobs').where('tenantId', '==', tenantId).count().get(),
+        adminDb.collection('employees').where('tenantId', '==', tenantId).count().get(),
+      ]);
 
     return NextResponse.json({
       ok: true,
       counts: {
         clients: clients.data().count,
         leads: leads.data().count,
+        deals: deals.data().count,
         invoices: invoices.data().count,
         projects: projects.data().count,
         productionJobs: productionJobs.data().count,
