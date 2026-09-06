@@ -44,6 +44,50 @@ describe('PR4 platform-role provisioning boundary', () => {
     );
   });
 
+  it('refuses a submitted super_admin on the tenant HR employee-update surface', () => {
+    const hrUpdate = read('app/api/hr/employees/update/route.ts');
+
+    // Refused for EVERY actor, not only a non-super_admin one. The previous guard read
+    // `requesterRole !== 'super_admin' && requestedRole === 'super_admin'`, which turned
+    // a tenant HR profile route into a platform-role minting surface for the one actor
+    // that could reach it.
+    expect(hrUpdate).toContain("normalizeRole(body?.role || '') === 'super_admin'");
+    expect(hrUpdate).toContain('platform administration surface');
+    expect(hrUpdate).not.toContain(
+      "requesterRole !== 'super_admin' && requestedRole === 'super_admin'",
+    );
+
+    // With the platform role refused outright, a role CHANGE here is always a tenant
+    // role, so the workspace allow-list no longer has a super_admin escape hatch.
+    expect(hrUpdate).not.toContain("if (requestedRole !== 'super_admin') {");
+  });
+
+  it('keeps one canonical employee-update implementation behind the legacy admin path', () => {
+    const legacyHrUpdate = read('app/api/admin/hr/employees/update/route.ts');
+
+    // The duplicate copy wrote users/{uid}.role straight from the body with no canonical
+    // role check, no ManageRoles assertion, no rolesEnabled allow-list, no atomic seat
+    // reservation and no claim sync — so an HR actor could promote itself to admin — and
+    // wrote `status` directly, stepping around the deactivate/reactivate seat and Auth
+    // gates. It must stay a thin adapter onto the guarded handler.
+    expect(legacyHrUpdate).toContain(
+      "import { POST as updateEmployee } from '../../../../hr/employees/update/route';",
+    );
+    expect(legacyHrUpdate).toContain('return updateEmployee(req);');
+    expect(legacyHrUpdate).not.toContain("adminDb.collection('users')");
+    expect(legacyHrUpdate).not.toContain('role: requestedRole');
+  });
+
+  it('keeps employee access-state changes on the dedicated IAM endpoints', () => {
+    const adminHrPage = read('app/admin/hr/employees/page.tsx');
+
+    expect(adminHrPage).not.toContain(
+      'body: JSON.stringify({ uid: getRowId(selectedUser), status })',
+    );
+    expect(adminHrPage).toContain("/reactivate`, { method: 'POST' }");
+    expect(adminHrPage).toContain("`, { method: 'DELETE' }");
+  });
+
   it('keeps tenant creation surfaces on createUserSchema and platform creation on platformCreateUserSchema', () => {
     const adminCreate = read('app/api/admin/users/create/route.ts');
     const legacyCreate = read('app/api/create-user/route.ts');
