@@ -216,6 +216,11 @@ export const DELEGATED_ROUTES: Record<
     contract: 'tenant_scoped',
     why: 'Legacy path adapter; injects the path uid into the canonical payload and returns the admin/users/update handler, which performs the tenant check, role/manager validation, Auth claim sync and audit logging.',
   },
+  'admin/hr/employees/update': {
+    canonical: 'hr/employees/update',
+    contract: 'tenant_scoped',
+    why: 'Legacy path adapter; returns the hr/employees/update handler, which performs the tenant check, ManageUsers/ManageRoles assertions, canonical role validation, the tenant role allow-list, the atomic staff-seat reservation on a client -> staff conversion and the Auth claim sync. It replaced a divergent second copy that had none of those.',
+  },
 };
 
 /**

@@ -89,7 +89,6 @@ const KNOWN_UNVALIDATED = [
   'app/api/admin/finance/tax-rates/route.ts',
   'app/api/admin/hr/documents/delete/route.ts',
   'app/api/admin/hr/documents/upload/route.ts',
-  'app/api/admin/hr/employees/update/route.ts',
   'app/api/admin/hr/onboarding/assign/route.ts',
   'app/api/admin/hr/onboarding/tasks/update/route.ts',
   'app/api/admin/hr/onboarding/templates/create/route.ts',
