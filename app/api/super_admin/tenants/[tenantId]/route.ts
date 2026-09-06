@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../../_utils';
-import { DEFAULT_MODULES, DEFAULT_ROLES } from '@/lib/tenant/constants';
+import { DEFAULT_MODULES } from '@/lib/tenant/constants';
+import { resolveTenantRoles } from '@/lib/tenant/access';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { normalizePlan, resolveTenantModules } from '@/app/lib/plan-enforcement';
 import { isCompExpired, resolveBillingMode, type CompedGrant } from '@/lib/billing/billing-mode';
@@ -29,7 +30,12 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
         status: data.status || 'active',
         brand: data.brand || null,
         modulesEnabled: data.modulesEnabled || DEFAULT_MODULES,
-        rolesEnabled: data.rolesEnabled || DEFAULT_ROLES,
+        // Normalized with the same fail-closed rule the user-creation routes apply, so
+        // the Role Access panel shows the policy the server will actually enforce. A
+        // partial stored map used to be forwarded verbatim and rendered with omitted
+        // roles ticked, which told an operator a role was available while every route
+        // refused to assign it.
+        rolesEnabled: resolveTenantRoles(data.rolesEnabled),
         plan,
         modules: resolveTenantModules({
           plan,

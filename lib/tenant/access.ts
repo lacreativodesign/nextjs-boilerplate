@@ -1,3 +1,5 @@
+import { DEFAULT_ROLES } from '@/lib/tenant/constants';
+
 /**
  * S6: fails closed. This previously returned `value !== false`, so a module KEY THAT
  * WAS ABSENT counted as enabled — meaning a tenant with no module map (or a map that
@@ -11,13 +13,41 @@ export function isModuleEnabled(
   return modulesEnabled?.[moduleKey] === true;
 }
 
+export type TenantRoleKey = keyof typeof DEFAULT_ROLES;
+export type TenantRoleMap = Record<TenantRoleKey, boolean>;
+
+/**
+ * Normalizes the tenant role allow-list without turning malformed/partial data into
+ * privilege. A completely missing map is treated as the historical default (all
+ * canonical tenant roles enabled) so legacy tenants keep working. Once a map exists,
+ * however, every role must be explicitly true; omitted or non-boolean values fail
+ * closed.
+ */
+export function resolveTenantRoles(rolesEnabled: unknown): TenantRoleMap {
+  if (rolesEnabled === undefined || rolesEnabled === null) {
+    return { ...DEFAULT_ROLES };
+  }
+
+  if (typeof rolesEnabled !== 'object' || Array.isArray(rolesEnabled)) {
+    return Object.keys(DEFAULT_ROLES).reduce((acc, key) => {
+      acc[key as TenantRoleKey] = false;
+      return acc;
+    }, {} as TenantRoleMap);
+  }
+
+  const input = rolesEnabled as Record<string, unknown>;
+  return Object.keys(DEFAULT_ROLES).reduce((acc, key) => {
+    acc[key as TenantRoleKey] = input[key] === true;
+    return acc;
+  }, {} as TenantRoleMap);
+}
+
 export function isRoleEnabled(rolesEnabled: Record<string, boolean>, role: string): boolean {
   if (role === 'super_admin') {
     return true;
   }
 
-  const value = rolesEnabled?.[role];
-  return value !== false;
+  return rolesEnabled?.[role] === true;
 }
 
 export function getEnabledModules(modulesEnabled: Record<string, boolean>): string[] {

@@ -112,7 +112,12 @@ describe('COMP-2: the self-tenant guard forgoes revenue but never grants capabil
     // Bizosto's own tenant is the one that most needs marking, and comping it removes it
     // from revenue rather than granting it anything.
     const guard = src.slice(src.indexOf('const isSelfTenant'));
-    expect(guard).toMatch(/isSelfTenant && billingModeProvided/);
+    // The self-tenant billing-mode guard now sits inside the `billingModeProvided`
+    // block, which first rejects any billingMode outside BILLING_MODES. The pairing
+    // is therefore structural rather than one boolean expression, and the rejection
+    // pins the exact comparison it is allowed to make.
+    expect(guard).toMatch(/if \(billingModeProvided\) \{/);
+    expect(guard).toMatch(/isSelfTenant && rawBillingMode !== 'comped'/);
     expect(guard).toContain("!== 'comped'");
   });
 

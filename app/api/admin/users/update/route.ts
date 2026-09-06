@@ -7,6 +7,13 @@ import { eligibleManagerRolesFor } from '@/lib/hierarchy';
 import { validateRequest } from '@/lib/validations/validate';
 import { adminUpdateUserSchema } from '@/lib/validations/user-admin';
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  releaseStaffSeat,
+  reserveStaffSeat,
+  type StaffSeatReservation,
+} from '@/lib/billing/seat-reservation';
 
 export const runtime = 'nodejs';
 
@@ -67,6 +74,23 @@ export async function POST(req: Request) {
       .trim()
       .toLowerCase();
     const existingDepartment = String(existing?.department || '').trim();
+    const existingStatus = String(existing?.status || 'active')
+      .trim()
+      .toLowerCase();
+
+    // Profile editing is not an access-state operation. Even Admin/Super Admin must use
+    // the dedicated deactivate/reactivate/termination flows so Firebase Auth, session
+    // revocation, deleted-user rules and plan-seat checks stay in one canonical path.
+    if (body.status !== undefined && String(body.status).toLowerCase() !== existingStatus) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Account status cannot be changed from the profile update endpoint. Use the dedicated deactivate, reactivate, or termination action.',
+        },
+        { status: 409 },
+      );
+    }
 
     const email = requestedEmail || existingEmail;
     const role = (requestedRole || existingRole || '').toLowerCase();
@@ -105,6 +129,28 @@ export async function POST(req: Request) {
       );
     }
 
+    const targetTenantId = String(existing.tenantId || current.tenantId || '').trim();
+
+    // Moving a client-portal identity into a staff role is the one profile edit that
+    // consumes plan capacity. Detected here, reserved immediately before the write.
+    const convertsClientToStaff =
+      Boolean(requestedRole) && existingRole === 'client' && role !== 'client';
+
+    if (requestedRole && role !== existingRole && role !== 'super_admin') {
+      const tenantSnap = await adminDb.collection('tenants').doc(targetTenantId).get();
+      if (!tenantSnap.exists) {
+        return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+      }
+
+      const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+      if (!isRoleEnabled(rolesEnabled, role)) {
+        return NextResponse.json(
+          { ok: false, error: 'This role is not enabled for the workspace.' },
+          { status: 400 },
+        );
+      }
+    }
+
     // if admin changes email -> update Auth email too
     if (wantsEmailChange && isAdminLike(requesterRole)) {
       await adminAuth.updateUser(uid, { email });
@@ -136,9 +182,9 @@ export async function POST(req: Request) {
         );
       }
       const managerData = managerSnap.data() || {};
-      const tenantMatch = isSuperAdminRequester
-        ? true
-        : String(managerData.tenantId || '') === String(current.tenantId || '');
+      // Super Admin is allowed to administer any tenant, but a reporting relationship
+      // is still tenant-local. Never let platform authority create a cross-tenant edge.
+      const tenantMatch = String(managerData.tenantId || '') === targetTenantId;
       if (!tenantMatch) {
         return NextResponse.json(
           { ok: false, error: 'Invalid manager selection.' },
@@ -156,9 +202,8 @@ export async function POST(req: Request) {
       managerExplicitlySet = true;
     }
 
-    // Re-validate preserved managerId against the NEW role.
-    // Handles role promotions (e.g. sales→sales_manager) where the old manager is no longer
-    // in the eligible list. Skipped when the admin explicitly supplied a validated managerId above.
+    // Re-validate preserved managerId against the NEW role and tenant.
+    // Handles role promotions and cleans up any stale cross-tenant relationship.
     if (!managerExplicitlySet) {
       const eligibleForNewRole = eligibleManagerRolesFor(role);
       if (eligibleForNewRole.length === 0) {
@@ -166,12 +211,15 @@ export async function POST(req: Request) {
         managerId = '';
       } else if (managerId) {
         const managerCheckSnap = await adminDb.collection('users').doc(managerId).get();
-        const managerRole = managerCheckSnap.exists
-          ? String((managerCheckSnap.data() || {}).role || '')
-          : '';
-        if (!managerCheckSnap.exists || !eligibleForNewRole.includes(managerRole)) {
-          // Old manager is no longer valid for new role — reset to tenant admin
-          const targetTenantId = String(existing.tenantId || '');
+        const managerData = managerCheckSnap.exists ? managerCheckSnap.data() || {} : {};
+        const managerRole = String(managerData.role || '');
+        const managerTenantId = String(managerData.tenantId || '');
+        if (
+          !managerCheckSnap.exists ||
+          managerTenantId !== targetTenantId ||
+          !eligibleForNewRole.includes(managerRole)
+        ) {
+          // Old manager is no longer valid for the target role/tenant — reset to tenant admin
           const adminSnap = await adminDb
             .collection('users')
             .where('tenantId', '==', targetTenantId)
@@ -191,7 +239,6 @@ export async function POST(req: Request) {
       cnic: normalizeString(body?.cnic, existing?.cnic),
       dob: normalizeDate(body?.dob, existing?.dob),
 
-      status: normalizeString(body?.status || existing?.status || 'active').toLowerCase(),
       role,
       managerId,
       department,
@@ -217,7 +264,23 @@ export async function POST(req: Request) {
         newValue: value,
       }));
 
-    await adminDb.collection('users').doc(uid).update(updateData);
+    // Reserved immediately before the write, so a request that fails validation never
+    // parks capacity, and two concurrent conversions cannot both take the last seat.
+    let seat: StaffSeatReservation | null = null;
+    if (convertsClientToStaff) {
+      seat = await reserveStaffSeat(targetTenantId, role, 'role_conversion');
+      if (!seat.ok) {
+        return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+      }
+    }
+
+    try {
+      await adminDb.collection('users').doc(uid).update(updateData);
+    } finally {
+      // Released once the role write is committed: from here the identity itself is
+      // counted as a staff seat, so holding the reservation would double-count it.
+      await releaseStaffSeat(seat);
+    }
 
     if (changes.length) {
       try {
@@ -249,7 +312,7 @@ export async function POST(req: Request) {
       await syncUserClaims({
         uid,
         role,
-        tenantId: String(existing.tenantId || current.tenantId || ''),
+        tenantId: targetTenantId,
         endSessions: true,
       });
 

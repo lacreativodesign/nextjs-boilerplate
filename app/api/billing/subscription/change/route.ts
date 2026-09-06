@@ -11,6 +11,7 @@ import {
   isKnownPaidTier,
   type PaidTier,
 } from '@/lib/billing/apply-subscription-state';
+import { getBillableSeatUsage, getSeatLimitForPlan } from '@/lib/billing/user-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -155,12 +156,35 @@ async function handlePlanChange(req: Request) {
       return NextResponse.json({ ok: true, plan: newPlan, effective: 'immediate' });
     }
 
+    // A downgrade may be scheduled only when today's active + reserved staff seats fit
+    // the target tier. Otherwise the future entitlement would arrive already over its
+    // paid capacity, which creates both an authorization ambiguity and a revenue leak.
+    // Client portal identities remain outside the staff-seat count by design.
+    const targetSeatLimit = getSeatLimitForPlan(newPlan);
+    if (targetSeatLimit >= 0) {
+      const usedSeats = await getBillableSeatUsage(tenantId);
+      if (usedSeats > targetSeatLimit) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `You currently use ${usedSeats} team seats, but the ${newPlan} plan allows ${targetSeatLimit}. Deactivate team members or let pending staff invitations expire before scheduling this downgrade.`,
+            code: 'downgrade_seat_limit_exceeded',
+            used: usedSeats,
+            limit: targetSeatLimit,
+            plan: newPlan,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     // Downgrade: takes effect at period end (locked decision). Swap the Stripe
     // price now with proration_behavior 'none' so the NEXT invoice bills the
     // lower price even if the cron lags, but keep bizosto_plan metadata at the
     // CURRENT plan so webhook-driven state keeps today's entitlement until the
     // period ends. The billing cron applies the entitlement change once
-    // pendingDowngradeAt passes.
+    // pendingDowngradeAt passes. Once scheduled, checkUserLimit() also applies
+    // the target tier's stricter ceiling to NEW staff-seat reservations.
     const updated = await stripe.subscriptions.update(subscriptionId, {
       items: [{ id: itemId, price: newPriceId }],
       proration_behavior: 'none',

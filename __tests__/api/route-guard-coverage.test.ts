@@ -2,8 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import {
   classifyRouteSource,
+  isDelegatingRoute,
   PUBLIC_ROUTES,
   AUTHENTICATED_ROUTES,
+  DELEGATED_ROUTES,
   type RouteContract,
 } from '@/lib/api/route-contract';
 
@@ -149,6 +151,51 @@ describe('route contract coverage (P0-5)', () => {
       );
     }
     expect(unreviewed).toEqual([]);
+  });
+
+  it('every DELEGATED_ROUTES entry points at a route that still exists', () => {
+    const existing = new Set(routes.map((r) => r.rel));
+    const stale = Object.entries(DELEGATED_ROUTES)
+      .filter(([rel, entry]) => !existing.has(rel) || !existing.has(entry.canonical))
+      .map(([rel]) => rel);
+    expect(stale).toEqual([]);
+  });
+
+  it('every DELEGATED_ROUTES entry has a non-empty justification', () => {
+    const missing = Object.entries(DELEGATED_ROUTES)
+      .filter(([, entry]) => !entry.why || !entry.why.trim())
+      .map(([rel]) => rel);
+    expect(missing).toEqual([]);
+  });
+
+  it('every delegating route really returns the canonical handler', () => {
+    // The reviewed entry must never be the only thing standing between a route and a
+    // contract: the adapter has to actually delegate.
+    const notDelegating = Object.keys(DELEGATED_ROUTES).filter((rel) => {
+      const file = path.join(API_ROOT, rel, 'route.ts');
+      return !fs.existsSync(file) || !isDelegatingRoute(fs.readFileSync(file, 'utf8'));
+    });
+    expect(notDelegating).toEqual([]);
+  });
+
+  it('every delegated route inherits the contract its canonical route actually has', () => {
+    // Verifies the inheritance against the target file rather than trusting the
+    // entry: if the canonical route's own contract changes (or it stops being
+    // guarded), the adapter's declared contract stops matching and this fails.
+    const mismatched = Object.entries(DELEGATED_ROUTES)
+      .map(([rel, entry]) => {
+        const canonicalFile = path.join(API_ROOT, entry.canonical, 'route.ts');
+        if (!fs.existsSync(canonicalFile)) return `${rel}: canonical route missing`;
+        const canonicalContract = classifyRouteSource(
+          entry.canonical,
+          fs.readFileSync(canonicalFile, 'utf8'),
+        );
+        return canonicalContract === entry.contract
+          ? null
+          : `${rel}: declares ${entry.contract}, but ${entry.canonical} is ${canonicalContract}`;
+      })
+      .filter((v): v is string => v !== null);
+    expect(mismatched).toEqual([]);
   });
 
   it('every AUTHENTICATED_ROUTES entry has a non-empty justification', () => {

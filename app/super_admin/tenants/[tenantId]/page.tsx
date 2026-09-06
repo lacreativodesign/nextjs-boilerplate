@@ -567,7 +567,7 @@ export default function TenantDetailPage() {
                 <span>{role.label}</span>
                 <input
                   type="checkbox"
-                  checked={rolesEnabled[role.key] !== false}
+                  checked={rolesEnabled[role.key] === true}
                   onChange={(e) => {
                     setRolesEnabled((prev) => ({
                       ...prev,

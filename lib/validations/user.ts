@@ -8,14 +8,20 @@ const roleSchema = z.enum(ERP_ROLES, {
   invalid_type_error: 'Role is required',
 });
 
-export const createUserSchema = z.object({
+// `super_admin` is a platform identity, not a tenant staff role. Tenant-scoped
+// creation/update schemas therefore fail closed even when the caller happens to be a
+// platform Super Admin. Platform provisioning uses `platformCreateUserSchema` below.
+const tenantRoleSchema = roleSchema.refine((role) => role !== 'super_admin', {
+  message: 'super_admin must be provisioned through the platform administration surface',
+});
+
+const createUserBaseShape = {
   email: emailSchema,
   displayName: z
     .string({ required_error: 'Display name is required' })
     .trim()
     .min(2, 'Display name must be at least 2 characters')
     .max(100, 'Display name must be at most 100 characters'),
-  role: roleSchema,
   tenantId: z
     .string({ required_error: 'Tenant id is required' })
     .trim()
@@ -23,6 +29,18 @@ export const createUserSchema = z.object({
   phone: phoneSchema.optional(),
   department: z.string().trim().min(1, 'Department cannot be empty').optional(),
   managerId: z.string().trim().optional(),
+};
+
+/** Tenant-scoped user provisioning. Never permits the platform `super_admin` role. */
+export const createUserSchema = z.object({
+  ...createUserBaseShape,
+  role: tenantRoleSchema,
+});
+
+/** Platform Super Admin provisioning surface. May create any canonical ERP role. */
+export const platformCreateUserSchema = z.object({
+  ...createUserBaseShape,
+  role: roleSchema,
 });
 
 export const updateUserSchema = createUserSchema.partial();
@@ -54,5 +72,6 @@ export const changePasswordSchema = z
   });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type PlatformCreateUserInput = z.infer<typeof platformCreateUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

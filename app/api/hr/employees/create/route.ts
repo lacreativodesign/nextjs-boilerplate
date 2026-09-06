@@ -1,39 +1,27 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { requireHrAccess } from '../../_utils';
+import { isAdminLike, normalizeRole, requireHrAccess } from '../../_utils';
 import { createPasswordSetupToken, sendSetPasswordEmail } from '@/lib/passwordSetup';
 import { createUserSchema } from '@/lib/validations/user';
 import { validateRequest } from '@/lib/validations/validate';
-import { isRoleEnabled } from '@/lib/tenant/access';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeat } from '@/lib/billing/seat-reservation';
 import { createNotifications, getUsersByRoles } from '@/lib/notifications';
+import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 
 export const runtime = 'nodejs';
 
 /**
  * Creates an employee — which is to say, a tenant user.
  *
- * This route used to `adminDb.collection('employees').add(...)`: a Firestore auto-id
- * document with no Firebase Auth account, no custom claims and no link to a uid. Every
- * sibling route in this namespace — list, get, update, delete — keys on `users` by uid.
- * So HR filled in the form, saw "Employee created!", was redirected to /hr/employees,
- * and the person was not there. They could never be listed, opened, edited, removed or
- * logged in as. The write went to an orphan collection nothing else in the product reads.
- *
  * `users` is the identity model: it is what the Auth uid keys, what custom claims are
- * stamped on, what the roster reads, and what every other module joins against. Creating
- * an employee therefore means creating a user, with the same seat limit, role gating and
- * password-setup invite the admin path already enforces.
+ * stamped on, what the roster reads, and what every other module joins against. Account
+ * creation is therefore an IAM operation. HR may maintain employee records, but only
+ * Admin/Super Admin may create a new login identity.
  */
 
-/**
- * The roles HR may create.
- *
- * Deliberately excludes `admin` and `super_admin` — HR must not be able to mint an
- * account more privileged than its own — and `client`, which is an external portal
- * identity created through the client invite flow, not the staff roster.
- */
 const HR_CREATABLE_ROLES = [
   'sales_manager',
   'sales',
@@ -46,12 +34,22 @@ const HR_CREATABLE_ROLES = [
 ] as const;
 
 export async function POST(req: Request) {
+  let createdUid: string | null = null;
+
   try {
     const access = await requireHrAccess();
     if (!access.ok) {
       return NextResponse.json(
         { success: false, message: access.error },
         { status: access.status },
+      );
+    }
+
+    const requesterRole = normalizeRole(access.user.role);
+    if (!isAdminLike(requesterRole)) {
+      return NextResponse.json(
+        { success: false, message: 'Only Admin or Super Admin can create user accounts.' },
+        { status: 403 },
       );
     }
 
@@ -81,13 +79,17 @@ export async function POST(req: Request) {
 
     if (!(HR_CREATABLE_ROLES as readonly string[]).includes(role)) {
       return NextResponse.json(
-        { success: false, message: 'HR cannot create an account with that role.' },
+        { success: false, message: 'This surface cannot create an account with that role.' },
         { status: 403 },
       );
     }
 
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-    const rolesEnabled = (tenantSnap.data()?.rolesEnabled || {}) as Record<string, boolean>;
+    if (!tenantSnap.exists) {
+      return NextResponse.json({ success: false, message: 'Tenant not found.' }, { status: 404 });
+    }
+
+    const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
     if (!isRoleEnabled(rolesEnabled, role)) {
       return NextResponse.json(
         {
@@ -96,13 +98,6 @@ export async function POST(req: Request) {
         },
         { status: 400 },
       );
-    }
-
-    // Seat limit is checked BEFORE the Auth user exists, so a rejected creation never
-    // leaves an orphaned account behind.
-    const seatCheck = await checkUserLimit(tenantId, role);
-    if (!seatCheck.ok) {
-      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
     }
 
     const existingUser = await adminAuth.getUserByEmail(email).catch((err: any) => {
@@ -125,37 +120,68 @@ export async function POST(req: Request) {
       .get();
     const managerId = adminSnap.empty ? access.user.uid : adminSnap.docs[0].id;
 
-    const userRecord = await adminAuth.createUser({
-      email,
-      password: crypto.randomBytes(16).toString('hex'),
-      displayName,
-      disabled: false,
-    });
+    // Atomic staff-seat reservation, held until the identity is committed.
+    const seat = await reserveStaffSeat(tenantId, role, 'hr_create');
+    if (!seat.ok) {
+      return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+    }
 
-    // Claims always carry BOTH role and tenantId — one without the other locks the
-    // account out of every tenant-scoped guard.
-    await adminAuth.setCustomUserClaims(userRecord.uid, { role, tenantId });
-
-    const nowIso = new Date().toISOString();
-    await adminDb
-      .collection('users')
-      .doc(userRecord.uid)
-      .set({
-        uid: userRecord.uid,
-        name: displayName,
+    let userRecord;
+    try {
+      userRecord = await adminAuth.createUser({
         email,
-        role,
-        managerId,
-        tenantId,
-        phone: phone || '',
-        department: department || '',
-        designation: String(body?.designation || ''),
-        status: String(body?.status || '').toLowerCase() === 'inactive' ? 'inactive' : 'active',
-        joiningDate: body?.joiningDate || null,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        createdBy: access.user.uid,
+        password: crypto.randomBytes(16).toString('hex'),
+        displayName,
+        disabled: false,
       });
+      createdUid = userRecord.uid;
+
+      try {
+        await syncUserClaims({
+          uid: userRecord.uid,
+          role,
+          tenantId,
+          endSessions: false,
+        });
+
+        const nowIso = new Date().toISOString();
+        await adminDb
+          .collection('users')
+          .doc(userRecord.uid)
+          .set({
+            uid: userRecord.uid,
+            name: displayName,
+            displayName,
+            email,
+            role,
+            managerId,
+            tenantId,
+            phone: phone || '',
+            department: department || '',
+            designation: String(body?.designation || ''),
+            status: 'active',
+            isActive: true,
+            isDeleted: false,
+            joiningDate: body?.joiningDate || null,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            createdBy: access.user.uid,
+          });
+      } catch (provisionError) {
+        await adminAuth.deleteUser(userRecord.uid).catch(() => {});
+        createdUid = null;
+        throw provisionError;
+      }
+
+      // Provisioning is complete and both planes agree. The steps that follow — the
+      // password-setup token, the email, the notifications — must not be able to undo
+      // it: the outer catch deletes the Auth identity, and deleting it after the
+      // Firestore write has landed would leave a users document that consumes a plan
+      // seat and belongs to nobody who can sign in.
+      createdUid = null;
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     const tokenData = await createPasswordSetupToken({
       uid: userRecord.uid,
@@ -163,8 +189,6 @@ export async function POST(req: Request) {
       createdBy: access.user.uid,
     });
 
-    // The set-password link is a live credential: it is delivered by email only and is
-    // never returned in an HTTP response (S-1).
     const emailResult = await sendSetPasswordEmail({ email, link: tokenData.link });
 
     const notifyTargets = await getUsersByRoles(['admin', 'super_admin', 'hr'], tenantId);
@@ -190,6 +214,9 @@ export async function POST(req: Request) {
       { status: 200 },
     );
   } catch (err: any) {
+    if (createdUid) {
+      await adminAuth.deleteUser(createdUid).catch(() => {});
+    }
     console.error('Error creating employee:', err);
     const status = typeof err?.status === 'number' ? err.status : 500;
     return NextResponse.json(

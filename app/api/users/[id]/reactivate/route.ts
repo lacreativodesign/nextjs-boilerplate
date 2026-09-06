@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
-import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
 import { logEvent } from '@/lib/audit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeat } from '@/lib/billing/seat-reservation';
 
 export const dynamic = 'force-dynamic';
-
-function canManageUsers(role: string) {
-  const normalized = normalizeRole(role);
-  return (
-    normalized === 'admin' ||
-    normalized === 'super_admin' ||
-    normalized === 'owner' ||
-    normalized === 'manager'
-  );
-}
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -23,7 +15,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!canManageUsers(me.role)) {
+    // Restoring login access is an IAM action, not a profile edit. HR may maintain
+    // employee records through ManageUsers, but only Admin/Super Admin may reactivate.
+    const requesterRole = String(me.role || '').toLowerCase();
+    if (!isAdminRole(requesterRole)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -37,7 +32,28 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await UserService.reactivateUser(params.id);
+    const targetRole = String(userData.role || '').toLowerCase();
+    if (requesterRole !== 'super_admin' && targetRole === 'super_admin') {
+      return NextResponse.json(
+        { error: 'Only a Super Admin can reactivate a Super Admin account.' },
+        { status: 403 },
+      );
+    }
+
+    // Inactive identities do not consume staff seats. Reactivating one does, so reserve
+    // the seat atomically against the current (or stricter pending-downgrade) ceiling
+    // before enabling Auth — otherwise two concurrent reactivations, or a reactivation
+    // racing a creation, could both claim the tenant's last free seat.
+    const seat = await reserveStaffSeat(String(me.tenantId || ''), targetRole, 'reactivation');
+    if (!seat.ok) {
+      return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+    }
+
+    try {
+      await UserService.reactivateUser(params.id);
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     await UserService.logActivity({
       tenantId: me.tenantId,

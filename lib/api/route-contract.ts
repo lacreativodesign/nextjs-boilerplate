@@ -193,6 +193,58 @@ export const AUTHENTICATED_ROUTES: Record<string, string> = {
 };
 
 /**
+ * Legacy path adapters: routes that keep an old URL alive by injecting a path
+ * parameter into the canonical payload and returning the canonical route's handler.
+ *
+ * Such an adapter carries no guard of its own BECAUSE it executes the canonical
+ * handler, which holds the real contract and is classified by this same gate. That
+ * is the point of the adapter — a second copy of the implementation is exactly what
+ * let authorization, validation, claim synchronization and auditing drift apart.
+ *
+ * An entry alone never classifies a route. `classifyRouteSource` additionally
+ * requires source evidence that the handler really is delegated, and
+ * route-guard-coverage verifies that `canonical` exists and independently
+ * classifies as the `contract` claimed here — so the inheritance is checked against
+ * the target file, never merely asserted.
+ */
+export const DELEGATED_ROUTES: Record<
+  string,
+  { canonical: string; contract: RouteContract; why: string }
+> = {
+  'admin/users/[uid]/update': {
+    canonical: 'admin/users/update',
+    contract: 'tenant_scoped',
+    why: 'Legacy path adapter; injects the path uid into the canonical payload and returns the admin/users/update handler, which performs the tenant check, role/manager validation, Auth claim sync and audit logging.',
+  },
+};
+
+/**
+ * Evidence that a route delegates to another route's handler: it imports a handler
+ * binding from a route module (an import path ending in `/route`) and returns that
+ * binding invoked. Both halves are required — an import alone is not delegation.
+ */
+export function isDelegatingRoute(src: string): boolean {
+  const imports = src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"][^'"]*\/route['"]/g);
+  for (const match of imports) {
+    const bindings = match[1]
+      .split(',')
+      .map(
+        (part) =>
+          part
+            .trim()
+            .split(/\s+as\s+/)
+            .pop()
+            ?.trim() ?? '',
+      )
+      .filter((binding) => /^[A-Za-z_$][\w$]*$/.test(binding));
+    if (bindings.some((binding) => new RegExp(`return\\s+${binding}\\s*\\(`).test(src))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Routes that legitimately read a tenant identifier from the REQUEST (body, query,
  * or a dynamic [tenantId] path segment) rather than deriving it from the session.
  *
@@ -283,6 +335,12 @@ export function classifyRouteSource(relPath: string, src: string): RouteContract
 
   // An inbound webhook route without signature verification must not ship.
   if (looksLikeWebhook) return null;
+
+  // A reviewed path adapter inherits the contract of the canonical handler it
+  // returns. Both halves are required: the reviewed entry AND source evidence of
+  // real delegation, so a route can never inherit a contract it does not execute.
+  const delegated = DELEGATED_ROUTES[relPath];
+  if (delegated && isDelegatingRoute(src)) return delegated.contract;
 
   return null;
 }

@@ -4,6 +4,15 @@ import * as admin from 'firebase-admin';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
+import { platformCreateUserSchema } from '@/lib/validations/user';
+import { validateRequest } from '@/lib/validations/validate';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  releaseStaffSeat,
+  reserveStaffSeat,
+  type StaffSeatReservation,
+} from '@/lib/billing/seat-reservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,37 +44,85 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireSuperAdmin(req);
     const body = await req.json().catch(() => ({}));
-    const email = String(body?.email || '')
-      .trim()
-      .toLowerCase();
-    const displayName = String(body?.displayName || '').trim();
-    const role = String(body?.role || '').trim();
-    const tenantId = String(body?.tenantId || '').trim();
-    const status = body?.status === 'disabled' ? 'disabled' : 'active';
+    const status = body?.status === undefined ? 'active' : String(body.status).toLowerCase();
 
-    if (!email || !displayName || !role || !tenantId) {
-      return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
+    if (status !== 'active' && status !== 'disabled') {
+      return NextResponse.json({ ok: false, error: 'Invalid user status' }, { status: 400 });
     }
 
-    const authUser = await adminAuth.createUser({ email, displayName });
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const validated = validateRequest(platformCreateUserSchema, {
+      email: body?.email,
+      displayName: body?.displayName,
+      role: body?.role,
+      tenantId: body?.tenantId,
+    });
+    const { email, displayName, role, tenantId } = validated;
 
-    await adminDb.collection('users').doc(authUser.uid).set(
-      {
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantSnap.exists) {
+      return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+    }
+
+    // A platform Super Admin is not a tenant staff seat, so it neither needs the tenant
+    // role allow-list nor consumes plan capacity. Every other role does both.
+    let seat: StaffSeatReservation | null = null;
+    if (role !== 'super_admin') {
+      const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+      if (!isRoleEnabled(rolesEnabled, role)) {
+        return NextResponse.json(
+          { ok: false, error: 'This role is not enabled for the workspace.' },
+          { status: 400 },
+        );
+      }
+
+      // Atomic reservation: platform authority does not exempt a tenant from its plan.
+      seat = await reserveStaffSeat(tenantId, role, 'super_admin_create');
+      if (!seat.ok) {
+        return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+      }
+    }
+
+    let authUser;
+    try {
+      authUser = await adminAuth.createUser({
         email,
         displayName,
-        role,
-        tenantId,
-        status,
-        createdAt: now,
-        updatedAt: now,
-      },
-      { merge: true },
-    );
+        disabled: status === 'disabled',
+      });
 
-    // Set custom claims (role + tenantId) so the user passes middleware and the
-    // Firestore security-rules layer (belongsToTenant reads claims.tenantId).
-    await adminAuth.setCustomUserClaims(authUser.uid, { role, tenantId });
+      try {
+        // Claims are installed before the Firestore identity is published, so a newly
+        // created account is never visible with a tenant document but missing its RBAC
+        // enforcement-plane claims.
+        await adminAuth.setCustomUserClaims(authUser.uid, { role, tenantId });
+
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await adminDb
+          .collection('users')
+          .doc(authUser.uid)
+          .set(
+            {
+              uid: authUser.uid,
+              email,
+              displayName,
+              name: displayName,
+              role,
+              tenantId,
+              status,
+              isActive: status === 'active',
+              createdAt: now,
+              updatedAt: now,
+              createdBy: user.uid,
+            },
+            { merge: true },
+          );
+      } catch (provisionError) {
+        await adminAuth.deleteUser(authUser.uid).catch(() => {});
+        throw provisionError;
+      }
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     await writeAuditLog({
       tenantId,
@@ -79,6 +136,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, uid: authUser.uid });
   } catch (err: any) {
     const message = err?.message || 'Server error';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const status = message === 'Forbidden' ? 403 : 500;
+    return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

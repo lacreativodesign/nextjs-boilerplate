@@ -3,8 +3,9 @@ import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { UserService } from '@/lib/users/user-service';
-import { getCurrentUser, normalizeRole } from '@/app/api/admin/_utils';
+import { getCurrentUser, isAdminRole } from '@/app/api/admin/_utils';
 import { logEvent } from '@/lib/audit';
+import { assertPermission, Permission } from '@/app/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,14 +41,13 @@ const updateSchema = z.object({
   github: z.string().url().optional().nullable(),
 });
 
-function canManageUsers(role: string) {
-  const normalized = normalizeRole(role);
-  return (
-    normalized === 'admin' ||
-    normalized === 'super_admin' ||
-    normalized === 'owner' ||
-    normalized === 'manager'
-  );
+function canManageUsers(role: string): boolean {
+  try {
+    assertPermission(role, Permission.ManageUsers);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -112,8 +112,17 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!canManageUsers(me.role)) {
+    // Profile editing and access revocation are different privileges. HR may edit user
+    // records through ManageUsers, but only Admin/Super Admin may disable login access.
+    if (!isAdminRole(String(me.role || '').toLowerCase())) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (params.id === me.uid) {
+      return NextResponse.json(
+        { error: 'You cannot deactivate your own account from this endpoint.' },
+        { status: 409 },
+      );
     }
 
     const userDoc = await adminDb.collection('users').doc(params.id).get();
@@ -124,6 +133,18 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const userData = userDoc.data() || {};
     if (userData.tenantId !== me.tenantId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const requesterRole = String(me.role || '').toLowerCase();
+    const targetRole = String(userData.role || '').toLowerCase();
+    if (
+      requesterRole !== 'super_admin' &&
+      (targetRole === 'admin' || targetRole === 'super_admin')
+    ) {
+      return NextResponse.json(
+        { error: 'Only a Super Admin can deactivate an Admin or Super Admin account.' },
+        { status: 403 },
+      );
     }
 
     await UserService.deactivateUser(params.id);

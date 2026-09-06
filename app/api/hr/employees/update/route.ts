@@ -4,6 +4,15 @@ import { getCurrentUser, normalizeRole } from '../../../admin/_utils';
 import { createHrEvent, isAdminLike, isHrRole } from '../../_utils';
 import { logEvent } from '@/lib/audit';
 import { assertPermission, Permission } from '../../../../lib/permissions';
+import { ERP_ROLES } from '@/lib/erpAccess';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import {
+  releaseStaffSeat,
+  reserveStaffSeat,
+  type StaffSeatReservation,
+} from '@/lib/billing/seat-reservation';
+import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 
 export const runtime = 'nodejs';
 
@@ -55,6 +64,9 @@ export async function POST(req: Request) {
 
     const existing = snap.data() || {};
     const existingRole = normalizeRole(existing?.role || '');
+    const existingStatus = String(existing?.status || 'active')
+      .trim()
+      .toLowerCase();
     if (requesterRole !== 'super_admin' && existing?.tenantId !== current.tenantId) {
       return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
     }
@@ -66,7 +78,29 @@ export async function POST(req: Request) {
       );
     }
 
+    // HR profile maintenance must never become a second account-disable/reactivation
+    // surface. Access state is an IAM operation and must go through the dedicated
+    // deactivate, reactivate or termination flows, where Firebase Auth and seat checks
+    // are enforced consistently.
+    if (body?.status !== undefined) {
+      const requestedStatus = normalizeString(body.status, existingStatus).toLowerCase();
+      if (requestedStatus !== existingStatus) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              'Account status cannot be changed from the employee profile. Use the dedicated deactivate, reactivate, or termination action.',
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const requestedRole = normalizeRole(body?.role || existingRole || '');
+    if (!(ERP_ROLES as readonly string[]).includes(requestedRole)) {
+      return NextResponse.json({ ok: false, error: 'Invalid role.' }, { status: 400 });
+    }
+
     if (requesterRole !== 'super_admin' && requestedRole === 'super_admin') {
       return NextResponse.json(
         { ok: false, error: 'Cannot assign super admin role.' },
@@ -74,24 +108,42 @@ export async function POST(req: Request) {
       );
     }
 
+    const targetTenantId = String(existing?.tenantId || current.tenantId || '').trim();
+
+    // Moving a client-portal identity into a staff role is the one profile edit that
+    // consumes plan capacity. Detected here, reserved immediately before the write.
+    const convertsClientToStaff =
+      Boolean(requestedRole) && existingRole === 'client' && requestedRole !== 'client';
+
     if (requestedRole && requestedRole !== existingRole) {
       try {
         assertPermission(requesterRole, Permission.ManageRoles);
       } catch {
         return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
+
+      if (requestedRole !== 'super_admin') {
+        const tenantSnap = await adminDb.collection('tenants').doc(targetTenantId).get();
+        if (!tenantSnap.exists) {
+          return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+        }
+        const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+        if (!isRoleEnabled(rolesEnabled, requestedRole)) {
+          return NextResponse.json(
+            { ok: false, error: 'This role is not enabled for the workspace.' },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     const email = String(existing?.email || '').trim();
-    const status = normalizeString(body?.status, existing?.status || 'active').toLowerCase();
-
     const updateData = {
       name: normalizeString(body?.name, existing?.name),
       email,
       phone: normalizeString(body?.phone, existing?.phone),
       cnic: normalizeString(body?.cnic, existing?.cnic),
       dob: normalizeDate(body?.dob, existing?.dob),
-      status,
       role: requestedRole || existingRole,
       department: normalizeString(body?.department, existing?.department),
       designation: normalizeString(body?.designation, existing?.designation),
@@ -106,9 +158,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    await adminDb.collection('users').doc(uid).update(updateData);
+    // Reserved immediately before the write, so a request that fails validation never
+    // parks capacity, and two concurrent conversions cannot both take the last seat.
+    let seat: StaffSeatReservation | null = null;
+    if (convertsClientToStaff) {
+      seat = await reserveStaffSeat(targetTenantId, requestedRole, 'role_conversion');
+      if (!seat.ok) {
+        return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+      }
+    }
+
+    try {
+      await adminDb.collection('users').doc(uid).update(updateData);
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     if (requestedRole && requestedRole !== existingRole) {
+      await syncUserClaims({
+        uid,
+        role: requestedRole,
+        tenantId: targetTenantId,
+        endSessions: true,
+      });
+
       await createHrEvent({
         type: 'hr.role_changed',
         title: 'Role updated',
@@ -122,6 +195,7 @@ export async function POST(req: Request) {
 
       try {
         await logEvent({
+          tenantId: targetTenantId,
           type: 'user.role_changed',
           title: 'Role updated',
           description: `${updateData.name} role changed to ${requestedRole}.`,
@@ -129,6 +203,11 @@ export async function POST(req: Request) {
           entityId: uid,
           actor: { uid: current.uid, name: current.name || current.email || 'Admin' },
           metadata: { from: existingRole, to: requestedRole },
+          audit: {
+            action: 'role_changed',
+            resource: 'user',
+            changes: [{ field: 'role', oldValue: existingRole, newValue: requestedRole }],
+          },
         });
       } catch (auditError) {
         console.error('audit log error:', auditError);

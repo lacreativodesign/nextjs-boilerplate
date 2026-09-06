@@ -14,8 +14,9 @@ export const USER_ROLE_VALUES = [
 
 export type UserRole = (typeof USER_ROLE_VALUES)[number];
 
+// Tenant-facing staff controls must never offer the platform-only `super_admin`
+// role. Platform administration uses USER_ROLE_VALUES / dedicated Super Admin UI.
 export const INTERNAL_ROLE_OPTIONS = [
-  'super_admin',
   'admin',
   'sales_manager',
   'sales',
@@ -41,7 +42,6 @@ export const USER_DEPARTMENT_VALUES = [
 export type UserDepartment = (typeof USER_DEPARTMENT_VALUES)[number];
 
 const DEFAULT_DEPARTMENT_BY_ROLE: Record<InternalRole, UserDepartment> = {
-  super_admin: 'admin',
   admin: 'admin',
   sales_manager: 'sales',
   sales: 'sales',

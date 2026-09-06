@@ -9,11 +9,12 @@ import { adminCreateUserProfileSchema } from '@/lib/validations/user-admin';
 import { validateRequest } from '@/lib/validations/validate';
 import { checkRateLimit } from '@/lib/security';
 import { logEvent } from '@/lib/audit';
-import { isRoleEnabled } from '@/lib/tenant/access';
+import { isRoleEnabled, resolveTenantRoles } from '@/lib/tenant/access';
 import { sendEmail } from '@/lib/email/email-service';
 import { getUsersByRoles } from '@/lib/notifications';
 import { eligibleManagerRolesFor } from '@/lib/hierarchy';
-import { checkUserLimit, planLimitResponseBody } from '@/lib/billing/user-limit';
+import { planLimitResponseBody } from '@/lib/billing/user-limit';
+import { releaseStaffSeat, reserveStaffSeat } from '@/lib/billing/seat-reservation';
 
 export const runtime = 'nodejs';
 
@@ -104,20 +105,15 @@ export async function POST(req: Request) {
     const passwordToUse = String(password || '').trim() || crypto.randomBytes(16).toString('hex');
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const tenantData = tenantDoc.data() || {};
-    const rolesEnabled = (tenantData.rolesEnabled || {}) as Record<string, boolean>;
+    if (!tenantDoc.exists) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+    const rolesEnabled = resolveTenantRoles(tenantDoc.data()?.rolesEnabled);
     if (!isRoleEnabled(rolesEnabled, targetRole)) {
       return NextResponse.json(
         { error: 'This role is not enabled for your workspace. Contact your administrator.' },
         { status: 400 },
       );
-    }
-
-    // Plan seat limit (Starter 10 / Pro 20 / Enterprise unlimited). Client
-    // portal users are not staff seats and are never limited here.
-    const seatCheck = await checkUserLimit(tenantId, targetRole);
-    if (!seatCheck.ok) {
-      return NextResponse.json(planLimitResponseBody(seatCheck), { status: 403 });
     }
 
     // Resolve managerId: validate if provided, else default to tenant admin uid
@@ -157,42 +153,67 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User already exists' }, { status: 409 });
     }
 
-    // 6) Create Firebase Auth user
-    const userRecord = await adminAuth.createUser({
-      email,
-      password: passwordToUse,
-      displayName,
-      disabled: status === 'disabled',
-    });
+    // Plan seat limit (Starter 10 / Pro 20 / Enterprise unlimited). Client portal users
+    // are not staff seats and are never limited here. The reservation is atomic and is
+    // held until the identity itself is committed, so two concurrent creations cannot
+    // both take the tenant's last free seat.
+    const seat = await reserveStaffSeat(tenantId, targetRole, 'admin_create');
+    if (!seat.ok) {
+      return NextResponse.json(planLimitResponseBody(seat), { status: 403 });
+    }
 
-    // 7) Assign custom claims
-    await adminAuth.setCustomUserClaims(userRecord.uid, { role: targetRole, tenantId });
-
-    // 8) Save user document in Firestore
-    await adminDb
-      .collection('users')
-      .doc(userRecord.uid)
-      .set({
-        uid: userRecord.uid,
-        name: displayName,
+    let userRecord;
+    try {
+      // 6) Create Firebase Auth user
+      userRecord = await adminAuth.createUser({
         email,
-        role: targetRole,
-        managerId,
-        tenantId,
-        phone: phone || '',
-        department: department || '',
-        designation: designation || '',
-        salary: salary ?? null,
-        monthlyTarget: monthlyTarget ?? null,
-        commission: commission ?? null,
-        joiningDate: joiningDate || null,
-        status: status || 'active',
-        cnic: cnic || '',
-        dob: dob || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: current.uid,
+        password: passwordToUse,
+        displayName,
+        disabled: status === 'disabled',
       });
+
+      try {
+        // 7) Assign custom claims. Firestore security rules read the claim, so it is
+        // installed BEFORE the identity document is published; an account is never
+        // observable with a tenant record and no RBAC enforcement-plane claim.
+        await adminAuth.setCustomUserClaims(userRecord.uid, { role: targetRole, tenantId });
+
+        // 8) Save user document in Firestore
+        await adminDb
+          .collection('users')
+          .doc(userRecord.uid)
+          .set({
+            uid: userRecord.uid,
+            name: displayName,
+            email,
+            role: targetRole,
+            managerId,
+            tenantId,
+            phone: phone || '',
+            department: department || '',
+            designation: designation || '',
+            salary: salary ?? null,
+            monthlyTarget: monthlyTarget ?? null,
+            commission: commission ?? null,
+            joiningDate: joiningDate || null,
+            status: status || 'active',
+            isActive: status !== 'disabled',
+            cnic: cnic || '',
+            dob: dob || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: current.uid,
+          });
+      } catch (provisionError) {
+        // Without this the canonical admin creation path was the only provisioning
+        // surface that left an orphan Firebase Auth identity behind when the claim or
+        // Firestore write failed — a login with no tenant record and no seat accounting.
+        await adminAuth.deleteUser(userRecord.uid).catch(() => {});
+        throw provisionError;
+      }
+    } finally {
+      await releaseStaffSeat(seat);
+    }
 
     // S10: the `hr_employees` mirror document written here has been removed. It had one
     // writer — this block — and ZERO readers anywhere in the codebase, so every staff
