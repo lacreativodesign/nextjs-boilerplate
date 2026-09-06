@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 
-const DEMO_PASSWORD = 'BizostoDemo2026!';
-
 const DEMO_USERS = [
   { email: 'demo_admin@bizosto.com', role: 'admin', name: 'Alex Admin' },
   { email: 'demo_sales@bizosto.com', role: 'sales', name: 'Sam Sales' },
@@ -26,6 +24,7 @@ const DEMO_USERS = [
 type Counts = {
   clients: number;
   leads: number;
+  deals?: number;
   invoices: number;
   projects: number;
   productionJobs: number;
@@ -160,6 +159,10 @@ export default function DemoEnvironmentPage() {
 
       <section className="card">
         <h2 className="section-title mb-4">Demo User Accounts</h2>
+        <p className="text-sm text-[var(--text-muted)]">
+          Login credentials are managed securely outside the application source and are never
+          displayed in the browser.
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -167,7 +170,6 @@ export default function DemoEnvironmentPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Password</th>
               </tr>
             </thead>
             <tbody>
@@ -182,18 +184,6 @@ export default function DemoEnvironmentPage() {
                       {user.role}
                     </span>
                   </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <span>••••••••••••••••</span>
-                      <button
-                        onClick={() => copy(DEMO_PASSWORD)}
-                        className="btn ghost"
-                        style={{ padding: '4px 10px', fontSize: 12 }}
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -206,6 +196,7 @@ export default function DemoEnvironmentPage() {
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Count label="Clients" value={counts?.clients} />
           <Count label="Leads" value={counts?.leads} />
+          <Count label="Deals" value={counts?.deals} />
           <Count label="Invoices" value={counts?.invoices} />
           <Count label="Projects" value={counts?.projects} />
           <Count label="Production Jobs" value={counts?.productionJobs} />
@@ -216,8 +207,8 @@ export default function DemoEnvironmentPage() {
       <section className="card">
         <h2 className="section-title mb-4">Seed Demo Data</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Creates all 10 demo Firebase Auth accounts and seeds sample data into the bizosto-demo
-          tenant. Safe to run multiple times — existing accounts are updated, not duplicated.
+          Creates all 10 demo Firebase Auth accounts and replaces the bizosto-demo tenant data
+          with the canonical golden fixture. Credentials are read from secure server configuration.
         </p>
         {seedMessage && (
           <div className="mt-3 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-700">
@@ -245,8 +236,9 @@ export default function DemoEnvironmentPage() {
       >
         <h2 className="section-title mb-4 text-amber-900">Reset Demo Data</h2>
         <p className="mt-2 text-sm text-amber-900">
-          This will delete all current demo data and re-seed with fresh sample data. Demo user
-          accounts will not be affected. This cannot be undone.
+          This deletes all tenant-scoped golden demo data and re-seeds a fresh canonical fixture.
+          Demo Auth accounts remain but their password and claims are rotated to secure server
+          configuration. This cannot be undone.
         </p>
         <button className="btn btn-danger mt-4" onClick={() => setConfirmOpen(true)}>
           Reset Demo Environment
