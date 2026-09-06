@@ -93,16 +93,14 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    # `secrets` is not one of the contexts GitHub allows in a job-level `if:` (only
-    # github, needs, vars and inputs are), so this rejected the whole workflow at parse
-    # time and NO job ran — including `quality`. The gate moves to the steps that need
-    # the token, where `env` IS a valid context; the job now starts and no-ops when
-    # SONAR_TOKEN is unset.
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # SonarQube Cloud uses SCM history for accurate PR/new-code attribution.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -113,12 +111,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # PR5 certification requires a real Sonar analysis. Never allow this job to
+      # report green merely because the repository secret was omitted or removed.
+      - name: Verify Sonar token configured
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::error::SONAR_TOKEN is required for Bizosto certification."
+            exit 1
+          fi
+
       - name: Test coverage
-        if: env.SONAR_TOKEN != ''
         run: npm test
 
       - name: SonarQube Scan
-        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v2
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
