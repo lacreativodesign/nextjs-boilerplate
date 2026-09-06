@@ -49,14 +49,17 @@ describe('DS-33: the workflow is parseable', () => {
     }
   });
 
-  it('the sonar gate fails closed instead of skipping analysis when the token is missing', () => {
-    expect(source).toContain('SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}');
-    expect(source).toContain('Verify Sonar token configured');
-    expect(source).toContain('if [ -z "$SONAR_TOKEN" ]; then');
-    expect(source).toContain('SONAR_TOKEN is required for Bizosto certification.');
-    expect(source).toContain('exit 1');
-    expect(source).not.toContain("if: env.SONAR_TOKEN != ''");
-  });
+  it(
+    'the sonar gate fails closed instead of skipping analysis when the token is missing',
+    () => {
+      expect(source).toContain('SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}');
+      expect(source).toContain('Verify Sonar token configured');
+      expect(source).toContain('if [ -z "$SONAR_TOKEN" ]; then');
+      expect(source).toContain('SONAR_TOKEN is required for Bizosto certification.');
+      expect(source).toContain('exit 1');
+      expect(source).not.toContain("if: env.SONAR_TOKEN != ''");
+    },
+  );
 
   it('the sonar coverage and scan steps are unconditional once the token gate passes', () => {
     const sonarJob = source.slice(source.indexOf('\n  sonar:'));
