@@ -6,7 +6,7 @@ import {
   runRetentionCleanupAcrossTenants,
 } from '@/lib/compliance/data-retention';
 import { getExchangeRates } from '@/lib/finance/exchangeRates';
-import { NotificationPreferenceService } from '@/lib/notifications/preferences';
+import { processNotificationDigestBatch } from '@/lib/notifications/digest-worker';
 import { enqueueJob } from '@/lib/jobs/job-queue';
 import { reconcilePendingPaymentActivations } from '@/lib/finance/operationalActivationReconciler';
 import { dispatchScheduledCronTasks } from '@/lib/cron/daily-orchestrator';
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       runRetentionCleanupAcrossTenants(),
       generateWeeklyComplianceReports(),
-      NotificationPreferenceService.processDigestBatch('daily'),
+      processNotificationDigestBatch('daily'),
       refreshExchangeRateCache(),
       cleanupExpiredSessions(),
       archiveCompletedProjectsOlderThan90Days(),
@@ -51,9 +51,6 @@ export async function GET(request: NextRequest) {
       enqueueDailyIntegrationSyncJobs(),
     ]);
 
-    // PR5: Vercel schedules only THIS route. The orchestrator fans out to the other
-    // authenticated cron handlers as separate function invocations, preserving monthly
-    // cadence and dependency order while staying within the one-daily-trigger constraint.
     const childCrons = await dispatchScheduledCronTasks(request);
     const childFailures = childCrons.filter((result) => !result.ok);
 
