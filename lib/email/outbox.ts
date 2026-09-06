@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { sendEmail } from '@/lib/email/email-service';
 import { resolveTenantSender, type TenantSenderSource } from '@/lib/email/tenant-sender';
 
-/** Durable tenant-business email outbox. */
+/** Durable email outbox for tenant-business and platform notification mail. */
 export type OutboxStatus = 'queued' | 'sent' | 'failed' | 'dead_letter';
 
 export const OUTBOX_COLLECTION = 'email_outbox';
@@ -32,12 +32,32 @@ export type TenantEmailInput = {
   tenant?: TenantSenderSource | null;
 };
 
+export type PlatformEmailInput = {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  messageClass: string;
+  entityId?: string;
+};
+
 export type EnqueueResult = {
   id: string;
   status: OutboxStatus;
 };
 
 type OutboxIdentity = { fromEmail?: string; fromName?: string; replyTo?: string };
+
+type DurableEmailInput = {
+  tenantId?: string;
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  messageClass: string;
+  entityId?: string;
+  identity?: OutboxIdentity;
+};
 
 type OutboxRecord = {
   tenantId?: string;
@@ -58,18 +78,40 @@ type DeliveryClaim = OutboxRecord & {
   attempts: number;
 };
 
-/**
- * Records a tenant-to-customer message BEFORE calling the provider and then attempts the
- * first delivery inline. The function never throws back into the already-committed business
- * mutation: a persisted message is recoverable by the worker, and an unavailable queue gets
- * one best-effort direct send rather than losing the message without trying.
- */
+/** Tenant business mail uses the tenant sender/provider when configured. */
 export async function enqueueTenantEmail(input: TenantEmailInput): Promise<EnqueueResult> {
-  const now = new Date();
   const identity = resolveTenantSender(input.tenant);
+  return enqueueDurableEmail({
+    tenantId: input.tenantId,
+    to: input.to,
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
+    messageClass: input.messageClass,
+    entityId: input.entityId,
+    identity,
+  });
+}
+
+/**
+ * Platform mail intentionally carries no tenantId, so password/security/app-notification
+ * messages are sent through Bizosto's own provider rather than a tenant-controlled account.
+ */
+export async function enqueuePlatformEmail(input: PlatformEmailInput): Promise<EnqueueResult> {
+  return enqueueDurableEmail(input);
+}
+
+/**
+ * Persists BEFORE calling the provider. A process dying after persistence but before the
+ * first provider call leaves a queued row that the worker can reclaim. This function never
+ * throws into the already-committed business mutation.
+ */
+async function enqueueDurableEmail(input: DurableEmailInput): Promise<EnqueueResult> {
+  const now = new Date();
+  const identity = input.identity || {};
   const ref = adminDb.collection(OUTBOX_COLLECTION).doc();
   const record = {
-    tenantId: input.tenantId,
+    ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     to: input.to,
     subject: input.subject,
     html: input.html,
@@ -98,7 +140,7 @@ export async function enqueueTenantEmail(input: TenantEmailInput): Promise<Enque
         html: input.html,
         ...(input.text ? { text: input.text } : {}),
         ...identity,
-        tenantId: input.tenantId,
+        ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       });
       return { id: '', status: 'sent' };
     } catch {
@@ -106,17 +148,14 @@ export async function enqueueTenantEmail(input: TenantEmailInput): Promise<Enque
     }
   }
 
-  // If the process dies after ref.set() and before this call, the row remains `queued` and
-  // the worker now queries queued + failed records. That closes the old permanent-loss gap.
   const status = (await attemptDelivery(ref.id, record, now)) || 'queued';
   return { id: ref.id, status };
 }
 
 /**
- * Atomically leases one due row. The status remains queued/failed while the lease is held,
- * which means a crashed worker becomes retryable automatically as soon as the short lease
- * expires. A transaction prevents two serverless instances from sending the same due row at
- * the same time.
+ * Atomically leases one due row. Status stays queued/failed while leased, so a crashed
+ * worker becomes retryable automatically after the short lease expires. The transaction
+ * prevents two distributed serverless instances from sending the same due row at once.
  */
 async function claimDelivery(id: string, now: Date): Promise<DeliveryClaim | null> {
   const ref = adminDb.collection(OUTBOX_COLLECTION).doc(id);
@@ -186,20 +225,20 @@ async function attemptDelivery(
       ...(claim.tenantId ? { tenantId: claim.tenantId } : {}),
     });
 
-    await finishDelivery(id, claim, {
+    const finalized = await finishDelivery(id, claim, {
       status: 'sent',
       sentAt: now.toISOString(),
       updatedAt: now.toISOString(),
       nextAttemptAt: null,
       lastError: null,
     });
-    return 'sent';
+    return finalized ? 'sent' : null;
   } catch (error) {
     const attempts = claim.attempts;
     const exhausted = attempts >= MAX_ATTEMPTS;
     const status: OutboxStatus = exhausted ? 'dead_letter' : 'failed';
 
-    await finishDelivery(id, claim, {
+    const finalized = await finishDelivery(id, claim, {
       status,
       lastError: safeErrorSummary(error),
       nextAttemptAt: exhausted ? null : nextAttemptAt(attempts, now),
@@ -209,7 +248,7 @@ async function attemptDelivery(
       return false;
     });
 
-    return status;
+    return finalized ? status : null;
   }
 }
 
@@ -220,12 +259,7 @@ export type DrainResult = {
   deadLettered: number;
 };
 
-/**
- * Retries due queued AND failed messages. Including `queued` is critical: persistence happens
- * before the first send, so a process crash in that tiny window must leave a recoverable row,
- * not a message that no worker ever selects. Lease acquisition is transactional, making
- * overlapping/manual workers safe across distributed Vercel instances.
- */
+/** Retries due queued AND failed messages under a distributed Firestore lease. */
 export async function drainOutbox(limit = 50, now = new Date()): Promise<DrainResult> {
   const result: DrainResult = { claimed: 0, sent: 0, failed: 0, deadLettered: 0 };
 
