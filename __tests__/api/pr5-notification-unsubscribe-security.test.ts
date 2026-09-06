@@ -38,7 +38,9 @@ describe('PR5 notification unsubscribe token integrity', () => {
       eventType: 'invoice_overdue',
     });
     const [encodedPayload, signature] = token.split('.');
-    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+    const payload = JSON.parse(
+      Buffer.from(encodedPayload, 'base64url').toString('utf8'),
+    );
     payload.userId = 'victim-user';
     const forgedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 
@@ -71,9 +73,7 @@ describe('PR5 notification unsubscribe token integrity', () => {
     ).toThrow(/not configured securely/i);
 
     process.env.INTERNAL_REQUEST_SIGNING_SECRET = 'change-me-in-production';
-    expect(
-      parseNotificationUnsubscribeToken('payload.signature'),
-    ).toBeNull();
+    expect(parseNotificationUnsubscribeToken('payload.signature')).toBeNull();
   });
 
   it('pins the public unsubscribe route to the signed parser', () => {
@@ -82,6 +82,8 @@ describe('PR5 notification unsubscribe token integrity', () => {
       'utf8',
     );
     expect(source).toContain('parseNotificationUnsubscribeToken(payload.token)');
-    expect(source).not.toContain('NotificationPreferenceService.parseUnsubscribeToken(payload.token)');
+    expect(source).not.toContain(
+      'NotificationPreferenceService.parseUnsubscribeToken(payload.token)',
+    );
   });
 });
