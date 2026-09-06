@@ -109,8 +109,14 @@ describe('MAIL-5: the queue never becomes a directory of customers', () => {
   const src = active(OUTBOX);
 
   it('strips addresses out of stored provider errors and caps their length', () => {
+    // Pinned by shape, not by the exact literal: the quantifiers are bounded so a hostile
+    // provider error cannot drive super-linear backtracking, and RFC 5321's 64/255 limits
+    // keep every real address matching. Behavioural proof that a recipient never reaches
+    // lastError is in __tests__/api/pr5-email-outbox-behaviour.test.ts.
     expect(src).toContain('safeErrorSummary');
-    expect(src).toContain('/[\\w.+-]+@[\\w.-]+/g');
+    expect(src).toMatch(
+      /replace\(\s*\/\[\\w\.\+-\]\{1,\d+\}@\[\\w\.-\]\{1,\d+\}\/g,\s*'\[address\]'/,
+    );
     expect(src).toContain('.slice(0, 300)');
   });
 

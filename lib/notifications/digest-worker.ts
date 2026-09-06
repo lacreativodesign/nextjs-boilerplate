@@ -4,11 +4,12 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { enqueuePlatformEmail } from '@/lib/email/outbox';
 import { isUserAccessDisabled } from '@/lib/auth/user-access-state';
+import { getAppUrl } from '@/lib/urls';
 import type { NotificationDigestItem } from '@/types/notifications';
 
 const DIGEST_COLLECTION = 'notification_digest_queue';
 const DEAD_LETTER_COLLECTION = 'dead_letter_notifications';
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.bizosto.com').replace(/\/+$/, '');
+const APP_URL = getAppUrl();
 
 type Frequency = 'daily' | 'weekly';
 type DigestItemWithId = NotificationDigestItem & { id: string };
@@ -47,7 +48,7 @@ function safeActionUrl(value: unknown): string | null {
 /** Digest failures are logged on a shared platform dashboard: never a recipient address. */
 function safeReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || 'unknown error');
-  return message.replace(/[\w.+-]+@[\w.-]+/g, '[address]').slice(0, 300);
+  return message.replace(/[\w.+-]{1,64}@[\w.-]{1,255}/g, '[address]').slice(0, 300);
 }
 
 function digestKey(frequency: Frequency, items: DigestItemWithId[]): string {
@@ -137,7 +138,8 @@ async function writeInAppDigest(
   items: DigestItemWithId[],
 ) {
   const key = digestKey(frequency, items);
-  const id = `digest_${crypto.createHash('sha256').update(`${tenantId}:${userId}:${key}`).digest('hex')}`;
+  const material = `${tenantId}:${userId}:${key}`;
+  const id = `digest_${crypto.createHash('sha256').update(material).digest('hex')}`;
   await adminDb
     .collection('notifications')
     .doc(id)

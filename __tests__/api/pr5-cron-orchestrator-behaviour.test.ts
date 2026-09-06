@@ -17,18 +17,17 @@ import {
 const ORIGIN = 'https://app.bizosto.com';
 const AUTHORIZATION = 'Bearer super-secret-cron-token';
 
-const request = (over: { origin?: string; authorization?: string | null } = {}) =>
-  ({
+const request = (over: { origin?: string; authorization?: string | null } = {}) => {
+  // `undefined` means "not overridden" and gets the default header; an explicit null means
+  // the caller is testing a request that carries no Authorization at all.
+  const authorization = over.authorization === undefined ? AUTHORIZATION : over.authorization;
+  return {
     headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'authorization'
-          ? over.authorization === undefined
-            ? AUTHORIZATION
-            : over.authorization
-          : null,
+      get: (name: string) => (name.toLowerCase() === 'authorization' ? authorization : null),
     },
     nextUrl: { origin: over.origin ?? ORIGIN },
-  }) as never;
+  } as never;
+};
 
 /** Paths every daily run must reach, whatever the calendar date. */
 const DAILY_PATHS = [

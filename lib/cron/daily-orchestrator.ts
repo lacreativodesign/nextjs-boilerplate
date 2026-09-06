@@ -56,7 +56,7 @@ const GENERATE_INVOICES: ScheduledTask = {
 
 function safeError(value: unknown): string {
   const message = value instanceof Error ? value.message : String(value || 'Unknown cron error');
-  return message.replace(/[\w.+-]+@[\w.-]+/g, '[address]').slice(0, 300);
+  return message.replace(/[\w.+-]{1,64}@[\w.-]{1,255}/g, '[address]').slice(0, 300);
 }
 
 /**

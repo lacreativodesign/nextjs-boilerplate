@@ -178,6 +178,108 @@ async function auditAbort(params: {
   });
 }
 
+type RestoreAuditContext = { manifestPath: string; runDate: string; actorUserId: string };
+type VerifiedFile = { file: ManifestFile; docs: Array<Record<string, unknown>> };
+
+/**
+ * Pass 1 — prove every selected file before anything is written.
+ *
+ * Checksum, declared record count, document-id validity and per-document tenant ownership
+ * are all asserted here. Any failure aborts the whole restore with an audit record, so a
+ * corrupt file cannot leave a partially applied restore behind.
+ */
+async function verifySelectedFiles(
+  bucket: ReturnType<typeof adminStorage.bucket>,
+  files: ManifestFile[],
+  auditContext: RestoreAuditContext,
+): Promise<VerifiedFile[]> {
+  const verified: VerifiedFile[] = [];
+
+  for (const file of files) {
+    const [raw] = await bucket.file(file.path).download();
+    const text = raw.toString('utf8');
+    const actualSha256 = sha256(text);
+
+    if (actualSha256 !== file.sha256) {
+      await auditAbort({
+        ...auditContext,
+        reason: 'checksum_mismatch',
+        file,
+        details: { expectedSha256: file.sha256, actualSha256 },
+      });
+      throw new Error(`Checksum mismatch for ${file.path}`);
+    }
+
+    try {
+      verified.push({ file, docs: validateBackupDocuments(file, JSON.parse(text)) });
+    } catch (error) {
+      await auditAbort({ ...auditContext, reason: 'invalid_backup_payload', file });
+      throw error;
+    }
+  }
+
+  return verified;
+}
+
+/** Pass 2 — write only into the isolated restore_<runDate>__<collection> namespace. */
+async function applyVerifiedFiles(
+  verified: VerifiedFile[],
+  auditContext: RestoreAuditContext,
+): Promise<{ applied: Array<Record<string, unknown>>; restoredRecords: number }> {
+  const applied: Array<Record<string, unknown>> = [];
+  let restoredRecords = 0;
+
+  for (const { file, docs } of verified) {
+    const restoreCollection = `restore_${auditContext.runDate}__${file.collection}`;
+
+    for (const batchDocs of chunk(docs, 400)) {
+      const batch = adminDb.batch();
+      for (const docPayload of batchDocs) {
+        const { id, ...docData } = docPayload;
+        batch.set(adminDb.collection(restoreCollection).doc(id as string), {
+          ...docData,
+          __restoredFrom: file.path,
+          __restoredAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+    }
+
+    restoredRecords += docs.length;
+    applied.push({
+      path: file.path,
+      restoreCollection,
+      collection: file.collection,
+      tenantId: file.tenantId,
+      records: docs.length,
+    });
+
+    await adminDb.collection('restore_audit').add({
+      manifestPath: auditContext.manifestPath,
+      runDate: auditContext.runDate,
+      status: 'applied',
+      path: file.path,
+      restoreCollection,
+      collection: file.collection,
+      tenantId: file.tenantId,
+      records: docs.length,
+      sha256: file.sha256,
+      actorUserId: auditContext.actorUserId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  return { applied, restoredRecords };
+}
+
+/** Maps a thrown authorization/validation error to the status the caller should see. */
+function statusForError(message: string): number {
+  if (message === 'Forbidden') return 403;
+  if (message.startsWith('Checksum mismatch')) return 422;
+  if (message.startsWith('Invalid') || message.startsWith('Tenant mismatch')) return 400;
+  return 500;
+}
+
 /** GET — checksum-validating dry run. Writes nothing. */
 export async function GET(req: NextRequest) {
   try {
@@ -237,8 +339,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     const message = error?.message || 'Server error';
-    const status = message === 'Forbidden' ? 403 : message.startsWith('Invalid') ? 400 : 500;
-    return NextResponse.json({ ok: false, error: message }, { status });
+    return NextResponse.json({ ok: false, error: message }, { status: statusForError(message) });
   }
 }
 
@@ -273,79 +374,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Pass 1: verify every selected file BEFORE any write, including manifest checksum,
-    // exact record count, unique ids and tenant ownership asserted inside each payload.
-    const verified: Array<{ file: ManifestFile; docs: Array<Record<string, unknown>> }> = [];
-    for (const file of files) {
-      const [raw] = await bucket.file(file.path).download();
-      const text = raw.toString('utf8');
-      const actualSha256 = sha256(text);
-      if (actualSha256 !== file.sha256) {
-        await auditAbort({
-          ...auditContext,
-          reason: 'checksum_mismatch',
-          file,
-          details: { expectedSha256: file.sha256, actualSha256 },
-        });
-        throw new Error(`Checksum mismatch for ${file.path}`);
-      }
-
-      try {
-        const docs = validateBackupDocuments(file, JSON.parse(text));
-        verified.push({ file, docs });
-      } catch (error) {
-        await auditAbort({
-          ...auditContext,
-          reason: 'invalid_backup_payload',
-          file,
-        });
-        throw error;
-      }
-    }
-
-    // Pass 2: write only to isolated restore_<runDate>__<collection> collections.
-    const applied = [];
-    let restoredRecords = 0;
-    for (const { file, docs } of verified) {
-      const restoreCollection = `restore_${runDate}__${file.collection}`;
-
-      for (const batchDocs of chunk(docs, 400)) {
-        const batch = adminDb.batch();
-        for (const docPayload of batchDocs) {
-          const { id, ...docData } = docPayload;
-          const ref = adminDb.collection(restoreCollection).doc(id as string);
-          batch.set(ref, {
-            ...docData,
-            __restoredFrom: file.path,
-            __restoredAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-        await batch.commit();
-      }
-
-      restoredRecords += docs.length;
-      applied.push({
-        path: file.path,
-        restoreCollection,
-        collection: file.collection,
-        tenantId: file.tenantId,
-        records: docs.length,
-      });
-
-      await adminDb.collection('restore_audit').add({
-        manifestPath,
-        runDate,
-        status: 'applied',
-        path: file.path,
-        restoreCollection,
-        collection: file.collection,
-        tenantId: file.tenantId,
-        records: docs.length,
-        sha256: file.sha256,
-        actorUserId: user.uid,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    // Pass 1 verifies EVERY selected file before pass 2 writes anything, so a corrupt file
+    // late in the manifest cannot leave a half-applied restore behind.
+    const verified = await verifySelectedFiles(bucket, files, auditContext);
+    const { applied, restoredRecords } = await applyVerifiedFiles(verified, {
+      manifestPath,
+      runDate,
+      actorUserId: user.uid,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -371,14 +407,6 @@ export async function POST(req: NextRequest) {
       }).catch(() => undefined);
     }
 
-    const status =
-      message === 'Forbidden'
-        ? 403
-        : message.startsWith('Checksum mismatch')
-          ? 422
-          : message.startsWith('Invalid') || message.startsWith('Tenant mismatch')
-            ? 400
-            : 500;
-    return NextResponse.json({ ok: false, error: message }, { status });
+    return NextResponse.json({ ok: false, error: message }, { status: statusForError(message) });
   }
 }

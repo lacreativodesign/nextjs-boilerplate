@@ -64,6 +64,25 @@ function matches(data: DocData, [field, op, operand]: WhereClause): boolean {
   }
 }
 
+/** True when a document satisfies every where-clause. */
+function matchesAll(data: DocData, wheres: WhereClause[]): boolean {
+  for (const clause of wheres) {
+    if (!matches(data, clause)) return false;
+  }
+  return true;
+}
+
+/** Comparator for a single orderBy field, mirroring Firestore's ordering. */
+function compareByField(field: string, direction: string) {
+  return (a: [string, DocData], b: [string, DocData]): number => {
+    const left = comparable(a[1][field]);
+    const right = comparable(b[1][field]);
+    if (left === right) return 0;
+    const ascending = left < right ? -1 : 1;
+    return direction === 'desc' ? -ascending : ascending;
+  };
+}
+
 export type InMemoryFirestore = ReturnType<typeof createInMemoryFirestore>;
 
 export function createInMemoryFirestore() {
@@ -166,18 +185,11 @@ export function createInMemoryFirestore() {
       },
       async get() {
         let entries = [...collectionMap(collection).entries()].filter(([, data]) =>
-          wheres.every((clause) => matches(data, clause)),
+          matchesAll(data, wheres),
         );
 
         if (order) {
-          const [field, direction] = order;
-          entries.sort(([, a], [, b]) => {
-            const left = comparable(a[field]);
-            const right = comparable(b[field]);
-            if (left === right) return 0;
-            const ascending = left < right ? -1 : 1;
-            return direction === 'desc' ? -ascending : ascending;
-          });
+          entries.sort(compareByField(order[0], order[1]));
         }
 
         if (max !== null) entries = entries.slice(0, max);
@@ -186,6 +198,34 @@ export function createInMemoryFirestore() {
         return { docs, size: docs.length, empty: docs.length === 0 };
       },
     };
+  }
+
+  /** Reads apply immediately; writes are staged and applied together on commit. */
+  async function executeTransaction<T>(handler: (tx: TransactionLike) => Promise<T>): Promise<T> {
+    const staged: Array<() => void> = [];
+    const stage = (write: () => void) => staged.push(write);
+
+    const tx: TransactionLike = {
+      async get(ref: Ref) {
+        checkFault(ref.__collection, ref.id, 'get');
+        return snapshotOf(ref.__collection, ref.id);
+      },
+      set(ref: Ref, data: DocData, options?: { merge?: boolean }) {
+        checkFault(ref.__collection, ref.id, 'set');
+        stage(() => applySet(ref.__collection, ref.id, data, options));
+      },
+      update(ref: Ref, data: DocData) {
+        checkFault(ref.__collection, ref.id, 'update');
+        stage(() => applyUpdate(ref.__collection, ref.id, data));
+      },
+      delete(ref: Ref) {
+        stage(() => collectionMap(ref.__collection).delete(ref.id));
+      },
+    };
+
+    const value = await handler(tx);
+    for (const write of staged) write();
+    return value;
   }
 
   function collection(name: string) {
@@ -248,30 +288,7 @@ export function createInMemoryFirestore() {
      * same row therefore observe each other, which is the point of the concurrency tests.
      */
     async runTransaction<T>(handler: (tx: TransactionLike) => Promise<T>): Promise<T> {
-      const run = transactionQueue.then(async () => {
-        const staged: Array<() => void> = [];
-        const tx: TransactionLike = {
-          async get(ref: Ref) {
-            checkFault(ref.__collection, ref.id, 'get');
-            return snapshotOf(ref.__collection, ref.id);
-          },
-          set(ref: Ref, data: DocData, options?: { merge?: boolean }) {
-            checkFault(ref.__collection, ref.id, 'set');
-            staged.push(() => applySet(ref.__collection, ref.id, data, options));
-          },
-          update(ref: Ref, data: DocData) {
-            checkFault(ref.__collection, ref.id, 'update');
-            staged.push(() => applyUpdate(ref.__collection, ref.id, data));
-          },
-          delete(ref: Ref) {
-            staged.push(() => collectionMap(ref.__collection).delete(ref.id));
-          },
-        };
-
-        const value = await handler(tx);
-        for (const write of staged) write();
-        return value;
-      });
+      const run = transactionQueue.then(() => executeTransaction(handler));
 
       // Keep the chain alive after a rejection so one failing transaction does not wedge
       // every later one in the same test.
