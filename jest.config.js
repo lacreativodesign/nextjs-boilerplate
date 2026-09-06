@@ -14,7 +14,18 @@ const customJestConfig = {
   },
   testMatch: ['<rootDir>/__tests__/**/*.test.ts?(x)'],
   collectCoverage: true,
-  collectCoverageFrom: ['lib/**/*.{ts,tsx}', '!lib/**/*.d.ts'],
+  collectCoverageFrom: [
+    'lib/**/*.{ts,tsx}',
+    '!lib/**/*.d.ts',
+    // `app/` is not instrumented as a whole: most route files have no suite, and pulling
+    // all of them in would report a global number that says nothing about what is tested.
+    // This route is the exception — PR5 rewrote it and added a behavioural suite that
+    // drives both handlers end to end (__tests__/api/pr5-restore-validation-behaviour).
+    // Without it here that coverage never reaches coverage/lcov.info, so Sonar scores the
+    // most safety-critical route in the change as entirely untested. Add a route here when
+    // it earns a suite of its own, never to move a number.
+    'app/api/super_admin/restore/route.ts',
+  ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   // Coverage ratchet: baseline set just below current actuals so `npm test` is a
