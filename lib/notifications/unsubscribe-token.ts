@@ -96,8 +96,16 @@ export function parseNotificationUnsubscribeToken(
   token: string,
 ): { userId: string; tenantId: string; eventType: UserNotificationEventType } | null {
   try {
-    const [encodedPayload, encodedSignature, extra] = String(token || '').split('.');
-    if (!encodedPayload || !encodedSignature || extra !== undefined) return null;
+    // Exactly two non-empty segments. Checking the segment COUNT rather than probing a
+    // third destructured element keeps the guard honest: `split` is typed `string[]`, so
+    // `extra !== undefined` reads as always-true and only worked because destructuring
+    // happens to yield undefined at runtime. A token with an extra delimiter is rejected
+    // either way; this states that intent in a form the type system agrees with.
+    const segments = String(token || '').split('.');
+    if (segments.length !== 2) return null;
+
+    const [encodedPayload, encodedSignature] = segments;
+    if (!encodedPayload || !encodedSignature) return null;
 
     const supplied = Buffer.from(encodedSignature, 'base64url');
     const expected = sign(encodedPayload);

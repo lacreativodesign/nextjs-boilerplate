@@ -51,10 +51,24 @@ function safeReason(error: unknown): string {
   return message.replace(/[\w.+-]{1,64}@[\w.-]{1,255}/g, '[address]').slice(0, 300);
 }
 
+/**
+ * Deterministic, locale-independent ordering for the digest key.
+ *
+ * NOT localeCompare: this ordering feeds a SHA-256 idempotency key, and a locale-sensitive
+ * comparison would let two runtimes derive different keys for the same item set and send
+ * the digest twice. This reproduces the default sort's code-unit order exactly, so keys
+ * issued before this comparator existed still match.
+ */
+function compareIds(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 function digestKey(frequency: Frequency, items: DigestItemWithId[]): string {
   const material = items
     .map((item) => item.id)
-    .sort()
+    .sort(compareIds)
     .join('|');
   return `${frequency}:${crypto.createHash('sha256').update(material).digest('hex')}`;
 }
