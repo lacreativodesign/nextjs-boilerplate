@@ -61,6 +61,11 @@ describe('DS-33: the workflow is parseable', () => {
     },
   );
 
+  it('pins the older scanner to the SonarQube Cloud EU endpoint', () => {
+    expect(source).toContain('SONAR_HOST_URL: https://sonarcloud.io');
+    expect(source).not.toContain('SONAR_HOST_URL: http://localhost:9000');
+  });
+
   it('the sonar coverage and scan steps are unconditional once the token gate passes', () => {
     const sonarJob = source.slice(source.indexOf('\n  sonar:'));
     expect(sonarJob).toContain('- name: Test coverage\n        run: npm test');

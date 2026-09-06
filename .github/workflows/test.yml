@@ -95,6 +95,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # This repository still uses sonarqube-scan-action@v2 / SonarScanner 5.x.
+      # Older scanners default to localhost:9000 unless the cloud endpoint is explicit.
+      SONAR_HOST_URL: https://sonarcloud.io
     steps:
       - name: Checkout
         uses: actions/checkout@v4
