@@ -1,71 +1,21 @@
+import crypto from 'crypto';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendEmail } from '@/lib/email/email-service';
 import { resolveTenantSender, type TenantSenderSource } from '@/lib/email/tenant-sender';
 
-/**
- * Durable outbox for tenant business email (MAIL-5).
- *
- * Every customer-facing send was fire-and-forget. The invoice generator shows what that
- * costs: it creates the invoice, calls sendEmail() inside a try/catch, logs a line if the
- * provider is down, and moves on. The invoice exists and is owed; the customer never
- * receives it; nothing retries; and the tenant's finance screen shows an invoice sent. A
- * transient Resend outage at 01:00 on the first of the month silently un-bills a month of
- * recurring revenue for every tenant at once, and the first anyone knows is when nobody
- * pays.
- *
- * The reminder cron is better by accident rather than design — a throw leaves
- * `lastReminderSent` unwritten, so the next daily run tries again. That is a retry with a
- * 24-hour interval, no attempt limit, and no record of why it failed.
- *
- * An outbox makes the send a durable fact rather than a side effect:
- *
- *   - The record is written BEFORE the provider is called, so a process that dies
- *     mid-send leaves evidence rather than silence.
- *   - Delivery is attempted inline, because the common case is that it works and the
- *     caller should not wait for a worker.
- *   - A failure is retried with exponential backoff by a cron worker, bounded, and then
- *     dead-lettered where an operator can see it.
- *
- * What this deliberately does NOT do: provider webhooks, bounce and complaint
- * suppression, or per-tenant provider credentials. Those need a provider adapter layer
- * that does not exist yet. This is the durability half, which is what stops mail being
- * lost; the delivery-feedback half comes with BYOK.
- */
-
-/** Terminal and non-terminal states a queued message can be in. */
+/** Durable tenant-business email outbox. */
 export type OutboxStatus = 'queued' | 'sent' | 'failed' | 'dead_letter';
 
 export const OUTBOX_COLLECTION = 'email_outbox';
-
-/**
- * Give up after this many attempts.
- *
- * Six attempts spread over the backoff below spans roughly a day and a half. Past that a
- * failure is almost never transient — a wrong address, a suspended provider account, a
- * blocked domain — and retrying forever would bury the real ones.
- */
 export const MAX_ATTEMPTS = 6;
-
-/**
- * Backoff in minutes, indexed by attempt number.
- *
- * Front-loaded because most provider failures are brief, then widening so a sustained
- * outage does not generate thousands of pointless calls.
- */
 const BACKOFF_MINUTES = [1, 5, 15, 60, 240, 720];
+const DELIVERY_LEASE_MS = 5 * 60_000;
 
 function nextAttemptAt(attempts: number, now: Date): string {
-  const minutes = BACKOFF_MINUTES[Math.min(attempts, BACKOFF_MINUTES.length - 1)];
-  return new Date(now.getTime() + minutes * 60_000).toISOString();
+  const index = Math.max(0, Math.min(attempts - 1, BACKOFF_MINUTES.length - 1));
+  return new Date(now.getTime() + BACKOFF_MINUTES[index] * 60_000).toISOString();
 }
 
-/**
- * Provider errors are not always safe to store.
- *
- * A failure message can echo the recipient address back, and the outbox is read by Super
- * Admin tooling that must not become a directory of tenants' customers. Only the shape of
- * the error is kept.
- */
 function safeErrorSummary(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || 'unknown error');
   return message.replace(/[\w.+-]+@[\w.-]+/g, '[address]').slice(0, 300);
@@ -77,11 +27,8 @@ export type TenantEmailInput = {
   subject: string;
   html: string;
   text?: string;
-  /** What this message is, for operators reading the queue. Never free-form user text. */
   messageClass: string;
-  /** Ties a queued message back to the invoice or lead that caused it. */
   entityId?: string;
-  /** Resolved once at enqueue time, so a retry sends under the identity that was intended. */
   tenant?: TenantSenderSource | null;
 };
 
@@ -90,18 +37,36 @@ export type EnqueueResult = {
   status: OutboxStatus;
 };
 
+type OutboxIdentity = { fromEmail?: string; fromName?: string; replyTo?: string };
+
+type OutboxRecord = {
+  tenantId?: string;
+  to: string;
+  subject: string;
+  html: string;
+  text?: string | null;
+  identity?: OutboxIdentity;
+  status: OutboxStatus;
+  attempts: number;
+  nextAttemptAt?: string | null;
+  leaseToken?: string | null;
+  leaseExpiresAt?: string | null;
+};
+
+type DeliveryClaim = OutboxRecord & {
+  leaseToken: string;
+  attempts: number;
+};
+
 /**
- * Records a tenant-to-customer message and attempts delivery.
- *
- * Never throws. A caller has already committed the business fact — the invoice exists, the
- * lead is captured — and an email failure must not roll that back or surface as a request
- * error. The durable record is what makes swallowing the error acceptable: the message is
- * queued and will be retried, rather than lost the way it was before.
+ * Records a tenant-to-customer message BEFORE calling the provider and then attempts the
+ * first delivery inline. The function never throws back into the already-committed business
+ * mutation: a persisted message is recoverable by the worker, and an unavailable queue gets
+ * one best-effort direct send rather than losing the message without trying.
  */
 export async function enqueueTenantEmail(input: TenantEmailInput): Promise<EnqueueResult> {
   const now = new Date();
   const identity = resolveTenantSender(input.tenant);
-
   const ref = adminDb.collection(OUTBOX_COLLECTION).doc();
   const record = {
     tenantId: input.tenantId,
@@ -111,31 +76,27 @@ export async function enqueueTenantEmail(input: TenantEmailInput): Promise<Enque
     text: input.text ?? null,
     messageClass: input.messageClass,
     entityId: input.entityId ?? null,
-    // Snapshotted rather than re-resolved on retry: if a tenant changes their branding
-    // between the invoice going out and a retry, the retry should still be the message
-    // that was intended, not a differently-addressed one.
     identity,
     status: 'queued' as OutboxStatus,
     attempts: 0,
     nextAttemptAt: now.toISOString(),
+    leaseToken: null,
+    leaseExpiresAt: null,
     lastError: null as string | null,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };
 
   try {
-    // Written BEFORE the provider call. A process that dies mid-send leaves a queued
-    // record the worker will pick up, rather than nothing at all.
     await ref.set(record);
   } catch (error) {
-    // The queue itself is unavailable. Try the send anyway — losing the message is worse
-    // than losing the record of it.
     console.error('[OUTBOX] failed to persist message:', safeErrorSummary(error));
     try {
       await sendEmail({
         to: input.to,
         subject: input.subject,
         html: input.html,
+        ...(input.text ? { text: input.text } : {}),
         ...identity,
         tenantId: input.tenantId,
       });
@@ -145,68 +106,108 @@ export async function enqueueTenantEmail(input: TenantEmailInput): Promise<Enque
     }
   }
 
-  const status = await attemptDelivery(ref.id, record, now);
+  // If the process dies after ref.set() and before this call, the row remains `queued` and
+  // the worker now queries queued + failed records. That closes the old permanent-loss gap.
+  const status = (await attemptDelivery(ref.id, record, now)) || 'queued';
   return { id: ref.id, status };
 }
 
-type OutboxRecord = {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string | null;
-  identity?: { fromEmail?: string; fromName?: string; replyTo?: string };
-  attempts: number;
-  /** MAIL-6: whose provider carries this message. Read back on every retry. */
-  tenantId?: string;
-};
-
 /**
- * One delivery attempt against a stored record. Shared by the enqueue path and the worker
- * so both count attempts and apply backoff the same way.
+ * Atomically leases one due row. The status remains queued/failed while the lease is held,
+ * which means a crashed worker becomes retryable automatically as soon as the short lease
+ * expires. A transaction prevents two serverless instances from sending the same due row at
+ * the same time.
  */
-async function attemptDelivery(id: string, record: OutboxRecord, now: Date): Promise<OutboxStatus> {
+async function claimDelivery(id: string, now: Date): Promise<DeliveryClaim | null> {
   const ref = adminDb.collection(OUTBOX_COLLECTION).doc(id);
-  const attempts = Number(record.attempts || 0) + 1;
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return null;
+    const record = snap.data() as OutboxRecord;
+    if (record.status !== 'queued' && record.status !== 'failed') return null;
+
+    const dueAt = record.nextAttemptAt ? new Date(record.nextAttemptAt).getTime() : 0;
+    if (Number.isFinite(dueAt) && dueAt > now.getTime()) return null;
+
+    const leaseUntil = record.leaseExpiresAt ? new Date(record.leaseExpiresAt).getTime() : 0;
+    if (Number.isFinite(leaseUntil) && leaseUntil > now.getTime()) return null;
+
+    const attempts = Number(record.attempts || 0) + 1;
+    const leaseToken = crypto.randomBytes(18).toString('hex');
+    const leaseExpiresAt = new Date(now.getTime() + DELIVERY_LEASE_MS).toISOString();
+
+    tx.update(ref, {
+      attempts,
+      leaseToken,
+      leaseExpiresAt,
+      updatedAt: now.toISOString(),
+    });
+
+    return { ...record, attempts, leaseToken, leaseExpiresAt };
+  });
+}
+
+async function finishDelivery(
+  id: string,
+  claim: DeliveryClaim,
+  update: Record<string, unknown>,
+): Promise<boolean> {
+  const ref = adminDb.collection(OUTBOX_COLLECTION).doc(id);
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return false;
+    const current = snap.data() as OutboxRecord;
+    if (current.leaseToken !== claim.leaseToken) return false;
+    tx.update(ref, {
+      ...update,
+      leaseToken: null,
+      leaseExpiresAt: null,
+    });
+    return true;
+  });
+}
+
+/** Shared first-attempt/retry path. Null means another worker owns the current lease. */
+async function attemptDelivery(
+  id: string,
+  _record: OutboxRecord,
+  now: Date,
+): Promise<OutboxStatus | null> {
+  const claim = await claimDelivery(id, now);
+  if (!claim) return null;
 
   try {
     await sendEmail({
-      to: record.to,
-      subject: record.subject,
-      html: record.html,
-      ...(record.text ? { text: record.text } : {}),
-      ...(record.identity || {}),
-      // MAIL-6: every message in this queue is tenant business mail by definition, so it
-      // leaves through that tenant's own provider when they have configured one. Read from
-      // the stored record rather than passed in, so a retry routes the same way the
-      // original attempt did.
-      ...(record.tenantId ? { tenantId: record.tenantId } : {}),
+      to: claim.to,
+      subject: claim.subject,
+      html: claim.html,
+      ...(claim.text ? { text: claim.text } : {}),
+      ...(claim.identity || {}),
+      ...(claim.tenantId ? { tenantId: claim.tenantId } : {}),
     });
 
-    await ref.update({
+    await finishDelivery(id, claim, {
       status: 'sent',
-      attempts,
       sentAt: now.toISOString(),
       updatedAt: now.toISOString(),
       nextAttemptAt: null,
+      lastError: null,
     });
     return 'sent';
   } catch (error) {
+    const attempts = claim.attempts;
     const exhausted = attempts >= MAX_ATTEMPTS;
     const status: OutboxStatus = exhausted ? 'dead_letter' : 'failed';
 
-    await ref
-      .update({
-        status,
-        attempts,
-        lastError: safeErrorSummary(error),
-        // A dead-lettered message stops being picked up; nextAttemptAt is what the worker
-        // queries on, so clearing it is what takes it out of rotation.
-        nextAttemptAt: exhausted ? null : nextAttemptAt(attempts, now),
-        updatedAt: now.toISOString(),
-      })
-      .catch(() => {
-        console.error('[OUTBOX] failed to record delivery failure');
-      });
+    await finishDelivery(id, claim, {
+      status,
+      lastError: safeErrorSummary(error),
+      nextAttemptAt: exhausted ? null : nextAttemptAt(attempts, now),
+      updatedAt: now.toISOString(),
+    }).catch(() => {
+      console.error('[OUTBOX] failed to record delivery failure');
+      return false;
+    });
 
     return status;
   }
@@ -220,25 +221,26 @@ export type DrainResult = {
 };
 
 /**
- * Retries messages whose backoff has elapsed.
- *
- * Bounded per run so one poisoned batch cannot consume the whole function budget and
- * starve later messages.
+ * Retries due queued AND failed messages. Including `queued` is critical: persistence happens
+ * before the first send, so a process crash in that tiny window must leave a recoverable row,
+ * not a message that no worker ever selects. Lease acquisition is transactional, making
+ * overlapping/manual workers safe across distributed Vercel instances.
  */
 export async function drainOutbox(limit = 50, now = new Date()): Promise<DrainResult> {
   const result: DrainResult = { claimed: 0, sent: 0, failed: 0, deadLettered: 0 };
 
   const due = await adminDb
     .collection(OUTBOX_COLLECTION)
-    .where('status', '==', 'failed')
+    .where('status', 'in', ['queued', 'failed'])
     .where('nextAttemptAt', '<=', now.toISOString())
     .orderBy('nextAttemptAt', 'asc')
     .limit(limit)
     .get();
 
   for (const doc of due.docs) {
-    result.claimed += 1;
     const status = await attemptDelivery(doc.id, doc.data() as OutboxRecord, now);
+    if (!status) continue;
+    result.claimed += 1;
     if (status === 'sent') result.sent += 1;
     else if (status === 'dead_letter') result.deadLettered += 1;
     else result.failed += 1;
