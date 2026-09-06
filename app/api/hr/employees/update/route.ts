@@ -96,16 +96,24 @@ export async function POST(req: Request) {
       }
     }
 
+    // `super_admin` is a platform identity, not a tenant staff role. This is a
+    // tenant-scoped HR profile surface, so a submitted `super_admin` is refused for
+    // every actor — a platform Super Admin included, whose own promotion surface is
+    // `/api/super_admin/users/[uid]`. Omitting `role` still falls back to the stored
+    // value, so editing an existing platform identity's profile keeps working.
+    if (normalizeRole(body?.role || '') === 'super_admin') {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'super_admin must be managed through the platform administration surface',
+        },
+        { status: 403 },
+      );
+    }
+
     const requestedRole = normalizeRole(body?.role || existingRole || '');
     if (!(ERP_ROLES as readonly string[]).includes(requestedRole)) {
       return NextResponse.json({ ok: false, error: 'Invalid role.' }, { status: 400 });
-    }
-
-    if (requesterRole !== 'super_admin' && requestedRole === 'super_admin') {
-      return NextResponse.json(
-        { ok: false, error: 'Cannot assign super admin role.' },
-        { status: 403 },
-      );
     }
 
     const targetTenantId = String(existing?.tenantId || current.tenantId || '').trim();
@@ -122,18 +130,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
       }
 
-      if (requestedRole !== 'super_admin') {
-        const tenantSnap = await adminDb.collection('tenants').doc(targetTenantId).get();
-        if (!tenantSnap.exists) {
-          return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
-        }
-        const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
-        if (!isRoleEnabled(rolesEnabled, requestedRole)) {
-          return NextResponse.json(
-            { ok: false, error: 'This role is not enabled for the workspace.' },
-            { status: 400 },
-          );
-        }
+      // A role change on this surface is always a tenant role now, so the workspace
+      // allow-list applies unconditionally.
+      const tenantSnap = await adminDb.collection('tenants').doc(targetTenantId).get();
+      if (!tenantSnap.exists) {
+        return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+      }
+      const rolesEnabled = resolveTenantRoles(tenantSnap.data()?.rolesEnabled);
+      if (!isRoleEnabled(rolesEnabled, requestedRole)) {
+        return NextResponse.json(
+          { ok: false, error: 'This role is not enabled for the workspace.' },
+          { status: 400 },
+        );
       }
     }
 

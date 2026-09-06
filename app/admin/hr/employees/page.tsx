@@ -242,7 +242,6 @@ export default function HrEmployeesPage() {
         salary: formState.salary,
         monthlyTarget: formState.monthlyTarget,
         commission: formState.commission,
-        status: formState.status,
       };
       const res = await apiFetch('/api/admin/hr/employees/update', {
         method: 'POST',
@@ -274,16 +273,20 @@ export default function HrEmployeesPage() {
     if (!selectedUser) return;
     try {
       setSaving(true);
-      const res = await apiFetch('/api/admin/hr/employees/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: getRowId(selectedUser), status }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error || 'Unable to update status.');
+      // Revoking or restoring login access is an IAM action, not a profile edit. These
+      // dedicated endpoints disable/enable Firebase Auth, end live sessions and
+      // re-check the plan's staff-seat ceiling before a reactivation takes a seat. The
+      // employee-profile route refuses status changes so none of that can be skipped.
+      const id = getRowId(selectedUser);
+      const res =
+        status === 'inactive'
+          ? await apiFetch(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' })
+          : await apiFetch(`/api/users/${encodeURIComponent(id)}/reactivate`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Unable to update status.');
       setUsers((prev) =>
         prev.map((user) =>
-          getRowId(user) === getRowId(selectedUser) ? { ...user, ...data.user } : user,
+          getRowId(user) === id ? { ...user, status, isActive: status === 'active' } : user,
         ),
       );
       setFormState((prev) => ({ ...prev, status }));
@@ -624,14 +627,6 @@ export default function HrEmployeesPage() {
                     onChange={(e) =>
                       setFormState((prev) => ({ ...prev, commission: e.target.value }))
                     }
-                  />
-                </div>
-                <div className="grid gap-3">
-                  <label className="text-xs font-semibold text-[var(--text-muted)]">Status</label>
-                  <MasterSelect
-                    value={formState.status}
-                    onChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
-                    options={STATUS_OPTIONS.filter((opt) => opt.value !== 'all')}
                   />
                 </div>
               </div>
