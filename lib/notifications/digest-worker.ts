@@ -44,6 +44,12 @@ function safeActionUrl(value: unknown): string | null {
   }
 }
 
+/** Digest failures are logged on a shared platform dashboard: never a recipient address. */
+function safeReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error || 'unknown error');
+  return message.replace(/[\w.+-]+@[\w.-]+/g, '[address]').slice(0, 300);
+}
+
 function digestKey(frequency: Frequency, items: DigestItemWithId[]): string {
   const material = items
     .map((item) => item.id)
@@ -132,36 +138,39 @@ async function writeInAppDigest(
 ) {
   const key = digestKey(frequency, items);
   const id = `digest_${crypto.createHash('sha256').update(`${tenantId}:${userId}:${key}`).digest('hex')}`;
-  await adminDb.collection('notifications').doc(id).set(
-    {
-      id,
-      tenantId,
-      recipientUid: userId,
-      userId,
-      recipientRole: null,
-      type: 'system',
-      title: subjectFor(frequency),
-      message: `${items.length} notification${items.length === 1 ? '' : 's'} in your ${frequency} digest.`,
-      entityType: null,
-      entityId: null,
-      isRead: false,
-      toUserId: userId,
-      body: `${items.length} notification${items.length === 1 ? '' : 's'} in your ${frequency} digest.`,
-      read: false,
-      deepLink: '/notifications',
-      createdBy: null,
-      priority: 'normal',
-      roleTarget: null,
-      metadata: {
-        digest: true,
-        frequency,
-        digestItemIds: items.map((item) => item.id),
+  await adminDb
+    .collection('notifications')
+    .doc(id)
+    .set(
+      {
+        id,
+        tenantId,
+        recipientUid: userId,
+        userId,
+        recipientRole: null,
+        type: 'system',
+        title: subjectFor(frequency),
+        message: `${items.length} notification${items.length === 1 ? '' : 's'} in your ${frequency} digest.`,
+        entityType: null,
+        entityId: null,
+        isRead: false,
+        toUserId: userId,
+        body: `${items.length} notification${items.length === 1 ? '' : 's'} in your ${frequency} digest.`,
+        read: false,
+        deepLink: '/notifications',
+        createdBy: null,
+        priority: 'normal',
+        roleTarget: null,
+        metadata: {
+          digest: true,
+          frequency,
+          digestItemIds: items.map((item) => item.id),
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+      { merge: true },
+    );
 }
 
 /**
@@ -207,86 +216,113 @@ export async function processNotificationDigestBatch(
 
   for (const items of grouped.values()) {
     result.groups += 1;
-    const first = items[0];
-    const tenantId = String(first.tenantId || '').trim();
-    const userId = String(first.userId || '').trim();
-
-    if (!tenantId || !userId || items.some((item) => item.tenantId !== tenantId || item.userId !== userId)) {
-      await deadLetterGroup({
-        tenantId: tenantId || 'unknown',
-        userId: userId || 'unknown',
-        frequency,
-        reason: 'invalid_or_mixed_digest_scope',
-        itemCount: items.length,
-      });
-      await deleteItems(items);
-      result.deadLettered += items.length;
-      result.deleted += items.length;
-      continue;
+    // One recipient must never be able to stop the queue. Before this, an unexpected fault
+    // in any group (a Firestore read, the in-app write, the batch delete) threw out of the
+    // whole batch, so every group ordered behind it was never processed — and because the
+    // scan is ordered by scheduledFor, a permanently failing item at the head starved the
+    // queue for good. A failed group keeps its queue rows and is retried on the next run;
+    // its already-durable work is idempotent, so the retry cannot duplicate anything.
+    try {
+      await processGroup(frequency, items, result);
+    } catch (error) {
+      result.retainedForRetry += items.length;
+      console.error('[DIGEST] recipient group failed, retained for retry:', safeReason(error));
     }
+  }
 
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    const user = userDoc.data() || {};
-    if (!userDoc.exists || String(user.tenantId || '').trim() !== tenantId || isUserAccessDisabled(user)) {
+  return result;
+}
+
+async function processGroup(
+  frequency: Frequency,
+  items: DigestItemWithId[],
+  result: DigestProcessResult,
+): Promise<void> {
+  const first = items[0];
+  const tenantId = String(first.tenantId || '').trim();
+  const userId = String(first.userId || '').trim();
+
+  if (
+    !tenantId ||
+    !userId ||
+    items.some((item) => item.tenantId !== tenantId || item.userId !== userId)
+  ) {
+    await deadLetterGroup({
+      tenantId: tenantId || 'unknown',
+      userId: userId || 'unknown',
+      frequency,
+      reason: 'invalid_or_mixed_digest_scope',
+      itemCount: items.length,
+    });
+    await deleteItems(items);
+    result.deadLettered += items.length;
+    result.deleted += items.length;
+    return;
+  }
+
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  const user = userDoc.data() || {};
+  if (
+    !userDoc.exists ||
+    String(user.tenantId || '').trim() !== tenantId ||
+    isUserAccessDisabled(user)
+  ) {
+    await deadLetterGroup({
+      tenantId,
+      userId,
+      frequency,
+      reason: 'recipient_missing_cross_tenant_or_inactive',
+      itemCount: items.length,
+    });
+    await deleteItems(items);
+    result.deadLettered += items.length;
+    result.deleted += items.length;
+    return;
+  }
+
+  const inAppItems = items.filter((item) => item.channels?.includes('in_app'));
+  const emailItems = items.filter((item) => item.channels?.includes('email'));
+
+  if (inAppItems.length) {
+    await writeInAppDigest(tenantId, userId, frequency, inAppItems);
+    result.inAppWritten += 1;
+  }
+
+  if (emailItems.length) {
+    const userEmail = String(user.email || '').trim();
+    if (!userEmail) {
       await deadLetterGroup({
         tenantId,
         userId,
         frequency,
-        reason: 'recipient_missing_cross_tenant_or_inactive',
-        itemCount: items.length,
+        reason: 'recipient_email_missing',
+        itemCount: emailItems.length,
       });
-      await deleteItems(items);
-      result.deadLettered += items.length;
-      result.deleted += items.length;
-      continue;
-    }
+      result.deadLettered += emailItems.length;
+    } else {
+      const key = digestKey(frequency, emailItems);
+      const queued = await enqueuePlatformEmail({
+        to: userEmail,
+        subject: subjectFor(frequency),
+        html: buildDigestHtml(emailItems, frequency),
+        text: buildDigestText(emailItems, frequency),
+        messageClass: 'notification_digest',
+        entityId: key,
+        idempotencyKey: `notification-digest:${tenantId}:${userId}:${key}`,
+      });
 
-    const inAppItems = items.filter((item) => item.channels?.includes('in_app'));
-    const emailItems = items.filter((item) => item.channels?.includes('email'));
-
-    if (inAppItems.length) {
-      await writeInAppDigest(tenantId, userId, frequency, inAppItems);
-      result.inAppWritten += 1;
-    }
-
-    if (emailItems.length) {
-      const userEmail = String(user.email || '').trim();
-      if (!userEmail) {
-        await deadLetterGroup({
-          tenantId,
-          userId,
-          frequency,
-          reason: 'recipient_email_missing',
-          itemCount: emailItems.length,
-        });
-        result.deadLettered += emailItems.length;
-      } else {
-        const key = digestKey(frequency, emailItems);
-        const queued = await enqueuePlatformEmail({
-          to: userEmail,
-          subject: subjectFor(frequency),
-          html: buildDigestHtml(emailItems, frequency),
-          text: buildDigestText(emailItems, frequency),
-          messageClass: 'notification_digest',
-          entityId: key,
-          idempotencyKey: `notification-digest:${tenantId}:${userId}:${key}`,
-        });
-
-        // id != '' proves the email is durably in the outbox even when the inline provider
-        // attempt failed. A direct fallback send with id='' is safe only when it succeeded.
-        if (!queued.id && queued.status !== 'sent') {
-          result.retainedForRetry += items.length;
-          continue;
-        }
-        result.emailQueued += 1;
+      // id != '' proves the email is durably in the outbox even when the inline provider
+      // attempt failed. A direct fallback send with id='' is safe only when it succeeded.
+      if (!queued.id && queued.status !== 'sent') {
+        result.retainedForRetry += items.length;
+        return;
       }
+      result.emailQueued += 1;
     }
-
-    await deleteItems(items);
-    result.deleted += items.length;
   }
 
-  return result;
+  await deleteItems(items);
+  result.deleted += items.length;
 }
 
 export const digestRenderingForTest = {

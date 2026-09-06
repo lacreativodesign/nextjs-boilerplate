@@ -12,12 +12,33 @@ type UnsubscribeTokenPayload = {
   eventType: UserNotificationEventType;
 };
 
+/**
+ * The unsubscribe signing key.
+ *
+ * INTERNAL_REQUEST_SIGNING_SECRET is the root secret: lib/auth/otp.ts keys signup-OTP
+ * hashing with it and lib/api/internal-secret.ts authenticates server-to-server callers
+ * with it. Keying unsubscribe links with that root directly would put the same value
+ * behind an unauthenticated, publicly-reachable, email-delivered endpoint. Instead the key
+ * is DERIVED from the root with a labelled HMAC, exactly as getAiToolBusSecret() derives
+ * the AI tool bus secret: the derivation is one-way, so this key cannot be walked back to
+ * the root, and OTP hashing and internal-secret verification are unaffected.
+ *
+ * Set NOTIFICATION_UNSUBSCRIBE_SIGNING_SECRET to replace the derivation with a fully
+ * independent value. Until then callers and verifier derive the same key from config that
+ * is already deployed, so this requires no new production secret to ship.
+ *
+ * Fails closed: a missing root, or the shipped placeholder, throws rather than signing with
+ * a guessable key.
+ */
 function signingSecret(): string {
-  const secret = String(process.env.INTERNAL_REQUEST_SIGNING_SECRET || '').trim();
-  if (!secret || secret === 'change-me-in-production') {
+  const dedicated = String(process.env.NOTIFICATION_UNSUBSCRIBE_SIGNING_SECRET || '').trim();
+  if (dedicated && dedicated !== 'change-me-in-production') return dedicated;
+
+  const root = String(process.env.INTERNAL_REQUEST_SIGNING_SECRET || '').trim();
+  if (!root || root === 'change-me-in-production') {
     throw new Error('INTERNAL_REQUEST_SIGNING_SECRET is not configured securely.');
   }
-  return secret;
+  return crypto.createHmac('sha256', root).update(SIGNING_CONTEXT).digest('hex');
 }
 
 function sign(encodedPayload: string): Buffer {
@@ -84,9 +105,9 @@ export function parseNotificationUnsubscribeToken(
       return null;
     }
 
-    const parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<
-      UnsubscribeTokenPayload
-    >;
+    const parsed = JSON.parse(
+      Buffer.from(encodedPayload, 'base64url').toString('utf8'),
+    ) as Partial<UnsubscribeTokenPayload>;
     const tenantId = String(parsed.tenantId || '').trim();
     const userId = String(parsed.userId || '').trim();
     const eventType = String(parsed.eventType || '').trim();

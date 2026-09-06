@@ -74,6 +74,18 @@ async function loadManifest(
   }
 
   const files = parsed.files.map((file) => validateManifestFile(parsed.runDate as string, file));
+
+  // A manifest that names the same object twice is not a manifest we wrote. Two entries for
+  // one path can disagree on sha256 or records, so whichever is validated last decides what
+  // "verified" means, and the file is downloaded and applied more than once.
+  const seen = new Set<string>();
+  for (const file of files) {
+    if (seen.has(file.path)) {
+      throw new Error('Invalid manifest: duplicate file entry');
+    }
+    seen.add(file.path);
+  }
+
   return { runDate: parsed.runDate, files };
 }
 
@@ -96,7 +108,25 @@ function chunk<T>(items: T[], size: number): T[][] {
   return result;
 }
 
-function validateBackupDocuments(file: ManifestFile, value: unknown): Array<Record<string, unknown>> {
+/**
+ * Firestore's own document-id rules, enforced before the id reaches `.doc()`.
+ *
+ * A slash makes `.doc(id)` address a deeper path, so a crafted backup could place documents
+ * outside the isolated restore collection. `.` and `..` are rejected by the SDK, and the
+ * `__name__` reserved form is not writable — all three arrive as a 500 rather than the
+ * explicit rejection an operator needs to see in the restore audit.
+ */
+function isValidDocumentId(id: string): boolean {
+  if (id.includes('/')) return false;
+  if (id === '.' || id === '..') return false;
+  if (/^__.*__$/.test(id)) return false;
+  return Buffer.byteLength(id, 'utf8') <= 1500;
+}
+
+function validateBackupDocuments(
+  file: ManifestFile,
+  value: unknown,
+): Array<Record<string, unknown>> {
   if (!Array.isArray(value) || value.length !== file.records) {
     throw new Error(`Invalid backup payload for ${file.path}: record count mismatch`);
   }
@@ -108,7 +138,7 @@ function validateBackupDocuments(file: ManifestFile, value: unknown): Array<Reco
     }
     const doc = entry as Record<string, unknown>;
     const id = doc.id;
-    if (typeof id !== 'string' || !id || ids.has(id) || id.includes('/')) {
+    if (typeof id !== 'string' || !id || ids.has(id) || !isValidDocumentId(id)) {
       throw new Error(`Invalid document id in ${file.path}`);
     }
     ids.add(id);
@@ -237,7 +267,10 @@ export async function POST(req: NextRequest) {
     auditContext = { manifestPath, runDate, actorUserId: user.uid };
     const files = selectFiles(manifest.files, body.collection, body.tenantId);
     if (!files.length) {
-      return NextResponse.json({ ok: false, error: 'No backup files matched the restore scope' }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: 'No backup files matched the restore scope' },
+        { status: 404 },
+      );
     }
 
     // Pass 1: verify every selected file BEFORE any write, including manifest checksum,
