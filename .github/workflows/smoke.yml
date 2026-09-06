@@ -1,17 +1,33 @@
 name: E2E Smoke (per-role)
 
-# Manual-first to avoid noise. Runs the per-role smoke suite against a deployment.
-# Requires repo secrets:
-#   E2E_BASE_URL        deployment URL to test against (e.g. https://app.example.com)
-#   E2E_DEMO_PASSWORD   shared password for the seeded demo_* accounts
-# When E2E_DEMO_PASSWORD is missing the tests skip gracefully (see e2e/helpers/auth.ts).
+# Manual deployment smoke suite. Missing credentials are a hard failure: a skipped
+# authenticated suite must never be reported as launch evidence.
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_URL: ${{ secrets.E2E_BASE_URL }}
+      E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+
     steps:
+      - name: Verify E2E configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BASE_URL" || { echo "E2E_BASE_URL is required"; exit 1; }
+          test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
+          case "$BASE_URL" in
+            https://*) ;;
+            *) echo "E2E_BASE_URL must use https://"; exit 1 ;;
+          esac
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -22,13 +38,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright (chromium)
+      - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run smoke suite
-        env:
-          BASE_URL: ${{ secrets.E2E_BASE_URL }}
-          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
         run: npx playwright test e2e/smoke
 
       - name: Upload report
