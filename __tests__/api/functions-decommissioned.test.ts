@@ -36,5 +36,12 @@ describe('legacy Node-18 functions/ directory is decommissioned (OPS-01)', () =>
     const dailyTasks = read('app/api/cron/daily-tasks/route.ts');
     expect(dailyTasks).toContain('runRetentionCleanupAcrossTenants()');
     expect(dailyTasks).toContain('generateWeeklyComplianceReports()');
+
+    // The other half of that reasoning, asserted rather than assumed: dispatching the
+    // standalone routes as well would run the audit-log purge and the compliance report
+    // twice a day. The routes stay deployed for manual recovery runs, unscheduled.
+    for (const alsoInline of ['/api/cron/compliance-retention', '/api/cron/compliance-report']) {
+      expect(orchestrator).not.toContain(alsoInline);
+    }
   });
 });
