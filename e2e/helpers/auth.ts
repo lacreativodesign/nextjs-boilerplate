@@ -1,11 +1,11 @@
-import { test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 
 /**
- * Real-login helper for the per-role smoke suite.
+ * Real-login helper for the golden tenant E2E suites.
  *
- * Demo accounts are seeded (live) in tenant `bizosto-demo` and all share a
- * single password. Emails below are non-secret defaults; the password is read
- * ONLY from process.env.E2E_DEMO_PASSWORD — never hardcode it.
+ * Demo accounts are seeded in tenant `bizosto-demo` and share a password that
+ * exists only in environment configuration. Emails below are non-secret
+ * defaults; the password must never be committed to source.
  *
  * Per-role email can be overridden via `E2E_<ROLE_UPPER>_EMAIL`
  * (e.g. E2E_SALES_MANAGER_EMAIL).
@@ -57,22 +57,27 @@ export function emailForRole(role: SmokeRole): string {
   return override && override.trim().length > 0 ? override.trim() : ROLE_EMAILS[role];
 }
 
+export function requireDemoPassword(): string {
+  const password = String(process.env.E2E_DEMO_PASSWORD || '').trim();
+  if (!password) {
+    throw new Error('E2E_DEMO_PASSWORD is required for authenticated golden tenant tests');
+  }
+  return password;
+}
+
 /**
- * Log in as a demo role via the REAL login form, then wait for navigation away
- * from /login. Skips the test (with a clear message) when the shared password
- * env var is not set, so the suite degrades gracefully without credentials.
+ * Log in as a demo role via the real login form and wait for navigation away
+ * from /login. Missing credentials fail the suite instead of producing a
+ * misleading skipped/green certification.
  */
 export async function loginAs(page: Page, role: SmokeRole): Promise<void> {
-  const password = process.env.E2E_DEMO_PASSWORD;
-  test.skip(!password, 'Set E2E_DEMO_PASSWORD to run authed smoke tests');
-
+  const password = requireDemoPassword();
   const email = emailForRole(role);
 
   await page.goto('/login');
   await page.locator('input[type="email"], input[name="email"]').fill(email);
-  await page.locator('input[type="password"], input[name="password"]').fill(password as string);
+  await page.locator('input[type="password"], input[name="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
 
-  // Wait for navigation AWAY from /login (allow redirects to the role landing).
   await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15000 });
 }
