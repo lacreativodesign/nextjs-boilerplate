@@ -13,7 +13,10 @@ type ScheduledTask = {
   cadence: 'daily' | 'monthly';
 };
 
-const TRIAL_EMAILS: ScheduledTask = { path: '/api/cron/trial-emails', cadence: 'daily' };
+const TRIAL_EMAILS: ScheduledTask = {
+  path: '/api/cron/trial-emails',
+  cadence: 'daily',
+};
 const INVOICE_REMINDERS: ScheduledTask = {
   path: '/api/cron/invoice-reminders',
   cadence: 'daily',
@@ -22,9 +25,15 @@ const ABANDONED_SIGNUPS: ScheduledTask = {
   path: '/api/cron/abandoned-signups',
   cadence: 'daily',
 };
-const BILLING_LOCKS: ScheduledTask = { path: '/api/cron/billing-locks', cadence: 'daily' };
+const BILLING_LOCKS: ScheduledTask = {
+  path: '/api/cron/billing-locks',
+  cadence: 'daily',
+};
 const BACKUP: ScheduledTask = { path: '/api/cron/backup', cadence: 'daily' };
-const EMAIL_OUTBOX: ScheduledTask = { path: '/api/cron/email-outbox', cadence: 'daily' };
+const EMAIL_OUTBOX: ScheduledTask = {
+  path: '/api/cron/email-outbox',
+  cadence: 'daily',
+};
 const GENERATE_INVOICES: ScheduledTask = {
   path: '/api/cron/generate-invoices',
   cadence: 'monthly',
@@ -46,7 +55,8 @@ const GENERATE_INVOICES: ScheduledTask = {
  */
 
 function safeError(value: unknown): string {
-  const message = value instanceof Error ? value.message : String(value || 'Unknown cron error');
+  const message =
+    value instanceof Error ? value.message : String(value || 'Unknown cron error');
   return message.replace(/[\w.+-]+@[\w.-]+/g, '[address]').slice(0, 300);
 }
 
@@ -94,7 +104,9 @@ export async function dispatchScheduledCronTasks(
 ): Promise<CronDispatchResult[]> {
   const authorization = request.headers.get('authorization') || '';
   if (!authorization) {
-    throw new Error('Cron orchestrator requires the authenticated Authorization header.');
+    throw new Error(
+      'Cron orchestrator requires the authenticated Authorization header.',
+    );
   }
 
   const origin = request.nextUrl.origin;
