@@ -49,9 +49,19 @@ describe('DS-33: the workflow is parseable', () => {
     }
   });
 
-  it('the sonar gate moved to the steps that need the token', () => {
+  it('the sonar gate fails closed instead of skipping analysis when the token is missing', () => {
     expect(source).toContain('SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}');
-    expect(source).toContain("if: env.SONAR_TOKEN != ''");
+    expect(source).toContain('Verify Sonar token configured');
+    expect(source).toContain('if [ -z "$SONAR_TOKEN" ]; then');
+    expect(source).toContain('SONAR_TOKEN is required for Bizosto certification.');
+    expect(source).toContain('exit 1');
+    expect(source).not.toContain("if: env.SONAR_TOKEN != ''");
+  });
+
+  it('the sonar coverage and scan steps are unconditional once the token gate passes', () => {
+    const sonarJob = source.slice(source.indexOf('\n  sonar:'));
+    expect(sonarJob).toContain('- name: Test coverage\n        run: npm test');
+    expect(sonarJob).toContain('- name: SonarQube Scan\n        uses: SonarSource/sonarqube-scan-action@v2');
   });
 
   it('the quality job still runs every gate it was meant to', () => {
@@ -82,7 +92,7 @@ describe('DS-33: the licence allowlist covers the exceljs chain', () => {
     expect(source).toContain("'MIT/X11'");
   });
 
-  it('accepts jszip\u2019s dual licence', () => {
+  it('accepts jszip’s dual licence', () => {
     expect(source).toContain("'(MIT OR GPL-3.0-or-later)'");
   });
 
