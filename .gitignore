@@ -45,3 +45,11 @@ AUDIT_REPORT.md
 FIRESTORE_INDEXES_NEEDED.md
 
 public/workbox-*.js.map
+
+# firebase emulator debug logs (written into the repo root by `emulators:exec`,
+# which the Quality Gates emulator suites run locally as well as in CI)
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+ui-debug.log
