@@ -13,7 +13,11 @@ concurrency:
 jobs:
   golden:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # A fully-failing suite needs 13 tests x 3 attempts (2 retries) x Playwright's
+    # 30s per-test timeout ~= 20 min of test time alone, so a 20 min budget killed
+    # the job before it could report. The gate must be able to report a failure,
+    # not only time out.
+    timeout-minutes: 30
     env:
       BASE_URL: ${{ secrets.E2E_BASE_URL }}
       E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
@@ -49,7 +53,9 @@ jobs:
         run: npx playwright test e2e/golden e2e/smoke
 
       - name: Upload Playwright report
-        if: ${{ !cancelled() }}
+        # `always()`, not `!cancelled()`: a job timeout is reported as cancelled, so
+        # `!cancelled()` dropped the report in exactly the run that needed it most.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: golden-tenant-playwright-report

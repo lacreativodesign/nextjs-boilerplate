@@ -8,7 +8,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  // `html` alone buffers everything until the run ends, so an interrupted run
+  // (a job timeout, for instance) leaves no record of which tests ran or why they
+  // failed. `list` streams each result to stdout, which is what makes a
+  // deployment-backed certification run diagnosable from the CI log alone.
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
