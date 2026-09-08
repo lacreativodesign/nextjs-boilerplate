@@ -75,8 +75,24 @@ export async function loginAs(page: Page, role: SmokeRole): Promise<void> {
   const email = emailForRole(role);
 
   await page.goto('/login');
+
+  const passwordField = page.locator('input[type="password"], input[name="password"]');
+  try {
+    await passwordField.waitFor({ state: 'visible', timeout: 15000 });
+  } catch {
+    // Without this the suite reports a bare 30s timeout on a locator, which is
+    // what made the first golden tenant run take twenty minutes to say nothing.
+    // The likeliest cause by far is that the browser is on Vercel's Deployment
+    // Protection wall, which has an email field and no password field.
+    throw new Error(
+      `Bizosto login form not found at ${page.url()} (page title: "${await page.title()}"). ` +
+        'If this is a Vercel authentication page, the deployment is behind Deployment ' +
+        'Protection and VERCEL_AUTOMATION_BYPASS_SECRET is missing or wrong.',
+    );
+  }
+
   await page.locator('input[type="email"], input[name="email"]').fill(email);
-  await page.locator('input[type="password"], input[name="password"]').fill(password);
+  await passwordField.fill(password);
   await page.locator('button[type="submit"]').click();
 
   await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15000 });

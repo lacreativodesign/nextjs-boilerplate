@@ -20,6 +20,9 @@ jobs:
     env:
       BASE_URL: ${{ secrets.E2E_BASE_URL }}
       E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+      # Only needed while the target sits behind Vercel Deployment Protection.
+      # A custom-domain target is exempt and needs no bypass.
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
     steps:
       - name: Verify E2E configuration

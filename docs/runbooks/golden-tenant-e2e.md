@@ -15,6 +15,27 @@ GitHub Actions also requires:
 
 Never commit or print the password. The Super Admin demo page intentionally does not display it.
 
+## Getting past Vercel Deployment Protection
+
+The Vercel project protects every deployment except custom domains, so a preview URL
+serves Vercel's SSO wall instead of the Bizosto login page. That wall has an email
+field and no password field, which is why the first certification run failed all
+thirteen tests waiting for `input[type="password"]`.
+
+Configure Vercel's supported bypass:
+
+1. Vercel → Project → Settings → Deployment Protection → **Protection Bypass for
+   Automation** → generate the secret.
+2. Add it as the GitHub Actions secret `VERCEL_AUTOMATION_BYPASS_SECRET`.
+
+The suite sends that secret once, to the deployment origin only, and exchanges it for
+a scoped bypass cookie. It is never sent as a blanket request header, which would leak
+it to the app's cross-origin calls (Firebase, Google, Stripe). Playwright traces are
+disabled whenever the bypass is in use, because the report artifact is publicly
+downloadable on a public repository.
+
+A target on a custom domain is exempt from the protection and needs no bypass secret.
+
 ## Prepare the fixture
 
 1. Deploy the PR6 code with `E2E_DEMO_PASSWORD` configured server-side.

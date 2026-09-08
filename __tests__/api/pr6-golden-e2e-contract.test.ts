@@ -68,6 +68,33 @@ describe('PR6 golden tenant certification contract', () => {
     expect(seedRoute).toContain("rebuildGoldenTenant('seed')");
   });
 
+  it('reaches a protected deployment without handing the bypass secret to third parties', () => {
+    const setup = read('e2e/global-setup.ts');
+    const config = read('playwright.config.ts');
+    const smoke = read('.github/workflows/smoke.yml');
+    const golden = read('.github/workflows/golden-e2e.yml');
+
+    expect(setup).toContain('x-vercel-protection-bypass');
+    expect(setup).toContain('x-vercel-set-bypass-cookie');
+    // `extraHTTPHeaders` would attach the secret to every cross-origin request the
+    // app makes (Firebase, Google, Stripe). It must never be used for this.
+    expect(setup).not.toMatch(/^\s*extraHTTPHeaders/m);
+    expect(config).not.toMatch(/^\s*extraHTTPHeaders/m);
+    // Traces capture headers and cookies, and the report artifact is public on a
+    // public repository, so traces are off whenever a bypass cookie is in play.
+    expect(config).toContain("trace: bypassSecret ? 'off'");
+    expect(smoke).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
+    expect(golden).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
+  });
+
+  it('fails with a diagnosable message when the login form is not reachable', () => {
+    const auth = read('e2e/helpers/auth.ts');
+
+    expect(auth).toContain('Bizosto login form not found');
+    expect(auth).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
+    expect(auth).not.toContain('test.skip');
+  });
+
   it('keeps the golden roster in one client-safe module the seeder and UI share', () => {
     const users = read('lib/demo/users.ts');
     const seed = read('lib/demo/seed.ts');
