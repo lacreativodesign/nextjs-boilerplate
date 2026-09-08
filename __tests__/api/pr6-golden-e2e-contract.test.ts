@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { requireDemoPassword } from '@/lib/demo/password-policy.mjs';
 import * as path from 'path';
 
 const read = (relative: string): string =>
@@ -7,10 +8,16 @@ const read = (relative: string): string =>
 describe('PR6 golden tenant certification contract', () => {
   it('never ships a fixed demo password in the seeder, UI, or CLI', () => {
     const seed = read('lib/demo/seed.ts');
+    const policy = read('lib/demo/password-policy.mjs');
     const page = read('app/super_admin/demo/page.tsx');
     const script = read('scripts/seedDemoTenant.ts');
 
-    expect(seed).toContain('E2E_DEMO_PASSWORD');
+    // The seeder reads the password from configuration — now through the shared policy
+    // every consumer applies, so the preflight and the browser cannot disagree with it
+    // about whitespace (see lib/demo/password-policy.mjs).
+    expect(policy).toContain('E2E_DEMO_PASSWORD');
+    expect(seed).toContain("from './password-policy.mjs'");
+    expect(policy).not.toMatch(/DEMO_PASSWORD\s*=\s*['"][^'"]+['"]/);
     expect(seed).not.toMatch(/DEMO_PASSWORD\s*=\s*['"][^'"]+['"]/);
     expect(page).not.toMatch(/DEMO_PASSWORD\s*=\s*['"][^'"]+['"]/);
     expect(page).not.toContain('copy(DEMO_PASSWORD)');
@@ -33,7 +40,11 @@ describe('PR6 golden tenant certification contract', () => {
     const auth = read('e2e/helpers/auth.ts');
     const smoke = read('.github/workflows/smoke.yml');
 
-    expect(auth).toContain('E2E_DEMO_PASSWORD is required');
+    // Behaviour, not wording: the helper takes its password from the shared policy, and
+    // that policy throws on a missing value rather than returning an empty one. Asserting
+    // the source string alone would have been satisfied by a comment.
+    expect(auth).toContain("from '../../lib/demo/password-policy.mjs'");
+    expect(() => requireDemoPassword({})).toThrow(/E2E_DEMO_PASSWORD is required/);
     expect(auth).not.toContain('test.skip');
     expect(smoke).toContain('E2E_DEMO_PASSWORD is required');
     expect(smoke).toContain('E2E_BASE_URL is required');

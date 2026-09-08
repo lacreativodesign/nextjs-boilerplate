@@ -1,5 +1,6 @@
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { DEMO_TENANT_ID, DEMO_USERS } from './users';
+import { requireDemoPassword } from './password-policy.mjs';
 
 // The roster lives in `./users` so the Super Admin demo page can import it
 // without `firebaseAdmin`; re-exported here so this module stays the single
@@ -30,19 +31,12 @@ function daysFromNow(n: number): string {
   return d.toISOString();
 }
 
-/**
- * Fails closed: the golden tenant password comes from configuration only, so a
- * missing or weak value is an error rather than a default. The parameter is
- * typed to the single key it reads, which keeps callers (and tests) from having
- * to fabricate a whole `NodeJS.ProcessEnv`.
- */
-export function requireDemoPassword(env: Record<string, string | undefined> = process.env): string {
-  const password = String(env.E2E_DEMO_PASSWORD || '').trim();
-  if (password.length < 16) {
-    throw new Error('E2E_DEMO_PASSWORD must be configured with at least 16 characters');
-  }
-  return password;
-}
+// Fails closed: the golden tenant password comes from configuration only, so a missing,
+// weak or whitespace-padded value is an error rather than a default. The rule lives in
+// `./password-policy` because this module WRITES the password while the preflight and the
+// Playwright helper SEND it, and the three used to disagree about whitespace — see that
+// file for what that cost. Re-exported so importers of the seeding domain are unchanged.
+export { requireDemoPassword };
 
 async function deleteTenantCollection(collectionName: string, tenantId: string): Promise<void> {
   while (true) {

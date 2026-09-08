@@ -42,6 +42,7 @@
  */
 
 import { pathToFileURL } from 'node:url';
+import { requireDemoPassword } from '../lib/demo/password-policy.mjs';
 
 /** Mirrors ROLE_EMAILS.admin in e2e/helpers/auth.ts; pinned by the PR6 contract suite. */
 export const DEFAULT_PROBE_EMAIL = 'demo_admin@bizosto.com';
@@ -92,16 +93,19 @@ export const SIGN_IN_FAILURE_GUIDANCE = {
  */
 export function readConfig(env) {
   const baseUrl = String(env.BASE_URL || '').replace(/\/$/, '');
-  const password = String(env.E2E_DEMO_PASSWORD || '');
   const missing = [];
   if (!baseUrl) missing.push('BASE_URL');
-  if (!password) missing.push('E2E_DEMO_PASSWORD');
+  if (!String(env.E2E_DEMO_PASSWORD || '')) missing.push('E2E_DEMO_PASSWORD');
   if (missing.length) {
     throw new Error(`${missing.join(' and ')} must be configured for the golden tenant gate`);
   }
   if (!baseUrl.startsWith('https://')) {
     throw new Error('BASE_URL must use https://');
   }
+  // The shared rule, not a local one. This step used to send the value raw while the
+  // seeder stored it trimmed, so a pasted newline made a correctly-configured pair look
+  // like a credential mismatch — the one failure this check exists to tell apart.
+  const password = requireDemoPassword(env);
 
   const email = String(env.E2E_ADMIN_EMAIL || '').trim() || DEFAULT_PROBE_EMAIL;
   const bypassSecret = String(env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();

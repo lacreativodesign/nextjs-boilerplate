@@ -17,6 +17,11 @@ const customJestConfig = {
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
     '!lib/**/*.d.ts',
+    // The demo password policy is `.mjs` so that plain `node scripts/verify-golden-tenant-
+    // signin.mjs` and the two TypeScript consumers can all import the SAME rule; the glob
+    // above only takes .ts/.tsx, and Sonar analyses `lib/` either way, so without this the
+    // one file that decides how a credential is read would report as untested.
+    'lib/**/*.mjs',
     // `app/` is not instrumented as a whole: most route files have no suite, and pulling
     // all of them in would report a global number that says nothing about what is tested.
     // This route is the exception — PR5 rewrote it and added a behavioural suite that

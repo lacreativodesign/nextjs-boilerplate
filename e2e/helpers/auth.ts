@@ -1,4 +1,5 @@
 import { type Page } from '@playwright/test';
+import { requireDemoPassword } from '../../lib/demo/password-policy.mjs';
 
 /**
  * Real-login helper for the golden tenant E2E suites.
@@ -57,13 +58,11 @@ export function emailForRole(role: SmokeRole): string {
   return override && override.trim().length > 0 ? override.trim() : ROLE_EMAILS[role];
 }
 
-export function requireDemoPassword(): string {
-  const password = String(process.env.E2E_DEMO_PASSWORD || '').trim();
-  if (!password) {
-    throw new Error('E2E_DEMO_PASSWORD is required for authenticated golden tenant tests');
-  }
-  return password;
-}
+// The same rule the seeder writes with and the preflight checks — see
+// lib/demo/password-policy.mjs. This helper used to trim while the preflight did not,
+// which is how a correctly configured secret failed the gate. Missing credentials still
+// throw here rather than skipping: E2E_DEMO_PASSWORD is required, never optional.
+export { requireDemoPassword };
 
 /**
  * What to do about an Identity Platform rejection, without claiming to know more than it

@@ -35,6 +35,19 @@ jobs:
           set -euo pipefail
           test -n "$BASE_URL" || { echo "E2E_BASE_URL is required"; exit 1; }
           test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
+          # The password is used exactly as configured, so surrounding whitespace is a
+          # configuration error rather than something to silently absorb. Catching it here
+          # costs nothing: the same rule runs in lib/demo/password-policy.mjs, but only
+          # after ~3 minutes of checkout and install, and after a wasted sign-in attempt.
+          # The value is compared, never printed.
+          leading_stripped="${E2E_DEMO_PASSWORD#"${E2E_DEMO_PASSWORD%%[![:space:]]*}"}"
+          trimmed="${leading_stripped%"${leading_stripped##*[![:space:]]}"}"
+          if [ "$E2E_DEMO_PASSWORD" != "$trimmed" ]; then
+            echo "E2E_DEMO_PASSWORD has leading or trailing whitespace. Re-enter it with no"
+            echo "surrounding spaces and no trailing newline, in the GitHub Actions secret"
+            echo "and in the deployment environment, from the same source."
+            exit 1
+          fi
           case "$BASE_URL" in
             https://*) ;;
             *) echo "E2E_BASE_URL must use https://"; exit 1 ;;
