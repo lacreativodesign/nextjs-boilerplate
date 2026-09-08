@@ -1,24 +1,24 @@
-import { seedDemoEnvironment } from '../lib/demo/seed';
+import {
+  assertGoldenTenant,
+  assertIntendedFirebaseProject,
+  DEMO_TENANT_ID,
+  seedDemoEnvironment,
+} from '../lib/demo/seed';
 
 function parseArgs(argv: string[]) {
-  const parsed: { reset: boolean; tenantId: string } = {
-    reset: argv.includes('--reset'),
-    tenantId: 'bizosto-demo',
-  };
-
-  const tenantIndex = argv.findIndex((arg) => arg === '--tenant');
-  if (tenantIndex >= 0 && argv[tenantIndex + 1]) {
-    parsed.tenantId = argv[tenantIndex + 1];
-  }
-
-  return parsed;
+  return { reset: argv.includes('--reset') };
 }
 
 async function run() {
   const args = parseArgs(process.argv.slice(2));
-  const result = await seedDemoEnvironment({ tenantId: args.tenantId, reset: args.reset });
+  const project = assertIntendedFirebaseProject();
+  // The tenant is fixed, not an argument: see assertGoldenTenant in lib/demo/seed.ts.
+  const tenantId = assertGoldenTenant(DEMO_TENANT_ID);
+
+  const result = await seedDemoEnvironment({ tenantId, reset: args.reset });
 
   console.log('\nDemo environment seeded successfully');
+  console.log(`Firebase project: ${project}`);
   console.log(`Tenant ID: ${result.tenantId}`);
   console.log('Demo users:');
   result.users.forEach((user) => {

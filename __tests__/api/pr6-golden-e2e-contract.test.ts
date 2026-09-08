@@ -95,7 +95,12 @@ describe('PR6 golden tenant certification contract', () => {
     // A rejected sign-in must report the page's own reason, not just "no navigation".
     expect(auth).toContain('did not leave /login');
     expect(auth).toContain('.login-error');
-    expect(auth).toContain('re-seed the bizosto-demo tenant');
+    // ...and, because the page renders a wrong password and a missing account with the
+    // same words, Identity Platform's own code as well. Reading it from the sign-in
+    // RESPONSE is what keeps the password — which is in the request — out of this.
+    expect(auth).toContain('accounts:signInWithPassword');
+    expect(auth).toContain('Identity Platform reported');
+    expect(auth).toContain('Seed Golden Tenant workflow');
     expect(auth).not.toContain('test.skip');
   });
 

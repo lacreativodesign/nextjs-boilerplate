@@ -33,6 +33,12 @@ const customJestConfig = {
     'app/api/super_admin/demo/_handler.ts',
     'app/api/super_admin/demo/seed/route.ts',
     'app/api/super_admin/demo/reset/route.ts',
+    // `scripts/` is likewise not instrumented as a whole. This one is the exception for
+    // the same reason: it is the Golden Tenant gate's precondition check, it has a
+    // behavioural suite of its own (__tests__/ci/pr6-golden-tenant-precondition) that
+    // drives every branch including the ones that must not print the password, and
+    // without this entry that coverage never reaches coverage/lcov.info.
+    'scripts/verify-golden-tenant-signin.mjs',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],

@@ -62,7 +62,73 @@ async function deleteTenantCollection(collectionName: string, tenantId: string):
   }
 }
 
+/**
+ * The golden tenant is the only tenant these routines may touch.
+ *
+ * `resetDemoTenantData` deletes every document in nine collections carrying the tenant
+ * id it is given, and the demo tenant shares its Firebase project with real ones — that
+ * id is the only thing standing between "rebuild the fixture" and "empty a customer's
+ * workspace". Before PR6 the reset path wrote nothing, so an arbitrary tenant id was
+ * inert; PR6 made it delete, which is what turns `--tenant <anything> --reset` from a
+ * no-op into a cross-tenant wipe.
+ *
+ * The bound therefore lives here, on the functions that do the deleting and the seeding,
+ * not only on the callers that happen to pass a constant today.
+ */
+export function assertGoldenTenant(tenantId: string): string {
+  const id = String(tenantId || '').trim();
+  if (id !== DEMO_TENANT_ID) {
+    throw new Error(
+      `Refusing to seed or reset tenant "${id || '(empty)'}": ` +
+        `${DEMO_TENANT_ID} is the only tenant the demo fixture may touch.`,
+    );
+  }
+  return id;
+}
+
+/**
+ * Names the Firebase project a destructive demo rebuild is allowed to write to.
+ *
+ * `assertGoldenTenant` bounds WHICH tenant may be rebuilt. This bounds WHICH PROJECT it
+ * may be rebuilt in, which is the other half: the demo tenant shares its Firebase project
+ * with real tenants, and whichever service account `FIREBASE_ADMIN_KEY` happens to hold
+ * silently decides which project that is. So the operator states the project, and a run
+ * whose credentials point somewhere else aborts before touching anything.
+ *
+ * A project id is not a secret — it ships in `.env.example` and in every browser's
+ * Firebase config — and no other field of the service account is read or reported.
+ */
+export function assertIntendedFirebaseProject(
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const intended = String(env.DEMO_FIREBASE_PROJECT_ID || '').trim();
+  if (!intended) {
+    throw new Error(
+      'DEMO_FIREBASE_PROJECT_ID must name the Firebase project this demo rebuild is intended for.',
+    );
+  }
+
+  let actual = '';
+  try {
+    const parsed: unknown = JSON.parse(String(env.FIREBASE_ADMIN_KEY || '{}'));
+    actual = String((parsed as { project_id?: unknown })?.project_id || '').trim();
+  } catch {
+    throw new Error('FIREBASE_ADMIN_KEY is not valid JSON, so its project cannot be verified.');
+  }
+  if (!actual) {
+    throw new Error('FIREBASE_ADMIN_KEY carries no project_id, so its project cannot be verified.');
+  }
+  if (actual !== intended) {
+    throw new Error(
+      `Refusing to rebuild the demo tenant: FIREBASE_ADMIN_KEY targets Firebase project ` +
+        `"${actual}", but DEMO_FIREBASE_PROJECT_ID names "${intended}".`,
+    );
+  }
+  return actual;
+}
+
 export async function resetDemoTenantData(tenantId = DEMO_TENANT_ID): Promise<void> {
+  assertGoldenTenant(tenantId);
   for (const collectionName of DEMO_COLLECTIONS) {
     await deleteTenantCollection(collectionName, tenantId);
   }
@@ -74,7 +140,7 @@ type SeedOptions = {
 };
 
 export async function seedDemoTenant(options: SeedOptions = {}) {
-  const tenantId = options.tenantId || DEMO_TENANT_ID;
+  const tenantId = assertGoldenTenant(options.tenantId || DEMO_TENANT_ID);
   const password = options.password || requireDemoPassword();
   const now = new Date().toISOString();
 

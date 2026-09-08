@@ -23,6 +23,10 @@ jobs:
       # Only needed while the target sits behind Vercel Deployment Protection.
       # A custom-domain target is exempt and needs no bypass.
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      # Certification names an exact SHA, and E2E_BASE_URL may be a branch alias that
+      # re-points at whatever deployed last. The deployment is asked which commit it is
+      # serving, and the run stops if it is not this one.
+      EXPECTED_COMMIT_SHA: ${{ github.sha }}
 
     steps:
       - name: Verify E2E configuration
@@ -50,6 +54,15 @@ jobs:
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+
+      # A wrong credential used to cost twenty minutes and end in "Incorrect password",
+      # which is also what Firebase says when the account does not exist. This asks the
+      # deployment which Firebase project it serves and signs one demo account in against
+      # it, so the whole chain — this URL, this project, this account, this password — is
+      # either proven in seconds or reported with the real reason. The suite still performs
+      # every browser login itself; nothing here substitutes for one.
+      - name: Verify the golden tenant credential against the deployment
+        run: node scripts/verify-golden-tenant-signin.mjs
 
       - name: Run golden tenant and per-role suites
         run: npx playwright test e2e/golden e2e/smoke

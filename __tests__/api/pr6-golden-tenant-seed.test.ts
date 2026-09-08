@@ -32,10 +32,13 @@ jest.mock('@/lib/firebaseAdmin', () => {
 });
 
 import {
+  assertGoldenTenant,
+  assertIntendedFirebaseProject,
   DEMO_TENANT_ID,
   DEMO_USERS,
   requireDemoPassword,
   resetDemoTenantData,
+  seedDemoEnvironment,
   seedDemoTenant,
 } from '@/lib/demo/seed';
 
@@ -190,5 +193,88 @@ describe('PR6 golden tenant seed', () => {
       tenantId: 'other-tenant',
     });
     expect(state.firestore.read('tenants', DEMO_TENANT_ID)).toBeDefined();
+  });
+
+  /**
+   * PR6 is what made the reset actually delete. Before it, `resetDemoTenantData` wrote
+   * nothing, so the seeder's tenant argument was inert and an arbitrary value cost
+   * nothing. Now the same argument selects nine collections' worth of documents to
+   * delete, in a Firebase project that also holds real tenants — so the argument itself
+   * has to be bounded, and bounded at the functions that delete rather than at whichever
+   * callers happen to pass a constant today.
+   */
+  describe('destructive rebuilds are bounded to the golden tenant', () => {
+    it('refuses to reset any tenant but bizosto-demo', async () => {
+      state.firestore.seed('clients', 'live-client', {
+        tenantId: 'bizosto',
+        companyName: 'A Real Customer',
+      });
+
+      await expect(resetDemoTenantData('bizosto')).rejects.toThrow(/only tenant/i);
+      await expect(seedDemoEnvironment({ tenantId: 'bizosto', reset: true })).rejects.toThrow(
+        /only tenant/i,
+      );
+
+      // The point of the bound: the other tenant still has its data.
+      expect(state.firestore.read('clients', 'live-client')).toMatchObject({
+        tenantId: 'bizosto',
+      });
+    });
+
+    it('refuses to seed any tenant but bizosto-demo', async () => {
+      await expect(
+        seedDemoTenant({ tenantId: 'bizosto', password: 'a-secure-test-password' }),
+      ).rejects.toThrow(/only tenant/i);
+      expect(state.adminAuth.createUser).not.toHaveBeenCalled();
+    });
+
+    it('accepts the golden tenant and rejects near misses', () => {
+      expect(assertGoldenTenant(DEMO_TENANT_ID)).toBe(DEMO_TENANT_ID);
+      expect(() => assertGoldenTenant('')).toThrow(/only tenant/i);
+      expect(() => assertGoldenTenant('bizosto-demo-2')).toThrow(/only tenant/i);
+    });
+  });
+
+  /**
+   * The other half of the bound: which PROJECT the rebuild lands in. The tenant id is a
+   * constant, but the Firebase project is whatever service account the environment
+   * happens to carry, and a demo tenant seeded into the wrong project fails the gate in a
+   * way that looks exactly like a stale password.
+   */
+  describe('destructive rebuilds are bounded to the named Firebase project', () => {
+    const key = (projectId: string) => JSON.stringify({ project_id: projectId });
+
+    it('accepts credentials that match the named project', () => {
+      expect(
+        assertIntendedFirebaseProject({
+          DEMO_FIREBASE_PROJECT_ID: 'la-creativo-erp',
+          FIREBASE_ADMIN_KEY: key('la-creativo-erp'),
+        }),
+      ).toBe('la-creativo-erp');
+    });
+
+    it('refuses when the credentials point at a different project', () => {
+      expect(() =>
+        assertIntendedFirebaseProject({
+          DEMO_FIREBASE_PROJECT_ID: 'bizosto-test',
+          FIREBASE_ADMIN_KEY: key('la-creativo-erp'),
+        }),
+      ).toThrow(/targets Firebase project "la-creativo-erp"/);
+    });
+
+    it('fails closed when the project is unnamed or unverifiable', () => {
+      expect(() => assertIntendedFirebaseProject({ FIREBASE_ADMIN_KEY: key('x') })).toThrow(
+        /DEMO_FIREBASE_PROJECT_ID must name/,
+      );
+      expect(() =>
+        assertIntendedFirebaseProject({
+          DEMO_FIREBASE_PROJECT_ID: 'x',
+          FIREBASE_ADMIN_KEY: 'not json',
+        }),
+      ).toThrow(/not valid JSON/);
+      expect(() => assertIntendedFirebaseProject({ DEMO_FIREBASE_PROJECT_ID: 'x' })).toThrow(
+        /no project_id/,
+      );
+    });
   });
 });

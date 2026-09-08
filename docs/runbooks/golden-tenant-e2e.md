@@ -4,14 +4,15 @@ PR6 certifies Bizosto against the dedicated `bizosto-demo` tenant using real bro
 
 ## Required secrets
 
-The same rotated demo password must be configured in two secure locations:
+All of these live in GitHub repository Actions secrets, and the demo password is seeded
+from the same one the browser suite types — see "Prepare the fixture" for why that
+matters:
 
-- deployed Bizosto environment: `E2E_DEMO_PASSWORD`
-- GitHub repository Actions secret: `E2E_DEMO_PASSWORD`
-
-GitHub Actions also requires:
-
+- `E2E_DEMO_PASSWORD` — shared password for the ten `demo_*` accounts (16 characters minimum)
 - `E2E_BASE_URL` — the HTTPS deployment URL being certified
+- `VERCEL_AUTOMATION_BYPASS_SECRET` — only while the target is a protected preview
+- `FIREBASE_ADMIN_KEY` — the same service account JSON the deployment uses, so the seed
+  job can rotate the demo Auth accounts
 
 Never commit or print the password. The Super Admin demo page intentionally does not display it.
 
@@ -38,17 +39,53 @@ A target on a custom domain is exempt from the protection and needs no bypass se
 
 ## Prepare the fixture
 
-1. Deploy the PR6 code with `E2E_DEMO_PASSWORD` configured server-side.
-2. As Super Admin, use **Demo Environment → Reset Demo Environment**.
-3. Confirm the status counts show the canonical fixture, including at least one deal, invoice, project and client.
+Dispatch **Actions → Seed Golden Tenant** against the PR branch:
 
-Reset is tenant-scoped. It deletes only documents belonging to `bizosto-demo` in the demo collections, then re-seeds deterministic IDs and rotates the ten demo Auth accounts to the configured password.
+- `firebase_project_id` — the Firebase project the deployment serves. Read it from the
+  deployment itself rather than from memory: `GET <deployment>/api/public/firebase-config`
+  returns the public browser config, and its `projectId` is the one that matters.
+- `reset` — leave enabled to rebuild the fixture from scratch.
+
+The job rotates the ten demo Auth accounts to the repository's `E2E_DEMO_PASSWORD` and
+re-seeds deterministic fixture IDs. Confirm the printed counts include at least one deal,
+invoice, project and client.
+
+**Why a workflow and not the Super Admin button.** The button seeds from the deployment's
+own server-side `E2E_DEMO_PASSWORD`, which is a second copy of the secret, kept in step
+with this repository's copy by hand. Nothing checked they agreed. When they drifted the
+gate failed all thirteen tests with "Incorrect password" — which, with Firebase Email
+Enumeration Protection enabled, is also exactly what a missing account looks like. Seeding
+from the same secret the suite types means only one copy decides the outcome. The button
+still works and is still the right tool for refreshing demo data by hand.
+
+Two bounds apply to the rebuild and both fail closed:
+
+- the tenant is fixed to `bizosto-demo` inside `lib/demo/seed.ts`, not passed in, so no
+  argument can point the delete at another tenant;
+- the run aborts before touching anything if `FIREBASE_ADMIN_KEY` targets a project other
+  than the one named in the dispatch.
+
+Reset is tenant-scoped: it deletes only documents belonging to `bizosto-demo` in the demo
+collections. Note that `bizosto-demo` currently shares its Firebase project with real
+tenants, so that tenant filter is the isolation boundary.
 
 ## Run the pre-merge gate
 
 Dispatch the existing `.github/workflows/smoke.yml` workflow against the PR6 branch.
 
-The workflow fails before checkout if either required GitHub secret is missing or if `E2E_BASE_URL` is not HTTPS. It then runs:
+The workflow fails before checkout if either required GitHub secret is missing or if
+`E2E_BASE_URL` is not HTTPS. It then signs one demo account in against the deployment
+before the browser suite starts:
+
+```bash
+node scripts/verify-golden-tenant-signin.mjs
+```
+
+That check asks the deployment which Firebase project it serves and signs in through the
+same Identity Platform endpoint the browser SDK uses, so a fixture seeded into a different
+project than the deployment reads is a ten-second failure with the real reason instead of
+twenty minutes of ambiguous ones. It is a precondition, never a substitute: the suite
+still performs all thirteen real browser logins itself. It then runs:
 
 ```bash
 npx playwright test e2e/golden e2e/smoke

@@ -66,6 +66,33 @@ export function requireDemoPassword(): string {
 }
 
 /**
+ * What to do about an Identity Platform rejection, without claiming to know more than it
+ * said. `INVALID_LOGIN_CREDENTIALS` really is two causes at once; naming only the likelier
+ * one is what sent the last certification round looking for a stale password when a demo
+ * tenant seeded into the wrong Firebase project would look exactly the same.
+ */
+function remedyFor(identityReason: string): string {
+  if (identityReason.startsWith('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+    return (
+      'The account is throttled by Firebase after repeated failed sign-ins, which a failing ' +
+      'certification run produces 39 of. Fix the credential first, then let the throttle clear.'
+    );
+  }
+  if (identityReason.startsWith('USER_DISABLED')) {
+    return 'The account exists and is disabled. Re-seeding the golden tenant re-enables it.';
+  }
+  if (identityReason.startsWith('EMAIL_NOT_FOUND')) {
+    return 'This Firebase project holds no such account. Seed the golden tenant into the project the deployment reads.';
+  }
+  return (
+    "Either the demo accounts do not carry this run's E2E_DEMO_PASSWORD, or they do not " +
+    'exist in the Firebase project this deployment serves — Email Enumeration Protection ' +
+    'makes those indistinguishable from here. Run the Seed Golden Tenant workflow, which ' +
+    'seeds from this same secret, and re-run the gate.'
+  );
+}
+
+/**
  * Log in as a demo role via the real login form and wait for navigation away
  * from /login. Missing credentials fail the suite instead of producing a
  * misleading skipped/green certification.
@@ -73,6 +100,28 @@ export function requireDemoPassword(): string {
 export async function loginAs(page: Page, role: SmokeRole): Promise<void> {
   const password = requireDemoPassword();
   const email = emailForRole(role);
+
+  // The page's own message cannot distinguish the two causes that matter here. With
+  // Email Enumeration Protection enabled — the default for current Firebase projects —
+  // Identity Platform answers a wrong password and a non-existent account identically,
+  // and the login page renders both as "Incorrect password. Please try again.". So a
+  // failing run could not tell "re-seed the accounts" from "the accounts are in a
+  // different project", and reported the first as if it knew.
+  //
+  // Identity Platform's own code is more specific than the page's text, so record it.
+  // Only the RESPONSE is read; the request body carries the password and is never touched.
+  let identityReason = '';
+  page.on('response', (response) => {
+    if (response.ok() || !response.url().includes('accounts:signInWithPassword')) return;
+    void response
+      .json()
+      .then((body) => {
+        identityReason = String(body?.error?.message || '').trim();
+      })
+      .catch(() => {
+        // Best effort only: never mask the failure the caller is about to report.
+      });
+  });
 
   await page.goto('/login');
 
@@ -114,8 +163,8 @@ export async function loginAs(page: Page, role: SmokeRole): Promise<void> {
     throw new Error(
       `Login as ${role} did not leave /login. ` +
         (reported ? `The page reported: "${reported}". ` : 'The page reported no error. ') +
-        'If the credentials are being rejected, re-seed the bizosto-demo tenant so the ' +
-        'ten demo accounts carry the currently configured E2E_DEMO_PASSWORD.',
+        (identityReason ? `Identity Platform reported: ${identityReason}. ` : '') +
+        remedyFor(identityReason),
     );
   }
 }
