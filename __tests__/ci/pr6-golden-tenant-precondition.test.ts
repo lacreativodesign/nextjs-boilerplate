@@ -271,6 +271,23 @@ describe('PR6: the certification workflows are wired to the same secret', () => 
     expect(gates).toEqual(['smoke.yml']);
   });
 
+  /**
+   * The suite that does the certifying was itself unchecked: the root tsconfig excludes
+   * `e2e/`, so a type error there could only surface thirty minutes into a
+   * deployment-backed run.
+   */
+  it('typechecks the certification suite in CI', () => {
+    const workflow = read('.github/workflows/test.yml');
+    const pkg = JSON.parse(read('package.json'));
+    const config = JSON.parse(read('tsconfig.e2e.json').replace(/^\s*\/\/.*$/gm, '')) as {
+      include: string[];
+    };
+
+    expect(pkg.scripts['typecheck:e2e']).toBe('tsc -p tsconfig.e2e.json');
+    expect(workflow).toContain('npm run typecheck:e2e');
+    expect(config.include).toEqual(expect.arrayContaining(['e2e/**/*.ts']));
+  });
+
   it('certifies the deployment against the dispatched commit', () => {
     expect(smoke).toContain('EXPECTED_COMMIT_SHA: ${{ github.sha }}');
   });

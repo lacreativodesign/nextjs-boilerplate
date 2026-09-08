@@ -1,0 +1,18 @@
+{
+  // The root tsconfig deliberately excludes `e2e` and `playwright.config.ts`: they are
+  // not part of the Next.js program and pulling them in would put Playwright's types in
+  // front of the application build. The consequence was that nothing typechecked them at
+  // all, so a type error in the certification suite could only surface as a failure
+  // thirty minutes into a deployment-backed run — the one place it is most expensive.
+  //
+  // This config checks exactly those files, on the same compiler settings, and
+  // `npm run typecheck:e2e` runs it alongside the application typecheck.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // No .tsbuildinfo: this runs from a clean checkout in CI and has nothing to reuse.
+    "incremental": false
+  },
+  "include": ["e2e/**/*.ts", "playwright.config.ts"],
+  "exclude": []
+}

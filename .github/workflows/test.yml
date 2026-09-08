@@ -44,6 +44,12 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      # `e2e/` and playwright.config.ts are outside the Next.js program, so the check
+      # above cannot see them. Unchecked, a type error in the certification suite would
+      # first appear thirty minutes into a deployment-backed run.
+      - name: Type check the certification suite
+        run: npm run typecheck:e2e
+
       - name: Run tests with coverage threshold
         run: npm test
 
