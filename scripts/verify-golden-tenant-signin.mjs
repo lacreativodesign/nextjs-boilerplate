@@ -153,7 +153,11 @@ async function assertDeploymentCommit({ baseUrl, bypassSecret, expectedCommit },
   if (!deployed) {
     throw new Error(
       `${baseUrl} does not report the commit it was built from, so this run cannot be ` +
-        `certified against ${expectedCommit}.`,
+        `certified against ${expectedCommit}. /api/health began reporting its commit on ` +
+        'this branch, so a deployment that answers without one is older than the commit ' +
+        'under test — a pinned preview URL or the production alias, rather than this ' +
+        "branch's own deployment. Point E2E_BASE_URL at the deployment built from the " +
+        'commit being certified.',
     );
   }
   if (deployed !== expectedCommit) {

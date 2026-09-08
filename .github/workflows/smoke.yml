@@ -27,10 +27,6 @@ jobs:
       # re-points at whatever deployed last. The deployment is asked which commit it is
       # serving, and the run stops if it is not this one.
       EXPECTED_COMMIT_SHA: ${{ github.sha }}
-      # Lets the gate rebuild its own fixture. Use the same service account the
-      # deployment holds; without it the gate still runs, but it can only report a stale
-      # credential rather than fix one.
-      FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
 
     steps:
       - name: Verify E2E configuration
@@ -67,6 +63,11 @@ jobs:
       # point at a project other than the one resolved below.
       - name: Rebuild the golden tenant fixture
         shell: bash
+        env:
+          # Scoped to this step rather than the job: it is the only step that needs
+          # Firebase admin rights, and `npm ci`, the browser install and the Playwright
+          # run have no business seeing a service account key.
+          FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
         run: |
           set -euo pipefail
           if [ -z "${FIREBASE_ADMIN_KEY:-}" ]; then

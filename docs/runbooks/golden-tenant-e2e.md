@@ -9,10 +9,16 @@ from the same one the browser suite types — see "Prepare the fixture" for why 
 matters:
 
 - `E2E_DEMO_PASSWORD` — shared password for the ten `demo_*` accounts (16 characters minimum)
-- `E2E_BASE_URL` — the HTTPS deployment URL being certified
+- `E2E_BASE_URL` — the HTTPS deployment URL being certified. It must be the deployment
+  built from the commit under test, not a pinned older preview and not the production
+  alias; for a PR this is the branch preview URL Vercel comments on the pull request. The
+  gate checks this rather than trusting it, and stops before sending any credential if the
+  URL is serving a different commit.
 - `VERCEL_AUTOMATION_BYPASS_SECRET` — only while the target is a protected preview
-- `FIREBASE_ADMIN_KEY` — the same service account JSON the deployment uses, so the seed
-  job can rotate the demo Auth accounts
+- `FIREBASE_ADMIN_KEY` — the same service account JSON the deployment uses, so the gate
+  can rotate the demo Auth accounts to the password it is about to type. Without it the
+  gate still runs and still fails closed, but it can only report a stale demo credential
+  rather than repair one.
 
 Never commit or print the password. The Super Admin demo page intentionally does not display it.
 

@@ -80,9 +80,9 @@ describe('PR6: the golden tenant credential is verified before the browser suite
 
     expect(() => readConfig({})).toThrow(/BASE_URL and E2E_DEMO_PASSWORD/);
     expect(() => readConfig({ BASE_URL: 'https://x' })).toThrow(/E2E_DEMO_PASSWORD/);
-    expect(() => readConfig({ BASE_URL: 'http://x', E2E_DEMO_PASSWORD: TEST_PASSWORD })).toThrow(
-      /https/,
-    );
+    // The same deployment URL, downgraded: a credential must never be sent in clear text.
+    const insecure = baseEnv.BASE_URL.replace('https://', 'http://');
+    expect(() => readConfig({ ...baseEnv, BASE_URL: insecure })).toThrow(/https/);
     expect(readConfig(baseEnv).baseUrl).toBe('https://deployment.example');
   });
 
