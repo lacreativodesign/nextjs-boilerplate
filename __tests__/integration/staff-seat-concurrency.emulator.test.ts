@@ -25,6 +25,7 @@ import {
   releaseStaffSeat,
   reserveStaffSeat,
   SEAT_RESERVATION_TTL_MS,
+  type SeatReservationKind,
   type StaffSeatReservation,
 } from '@/lib/billing/seat-reservation';
 import { getBillableSeatUsage } from '@/lib/billing/user-limit';
@@ -94,6 +95,60 @@ async function seedStaff(tenantId: string, count: number, overrides: Record<stri
   await batch.commit();
 }
 
+/**
+ * The emulator has two vocabularies for one condition, and the SDK only retries one.
+ *
+ * A read-write transaction that loses a contention race is closed by the Firestore
+ * emulator while the loser is still reading. reserveStaffSeat() issues five sequential
+ * reads before it writes, so that window is wide, and depending on where the close
+ * lands the emulator answers the next read either
+ *
+ *   10 ABORTED: Transaction lock timeout.
+ *   3 INVALID_ARGUMENT: Transaction is invalid or closed.
+ *
+ * Both mean "you lost the race, read again". The SDK retries the first. It accepts
+ * INVALID_ARGUMENT only when the message matches /transaction has expired/ — the
+ * wording the production Firestore backend uses for the same condition — so the
+ * emulator's wording falls through to `break` and runTransaction() rejects instead of
+ * re-reading and re-deciding (@google-cloud/firestore 7.11.6,
+ * build/src/transaction.js, isRetryableTransactionError).
+ *
+ * That is the emulator's wording, not a hole in the reservation. No seat is granted on
+ * this path, so the ceiling still holds fail-closed; what is lost is the retry, and
+ * with it the suite's ability to observe the decision the tenant would really get.
+ *
+ * This restores that retry and nothing else. There is no sleep, no serialization and no
+ * relaxed assertion: every attempt is a full reserveStaffSeat() call, still racing
+ * whatever else is in flight, that re-reads committed state and grants or denies on its
+ * own. Any other failure — and this one after five attempts — still fails the suite.
+ */
+const EMULATOR_CLOSED_TRANSACTION = /Transaction is invalid or closed/;
+
+function isEmulatorClosedTransaction(error: unknown): boolean {
+  const candidate = error as { code?: unknown; message?: unknown } | null;
+  return (
+    candidate?.code === 3 && EMULATOR_CLOSED_TRANSACTION.test(String(candidate?.message ?? ''))
+  );
+}
+
+/** reserveStaffSeat() with the retry the production backend performs for us. */
+async function reserveSeat(
+  tenantId: string,
+  role: string,
+  kind: SeatReservationKind,
+): Promise<StaffSeatReservation> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await reserveStaffSeat(tenantId, role, kind);
+    } catch (error) {
+      if (!isEmulatorClosedTransaction(error)) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 /** Counts how many of a set of concurrent reservation attempts were granted. */
 function granted(results: StaffSeatReservation[]) {
   return results.filter((r) => r.ok).length;
@@ -112,8 +167,8 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     await seedStaff(STARTER, 9);
 
     const results = await Promise.all([
-      reserveStaffSeat(STARTER, 'sales', 'admin_create'),
-      reserveStaffSeat(STARTER, 'finance', 'hr_create'),
+      reserveSeat(STARTER, 'sales', 'admin_create'),
+      reserveSeat(STARTER, 'finance', 'hr_create'),
     ]);
 
     expect(granted(results)).toBe(1);
@@ -128,8 +183,8 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     await seedStaff(PRO, 19);
 
     const results = await Promise.all([
-      reserveStaffSeat(PRO, 'sales', 'invitation'),
-      reserveStaffSeat(PRO, 'production', 'sso_auto_provision'),
+      reserveSeat(PRO, 'sales', 'invitation'),
+      reserveSeat(PRO, 'production', 'sso_auto_provision'),
     ]);
 
     expect(granted(results)).toBe(1);
@@ -142,7 +197,7 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     await seedStaff(STARTER, 7);
 
     const results = await Promise.all(
-      Array.from({ length: 6 }, (_, i) => reserveStaffSeat(STARTER, 'sales', 'admin_create')),
+      Array.from({ length: 6 }, (_, i) => reserveSeat(STARTER, 'sales', 'admin_create')),
     );
 
     expect(granted(results)).toBe(3);
@@ -152,9 +207,9 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     await seedStaff(ENTERPRISE, 500);
 
     const results = await Promise.all([
-      reserveStaffSeat(ENTERPRISE, 'sales', 'admin_create'),
-      reserveStaffSeat(ENTERPRISE, 'sales', 'admin_create'),
-      reserveStaffSeat(ENTERPRISE, 'sales', 'admin_create'),
+      reserveSeat(ENTERPRISE, 'sales', 'admin_create'),
+      reserveSeat(ENTERPRISE, 'sales', 'admin_create'),
+      reserveSeat(ENTERPRISE, 'sales', 'admin_create'),
     ]);
 
     expect(granted(results)).toBe(3);
@@ -165,7 +220,7 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
   it('does not consume staff capacity for client portal identities', async () => {
     await seedStaff(STARTER, 10);
 
-    const clientSeat = await reserveStaffSeat(STARTER, 'client', 'admin_create');
+    const clientSeat = await reserveSeat(STARTER, 'client', 'admin_create');
     expect(clientSeat.ok).toBe(true);
     expect(clientSeat.reservationId).toBeNull();
 
@@ -189,13 +244,13 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
 
     expect(await getBillableSeatUsage(STARTER)).toBe(9);
 
-    const seat = await reserveStaffSeat(STARTER, 'sales', 'admin_create');
+    const seat = await reserveSeat(STARTER, 'sales', 'admin_create');
     expect(seat.ok).toBe(true);
     expect(seat.used).toBe(10);
 
     // The invitation holds its seat and the reservation holds the last one, so the
     // tenant is now full.
-    const overflow = await reserveStaffSeat(STARTER, 'sales', 'admin_create');
+    const overflow = await reserveSeat(STARTER, 'sales', 'admin_create');
     expect(overflow.ok).toBe(false);
     await releaseStaffSeat(seat);
   });
@@ -228,7 +283,7 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
 
     // Still ten: one person, one seat, before and after.
     expect(await getBillableSeatUsage(STARTER)).toBe(10);
-    const seat = await reserveStaffSeat(STARTER, 'sales', 'admin_create');
+    const seat = await reserveSeat(STARTER, 'sales', 'admin_create');
     expect(seat.ok).toBe(false);
     expect(seat.used).toBe(10);
   });
@@ -236,15 +291,15 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
   it('returns the seat when provisioning fails, rather than leaking it', async () => {
     await seedStaff(STARTER, 9);
 
-    const seat = await reserveStaffSeat(STARTER, 'sales', 'admin_create');
+    const seat = await reserveSeat(STARTER, 'sales', 'admin_create');
     expect(seat.ok).toBe(true);
-    expect((await reserveStaffSeat(STARTER, 'sales', 'admin_create')).ok).toBe(false);
+    expect((await reserveSeat(STARTER, 'sales', 'admin_create')).ok).toBe(false);
 
     // Simulates the `finally` block every seat-consuming route runs after a failed
     // Firebase Auth or Firestore write.
     await releaseStaffSeat(seat);
 
-    const retry = await reserveStaffSeat(STARTER, 'sales', 'admin_create');
+    const retry = await reserveSeat(STARTER, 'sales', 'admin_create');
     expect(retry.ok).toBe(true);
     await releaseStaffSeat(retry);
   });
@@ -266,7 +321,7 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
         expiresAt: Date.now() - SEAT_RESERVATION_TTL_MS,
       });
 
-    const seat = await reserveStaffSeat(STARTER, 'sales', 'admin_create');
+    const seat = await reserveSeat(STARTER, 'sales', 'admin_create');
     expect(seat.ok).toBe(true);
 
     // The expired entry is pruned by the same transaction, so it cannot come back.
@@ -285,7 +340,7 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     // be reachable while a Starter downgrade is pending.
     await seedStaff(DOWNGRADING, 10);
 
-    const seat = await reserveStaffSeat(DOWNGRADING, 'sales', 'admin_create');
+    const seat = await reserveSeat(DOWNGRADING, 'sales', 'admin_create');
     expect(seat.ok).toBe(false);
     expect(seat.limit).toBe(10);
     expect(seat.plan).toBe('starter');
@@ -299,8 +354,8 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     expect(await getBillableSeatUsage(STARTER)).toBe(9);
 
     const results = await Promise.all([
-      reserveStaffSeat(STARTER, 'sales', 'reactivation'),
-      reserveStaffSeat(STARTER, 'sales', 'reactivation'),
+      reserveSeat(STARTER, 'sales', 'reactivation'),
+      reserveSeat(STARTER, 'sales', 'reactivation'),
     ]);
     expect(granted(results)).toBe(1);
   });
@@ -311,8 +366,8 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
 
     // Two client identities being promoted at the same moment, one free seat.
     const results = await Promise.all([
-      reserveStaffSeat(STARTER, 'sales', 'role_conversion'),
-      reserveStaffSeat(STARTER, 'am', 'role_conversion'),
+      reserveSeat(STARTER, 'sales', 'role_conversion'),
+      reserveSeat(STARTER, 'am', 'role_conversion'),
     ]);
 
     expect(granted(results)).toBe(1);
@@ -323,8 +378,8 @@ describeWithEmulator('PR4 — staff seats are atomic under concurrency', () => {
     await seedStaff(PRO, 9);
 
     const [starterSeat, proSeat] = await Promise.all([
-      reserveStaffSeat(STARTER, 'sales', 'admin_create'),
-      reserveStaffSeat(PRO, 'sales', 'admin_create'),
+      reserveSeat(STARTER, 'sales', 'admin_create'),
+      reserveSeat(PRO, 'sales', 'admin_create'),
     ]);
 
     expect(starterSeat.ok).toBe(true);
