@@ -232,6 +232,26 @@ describe('PR6 golden tenant seed', () => {
       expect(assertGoldenTenant(DEMO_TENANT_ID)).toBe(DEMO_TENANT_ID);
       expect(() => assertGoldenTenant('')).toThrow(/only tenant/i);
       expect(() => assertGoldenTenant('bizosto-demo-2')).toThrow(/only tenant/i);
+      // Case is not normalised away: Firestore ids are case-sensitive, so an upper-case
+      // spelling names a different tenant and must be refused rather than folded in.
+      expect(() => assertGoldenTenant('BIZOSTO-DEMO')).toThrow(/only tenant/i);
+    });
+
+    /**
+     * The assertion normalises; the delete has to use what it returned. Validating the
+     * trimmed id and then deleting under the raw one passes every guard and matches no
+     * document, so the reset reports success having deleted nothing — and the seed that
+     * follows lands on top of the fixture the reset was supposed to clear.
+     */
+    it('resets under the normalised id rather than the argument as given', async () => {
+      await seedDemoTenant({ password: 'a-secure-test-password' });
+      expect(state.firestore.all('clients')).toHaveLength(5);
+
+      await resetDemoTenantData(`  ${DEMO_TENANT_ID}  `);
+
+      expect(
+        state.firestore.all('clients').filter(([, data]) => data.tenantId === DEMO_TENANT_ID),
+      ).toHaveLength(0);
     });
   });
 

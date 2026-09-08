@@ -128,9 +128,13 @@ export function assertIntendedFirebaseProject(
 }
 
 export async function resetDemoTenantData(tenantId = DEMO_TENANT_ID): Promise<void> {
-  assertGoldenTenant(tenantId);
+  // Delete under the id the assertion RETURNS, not the one it was handed. The two differ
+  // whenever the argument needed normalising ("  bizosto-demo  "), and the raw value then
+  // matches no document at all — so the reset silently deletes nothing while reporting
+  // success, and a "reset + seed" rebuild quietly seeds on top of the stale fixture.
+  const id = assertGoldenTenant(tenantId);
   for (const collectionName of DEMO_COLLECTIONS) {
-    await deleteTenantCollection(collectionName, tenantId);
+    await deleteTenantCollection(collectionName, id);
   }
 }
 
