@@ -95,5 +95,27 @@ export async function loginAs(page: Page, role: SmokeRole): Promise<void> {
   await passwordField.fill(password);
   await page.locator('button[type="submit"]').click();
 
-  await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15000 });
+  try {
+    await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15000 });
+  } catch {
+    // The page puts the reason in its own error region. Without reading it the
+    // suite can only report "navigation did not happen", which is not something
+    // an operator can act on.
+    let reported = '';
+    try {
+      const errorRegion = page.locator('.login-error');
+      if (await errorRegion.count()) {
+        reported = ((await errorRegion.first().textContent()) || '').trim();
+      }
+    } catch {
+      // Best effort only: never mask the original failure.
+    }
+
+    throw new Error(
+      `Login as ${role} did not leave /login. ` +
+        (reported ? `The page reported: "${reported}". ` : 'The page reported no error. ') +
+        'If the credentials are being rejected, re-seed the bizosto-demo tenant so the ' +
+        'ten demo accounts carry the currently configured E2E_DEMO_PASSWORD.',
+    );
+  }
 }

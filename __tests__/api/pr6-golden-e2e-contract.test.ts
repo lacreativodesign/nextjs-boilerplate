@@ -92,6 +92,10 @@ describe('PR6 golden tenant certification contract', () => {
 
     expect(auth).toContain('Bizosto login form not found');
     expect(auth).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
+    // A rejected sign-in must report the page's own reason, not just "no navigation".
+    expect(auth).toContain('did not leave /login');
+    expect(auth).toContain('.login-error');
+    expect(auth).toContain('re-seed the bizosto-demo tenant');
     expect(auth).not.toContain('test.skip');
   });
 
