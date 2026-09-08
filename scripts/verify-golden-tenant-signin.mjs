@@ -30,7 +30,10 @@
  * never written to the log; the Firebase project id is, because identifying the project
  * is the point.
  *
- * Usage: node scripts/verify-golden-tenant-signin.mjs
+ * Usage: node scripts/verify-golden-tenant-signin.mjs [--print-project]
+ *   --print-project  print only the Firebase project id the deployment serves, so a
+ *                    reseed can target the project the deployment actually reads rather
+ *                    than one someone typed in. Signs nobody in.
  *   BASE_URL                         deployment being certified (https)
  *   E2E_DEMO_PASSWORD                the password the browser suite will type
  *   VERCEL_AUTOMATION_BYPASS_SECRET  optional; required while the target is protected
@@ -194,6 +197,23 @@ async function fetchDeploymentFirebaseConfig({ baseUrl, bypassSecret }, fetchImp
 }
 
 /**
+ * The Firebase project this deployment serves, and nothing else.
+ *
+ * A reseed has to land in the project the deployment reads. Asking the deployment rather
+ * than accepting a typed-in value is what makes "seeded into the wrong project" — one of
+ * the two causes Email Enumeration Protection makes indistinguishable at the login form —
+ * impossible rather than merely unlikely.
+ *
+ * @param {Record<string, string | undefined>} [env]
+ * @param {typeof fetch} [fetchImpl]
+ */
+export async function resolveDeploymentFirebaseProject(env = process.env, fetchImpl = fetch) {
+  const config = readConfig(env);
+  const firebase = await fetchDeploymentFirebaseConfig(config, fetchImpl);
+  return firebase.projectId;
+}
+
+/**
  * Signs in once. Returns the verified project id, or throws with the real reason.
  * The id token in a successful response is discarded; nothing is kept or printed.
  *
@@ -238,7 +258,16 @@ const invokedDirectly = process.argv[1]
   ? import.meta.url === pathToFileURL(process.argv[1]).href
   : false;
 
-if (invokedDirectly) {
+if (invokedDirectly && process.argv.includes('--print-project')) {
+  // stdout carries the project id alone so a workflow can capture it; anything the
+  // operator needs to read goes to stderr.
+  resolveDeploymentFirebaseProject()
+    .then((projectId) => console.log(projectId))
+    .catch((error) => {
+      console.error(`Could not resolve the deployment's Firebase project.\n  ${error.message}`);
+      process.exit(1);
+    });
+} else if (invokedDirectly) {
   verifyGoldenTenantSignIn()
     .then(({ projectId, email, baseUrl, commit }) => {
       console.log(`Golden tenant credential verified against the deployment under test.`);

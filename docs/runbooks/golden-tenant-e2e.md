@@ -39,7 +39,15 @@ A target on a custom domain is exempt from the protection and needs no bypass se
 
 ## Prepare the fixture
 
-Dispatch **Actions → Seed Golden Tenant** against the PR branch:
+**The gate does this for itself.** With `FIREBASE_ADMIN_KEY` configured, dispatching the
+gate resolves the Firebase project from the deployment under test, rebuilds the
+`bizosto-demo` fixture into that project, and rotates the ten demo accounts to the same
+`E2E_DEMO_PASSWORD` the browser is about to type. Neither copy of the secret nor the
+project can be the odd one out, so the drift below has nowhere to happen. Skip to
+"Run the pre-merge gate".
+
+To rebuild the fixture on its own — refreshing demo data, or repairing it outside a
+certification run — dispatch **Actions → Seed Golden Tenant** against the PR branch:
 
 - `firebase_project_id` — the Firebase project the deployment serves. Read it from the
   deployment itself rather than from memory: `GET <deployment>/api/public/firebase-config`
@@ -50,13 +58,14 @@ The job rotates the ten demo Auth accounts to the repository's `E2E_DEMO_PASSWOR
 re-seeds deterministic fixture IDs. Confirm the printed counts include at least one deal,
 invoice, project and client.
 
-**Why a workflow and not the Super Admin button.** The button seeds from the deployment's
-own server-side `E2E_DEMO_PASSWORD`, which is a second copy of the secret, kept in step
-with this repository's copy by hand. Nothing checked they agreed. When they drifted the
-gate failed all thirteen tests with "Incorrect password" — which, with Firebase Email
-Enumeration Protection enabled, is also exactly what a missing account looks like. Seeding
-from the same secret the suite types means only one copy decides the outcome. The button
-still works and is still the right tool for refreshing demo data by hand.
+**Why not the Super Admin button.** The button seeds from the deployment's own server-side
+`E2E_DEMO_PASSWORD`, which is a second copy of the secret kept in step with this
+repository's copy by hand. Nothing checked they agreed. When they drifted the gate failed
+all thirteen tests with "Incorrect password" — which, with Firebase Email Enumeration
+Protection enabled, is also exactly what a missing account looks like, so the message
+could not tell an operator which of the two it was. Seeding from the secret the suite
+itself types means only one copy decides the outcome. The button still works and remains
+the right tool for refreshing demo data by hand.
 
 Two bounds apply to the rebuild and both fail closed:
 
@@ -71,11 +80,13 @@ tenants, so that tenant filter is the isolation boundary.
 
 ## Run the pre-merge gate
 
-Dispatch the existing `.github/workflows/smoke.yml` workflow against the PR6 branch.
+Dispatch the existing `.github/workflows/smoke.yml` workflow against the PR6 branch. It is
+the only golden tenant gate: PR6 briefly carried a second, identical `golden-e2e.yml`, and
+two dispatchable copies meant every guard had to be added twice.
 
 The workflow fails before checkout if either required GitHub secret is missing or if
-`E2E_BASE_URL` is not HTTPS. It then signs one demo account in against the deployment
-before the browser suite starts:
+`E2E_BASE_URL` is not HTTPS. It then rebuilds the fixture (see above) and signs one demo
+account in against the deployment before the browser suite starts:
 
 ```bash
 node scripts/verify-golden-tenant-signin.mjs
@@ -104,4 +115,8 @@ A skipped authenticated suite is not a pass.
 
 ## Evidence
 
-Record the exact PR head SHA, workflow run ID and Vercel deployment used. The run must correspond to the same SHA being certified.
+Record the exact PR head SHA, workflow run ID and Vercel deployment used. The run must
+correspond to the same SHA being certified — the gate now enforces this itself rather than
+trusting it: `EXPECTED_COMMIT_SHA` is the dispatched commit, `/api/health` reports the
+commit the deployment was built from, and the run stops before sending any credential if
+they differ. A pass therefore names the SHA it certified.

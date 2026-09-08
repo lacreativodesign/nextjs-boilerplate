@@ -32,18 +32,15 @@ describe('PR6 golden tenant certification contract', () => {
   it('fails authenticated E2E when credentials are missing instead of skipping', () => {
     const auth = read('e2e/helpers/auth.ts');
     const smoke = read('.github/workflows/smoke.yml');
-    const golden = read('.github/workflows/golden-e2e.yml');
 
     expect(auth).toContain('E2E_DEMO_PASSWORD is required');
     expect(auth).not.toContain('test.skip');
     expect(smoke).toContain('E2E_DEMO_PASSWORD is required');
     expect(smoke).toContain('E2E_BASE_URL is required');
-    expect(golden).toContain('E2E_DEMO_PASSWORD is required');
-    expect(golden).toContain('E2E_BASE_URL is required');
   });
 
   it('runs the golden journey and all per-role smoke tests in the launch gate', () => {
-    const workflow = read('.github/workflows/golden-e2e.yml');
+    const workflow = read('.github/workflows/smoke.yml');
     const goldenSpec = read('e2e/golden/golden-tenant.spec.ts');
 
     expect(workflow).toContain('npx playwright test e2e/golden e2e/smoke');
@@ -72,7 +69,6 @@ describe('PR6 golden tenant certification contract', () => {
     const setup = read('e2e/global-setup.ts');
     const config = read('playwright.config.ts');
     const smoke = read('.github/workflows/smoke.yml');
-    const golden = read('.github/workflows/golden-e2e.yml');
 
     expect(setup).toContain('x-vercel-protection-bypass');
     expect(setup).toContain('x-vercel-set-bypass-cookie');
@@ -84,7 +80,6 @@ describe('PR6 golden tenant certification contract', () => {
     // public repository, so traces are off whenever a bypass cookie is in play.
     expect(config).toContain("trace: bypassSecret ? 'off'");
     expect(smoke).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
-    expect(golden).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
   });
 
   it('fails with a diagnosable message when the login form is not reachable', () => {

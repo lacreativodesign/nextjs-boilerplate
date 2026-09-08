@@ -27,6 +27,10 @@ jobs:
       # re-points at whatever deployed last. The deployment is asked which commit it is
       # serving, and the run stops if it is not this one.
       EXPECTED_COMMIT_SHA: ${{ github.sha }}
+      # Lets the gate rebuild its own fixture. Use the same service account the
+      # deployment holds; without it the gate still runs, but it can only report a stale
+      # credential rather than fix one.
+      FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
 
     steps:
       - name: Verify E2E configuration
@@ -54,6 +58,28 @@ jobs:
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+
+      # Seeding here is what removes the drift this gate kept tripping over. The demo
+      # accounts are rotated to the SAME `E2E_DEMO_PASSWORD` the browser is about to type,
+      # into the SAME Firebase project the deployment just told us it reads — so neither
+      # copy of the secret nor the project can be the odd one out. The tenant is fixed to
+      # `bizosto-demo` inside lib/demo/seed.ts, and the seeder aborts if the credentials
+      # point at a project other than the one resolved below.
+      - name: Rebuild the golden tenant fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${FIREBASE_ADMIN_KEY:-}" ]; then
+            echo "FIREBASE_ADMIN_KEY is not configured, so this run cannot rebuild the"
+            echo "golden tenant. It will still certify, but a stale demo credential will"
+            echo "be reported rather than repaired. Add the deployment's service account"
+            echo "as an Actions secret to make this gate self-sufficient."
+            exit 0
+          fi
+          DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs --print-project)"
+          export DEMO_FIREBASE_PROJECT_ID
+          echo "Seeding bizosto-demo into the project the deployment serves: $DEMO_FIREBASE_PROJECT_ID"
+          npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts --reset
 
       # A wrong credential used to cost twenty minutes and end in "Incorrect password",
       # which is also what Firebase says when the account does not exist. This asks the

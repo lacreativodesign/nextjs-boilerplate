@@ -232,6 +232,18 @@ describe('PR6: the golden tenant credential is verified before the browser suite
     );
   });
 
+  it("reports the deployment's own Firebase project so a reseed cannot miss it", async () => {
+    const { resolveDeploymentFirebaseProject } = await loadVerifier();
+    const fetchStub = stubFetch({});
+
+    // The gate feeds this straight into the seeder, so the fixture lands in the project
+    // the deployment reads rather than one an operator typed from memory.
+    await expect(
+      resolveDeploymentFirebaseProject(baseEnv, fetchStub.impl as unknown as typeof fetch),
+    ).resolves.toBe('la-creativo-erp');
+    expect(call(fetchStub.calls, 'signInWithPassword')).toBeUndefined();
+  });
+
   it('probes the same admin account the browser suite logs in as', async () => {
     const { DEFAULT_PROBE_EMAIL } = await loadVerifier();
     const helper = read('e2e/helpers/auth.ts');
@@ -243,28 +255,52 @@ describe('PR6: the golden tenant credential is verified before the browser suite
 describe('PR6: the certification workflows are wired to the same secret', () => {
   const smoke = read(SMOKE_WORKFLOW);
   const seed = read(SEED_WORKFLOW);
-  const golden = read('.github/workflows/golden-e2e.yml');
 
-  // Both workflows dispatch the same thirteen tests against the same deployment. Whichever
-  // an operator reaches for has to carry the same guards, or the weaker one silently
-  // becomes the twenty-minute failure the stronger one was written to prevent.
-  it.each([
-    ['smoke.yml', smoke],
-    ['golden-e2e.yml', golden],
-  ])('%s certifies the deployment against the dispatched commit', (_name, workflow) => {
-    expect(workflow).toContain('EXPECTED_COMMIT_SHA: ${{ github.sha }}');
+  /**
+   * One gate, not two. PR6 added `golden-e2e.yml`, then its next commit folded the same
+   * thirteen tests into `smoke.yml` and left both behind — two dispatchable workflows,
+   * identical secrets, identical suite. Guards then have to be added twice, and whichever
+   * copy is missed becomes the twenty-minute failure the other one was written to prevent.
+   */
+  it('leaves exactly one dispatchable golden tenant gate', () => {
+    const workflows = fs.readdirSync(path.join(process.cwd(), '.github/workflows'));
+    const gates = workflows.filter((file) =>
+      read(`.github/workflows/${file}`).includes('npx playwright test e2e/golden e2e/smoke'),
+    );
+
+    expect(gates).toEqual(['smoke.yml']);
   });
 
-  it.each([
-    ['smoke.yml', smoke],
-    ['golden-e2e.yml', golden],
-  ])('%s runs the credential check before the Playwright suite', (_name, workflow) => {
-    const check = workflow.indexOf(VERIFY_SCRIPT);
-    const suite = workflow.indexOf('npx playwright test e2e/golden e2e/smoke');
+  it('certifies the deployment against the dispatched commit', () => {
+    expect(smoke).toContain('EXPECTED_COMMIT_SHA: ${{ github.sha }}');
+  });
+
+  it('runs the credential check before the Playwright suite', () => {
+    const check = smoke.indexOf(VERIFY_SCRIPT);
+    const suite = smoke.indexOf('npx playwright test e2e/golden e2e/smoke');
 
     expect(check).toBeGreaterThan(-1);
     expect(suite).toBeGreaterThan(-1);
     expect(check).toBeLessThan(suite);
+  });
+
+  /**
+   * The gate rebuilds its own fixture, into the project the deployment reports rather
+   * than one typed in by hand. That is what makes "seeded into the wrong project"
+   * impossible rather than merely unlikely — it is one of the two causes the login form
+   * cannot distinguish, so it has to be designed out.
+   */
+  it('seeds into the project the deployment reports, not a hand-typed one', () => {
+    const resolve = smoke.indexOf('--print-project');
+    const seedRun = smoke.indexOf('scripts/seedDemoTenant.ts --reset');
+    const suite = smoke.indexOf('npx playwright test e2e/golden e2e/smoke');
+
+    expect(resolve).toBeGreaterThan(-1);
+    expect(resolve).toBeLessThan(seedRun);
+    expect(seedRun).toBeLessThan(suite);
+    expect(smoke).toContain(
+      'DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs --print-project)"',
+    );
   });
 
   it('seeds from the same E2E_DEMO_PASSWORD secret the suite types', () => {

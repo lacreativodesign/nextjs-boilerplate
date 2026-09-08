@@ -33,11 +33,12 @@ const customJestConfig = {
     'app/api/super_admin/demo/_handler.ts',
     'app/api/super_admin/demo/seed/route.ts',
     'app/api/super_admin/demo/reset/route.ts',
-    // `scripts/` is likewise not instrumented as a whole. This one is the exception for
-    // the same reason: it is the Golden Tenant gate's precondition check, it has a
+    // `scripts/` is likewise not instrumented as a whole. This one is the exception
+    // because it decides whether a certification run may proceed, and it has a
     // behavioural suite of its own (__tests__/ci/pr6-golden-tenant-precondition) that
-    // drives every branch including the ones that must not print the password, and
-    // without this entry that coverage never reaches coverage/lcov.info.
+    // drives every branch including the ones that must not print the password. Unlike
+    // the routes above this is for the local gate only: `scripts/` is outside
+    // sonar.sources, so Sonar neither sees the file nor scores it.
     'scripts/verify-golden-tenant-signin.mjs',
   ],
   coverageDirectory: 'coverage',
