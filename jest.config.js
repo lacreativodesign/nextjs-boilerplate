@@ -50,6 +50,13 @@ const customJestConfig = {
     'app/api/files/[id]/versions/route.ts',
     'app/api/files/[id]/restore/route.ts',
     'app/api/files/[id]/tags/route.ts',
+    // The app/api/documents/[id] family, covered by
+    // __tests__/api/documents-routes-tenant-isolation. These read the document with an
+    // unscoped doc(id), so the tenant comparison inside the handler is the whole isolation
+    // boundary; the suite pins that, the per-document access rules, and the download-time
+    // virus-scan gate.
+    'app/api/documents/[id]/download/route.ts',
+    'app/api/documents/[id]/version/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
