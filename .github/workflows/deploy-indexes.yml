@@ -75,6 +75,10 @@ jobs:
   inventory:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      # Published so the deploy job can prove it is applying the plan the owner saw.
+      plan-digest: ${{ steps.reconcile.outputs.plan-digest }}
+      manifest-sha256: ${{ steps.reconcile.outputs.manifest-sha256 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -104,6 +108,7 @@ jobs:
           node -e 'console.log("live indexes:", JSON.parse(require("fs").readFileSync("live-indexes.json","utf8")).length)'
 
       - name: Reconcile the manifest against live, fail closed on any removal
+        id: reconcile
         shell: bash
         run: |
           set -euo pipefail
@@ -111,7 +116,54 @@ jobs:
             --manifest firestore.indexes.json \
             --live live-indexes.json \
             --project "$PROJECT_ID" \
-            --plan create-plan.json
+            --plan create-plan.json | tee reconcile.log
+          PLAN_DIGEST=$(node -e 'const c=require("node:crypto"),f=require("node:fs");console.log(c.createHash("sha256").update(f.readFileSync("create-plan.json")).digest("hex"))')
+          MANIFEST_SHA=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("create-plan.json","utf8")).manifestSha256)')
+          echo "plan-digest=$PLAN_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "manifest-sha256=$MANIFEST_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the proposed plan for review BEFORE any approval
+        if: always()
+        shell: bash
+        env:
+          PLAN_DIGEST: ${{ steps.reconcile.outputs.plan-digest }}
+          MANIFEST_SHA: ${{ steps.reconcile.outputs.manifest-sha256 }}
+        run: |
+          set -euo pipefail
+          # This job holds only the read-only identity, and it runs before the
+          # environment gate on `deploy`. So the owner can read the exact proposed
+          # additions here and then decide whether to release the write identity.
+          {
+            echo "## Firestore index plan"
+            echo
+            echo "- project: \`$PROJECT_ID\`"
+            echo "- database: \`$FIRESTORE_DATABASE\`"
+            echo "- commit: \`$GITHUB_SHA\`"
+            echo "- manifest sha256: \`$MANIFEST_SHA\`"
+            echo "- plan digest: \`$PLAN_DIGEST\`"
+            echo
+            echo '```'
+            cat reconcile.log 2>/dev/null || echo "(reconciliation failed; see the step log)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain an authentication or permission failure
+        if: failure()
+        shell: bash
+        run: |
+          # The exact permission set these calls need was not verifiable when this was
+          # written (Google Cloud documentation was unreachable from the authoring
+          # environment), so rather than guessing a broader role, this run is the
+          # verification: gcloud names the permission it was denied, and only the
+          # read-only identity is in play while finding out.
+          echo "If this failed at authentication, check that these repository variables are set"
+          echo "and that the service account trusts this repository via Workload Identity:"
+          echo "  GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_FIRESTORE_INDEX_READER_SA"
+          echo
+          echo "If it failed with PERMISSION_DENIED, the message above names the missing"
+          echo "permission. Add exactly that permission to the reader's custom role - do not"
+          echo "substitute a broad predefined role such as roles/datastore.viewer, which also"
+          echo "grants read access to document data this job has no need for."
 
       - name: Upload inventory and create plan
         if: always()
@@ -191,11 +243,18 @@ jobs:
 
       - name: Create the missing indexes, and only those
         shell: bash
+        env:
+          APPROVED_PLAN_DIGEST: ${{ needs.inventory.outputs.plan-digest }}
         run: |
           set -euo pipefail
-          # Spawns gcloud with an explicit argv array, never through a shell, and
-          # re-validates that every step is a composite-index create first.
-          node scripts/firestore-index-apply.mjs --plan create-plan.json
+          # --expect-digest binds this write to the exact plan published in the
+          # inventory job summary, which is what the owner read before approving.
+          # A manifest substituted after approval changes the digest and fails here.
+          node scripts/firestore-index-apply.mjs \
+            --plan create-plan.json \
+            --project "$PROJECT_ID" \
+            --database "$FIRESTORE_DATABASE" \
+            --expect-digest "$APPROVED_PLAN_DIGEST"
 
       - name: Wait for every index to reach READY
         shell: bash

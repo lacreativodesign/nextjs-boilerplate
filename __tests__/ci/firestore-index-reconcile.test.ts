@@ -17,10 +17,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import {
-  DEFAULT_DATABASE,
   assertDefaultDatabase,
   assertNoDeletions,
-  createCommandArgs,
   findKeyCollisions,
   indexKey,
   notReady,
@@ -187,58 +185,6 @@ describe('no live index can be deleted without explicit approval', () => {
     expect(result.extra).toEqual([]);
     expect(result.missing).toHaveLength(1);
     expect(() => assertNoDeletions(result)).not.toThrow();
-  });
-});
-
-describe('the create plan can only create', () => {
-  it('emits gcloud composite-create arguments and no destructive verb', () => {
-    const args = createCommandArgs(
-      idx('projects', [
-        { fieldPath: 'clientId', order: A },
-        { fieldPath: 'updatedAt', order: D },
-      ]),
-      { project: 'la-creativo-erp' },
-    );
-    expect(args.slice(0, 4)).toEqual(['firestore', 'indexes', 'composite', 'create']);
-    expect(args).toContain('--project=la-creativo-erp');
-    expect(args).toContain(`--database=${DEFAULT_DATABASE}`);
-    expect(args).toContain('--collection-group=projects');
-    expect(args).toContain('--field-config=field-path=clientId,order=ascending');
-    expect(args).toContain('--field-config=field-path=updatedAt,order=descending');
-    expect(args.join(' ')).not.toMatch(/\b(delete|remove|destroy|--force)\b/);
-  });
-
-  it('carries array-contains fields through correctly', () => {
-    const args = createCommandArgs(
-      idx('projects', [{ fieldPath: 'teamMemberIds', arrayConfig: 'CONTAINS' }]),
-      {
-        project: 'p',
-      },
-    );
-    expect(args).toContain('--field-config=field-path=teamMemberIds,array-config=contains');
-  });
-
-  it('omits a redundant __name__, which Firestore appends itself', () => {
-    const args = createCommandArgs(
-      idx('leads', [
-        { fieldPath: 'tenantId', order: A },
-        { fieldPath: 'createdAt', order: D },
-        { fieldPath: '__name__', order: D },
-      ]),
-      { project: 'p' },
-    );
-    expect(args.join(' ')).not.toContain('__name__');
-  });
-
-  it('states a contradictory __name__, because Firestore will not infer it', () => {
-    const args = createCommandArgs(
-      idx('projects', [
-        { fieldPath: 'status', order: A },
-        { fieldPath: '__name__', order: D },
-      ]),
-      { project: 'p' },
-    );
-    expect(args).toContain('--field-config=field-path=__name__,order=descending');
   });
 });
 

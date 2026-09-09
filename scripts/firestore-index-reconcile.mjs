@@ -200,31 +200,6 @@ export function assertDefaultDatabase(liveIndexes) {
   );
 }
 
-/**
- * The `gcloud firestore indexes composite create` arguments for one index.
- * Create-only by construction: this command cannot remove anything.
- */
-export function createCommandArgs(index, { project, database = DEFAULT_DATABASE }) {
-  const args = [
-    'firestore',
-    'indexes',
-    'composite',
-    'create',
-    `--project=${project}`,
-    `--database=${database}`,
-    `--collection-group=${index.collectionGroup}`,
-    `--query-scope=${index.queryScope || 'COLLECTION'}`,
-  ];
-  for (const field of significantFields(index.fields)) {
-    args.push(
-      field.arrayConfig
-        ? `--field-config=field-path=${field.fieldPath},array-config=${field.arrayConfig.toLowerCase()}`
-        : `--field-config=field-path=${field.fieldPath},order=${String(field.order).toLowerCase()}`,
-    );
-  }
-  return args;
-}
-
 // ---------------------------------------------------------------------------
 // CLI. Importable above, executable here: the entry point runs only when this
 // file is the process's own argv[1], never when a suite imports the functions.
@@ -240,7 +215,13 @@ export function createCommandArgs(index, { project, database = DEFAULT_DATABASE 
 // ---------------------------------------------------------------------------
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+
+/** Stable digest used to bind an approval to an exact manifest and an exact plan. */
+export function sha256(buffer) {
+  return createHash('sha256').update(buffer).digest('hex');
+}
 
 function arg(argv, name) {
   const hit = argv.find((entry) => entry.startsWith(`--${name}=`));
@@ -294,12 +275,28 @@ export function runReconcile(argv, { log = console.log, error = console.error } 
   assertNoDeletions(result);
 
   if (planPath) {
-    const plan = result.missing.map((index) => ({
-      index: describeIndex(index),
-      args: createCommandArgs(index, { project }),
-    }));
-    writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
-    log(`\ncreate plan written to ${planPath} (${plan.length} command(s))`);
+    // The plan stores validated INDEX DEFINITIONS, never a command line. The applier
+    // builds argv itself from these fields plus its own --project/--database, so a
+    // tampered plan cannot introduce a flag, a credential option, or a
+    // fully-qualified resource name pointing at another project.
+    const plan = {
+      project,
+      database: DEFAULT_DATABASE,
+      // Ties the plan to the exact manifest it was computed from, so an approval
+      // cannot be carried over to a different manifest.
+      manifestSha256: sha256(readFileSync(manifestPath)),
+      indexes: result.missing.map((index) => ({
+        describe: describeIndex(index),
+        collectionGroup: index.collectionGroup,
+        queryScope: index.queryScope || 'COLLECTION',
+        fields: significantFields(index.fields),
+      })),
+    };
+    const serialized = `${JSON.stringify(plan, null, 2)}\n`;
+    writeFileSync(planPath, serialized);
+    log(`\ncreate plan written to ${planPath} (${plan.indexes.length} index(es))`);
+    log(`manifest sha256 : ${plan.manifestSha256}`);
+    log(`plan sha256     : ${sha256(Buffer.from(serialized))}`);
   }
 
   return result;

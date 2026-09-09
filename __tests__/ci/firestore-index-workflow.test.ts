@@ -10,7 +10,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { applyPlan, assertCreateOnly } from '@/scripts/firestore-index-apply.mjs';
+import {
+  ALLOWED_DATABASE,
+  ALLOWED_PROJECT,
+  applyPlan,
+  buildCreateArgs,
+  planDigest,
+  validateIndexDefinition,
+} from '@/scripts/firestore-index-apply.mjs';
 
 const workflow = fs.readFileSync(
   path.join(process.cwd(), '.github/workflows/deploy-indexes.yml'),
@@ -140,48 +147,52 @@ describe('nothing in the workflow can delete an index', () => {
     expect(deploy).toContain('firestore-index-reconcile.mjs');
   });
 
+  it('binds the write to the plan digest published before approval', () => {
+    // The owner reads the proposed additions in the inventory job summary, which runs
+    // before the environment gate. --expect-digest makes the deploy refuse anything
+    // other than that exact plan, so a manifest cannot be substituted after approval.
+    expect(workflow).toContain('plan-digest: ${{ steps.reconcile.outputs.plan-digest }}');
+    expect(workflow).toContain('APPROVED_PLAN_DIGEST: ${{ needs.inventory.outputs.plan-digest }}');
+    expect(commands).toContain('--expect-digest');
+    expect(workflow).toContain('GITHUB_STEP_SUMMARY');
+  });
+
+  it('interpolates step and job outputs through env too, never into a run line', () => {
+    const runBlocks = workflow.split(/\n\s+run: \|/).slice(1);
+    for (const block of runBlocks) {
+      const body = block.split(/\n\s+- name:/)[0];
+      expect(body).not.toMatch(/\$\{\{\s*steps\./);
+      expect(body).not.toMatch(/\$\{\{\s*needs\./);
+    }
+  });
+
   it('waits for READY rather than treating acceptance as completion', () => {
     expect(workflow).toContain('All indexes READY.');
     expect(workflow).toMatch(/state\s*!==\s*"READY"/);
   });
 });
 
-describe('the apply step can only create', () => {
-  const step = (collectionGroup: string) => ({
-    index: collectionGroup,
-    args: [
-      'firestore',
-      'indexes',
-      'composite',
-      'create',
-      '--project=la-creativo-erp',
-      `--collection-group=${collectionGroup}`,
-    ],
+describe('the apply plan is a validated schema, not a command line', () => {
+  const definition = (collectionGroup = 'leads') => ({
+    describe: `${collectionGroup} (COLLECTION): tenantId ASCENDING`,
+    collectionGroup,
+    queryScope: 'COLLECTION',
+    fields: [{ fieldPath: 'tenantId', order: 'ASCENDING' }],
   });
 
-  it('accepts a plan of composite creates', () => {
-    expect(() => assertCreateOnly([step('leads')])).not.toThrow();
-  });
+  const plan = (indexes: unknown[]) =>
+    JSON.stringify({
+      project: ALLOWED_PROJECT,
+      database: ALLOWED_DATABASE,
+      manifestSha256: 'a'.repeat(64),
+      indexes,
+    });
 
-  it('rejects a plan step that deletes', () => {
-    const bad = { index: 'leads', args: ['firestore', 'indexes', 'composite', 'delete', 'ix'] };
-    expect(() => assertCreateOnly([bad])).toThrow(/not a composite-index create/);
-  });
+  const target = { project: ALLOWED_PROJECT, database: ALLOWED_DATABASE };
 
-  it('rejects a plan step carrying --force', () => {
-    const bad = step('leads');
-    bad.args.push('--force');
-    expect(() => assertCreateOnly([bad])).toThrow(/--force/);
-  });
-
-  it('rejects a plan that reaches a different gcloud surface entirely', () => {
-    const bad = { index: 'x', args: ['firestore', 'databases', 'delete', '--database=(default)'] };
-    expect(() => assertCreateOnly([bad])).toThrow(/not a composite-index create/);
-  });
-
-  it('spawns gcloud once per index, with --async, and never through a shell', () => {
+  it('accepts a well-formed plan and builds the argv itself', () => {
     const calls: Array<{ cmd: string; args: string[] }> = [];
-    const result = applyPlan([step('leads'), step('projects')], {
+    const result = applyPlan(plan([definition('leads'), definition('projects')]), target, {
       run: (cmd: string, args: string[]) => {
         calls.push({ cmd, args });
         return { status: 0 };
@@ -189,19 +200,145 @@ describe('the apply step can only create', () => {
       log: () => {},
     });
 
-    expect(result).toEqual({ created: 2 });
-    expect(calls).toHaveLength(2);
+    expect(result.created).toBe(2);
     for (const call of calls) {
       expect(call.cmd).toBe('gcloud');
-      expect(call.args).toContain('--async');
       expect(call.args.slice(0, 4)).toEqual(['firestore', 'indexes', 'composite', 'create']);
+      expect(call.args).toContain(`--project=${ALLOWED_PROJECT}`);
+      expect(call.args).toContain(`--database=${ALLOWED_DATABASE}`);
+      expect(call.args).toContain('--async');
+      // Exactly one of each resource flag — gcloud resolves a repeat to the LAST one.
+      expect(call.args.filter((a: string) => a.startsWith('--project='))).toHaveLength(1);
+      expect(call.args.filter((a: string) => a.startsWith('--database='))).toHaveLength(1);
     }
+  });
+
+  it('ignores any argv a tampered plan tries to supply', () => {
+    // The old format stored argv. It no longer does, so extra keys are inert.
+    const smuggled = {
+      ...definition('leads'),
+      args: ['firestore', 'indexes', 'composite', 'delete', '--project=someone-else'],
+    };
+    const calls: string[][] = [];
+    applyPlan(plan([smuggled]), target, {
+      run: (_cmd: string, args: string[]) => {
+        calls.push(args);
+        return { status: 0 };
+      },
+      log: () => {},
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain('create');
+    expect(calls[0].join(' ')).not.toContain('someone-else');
+    expect(calls[0].join(' ')).not.toContain('delete');
+  });
+
+  it.each([
+    ['a cross-project resource name', { collectionGroup: 'projects/other/databases/(default)/x' }],
+    ['a flag smuggled into the collection group', { collectionGroup: 'leads --project=other' }],
+    ['a path separator in the collection group', { collectionGroup: 'a/b' }],
+    ['an empty collection group', { collectionGroup: '' }],
+  ])('rejects %s', (_label, override) => {
+    expect(() =>
+      applyPlan(plan([{ ...definition(), ...override }]), target, { log: () => {} }),
+    ).toThrow(/unacceptable collection group/);
+  });
+
+  it.each([
+    ['--impersonate-service-account', 'tenantId --impersonate-service-account=x@y'],
+    ['--flags-file', 'tenantId --flags-file=/tmp/x'],
+    ['a shell metacharacter', 'tenantId;rm'],
+  ])('rejects %s smuggled into a field path', (_label, fieldPath) => {
+    const bad = { ...definition(), fields: [{ fieldPath, order: 'ASCENDING' }] };
+    expect(() => applyPlan(plan([bad]), target, { log: () => {} })).toThrow(
+      /unacceptable field path/,
+    );
+  });
+
+  it('rejects an unacceptable query scope, order, or array config', () => {
+    expect(() =>
+      applyPlan(plan([{ ...definition(), queryScope: 'EVERYTHING' }]), target, { log: () => {} }),
+    ).toThrow(/unacceptable query scope/);
+    expect(() =>
+      applyPlan(
+        plan([{ ...definition(), fields: [{ fieldPath: 'x', order: 'SIDEWAYS' }] }]),
+        target,
+        {
+          log: () => {},
+        },
+      ),
+    ).toThrow(/unacceptable order/);
+    expect(() =>
+      applyPlan(
+        plan([{ ...definition(), fields: [{ fieldPath: 'x', arrayConfig: 'ANY' }] }]),
+        target,
+        {
+          log: () => {},
+        },
+      ),
+    ).toThrow(/unacceptable array config/);
+  });
+
+  it('refuses a plan aimed at another project or database', () => {
+    const elsewhere = JSON.stringify({
+      project: 'someone-elses-project',
+      database: ALLOWED_DATABASE,
+      manifestSha256: 'a'.repeat(64),
+      indexes: [definition()],
+    });
+    expect(() => applyPlan(elsewhere, target, { log: () => {} })).toThrow(/not la-creativo-erp/);
+
+    const otherDb = JSON.stringify({
+      project: ALLOWED_PROJECT,
+      database: 'analytics',
+      manifestSha256: 'a'.repeat(64),
+      indexes: [definition()],
+    });
+    expect(() => applyPlan(otherDb, target, { log: () => {} })).toThrow(/not \(default\)/);
+  });
+
+  it('refuses to build argv for a target other than the approved one', () => {
+    expect(() =>
+      buildCreateArgs(validateIndexDefinition(definition()), {
+        project: 'other',
+        database: ALLOWED_DATABASE,
+      }),
+    ).toThrow(/Refusing to target project/);
+  });
+
+  it('requires the plan to name the manifest it came from', () => {
+    const unbound = JSON.stringify({
+      project: ALLOWED_PROJECT,
+      database: ALLOWED_DATABASE,
+      indexes: [definition()],
+    });
+    expect(() => applyPlan(unbound, target, { log: () => {} })).toThrow(/manifest sha256/);
+  });
+
+  it('refuses to run a plan that differs from the one approved', () => {
+    // This is what stops a different manifest being substituted after approval.
+    const serialized = plan([definition()]);
+    expect(() =>
+      applyPlan(serialized, { ...target, expectDigest: 'b'.repeat(64) }, { log: () => {} }),
+    ).toThrow(/does not match the approved digest/);
+  });
+
+  it('runs when the digest matches the approved one', () => {
+    const serialized = plan([definition()]);
+    const digest = planDigest(serialized);
+    const result = applyPlan(
+      serialized,
+      { ...target, expectDigest: digest },
+      { run: () => ({ status: 0 }), log: () => {} },
+    );
+    expect(result.created).toBe(1);
+    expect(result.digest).toBe(digest);
   });
 
   it('stops at the first failure instead of ploughing through the rest', () => {
     let calls = 0;
     expect(() =>
-      applyPlan([step('a'), step('b'), step('c')], {
+      applyPlan(plan([definition('a'), definition('b'), definition('c')]), target, {
         run: () => {
           calls += 1;
           return calls === 2 ? { status: 1, stderr: 'permission denied' } : { status: 0 };
@@ -213,12 +350,12 @@ describe('the apply step can only create', () => {
   });
 
   it('does nothing at all for an empty plan', () => {
-    const result = applyPlan([], {
+    const result = applyPlan(plan([]), target, {
       run: () => {
         throw new Error('should not spawn anything');
       },
       log: () => {},
     });
-    expect(result).toEqual({ created: 0 });
+    expect(result.created).toBe(0);
   });
 });
