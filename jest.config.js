@@ -65,6 +65,24 @@ const customJestConfig = {
     'app/api/dashboard/widgets/[id]/route.ts',
     'app/api/dashboard/widgets/[id]/data/route.ts',
     'app/api/saved-searches/[id]/route.ts',
+    // ai/agent-tasks, covered by __tests__/api/ai-agent-task-routes-isolation. These four
+    // share a near-identical auth -> role-set -> plan-gate -> tenant preamble, which is why
+    // they must not be collapsed into a helper: the role sets differ per route. The suite
+    // pins that difference (run-finance admits finance and refuses sales; run-sales the
+    // reverse) so an accidental copy-paste between the two files fails the build.
+    'app/api/ai/agent-tasks/route.ts',
+    'app/api/ai/agent-tasks/[taskId]/route.ts',
+    'app/api/ai/agent-tasks/[taskId]/run-finance/route.ts',
+    'app/api/ai/agent-tasks/[taskId]/run-sales/route.ts',
+    // import jobs, webhook subscriptions and platform tickets, covered by
+    // __tests__/api/bulk-webhook-ticket-routes-isolation. The import-errors route can
+    // stream a job's rows out as a CSV attachment, so its tenant check is a bulk-export
+    // boundary; the tickets route is deliberately cross-tenant and gated by
+    // requireSuperAdmin instead, which the suite pins so that stays a decision.
+    'app/api/import/jobs/[id]/status/route.ts',
+    'app/api/import/jobs/[id]/errors/route.ts',
+    'app/api/webhooks/subscriptions/[id]/route.ts',
+    'app/api/super_admin/tickets/[ticketId]/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
