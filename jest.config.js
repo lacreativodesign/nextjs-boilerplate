@@ -189,6 +189,23 @@ const customJestConfig = {
     // role the OTHER one admits.
     'app/api/crm/deals/[id]/discount-request/route.ts',
     'app/api/crm/discount-requests/[id]/review/route.ts',
+    // The users/[uid]/update adapter forwards to the ONE canonical implementation and
+    // injects the path uid. The suite pins that the path uid wins over a body-supplied one,
+    // otherwise the legacy URL could aim the canonical update at a different user.
+    'app/api/admin/users/[uid]/update/route.ts',
+    'app/api/automation/approvals/[id]/respond/route.ts',
+    // The permissions routes read and write the permission model itself, so a caller who
+    // slipped past requireAdminOrSuperAdmin would be editing what decides everyone else's
+    // access; the user-permission snapshot is additionally pinned to the caller's tenant.
+    'app/api/permissions/roles/[id]/route.ts',
+    'app/api/permissions/user/[userId]/route.ts',
+    // performance targets layer a manager-role check ahead of a tenant check; both are
+    // covered, so the role check is never mistaken for sufficient authority. Its PATCH and
+    // DELETE gate on deliberately different role sets, and the suite drives one manager role
+    // through both so the narrower destructive gate cannot quietly widen to match the edit one.
+    'app/api/performance/targets/[targetId]/route.ts',
+    'app/api/search/saved/[id]/route.ts',
+    'app/api/admin/jobs/[id]/retry/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
