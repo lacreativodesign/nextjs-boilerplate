@@ -28,6 +28,13 @@ import * as path from 'path';
  * The bundle budget moves to 210KB so the gate is live again and catches the next
  * regression. That is a ratchet, not a licence to grow: getting back under 200KB means
  * real code splitting, which is separate work.
+ *
+ * Sept 2026: 210 -> 215, owner-approved, for the Next 15.5.25 security upgrade. The floor
+ * moved inside vendor code rather than ours — measured, the Next 15 + React root shell is
+ * 101.06KB and the Sentry client SDK is 112.65KB — and the alternative was shipping two
+ * known critical RCEs. 7.02KB was given back first by making the Sentry feedback widget
+ * load on demand. The ratchet still only turns one way without a decision like this one;
+ * see the note in check-bundle-size.mjs for what was measured and what the lever is.
  */
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -115,7 +122,7 @@ describe('DS-33: the bundle budget is enforceable again', () => {
   it('is above the current main bundle so the gate can pass', () => {
     const match = source.match(/const MAX_MAIN_BUNDLE_KB = (\d+);/);
     expect(match).not.toBeNull();
-    expect(Number(match?.[1])).toBe(210);
+    expect(Number(match?.[1])).toBe(215);
   });
 
   it('says why, so the next person does not just widen it again', () => {
