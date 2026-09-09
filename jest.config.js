@@ -106,6 +106,31 @@ const customJestConfig = {
     'app/api/admin/users/[uid]/route.ts',
     'app/api/hr/leave/requests/[id]/approve/route.ts',
     'app/api/hr/leave/requests/[id]/reject/route.ts',
+    // SSO and export download, covered by __tests__/api/sso-export-routes-isolation. The
+    // SSO routes take the provider from the path, so it is pinned against a fixed
+    // allow-list, and authorize's two modes are pinned apart: login is open by design,
+    // link binds an identity to the current user and must refuse anonymously. The export
+    // route hands back a signed URL to a whole data export, so both its gates — tenant and
+    // completion — are asserted, including that no URL appears on the refusal paths.
+    'app/api/auth/sso/[provider]/authorize/route.ts',
+    'app/api/auth/sso/[provider]/link/route.ts',
+    'app/api/export/jobs/[id]/download/route.ts',
+    // Public invoice and reports, covered by
+    // __tests__/api/public-invoice-reports-routes-isolation. The public invoice route has
+    // no session at all — a token is the only thing in front of a customer's invoice — so
+    // it is pinned on passing that token to the validator and leaking nothing when it is
+    // refused. The reports route stacks module, tenant, category and sharing checks, and
+    // the tenant one is pinned to refuse before the category rules are consulted.
+    'app/api/public/invoice/[invoiceId]/route.ts',
+    'app/api/reports/[id]/route.ts',
+    // super_admin tenant administration, covered by
+    // __tests__/api/super-admin-tenant-routes. Cross-tenant by design, so requireSuperAdmin
+    // is the only gate and is pinned to stop the handler entirely. Two further properties
+    // are locked in because the tenantId comes from the URL: set(merge) would CREATE a
+    // document, so the existence check is what stops a phantom tenant being minted; and
+    // logoUrl is rendered into an img src, so javascript:/data: must not survive validation.
+    'app/api/super_admin/tenants/[tenantId]/branding/route.ts',
+    'app/api/super_admin/tenants/[tenantId]/roles/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
