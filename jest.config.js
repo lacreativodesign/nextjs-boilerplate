@@ -90,6 +90,22 @@ const customJestConfig = {
     'app/api/production/projects/[id]/gantt-data/route.ts',
     'app/api/production/projects/[id]/critical-path/route.ts',
     'app/api/users/[id]/locale/route.ts',
+    // automation/workflows, covered by __tests__/api/automation-workflow-routes-isolation.
+    // PUT merges an arbitrary request body into the workflow document, so the tenant check
+    // is the only thing between a caller and overwriting another tenant's automation. The
+    // suite pins that a body-supplied tenantId cannot re-home the record, and that a
+    // foreign workflow is reported 404 rather than 403 so the id is not confirmed.
+    'app/api/automation/workflows/[id]/route.ts',
+    'app/api/automation/workflows/[id]/toggle/route.ts',
+    'app/api/automation/workflows/[id]/runs/route.ts',
+    // admin user read and the HR leave transitions, covered by
+    // __tests__/api/admin-user-hr-leave-routes-isolation. The user read layers role and
+    // tenant checks and answers 404 (not 403) cross-tenant so a uid is never confirmed;
+    // the leave routes are pinned on the HR module gate running BEFORE any state
+    // transition, since approving or rejecting moves someone's leave balance.
+    'app/api/admin/users/[uid]/route.ts',
+    'app/api/hr/leave/requests/[id]/approve/route.ts',
+    'app/api/hr/leave/requests/[id]/reject/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
