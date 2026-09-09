@@ -19,7 +19,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     await checkRateLimit(req, 'standard', current.uid);
 
-    const token = cookies().get('lac_session')?.value;
+    const token = (await cookies()).get('lac_session')?.value;
     const currentId = token ? hashSessionToken(token) : null;
 
     if (currentId && currentId === params.id) {

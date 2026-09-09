@@ -52,7 +52,6 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lodash-es', 'recharts', 'lucide-react', '@heroicons/react'],
-    instrumentationHook: true,
   },
   async headers() {
     return [

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     await checkRateLimit(req, 'standard', current.uid);
 
     const sessions = await getActiveSessions(current.uid);
-    const token = cookies().get('lac_session')?.value;
+    const token = (await cookies()).get('lac_session')?.value;
     const currentId = token ? hashSessionToken(token) : null;
 
     return NextResponse.json({
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     await checkRateLimit(req, 'standard', current.uid);
 
-    const token = cookies().get('lac_session')?.value;
+    const token = (await cookies()).get('lac_session')?.value;
     if (!token) {
       throw new AppError({ message: 'Session missing', code: 'UNAUTHORIZED', status: 401 });
     }
