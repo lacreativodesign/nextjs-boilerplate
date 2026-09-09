@@ -41,6 +41,15 @@ const customJestConfig = {
     'app/api/notifications/[id]/read/route.ts',
     'app/api/projects/[id]/route.ts',
     'app/api/ai/tools/sales-write/route.ts',
+    // The app/api/files/[id] family, covered by __tests__/api/files-routes-tenant-isolation.
+    // Each resolves a file from a URL id, so the tenant scoping of that lookup is the only
+    // thing between a caller and another tenant's file; the suite asserts that scoping, the
+    // 404-not-leak behaviour, and that the awaited param id reaches the service layer.
+    'app/api/files/[id]/route.ts',
+    'app/api/files/[id]/download/route.ts',
+    'app/api/files/[id]/versions/route.ts',
+    'app/api/files/[id]/restore/route.ts',
+    'app/api/files/[id]/tags/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
