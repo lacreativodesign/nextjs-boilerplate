@@ -1,33 +1,154 @@
-name: Deploy Firestore Indexes
+name: Firestore Indexes
+
+# Inspects, and on explicit request deploys, the Firestore composite indexes
+# declared in firestore.indexes.json.
+#
+# WHY THIS WAS REWRITTEN
+#
+# The previous version authenticated with `--token "${{ secrets.FIREBASE_TOKEN }}"`.
+# That secret is not configured, so the token rendered empty and every run since at
+# least 2026-08-14 failed with:
+#
+#   Error: Failed to authenticate, have you run firebase login?
+#
+# It also ran on `push` to main whenever firestore.indexes.json changed, so those
+# failures were silent — nothing was watching a workflow nobody dispatched. The
+# result is that no index in this repository has ever reached the live project, and
+# the PR6 certification suite failed on two endpoints whose indexes ARE declared
+# here. A deploy path that cannot authenticate is worse than none: it reports a
+# problem to no one.
+#
+# WHAT CHANGED
+#
+#   - Authentication is short-lived OIDC (google-github-actions/auth) instead of a
+#     long-lived CI token. Nothing secret is stored in the repository: GitHub mints
+#     a token for this workflow, Google exchanges it for a credential that expires
+#     within the hour, and it is scoped to one service account.
+#   - `list` is the default and is READ-ONLY. The live inventory can be inspected
+#     without any possibility of mutating the project.
+#   - Deploying requires an explicit dispatch, the project id typed twice, and an
+#     `environment:` whose reviewers the repository owner controls. It never happens
+#     as a side effect of merging.
+#   - The push trigger is gone. Merging an index change no longer deploys anything.
+#
+# The project is not hard-coded any more either: it is a dispatch input, confirmed
+# against a second input, so a deploy names the project it is about to change.
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'firestore.indexes.json'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'list = read-only inventory (safe). deploy = write indexes.'
+        required: true
+        default: list
+        type: choice
+        options:
+          - list
+          - deploy
+      project_id:
+        description: 'Firebase project id (e.g. la-creativo-erp)'
+        required: true
+        type: string
+      confirm_project_id:
+        description: 'Type the project id again. Deploy aborts unless they match.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  # Required for OIDC. This is the ONLY elevated permission the workflow holds,
+  # and it mints a token for Google — it grants nothing inside this repository.
+  id-token: write
+
+# One at a time. Two concurrent index deploys against the same project race each
+# other's build operations.
+concurrency:
+  group: firestore-indexes-${{ inputs.project_id }}
+  cancel-in-progress: false
 
 jobs:
-  deploy-indexes:
+  indexes:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    # `deploy` runs in an environment whose required reviewers the owner sets, so a
+    # write to a shared production project cannot happen without a human approving
+    # that specific run. `list` is read-only and needs no gate.
+    environment: ${{ inputs.mode == 'deploy' && 'firestore-indexes-production' || '' }}
+    env:
+      MODE: ${{ inputs.mode }}
+      PROJECT_ID: ${{ inputs.project_id }}
+      CONFIRM_PROJECT_ID: ${{ inputs.confirm_project_id }}
     steps:
+      - name: Verify the request names its target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PROJECT_ID" || { echo "project_id is required"; exit 1; }
+          if [ "$MODE" = "deploy" ]; then
+            # Typed twice, compared here rather than trusted. A deploy that names the
+            # wrong project is the failure mode this exists to prevent.
+            if [ "$PROJECT_ID" != "$CONFIRM_PROJECT_ID" ]; then
+              echo "confirm_project_id does not match project_id. Refusing to deploy."
+              exit 1
+            fi
+            echo "Deploying indexes to: $PROJECT_ID"
+          else
+            echo "Listing live indexes for: $PROJECT_ID (read-only)"
+          fi
+
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools@latest
+        # Pinned: `latest` means a deploy against a shared project can change
+        # behaviour between two runs that deploy identical index definitions.
+        run: npm install -g firebase-tools@13.35.1
 
-      - name: Deploy Firestore Indexes
+      # Short-lived credentials, minted per run. `workload_identity_provider` and
+      # `service_account` are repository VARIABLES, not secrets — neither is
+      # confidential, and keeping them out of the secret store makes it visible
+      # which identity this workflow assumes.
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ inputs.project_id }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_FIRESTORE_INDEX_SA }}
+
+      - name: Live index inventory (before)
+        shell: bash
         run: |
+          set -euo pipefail
+          # Recorded for every run, deploy included, so there is a before-picture to
+          # compare against rather than an assumption about what was already there.
+          firebase firestore:indexes --project "$PROJECT_ID" | tee live-indexes-before.json
+
+      - name: Deploy Firestore indexes
+        if: ${{ inputs.mode == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
           firebase deploy --only firestore:indexes \
-            --project la-creativo-erp \
-            --token "${{ secrets.FIREBASE_TOKEN }}" \
+            --project "$PROJECT_ID" \
             --non-interactive
 
-      - name: Confirm deployment
-        run: echo "Firestore indexes deployed successfully"
+      - name: Live index inventory (after)
+        if: ${{ inputs.mode == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          firebase firestore:indexes --project "$PROJECT_ID" | tee live-indexes-after.json
+          echo "Index builds are asynchronous: an index can be listed while still"
+          echo "building, and queries needing it keep failing until it is READY."
+
+      - name: Upload inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firestore-index-inventory-${{ inputs.project_id }}
+          path: live-indexes-*.json
+          retention-days: 30
+          if-no-files-found: warn
