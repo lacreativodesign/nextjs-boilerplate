@@ -83,6 +83,13 @@ const customJestConfig = {
     'app/api/import/jobs/[id]/errors/route.ts',
     'app/api/webhooks/subscriptions/[id]/route.ts',
     'app/api/super_admin/tickets/[ticketId]/route.ts',
+    // Production planning and per-user locale, covered by
+    // __tests__/api/production-users-routes-isolation. The production routes are pinned on
+    // refusing another tenant's project BEFORE any follow-up task/dependency/milestone
+    // query runs; the locale route on self-or-ManageUsers plus its own tenant check.
+    'app/api/production/projects/[id]/gantt-data/route.ts',
+    'app/api/production/projects/[id]/critical-path/route.ts',
+    'app/api/users/[id]/locale/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
