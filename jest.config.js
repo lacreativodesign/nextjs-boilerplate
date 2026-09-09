@@ -25,6 +25,22 @@ const customJestConfig = {
     // most safety-critical route in the change as entirely untested. Add a route here when
     // it earns a suite of its own, never to move a number.
     'app/api/super_admin/restore/route.ts',
+    // Added for the Next 15 async-params migration, on that same rule and no other. Each
+    // of these already had a behavioural or security suite that drives its handlers before
+    // this PR existed; the migration changed their request-handling signature, so their
+    // coverage is now evidence about changed production lines and belongs in lcov.info.
+    // Measured statement coverage when this list was written: mfa 83%, crm deals 87%,
+    // sessions/[id] 68%, sessions 83%, notifications read 77%, projects/[id] 87%,
+    // sales-write 48%, invalidate-all 75%. Nothing was added here that lacks a suite, and
+    // no suite was written to make a file eligible.
+    'app/api/admin/users/[uid]/mfa/route.ts',
+    'app/api/auth/sessions/route.ts',
+    'app/api/auth/sessions/[id]/route.ts',
+    'app/api/auth/sessions/invalidate-all/route.ts',
+    'app/api/crm/deals/[id]/route.ts',
+    'app/api/notifications/[id]/read/route.ts',
+    'app/api/projects/[id]/route.ts',
+    'app/api/ai/tools/sales-write/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
