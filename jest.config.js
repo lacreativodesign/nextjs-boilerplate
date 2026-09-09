@@ -57,6 +57,14 @@ const customJestConfig = {
     // virus-scan gate.
     'app/api/documents/[id]/download/route.ts',
     'app/api/documents/[id]/version/route.ts',
+    // Dashboard widgets and saved searches, covered by
+    // __tests__/api/dashboard-saved-search-routes-isolation. The widget routes push the
+    // ownership check into the service and are pinned on forwarding the session's own
+    // tenant and uid; saved searches check tenant then owner-or-admin in the handler, and
+    // both refusals are covered.
+    'app/api/dashboard/widgets/[id]/route.ts',
+    'app/api/dashboard/widgets/[id]/data/route.ts',
+    'app/api/saved-searches/[id]/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
