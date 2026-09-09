@@ -15,6 +15,9 @@
  * pass the *resolved* id through to the service layer.
  */
 
+export {}; // module scope: these suites use only dynamic imports, and without this
+// TypeScript treats them as global scripts, so their top-level names collide with each other.
+
 const getCurrentUser = jest.fn();
 
 const FileManager = {

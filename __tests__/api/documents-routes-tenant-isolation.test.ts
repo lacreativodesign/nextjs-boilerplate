@@ -17,6 +17,9 @@
  * drives a real Promise and asserts the resolved id reaches the read and the storage layer.
  */
 
+export {}; // module scope: these suites use only dynamic imports, and without this
+// TypeScript treats them as global scripts, so their top-level names collide with each other.
+
 const getCurrentUser = jest.fn();
 const docGet = jest.fn();
 const docRef = jest.fn(() => ({ get: docGet }));
