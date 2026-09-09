@@ -33,7 +33,7 @@ describe('auth mfa admin API', () => {
   it('returns mfa setup status', async () => {
     const route = await import('@/app/api/admin/users/[uid]/mfa/route');
     const res = await route.GET(jsonRequest('https://app.local/api/admin/users/u1/mfa') as any, {
-      params: { uid: 'u1' },
+      params: Promise.resolve({ uid: 'u1' }),
     });
     const body = await res.json();
 
@@ -48,7 +48,7 @@ describe('auth mfa admin API', () => {
       jsonRequest('https://app.local/api/admin/users/u1/mfa', undefined, {
         method: 'DELETE',
       }) as any,
-      { params: { uid: 'u1' } },
+      { params: Promise.resolve({ uid: 'u1' }) },
     );
 
     expect(res.status).toBe(200);
@@ -66,7 +66,7 @@ describe('auth mfa admin API', () => {
     } as any);
     const route = await import('@/app/api/admin/users/[uid]/mfa/route');
     const res = await route.GET(jsonRequest('https://app.local/api/admin/users/u1/mfa') as any, {
-      params: { uid: 'u1' },
+      params: Promise.resolve({ uid: 'u1' }),
     });
     expect(res.status).toBe(401);
   });

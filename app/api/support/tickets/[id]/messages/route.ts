@@ -7,9 +7,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 function toIso(value: unknown): string | null {
@@ -39,7 +39,7 @@ export async function GET(_: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ticketId = context.params.id;
+    const ticketId = (await context.params).id;
     const tenantId = normalizeTenantId(current.tenantId);
 
     const messagesRef = adminDb
@@ -74,7 +74,7 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ticketId = context.params.id;
+    const ticketId = (await context.params).id;
     if (!ticketId) {
       return NextResponse.json({ error: 'Ticket id is required.' }, { status: 400 });
     }

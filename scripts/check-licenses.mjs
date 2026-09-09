@@ -30,6 +30,15 @@ const ALLOWED_LICENSES = new Set([
   // dual-licensed so the MIT branch applies.
   'MIT/X11',
   '(MIT OR GPL-3.0-or-later)',
+  // Reviewed addition (Sept 2026), reached through Next 15's sharp: the WASM libvips
+  // build. This checker matches the SPDX string literally — it has no expression parser —
+  // so a conjunction has to be spelled out even when each term is already allowed above,
+  // which is why 'MIT AND ISC' is listed too. All three terms here are individually
+  // approved (Apache-2.0, LGPL-3.0-or-later, MIT), and AND means every one of them applies
+  // at once, so the conjunction grants strictly less than any term alone already permits.
+  // The sibling @img/sharp-libvips-linux-x64 ships under bare LGPL-3.0-or-later and has
+  // been passing on that basis since the July 2026 review.
+  'Apache-2.0 AND LGPL-3.0-or-later AND MIT',
 ]);
 
 // Packages whose package.json lacks a parseable SPDX string but whose repos were

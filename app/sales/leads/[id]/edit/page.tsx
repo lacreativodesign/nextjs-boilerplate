@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/lib/utils/toast';
 import { apiFetch } from '@/lib/api/client';
 
@@ -24,7 +24,8 @@ type LeadForm = {
   source: string;
 };
 
-export default function EditLeadPage({ params }: { params: { id: string } }) {
+export default function EditLeadPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const { id } = params;
 

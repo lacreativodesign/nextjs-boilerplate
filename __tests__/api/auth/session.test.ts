@@ -56,7 +56,7 @@ describe('auth sessions API', () => {
         method: 'DELETE',
       }) as any,
       {
-        params: { id: 'sess_current' },
+        params: Promise.resolve({ id: 'sess_current' }),
       },
     );
 

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/api/admin/_utils';
 import { removeWidget } from '@/lib/dashboard/dashboard-service';
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await getCurrentUser();
     if (!user?.tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

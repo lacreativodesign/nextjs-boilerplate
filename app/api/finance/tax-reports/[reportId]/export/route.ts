@@ -12,7 +12,8 @@ const csvEscape = (value: unknown) => {
   return str;
 };
 
-export async function GET(_: Request, { params }: { params: { reportId: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ reportId: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireFinance();
     if (!auth.ok)

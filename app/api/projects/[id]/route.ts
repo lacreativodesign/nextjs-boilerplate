@@ -6,7 +6,8 @@ import { logError } from '@/lib/logging';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId) {

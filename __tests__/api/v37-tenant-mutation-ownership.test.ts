@@ -58,7 +58,13 @@ const OWNERSHIP_EXEMPT_ROUTES: Record<string, string> = {
 
 /** Document-id expressions that are derived from the request rather than the session. */
 const REQUEST_SOURCED =
-  /\b(body|payload|parsed|validated|input)\b\s*[?.]|searchParams\.get|params\.\w/;
+  // `params.\w` covers both the old sync context and the migrated
+  // `const params = await props.params` form. The awaited alternative is required for the
+  // inline `(await context.params).id` shape the Next 15 async-params migration also emits:
+  // there the character after `params` is `)`, not `.`, so `params\.\w` silently stops
+  // matching and the route drops out of the scan entirely — taking its ownership check with
+  // it. Without this branch the detector goes quiet on exactly the routes it exists to watch.
+  /\b(body|payload|parsed|validated|input)\b\s*[?.]|searchParams\.get|params\.\w|\bawait\s+[\w$.]*\bparams\b/;
 
 /** Recognised tenant-ownership assertions. */
 const OWNERSHIP_ASSERTIONS: RegExp[] = [

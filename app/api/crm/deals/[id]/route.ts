@@ -5,7 +5,8 @@ import { canManageOwnDeals, requireCrmUser, toIso } from '@/lib/crm';
 import { AppError, resolveErrorResponse } from '@/lib/errors';
 import { logError } from '@/lib/logging';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireCrmUser();
     if (!auth.ok) {
@@ -54,7 +55,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireCrmUser();
     if (!auth.ok) {

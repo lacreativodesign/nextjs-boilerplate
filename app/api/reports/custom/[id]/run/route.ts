@@ -39,7 +39,8 @@ const runSchema = z.object({
   saveSnapshot: z.boolean().default(true),
 });
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { user, tenantId } = await requireReportsUser(request);
     const report = await getCustomReportOrThrow(tenantId, params.id);

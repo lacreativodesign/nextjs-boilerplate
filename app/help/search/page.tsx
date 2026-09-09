@@ -2,13 +2,14 @@ import Link from 'next/link';
 import { HelpSearch } from '@/components/help-center/HelpSearch';
 
 type SearchPageProps = {
-  searchParams: {
+  searchParams: Promise<{
     q?: string;
     category?: string;
-  };
+  }>;
 };
 
-export default function HelpSearchPage({ searchParams }: SearchPageProps) {
+export default async function HelpSearchPage(props: SearchPageProps) {
+  const searchParams = await props.searchParams;
   const query = searchParams.q || '';
   const category = searchParams.category || '';
 

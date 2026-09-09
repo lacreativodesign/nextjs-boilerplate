@@ -9,13 +9,13 @@ function cleanString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export async function PUT(request: Request, context: { params: { id: string } }) {
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const auth = await getResourcePlannerUser();
     if (!auth.ok)
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const defectId = cleanString(context.params.id);
+    const defectId = cleanString((await context.params).id);
     if (!defectId)
       return NextResponse.json({ ok: false, error: 'Defect id is required.' }, { status: 400 });
 
