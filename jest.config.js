@@ -156,6 +156,39 @@ const customJestConfig = {
     // Reactivation restores login access — an IAM action, not a profile edit — so HR is
     // refused despite holding ManageUsers. That distinction is what the suite pins.
     'app/api/users/[id]/reactivate/route.ts',
+    // The two API-version catch-alls are the only routes the codemod could not migrate —
+    // their handler is one shared function assigned to seven method exports — so the
+    // async-params rewrite there was done by hand and every method export is driven
+    // through a real Promise in __tests__/api/versioning-activity-routes.
+    'app/api/v1/[[...path]]/route.ts',
+    'app/api/v2/[[...path]]/route.ts',
+    'app/api/activities/[id]/read/route.ts',
+    // tax rates collapse "another tenant's", "soft-deleted" and "never existed" into one
+    // 404 on purpose; each condition is asserted separately so neither can be dropped.
+    'app/api/finance/tax-rates/[taxRateId]/route.ts',
+    // support messages put the tenant in the DOCUMENT PATH rather than in a comparison —
+    // the property the P0-1 exemption for this route claims — and the suite asserts the
+    // path is built from the session tenant ahead of the awaited ticket id.
+    'app/api/support/tickets/[id]/messages/route.ts',
+    // The task-status route is the ONLY two-parameter route in the change, so it is the one
+    // place a partially-awaited params object would resolve one value and silently leave
+    // the other undefined. Both are pinned, along with the rule that a task must be in the
+    // caller's tenant AND in the project the URL names.
+    'app/api/projects/[id]/tasks/[taskId]/status/route.ts',
+    'app/api/projects/[id]/tasks/route.ts',
+    'app/api/users/[id]/route.ts',
+    // The Zapier routes are the only API-key-authenticated surface in the change, so the
+    // tenant comes from the key rather than a session. Every test sends a body claiming a
+    // DIFFERENT tenant and asserts the key's tenant is what reaches the service.
+    'app/api/zapier/actions/[action]/route.ts',
+    'app/api/zapier/searches/[search]/route.ts',
+    'app/api/zapier/hooks/[id]/unsubscribe/route.ts',
+    // The CRM discount pair is a separation of duties: raising a discount and approving one
+    // must stay distinct roles, or the same person could do both. The suite uses the real
+    // canManageOwnDeals/canApproveDiscount predicates and exercises each route with the
+    // role the OTHER one admits.
+    'app/api/crm/deals/[id]/discount-request/route.ts',
+    'app/api/crm/discount-requests/[id]/review/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
