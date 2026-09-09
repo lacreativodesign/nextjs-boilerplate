@@ -29,6 +29,8 @@ const rejectRequest = jest.fn();
 const dispatchWebhookEvent = jest.fn();
 const sendEmail = jest.fn();
 const createNotification = jest.fn();
+const reactivateUser = jest.fn();
+const reserveStaffSeat = jest.fn();
 
 const docGet = jest.fn();
 const docRef = jest.fn(() => ({ get: docGet }));
@@ -43,7 +45,21 @@ jest.mock('@/lib/firebaseAdmin', () => ({
     return { collection };
   },
 }));
-jest.mock('@/app/api/admin/_utils', () => ({ getCurrentUser: () => getCurrentUser() }));
+jest.mock('@/app/api/admin/_utils', () => ({
+  getCurrentUser: () => getCurrentUser(),
+  isAdminRole: (role?: string | null) => role === 'admin' || role === 'super_admin',
+}));
+jest.mock('@/lib/users/user-service', () => ({
+  UserService: { reactivateUser: (...a: unknown[]) => reactivateUser(...a) },
+}));
+jest.mock('@/lib/audit', () => ({ logEvent: jest.fn() }));
+jest.mock('@/lib/billing/user-limit', () => ({
+  planLimitResponseBody: () => ({ error: 'limit' }),
+}));
+jest.mock('@/lib/billing/seat-reservation', () => ({
+  reserveStaffSeat: (...a: unknown[]) => reserveStaffSeat(...a),
+  releaseStaffSeat: jest.fn(),
+}));
 jest.mock('@/app/lib/plan-enforcement', () => ({
   requireModule: (...args: unknown[]) => requireModule(...args),
   isPlanAccessError: (err: unknown) => err instanceof PlanAccessError,
@@ -77,6 +93,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   getCurrentUser.mockResolvedValue(ADMIN_A);
   requireModule.mockResolvedValue(undefined);
+  reserveStaffSeat.mockResolvedValue({ ok: true, reservationId: 'r1' });
+  reactivateUser.mockResolvedValue({ ok: true });
 });
 
 describe('admin/users/[uid] — GET', () => {
@@ -182,5 +200,42 @@ describe.each([
         actorUserId: ADMIN_A.uid,
       }),
     );
+  });
+});
+
+describe('users/[id]/reactivate — POST', () => {
+  const load = () => import('@/app/api/users/[id]/reactivate/route');
+  const req = () => new Request('https://app.local', { method: 'POST' });
+
+  it('refuses an unauthenticated caller', async () => {
+    getCurrentUser.mockResolvedValue(null);
+    const { POST } = await load();
+    expect((await POST(req(), ctxId('u1'))).status).toBe(401);
+    expect(collection).not.toHaveBeenCalled();
+  });
+
+  it('refuses HR even though HR may otherwise maintain employee records', async () => {
+    // Restoring login access is an IAM action, not a profile edit: ManageUsers is not
+    // enough, only Admin/Super Admin. This is the distinction worth pinning.
+    getCurrentUser.mockResolvedValue({ ...ADMIN_A, role: 'hr' });
+    const { POST } = await load();
+    const res = await POST(req(), ctxId('u1'));
+
+    expect(res.status).toBe(403);
+    expect(collection).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a user that does not exist', async () => {
+    docGet.mockResolvedValue(snapshot(null));
+    const { POST } = await load();
+    expect((await POST(req(), ctxId('missing'))).status).toBe(404);
+  });
+
+  it('reads the target user under the awaited id', async () => {
+    docGet.mockResolvedValue(snapshot({ tenantId: TENANT_A, status: 'inactive' }));
+    const { POST } = await load();
+    await POST(req(), ctxId('u1'));
+
+    expect(docRef).toHaveBeenCalledWith('u1');
   });
 });

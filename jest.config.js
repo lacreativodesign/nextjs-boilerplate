@@ -142,6 +142,20 @@ const customJestConfig = {
     'app/api/reports/custom/[id]/results/route.ts',
     'app/api/reports/custom/[id]/run/route.ts',
     'app/api/reports/custom/[id]/schedule/route.ts',
+    // email/templates, covered by __tests__/api/email-template-routes-isolation. The tenant
+    // comparison here runs through normalizeTenantId on both sides, so the suite exercises
+    // that helper rather than mocking it away. Preview renders the template body and
+    // variables discloses the merge fields, so each refusal path is pinned separately.
+    'app/api/email/templates/[id]/route.ts',
+    'app/api/email/templates/[id]/preview/route.ts',
+    'app/api/email/templates/[id]/variables/route.ts',
+    // modulesEnabled feeds resolveTenantModules and is cached by the plan layer, so a
+    // malformed value becomes a stale entitlement decision that outlives the request; the
+    // suite pins the key and value constraints and the no-phantom-tenant rule.
+    'app/api/super_admin/tenants/[tenantId]/modules/route.ts',
+    // Reactivation restores login access — an IAM action, not a profile edit — so HR is
+    // refused despite holding ManageUsers. That distinction is what the suite pins.
+    'app/api/users/[id]/reactivate/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],

@@ -305,3 +305,86 @@ describe('super_admin/tenants/[tenantId]/impersonate — POST', () => {
     );
   });
 });
+
+describe('super_admin/tenants/[tenantId] — PATCH', () => {
+  const load = () => import('@/app/api/super_admin/tenants/[tenantId]/route');
+
+  it('writes nothing when the super-admin gate refuses', async () => {
+    requireSuperAdmin.mockRejectedValue(new Error('Forbidden'));
+    const { PATCH } = await load();
+    const res = await PATCH(jsonReq({ name: 'New' }, 'PATCH'), ctx('t1'));
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(docSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects a body with no recognised fields rather than writing an empty update', async () => {
+    const { PATCH } = await load();
+    const res = await PATCH(jsonReq({ unrelated: true }, 'PATCH'), ctx('t1'));
+
+    expect(res.status).toBe(400);
+    expect(docSet).not.toHaveBeenCalled();
+  });
+
+  it('collapses any non-suspended status to active rather than storing it verbatim', async () => {
+    const { PATCH } = await load();
+    const res = await PATCH(jsonReq({ status: 'something_odd' }, 'PATCH'), ctx('t1'));
+
+    expect(res.status).toBeLessThan(400);
+    expect(docSet).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active', updatedBy: OPERATOR.uid }),
+      { merge: true },
+    );
+  });
+
+  it('stores a suspension and writes under the awaited tenant id', async () => {
+    const { PATCH } = await load();
+    const res = await PATCH(jsonReq({ status: 'suspended' }, 'PATCH'), ctx('t1'));
+
+    expect(res.status).toBeLessThan(400);
+    expect(docRef).toHaveBeenCalledWith('t1');
+    expect(docSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'suspended' }), {
+      merge: true,
+    });
+  });
+});
+
+describe('super_admin/tenants/[tenantId]/modules — POST', () => {
+  const load = () => import('@/app/api/super_admin/tenants/[tenantId]/modules/route');
+
+  it('writes nothing when the super-admin gate refuses', async () => {
+    requireSuperAdmin.mockRejectedValue(new Error('Forbidden'));
+    const { POST } = await load();
+    const res = await POST(jsonReq({ modulesEnabled: { crm: true } }), ctx('t1'));
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(docSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects a module map with a non-canonical key', async () => {
+    // modulesEnabled feeds resolveTenantModules and is cached by the plan layer, so a
+    // malformed value becomes a stale entitlement decision that outlives the request.
+    const { POST } = await load();
+    const res = await POST(jsonReq({ modulesEnabled: { not_a_module: true } }), ctx('t1'));
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(docSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-boolean module value', async () => {
+    const { POST } = await load();
+    const res = await POST(jsonReq({ modulesEnabled: { crm: 'yes' } }), ctx('t1'));
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(docSet).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a tenant that does not exist rather than creating one', async () => {
+    docGet.mockResolvedValue({ exists: false, data: () => undefined });
+    const { POST } = await load();
+    const res = await POST(jsonReq({ modulesEnabled: { crm: true } }), ctx('nope'));
+
+    expect(res.status).toBe(404);
+    expect(docSet).not.toHaveBeenCalled();
+  });
+});

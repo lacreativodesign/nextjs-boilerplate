@@ -31,7 +31,9 @@ const deleteWebhookSubscription = jest.fn();
 const writeAuditLog = jest.fn();
 
 const docGet = jest.fn();
-const docRef = jest.fn(() => ({ get: docGet }));
+const docUpdate = jest.fn();
+const docSet = jest.fn();
+const docRef = jest.fn(() => ({ get: docGet, update: docUpdate, set: docSet }));
 const collection = jest.fn(() => ({ doc: docRef }));
 
 jest.mock('@/lib/firebaseAdmin', () => ({
@@ -256,5 +258,59 @@ describe('super_admin/tickets/[ticketId] — GET', () => {
     expect((await GET(new Request('https://app.local') as never, ctxTicket('nope'))).status).toBe(
       404,
     );
+  });
+});
+
+describe('super_admin/tickets/[ticketId] — PATCH', () => {
+  const load = () => import('@/app/api/super_admin/tickets/[ticketId]/route');
+  const req = (body: unknown) =>
+    new Request('https://app.local', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }) as never;
+
+  it('writes nothing when the super-admin gate refuses', async () => {
+    requireSuperAdmin.mockRejectedValue(new Error('Forbidden'));
+    const { PATCH } = await load();
+    const res = await PATCH(req({ status: 'open' }), ctxTicket('tk_1'));
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(docUpdate).not.toHaveBeenCalled();
+    expect(docSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects a body that is not an object', async () => {
+    const { PATCH } = await load();
+    const res = await PATCH(
+      new Request('https://app.local', { method: 'PATCH', body: 'not json' }) as never,
+      ctxTicket('tk_1'),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it('answers 404 for a ticket that does not exist', async () => {
+    docGet.mockResolvedValue(snapshot(null));
+    const { PATCH } = await load();
+    expect((await PATCH(req({ status: 'open' }), ctxTicket('nope'))).status).toBe(404);
+  });
+
+  it('rejects a status outside the parser’s vocabulary', async () => {
+    docGet.mockResolvedValue(snapshot({ status: 'open', priority: 'low' }));
+    const { PATCH } = await load();
+    const res = await PATCH(req({ status: 'not_a_status' }), ctxTicket('tk_1'));
+
+    expect(res.status).toBe(400);
+    expect(docUpdate).not.toHaveBeenCalled();
+  });
+
+  it('reads the ticket under the inline-awaited id', async () => {
+    docGet.mockResolvedValue(snapshot({ status: 'open', priority: 'low' }));
+    const { PATCH } = await load();
+    await PATCH(req({ status: 'resolved' }), ctxTicket('tk_1'));
+
+    // `(await context.params).ticketId` — the shape that fell out of the P0-1 detector.
+    expect(docRef).toHaveBeenCalledWith('tk_1');
   });
 });
