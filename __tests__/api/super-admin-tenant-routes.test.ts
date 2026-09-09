@@ -32,14 +32,27 @@ const resolveTenantRoles = jest.fn();
 const invalidateTenantPlanCache = jest.fn();
 const createRoleNotifications = jest.fn();
 
+const createCustomToken = jest.fn();
 const docGet = jest.fn();
 const docSet = jest.fn();
+const queryGet = jest.fn();
 const docRef = jest.fn(() => ({ get: docGet, set: docSet }));
-const collection = jest.fn(() => ({ doc: docRef }));
+
+const makeQuery = () => {
+  const q: Record<string, unknown> = {};
+  q.where = jest.fn(() => q);
+  q.limit = jest.fn(() => q);
+  q.get = queryGet;
+  return q;
+};
+const collection = jest.fn(() => ({ doc: docRef, ...makeQuery() }));
 
 jest.mock('@/lib/firebaseAdmin', () => ({
   get adminDb() {
     return { collection };
+  },
+  get adminAuth() {
+    return { createCustomToken: (...a: unknown[]) => createCustomToken(...a) };
   },
 }));
 jest.mock('@/app/api/super_admin/_utils', () => ({
@@ -53,6 +66,12 @@ jest.mock('@/lib/tenant/access', () => ({
 }));
 jest.mock('@/app/lib/plan-enforcement', () => ({
   invalidateTenantPlanCache: (...a: unknown[]) => invalidateTenantPlanCache(...a),
+  normalizePlan: (v: unknown) => String(v || 'starter'),
+  resolveTenantModules: () => ({}),
+}));
+jest.mock('@/lib/billing/billing-mode', () => ({
+  isCompExpired: () => false,
+  resolveBillingMode: () => 'paid',
 }));
 jest.mock('@/lib/notifications', () => ({
   createRoleNotifications: (...a: unknown[]) => createRoleNotifications(...a),
@@ -76,6 +95,8 @@ beforeEach(() => {
   requireSuperAdmin.mockResolvedValue(OPERATOR);
   resolveTenantRoles.mockReturnValue({});
   docGet.mockResolvedValue({ exists: true, data: () => ({ name: 'Acme' }) });
+  queryGet.mockResolvedValue({ empty: false, docs: [{ id: 'admin_of_t1', data: () => ({}) }] });
+  createCustomToken.mockResolvedValue('custom-token-value');
 });
 
 describe('super_admin/tenants/[tenantId]/branding — POST', () => {
@@ -178,5 +199,109 @@ describe('super_admin/tenants/[tenantId]/roles — PATCH', () => {
 
     expect(res.status).toBeLessThan(400);
     expect(docRef).toHaveBeenCalledWith('t1');
+  });
+});
+
+describe('super_admin/tenants/[tenantId] — GET', () => {
+  const load = () => import('@/app/api/super_admin/tenants/[tenantId]/route');
+
+  it('reads nothing when the super-admin gate refuses', async () => {
+    requireSuperAdmin.mockRejectedValue(new Error('Forbidden'));
+    const { GET } = await load();
+    const res = await GET(new Request('https://app.local') as never, ctx('t1'));
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(collection).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a tenant that does not exist', async () => {
+    docGet.mockResolvedValue({ exists: false, data: () => undefined });
+    const { GET } = await load();
+    expect((await GET(new Request('https://app.local') as never, ctx('nope'))).status).toBe(404);
+  });
+
+  it('reads the tenant under the awaited id', async () => {
+    const { GET } = await load();
+    const res = await GET(new Request('https://app.local') as never, ctx('t1'));
+
+    expect(res.status).toBe(200);
+    expect(docRef).toHaveBeenCalledWith('t1');
+  });
+});
+
+describe('super_admin/tenants/[tenantId]/impersonate — POST', () => {
+  const load = () => import('@/app/api/super_admin/tenants/[tenantId]/impersonate/route');
+
+  it('mints no token when the super-admin gate refuses', async () => {
+    // This endpoint hands back a custom token for a tenant admin — full account access.
+    // The gate is the only thing in front of it, so its refusal must stop everything.
+    requireSuperAdmin.mockRejectedValue(new Error('Forbidden'));
+    const { POST } = await load();
+    const res = await POST(
+      new Request('https://app.local', { method: 'POST' }) as never,
+      ctx('t1'),
+    );
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(createCustomToken).not.toHaveBeenCalled();
+  });
+
+  it('rejects a blank tenant id before touching Firestore', async () => {
+    const { POST } = await load();
+    const res = await POST(
+      new Request('https://app.local', { method: 'POST' }) as never,
+      ctx('   '),
+    );
+
+    expect(res.status).toBe(400);
+    expect(createCustomToken).not.toHaveBeenCalled();
+  });
+
+  it('mints no token for a tenant that does not exist', async () => {
+    docGet.mockResolvedValue({ exists: false, data: () => undefined });
+    const { POST } = await load();
+    const res = await POST(
+      new Request('https://app.local', { method: 'POST' }) as never,
+      ctx('nope'),
+    );
+
+    expect(res.status).toBe(404);
+    expect(createCustomToken).not.toHaveBeenCalled();
+  });
+
+  it('mints no token when the tenant has no admin to impersonate', async () => {
+    queryGet.mockResolvedValue({ empty: true, docs: [] });
+    const { POST } = await load();
+    const res = await POST(
+      new Request('https://app.local', { method: 'POST' }) as never,
+      ctx('t1'),
+    );
+
+    expect(res.status).toBe(404);
+    expect(createCustomToken).not.toHaveBeenCalled();
+  });
+
+  it('mints the token for an admin of the awaited tenant, not an arbitrary user', async () => {
+    const { POST } = await load();
+    const res = await POST(
+      new Request('https://app.local', { method: 'POST' }) as never,
+      ctx('t1'),
+    );
+
+    expect(res.status).toBeLessThan(400);
+    expect(docRef).toHaveBeenCalledWith('t1');
+    // The admin is selected by a query scoped to this tenant AND the admin role. Pick the
+    // `users` collection specifically — `tenants` is also opened by this handler.
+    const usersCallIndex = (collection.mock.calls as unknown as unknown[][]).findIndex(
+      (call) => call[0] === 'users',
+    );
+    expect(usersCallIndex).toBeGreaterThanOrEqual(0);
+    const query = collection.mock.results[usersCallIndex].value as { where: jest.Mock };
+    expect(query.where).toHaveBeenCalledWith('tenantId', '==', 't1');
+    expect(query.where).toHaveBeenCalledWith('role', '==', 'admin');
+    expect(createCustomToken).toHaveBeenCalledWith(
+      'admin_of_t1',
+      expect.objectContaining({ role: 'admin' }),
+    );
   });
 });

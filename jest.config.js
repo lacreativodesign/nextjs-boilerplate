@@ -131,6 +131,17 @@ const customJestConfig = {
     // logoUrl is rendered into an img src, so javascript:/data: must not survive validation.
     'app/api/super_admin/tenants/[tenantId]/branding/route.ts',
     'app/api/super_admin/tenants/[tenantId]/roles/route.ts',
+    'app/api/super_admin/tenants/[tenantId]/route.ts',
+    // impersonate hands back a custom token for a tenant admin — full account access — so
+    // the suite pins that every refusal path mints nothing, and that the admin is selected
+    // by a query scoped to both the awaited tenant and the admin role.
+    'app/api/super_admin/tenants/[tenantId]/impersonate/route.ts',
+    // reports/custom, covered by __tests__/api/custom-report-routes-isolation. All four
+    // resolve through getCustomReportOrThrow(tenantId, id); the tenant comes from the
+    // session and only the id from the URL, and every route asserts that call shape.
+    'app/api/reports/custom/[id]/results/route.ts',
+    'app/api/reports/custom/[id]/run/route.ts',
+    'app/api/reports/custom/[id]/schedule/route.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
