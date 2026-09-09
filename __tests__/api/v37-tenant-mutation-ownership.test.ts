@@ -253,3 +253,33 @@ describe('P0-1: lib/tenant/ownership.ts fails closed', () => {
     expect(src).toContain('if (allowSuperAdmin && isSuperAdminRole(callerRole)) return true;');
   });
 });
+
+describe('P0-1: the request-sourced detector recognises every params shape in the tree', () => {
+  /**
+   * This detector decides whether a route loads a document by a request-supplied id, which
+   * is what makes an ownership assertion mandatory. If a shape stops matching, the route
+   * silently leaves the scan and its ownership requirement leaves with it — the guard goes
+   * quiet on exactly the routes it exists to watch, and the only visible symptom is an
+   * exemption reported as stale.
+   *
+   * That is not hypothetical: the Next 15 async-params migration introduced the
+   * `(await context.params).id` shape, where the character after `params` is `)` rather
+   * than `.`, and `params\.\w` alone stopped matching it. Both shapes are in the tree now,
+   * so both are pinned here.
+   */
+  const cases: Array<[string, string, boolean]> = [
+    ['sync context params', ' context.params.id', true],
+    ['awaited then destructured (const params = await props.params)', ' params.id', true],
+    ['awaited inline off context', ' (await context.params).id', true],
+    ['awaited inline off props', ' (await props.params).ticketId', true],
+    ['search parameter', " searchParams.get('id')", true],
+    ['request body', ' body.id', true],
+    ['validated payload', ' validated?.id', true],
+    ['session-sourced id is not request-sourced', ' me.tenantId', false],
+    ['a literal id is not request-sourced', " 'fixed-doc-id'", false],
+  ];
+
+  it.each(cases)('%s', (_label, rhs, expected) => {
+    expect(REQUEST_SOURCED.test(rhs)).toBe(expected);
+  });
+});
