@@ -931,3 +931,142 @@ describe('the verified production inventory of 2026-09-10', () => {
     expect(() => assertDefaultDatabase(live)).not.toThrow();
   });
 });
+
+/**
+ * Entries rejected by the pre-deploy evidence audit of 2026-09-10.
+ *
+ * Inventory run 34447576469 produced a 35-entry create plan (digest f7be5e55…). Every
+ * entry was traced to the query that needs it before deployment was considered, and
+ * eleven had no current query at all: they were manifest history, not requirements.
+ * Firestore charges storage and write amplification for every composite index, so an
+ * index nothing queries is a permanent cost with no reader.
+ *
+ * They are listed here with the evidence that rejected each, because the failure mode is
+ * silent — a shape reintroduced by a future edit would simply be created on the next
+ * deploy, and nothing else in this suite would object.
+ *
+ * Two of them name collections that DO NOT EXIST in this codebase at all:
+ *   - `audit_logs` — the real collection is `auditLogs` (lib/tenant/audit.ts:25)
+ *   - `hr_employees` — HR employees live in `users`
+ *     (app/api/admin/hr/employees/list/route.ts:18)
+ * Live indexes on those collection groups are still preserved in the manifest, because
+ * production has them and this repository cannot prove they hold no data. Preserving an
+ * index that exists and creating a new one are different acts, and only the second is
+ * refused here.
+ */
+describe('indexes the pre-deploy evidence audit rejected', () => {
+  const REJECTED: Array<[string, string[], string]> = [
+    [
+      'invoices',
+      ['tenantId:ASCENDING', 'status:ASCENDING', 'dueDate:DESCENDING'],
+      'no query orders invoices by dueDate DESC; both dueDate reads are ASC with tenantId+isPaid (app/api/ai/tools/read/route.ts:121)',
+    ],
+    [
+      'users',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      'app/api/admin/users/list/route.ts:20 sorts in JS and says so; super_admin/users/route.ts:22 has no where clause',
+    ],
+    [
+      'deals',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      'the deals list filters isDeleted and gets tenantId appended by queryWithTenant, so it needs isDeleted+tenantId+createdAt',
+    ],
+    [
+      'invoices',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      'app/api/finance/invoices/list/route.ts:47 applies tenantId AND isDeleted unconditionally',
+    ],
+    [
+      'documents',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      'the documents collection has no list query at all; storage-service.ts:171 is a doc().update()',
+    ],
+    [
+      'notifications',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      'every notifications list query also filters a recipient field or isArchived',
+    ],
+    [
+      'hr_employees',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      "no collection('hr_employees') exists; HR employees are rows in users",
+    ],
+    [
+      'audit_logs',
+      ['tenantId:ASCENDING', 'createdAt:DESCENDING'],
+      "no collection('audit_logs') exists; the real collection is auditLogs",
+    ],
+    [
+      'platform_tickets',
+      ['priority:ASCENDING', 'createdAt:DESCENDING'],
+      "where('priority') appears nowhere in the codebase",
+    ],
+    [
+      'platform_tickets',
+      ['triageStatus:ASCENDING', 'createdAt:DESCENDING'],
+      "where('triageStatus') appears nowhere in the codebase",
+    ],
+    [
+      'platform_tickets',
+      ['status:ASCENDING', 'priority:ASCENDING', 'createdAt:DESCENDING'],
+      'no query combines status and priority',
+    ],
+  ];
+
+  const declared = new Set(
+    (JSON.parse(read('firestore.indexes.json')).indexes as RawIndex[]).map(
+      (index) =>
+        index.collectionGroup +
+        '|' +
+        (index.fields || [])
+          .filter((f) => f.fieldPath !== '__name__')
+          .map((f) => f.fieldPath + ':' + (f.order || f.arrayConfig))
+          .join(','),
+    ),
+  );
+
+  it.each(REJECTED)('does not declare %s (%s)', (collectionGroup, fields, _why) => {
+    expect(declared.has(collectionGroup + '|' + (fields as string[]).join(','))).toBe(false);
+  });
+
+  it('adds no NEW index to the two collection groups that do not exist in code', () => {
+    // Production carries eight `audit_logs` and three `documents` composite indexes even
+    // though the code writes `auditLogs` and only ever reaches `documents` by doc id.
+    // Those are live, so they stay: this repository cannot prove they hold no data, and
+    // preserving an index that exists is not the same act as creating a new one.
+    //
+    // What must not happen is the manifest growing a NEW index on either. Pinning the
+    // exact preserved set means any addition fails here and has to be justified against
+    // live evidence first — which is the whole point of the no-deletion gate in reverse.
+    const shapes = (JSON.parse(read('firestore.indexes.json')).indexes as RawIndex[])
+      .filter(
+        (index) => index.collectionGroup === 'audit_logs' || index.collectionGroup === 'documents',
+      )
+      .map(
+        (index) =>
+          index.collectionGroup +
+          ': ' +
+          (index.fields || [])
+            .filter((f) => f.fieldPath !== '__name__')
+            .map((f) => f.fieldPath + ' ' + (f.order || f.arrayConfig))
+            .join(', '),
+      )
+      .sort();
+
+    expect(shapes).toEqual(
+      [
+        'audit_logs: tenantId ASCENDING, action ASCENDING, createdAt DESCENDING',
+        'audit_logs: tenantId ASCENDING, action ASCENDING, timestamp DESCENDING',
+        'audit_logs: tenantId ASCENDING, resource ASCENDING, timestamp DESCENDING',
+        'audit_logs: tenantId ASCENDING, resourceType ASCENDING, createdAt DESCENDING',
+        'audit_logs: tenantId ASCENDING, status ASCENDING, timestamp DESCENDING',
+        'audit_logs: tenantId ASCENDING, timestamp DESCENDING',
+        'audit_logs: tenantId ASCENDING, userId ASCENDING, createdAt DESCENDING',
+        'audit_logs: tenantId ASCENDING, userId ASCENDING, timestamp DESCENDING',
+        'documents: tenantId ASCENDING, fileType ASCENDING, createdAt DESCENDING',
+        'documents: tenantId ASCENDING, folderId ASCENDING, createdAt DESCENDING',
+        'documents: tenantId ASCENDING, uploadedBy ASCENDING, createdAt DESCENDING',
+      ].sort(),
+    );
+  });
+});
