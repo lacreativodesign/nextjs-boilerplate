@@ -9,7 +9,8 @@ import { createNotification } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 
-export async function PUT(_: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(_: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId) {

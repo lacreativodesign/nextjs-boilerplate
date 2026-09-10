@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     await checkRateLimit(req, 'standard', current.uid);
 
-    const token = cookies().get('lac_session')?.value;
+    const token = (await cookies()).get('lac_session')?.value;
     await invalidateAllSessions(current.uid, token || undefined);
 
     return NextResponse.json({ ok: true });

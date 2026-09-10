@@ -27,14 +27,14 @@ function toIso(value: unknown): string | null {
   return null;
 }
 
-type RouteContext = { params: { ticketId: string } };
+type RouteContext = { params: Promise<{ ticketId: string }> };
 
 /** Single-ticket read. Replaces the old fetch-all-then-find on the client. */
 export async function GET(req: NextRequest, context: RouteContext) {
   try {
     await requireSuperAdmin(req);
 
-    const ticketId = context.params.ticketId;
+    const ticketId = (await context.params).ticketId;
     const snap = await adminDb.collection(PLATFORM_TICKETS_COLLECTION).doc(ticketId).get();
 
     if (!snap.exists) {
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     const user = await requireSuperAdmin(req);
-    const ticketId = context.params.ticketId;
+    const ticketId = (await context.params).ticketId;
 
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) {

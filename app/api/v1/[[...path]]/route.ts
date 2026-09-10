@@ -6,8 +6,9 @@ function toUnversionedPath(path: string[] | undefined) {
   return `/api/${path.join('/')}`;
 }
 
-async function handle(request: NextRequest, context: { params: { path?: string[] } }) {
-  const targetPath = toUnversionedPath(context.params.path);
+async function handle(request: NextRequest, context: { params: Promise<{ path?: string[] }> }) {
+  const params = await context.params;
+  const targetPath = toUnversionedPath(params.path);
   const response = await proxyVersionedRequest(request, targetPath);
   return applyVersionHeaders(response, '/api/v1');
 }

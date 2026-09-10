@@ -12,7 +12,8 @@ function isAdminOrOwner(role?: string | null) {
 }
 
 // DELETE - Delete saved search
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {
@@ -44,7 +45,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
 }
 
 // PATCH - Update usage count
-export async function PATCH(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {

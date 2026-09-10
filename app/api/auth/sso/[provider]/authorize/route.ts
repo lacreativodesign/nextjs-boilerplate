@@ -11,7 +11,8 @@ function asProvider(value: string): SsoProvider {
   throw new Error('Unsupported SSO provider.');
 }
 
-export async function GET(req: NextRequest, { params }: { params: { provider: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ provider: string }> }) {
+  const params = await props.params;
   try {
     const provider = asProvider(params.provider);
     const url = new URL(req.url);

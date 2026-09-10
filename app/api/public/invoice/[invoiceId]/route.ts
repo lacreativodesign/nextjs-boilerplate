@@ -3,7 +3,8 @@ import { getClientRecord, getInvoiceWithValidation, getTenantRecord } from '../s
 
 export const runtime = 'nodejs';
 
-export async function GET(req: Request, { params }: { params: { invoiceId: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ invoiceId: string }> }) {
+  const params = await props.params;
   try {
     const invoiceId = String(params.invoiceId || '').trim();
     if (!invoiceId) {

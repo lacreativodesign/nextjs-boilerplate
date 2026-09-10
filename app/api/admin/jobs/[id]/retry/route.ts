@@ -4,7 +4,8 @@ import { processDueJobs, retryFailedJob } from '@/lib/jobs/job-queue';
 
 export const runtime = 'nodejs';
 
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });

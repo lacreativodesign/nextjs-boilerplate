@@ -11,7 +11,7 @@ const COOKIE_NAME = 'lac_session';
 export async function POST(request: Request) {
   try {
     await checkRateLimit(request, 'strict');
-    const sessionCookie = cookies().get(COOKIE_NAME)?.value;
+    const sessionCookie = (await cookies()).get(COOKIE_NAME)?.value;
 
     // S11: closes the day's attendance record. Read BEFORE the session is invalidated —
     // afterwards the cookie no longer resolves to anyone and there is nothing to stamp.

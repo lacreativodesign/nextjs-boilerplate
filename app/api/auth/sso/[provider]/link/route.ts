@@ -12,7 +12,8 @@ function asProvider(value: string): SsoProvider {
   throw new Error('Unsupported SSO provider.');
 }
 
-export async function POST(req: NextRequest, { params }: { params: { provider: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ provider: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me) {

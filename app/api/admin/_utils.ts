@@ -12,7 +12,7 @@ export type CurrentUser = {
 // Delegates to the canonical getCurrentUserOrThrow; returns null instead of throwing.
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
-    return await getCurrentUserOrThrow({ cookies: cookies() });
+    return await getCurrentUserOrThrow({ cookies: await cookies() });
   } catch {
     return null;
   }

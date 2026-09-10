@@ -11,7 +11,7 @@ const ALLOWED_AGENT_TYPES = new Set<AgentType>(['coo', 'finance', 'sales']);
 
 export async function GET() {
   try {
-    const user = await getCurrentUser({ cookies: cookies() });
+    const user = await getCurrentUser({ cookies: await cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -30,7 +30,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser({ cookies: cookies() });
+    const user = await getCurrentUser({ cookies: await cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }

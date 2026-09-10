@@ -1,13 +1,11 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 
-type InvitePageProps = {
-  params: { token: string };
-};
-
-export default function InvitePage({ params }: InvitePageProps) {
+export default function InvitePage() {
+  const params = useParams<{ token: string }>();
   const [formData, setFormData] = useState({
     name: '',
     password: '',

@@ -8,6 +8,8 @@ import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import EmptyState from '@/components/ui/EmptyState';
+import { normalizeRole } from '@/lib/erpAccess';
+import { useTenantContext } from '@/lib/tenant/useTenantContext';
 
 type FileRecord = {
   id: string;
@@ -46,6 +48,19 @@ export default function ClientFilesPage() {
   const [uploadProjectId, setUploadProjectId] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { data: tenantContext } = useTenantContext();
+
+  // STOR-2 — the published Storage rules grant tenants/{tenantId}/client-files/** to role
+  // 'client' ONLY. canClientFiles() in storage.rules is the one prefix helper that
+  // deliberately omits isSuperAdmin(), because this prefix holds files uploaded BY the
+  // tenant's external clients; internal staff read them through the stored download URL
+  // rather than by addressing the object. RequireAuth lets super_admin past every route
+  // guard (components/RequireAuth.tsx), so a super_admin reaches this page and would be
+  // offered an upload that Storage rejects at runtime. Hide the upload path for that role
+  // only — the list below still renders, because read access is what super_admin has here.
+  // The check is positive (role is known AND is super_admin) so every other role renders
+  // exactly as before, including while the context resolves.
+  const isSuperAdmin = normalizeRole(tenantContext?.user?.role) === 'super_admin';
 
   const headerCellStyle: React.CSSProperties = {
     padding: '12px 14px',
@@ -164,9 +179,15 @@ export default function ClientFilesPage() {
             <p className="section-subtitle">All files scoped to your client account.</p>
           </div>
           <div className="flex gap-2">
-            <button className="btn" onClick={() => setUploadOpen(true)}>
-              Upload Client File
-            </button>
+            {isSuperAdmin ? (
+              <p className="text-sm text-[var(--text-muted)]">
+                Client file uploads are performed by the client. Super Admin has read access only.
+              </p>
+            ) : (
+              <button className="btn" onClick={() => setUploadOpen(true)}>
+                Upload Client File
+              </button>
+            )}
             <button className="btn ghost" onClick={loadFiles}>
               Refresh
             </button>
@@ -233,7 +254,7 @@ export default function ClientFilesPage() {
         )}
       </div>
 
-      {uploadOpen && (
+      {uploadOpen && !isSuperAdmin && (
         <div className="drawer-overlay" onClick={() => setUploadOpen(false)}>
           <div
             className="drawer-panel drawer-panel--md"

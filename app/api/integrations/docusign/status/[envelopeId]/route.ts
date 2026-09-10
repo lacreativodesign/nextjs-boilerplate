@@ -4,13 +4,13 @@ import { getEnvelopeStatus } from '@/lib/integrations/docusign';
 
 export const runtime = 'nodejs';
 
-export async function GET(_: Request, context: { params: { envelopeId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ envelopeId: string }> }) {
   try {
     const auth = await requireAdmin();
     if (!auth.ok)
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const envelopeId = String(context.params?.envelopeId || '').trim();
+    const envelopeId = String((await context.params)?.envelopeId || '').trim();
     if (!envelopeId)
       return NextResponse.json({ ok: false, error: 'envelopeId is required.' }, { status: 400 });
 

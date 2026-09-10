@@ -13,7 +13,8 @@ const schema = z.object({
   reason: z.string().min(2).max(1000),
 });
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId) {

@@ -16,7 +16,8 @@ const sendSchema = z.object({
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

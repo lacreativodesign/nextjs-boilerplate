@@ -112,14 +112,16 @@ beforeEach(() => {
 
 describe('E8: CRM deals — cross-tenant read/write refused', () => {
   it("tenant A cannot READ tenant B's deal", async () => {
-    const res = await getDeal(new Request('https://app.local'), { params: { id: 'deal_b' } });
+    const res = await getDeal(new Request('https://app.local'), {
+      params: Promise.resolve({ id: 'deal_b' }),
+    });
     expect(res.status).toBe(403);
   });
 
   it("tenant A cannot WRITE tenant B's deal, and the deal is unmodified", async () => {
     const res = await patchDeal(
       jsonRequest('https://app.local/api/crm/deals/deal_b', { stage: 'won' }),
-      { params: { id: 'deal_b' } },
+      { params: Promise.resolve({ id: 'deal_b' }) },
     );
     expect(res.status).toBe(403);
 
@@ -129,19 +131,25 @@ describe('E8: CRM deals — cross-tenant read/write refused', () => {
   });
 
   it('tenant A can still read its OWN deal (guard is not over-broad)', async () => {
-    const res = await getDeal(new Request('https://app.local'), { params: { id: 'deal_a' } });
+    const res = await getDeal(new Request('https://app.local'), {
+      params: Promise.resolve({ id: 'deal_a' }),
+    });
     expect(res.status).toBe(200);
   });
 });
 
 describe('E8: Projects — cross-tenant read refused', () => {
   it("tenant A cannot READ tenant B's project", async () => {
-    const res = await getProject(new Request('https://app.local'), { params: { id: 'proj_b' } });
+    const res = await getProject(new Request('https://app.local'), {
+      params: Promise.resolve({ id: 'proj_b' }),
+    });
     expect(res.status).toBe(403);
   });
 
   it('tenant A can read its own project', async () => {
-    const res = await getProject(new Request('https://app.local'), { params: { id: 'proj_a' } });
+    const res = await getProject(new Request('https://app.local'), {
+      params: Promise.resolve({ id: 'proj_a' }),
+    });
     expect(res.status).toBe(200);
   });
 });
@@ -150,17 +158,19 @@ describe('E8: Notifications — cross-tenant and cross-user refused', () => {
   const req = () => jsonRequest('https://app.local/api/notifications/x/read', {}) as any;
 
   it("tenant A cannot mark tenant B's notification read", async () => {
-    const res = await markNotificationRead(req(), { params: { id: 'notif_b' } });
+    const res = await markNotificationRead(req(), { params: Promise.resolve({ id: 'notif_b' }) });
     expect(res.status).toBe(403);
   });
 
   it("a user cannot mark ANOTHER user's notification read inside their own tenant", async () => {
-    const res = await markNotificationRead(req(), { params: { id: 'notif_a_other' } });
+    const res = await markNotificationRead(req(), {
+      params: Promise.resolve({ id: 'notif_a_other' }),
+    });
     expect(res.status).toBe(403);
   });
 
   it('a user can mark their own notification read', async () => {
-    const res = await markNotificationRead(req(), { params: { id: 'notif_a' } });
+    const res = await markNotificationRead(req(), { params: Promise.resolve({ id: 'notif_a' }) });
     expect(res.status).toBe(200);
   });
 });

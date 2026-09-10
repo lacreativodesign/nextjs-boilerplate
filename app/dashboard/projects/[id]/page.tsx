@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { TaskBoard } from '@/components/projects/TaskBoard';
 import { TimeTracker } from '@/components/projects/TimeTracker';
@@ -21,7 +22,8 @@ type Task = {
   assignedToName?: string;
 };
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailPage() {
+  const params = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [view, setView] = useState<'board' | 'list'>('board');

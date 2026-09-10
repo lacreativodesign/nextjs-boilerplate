@@ -9,7 +9,30 @@ const APP_BUILD_MANIFEST_PATH = path.resolve('.next/app-build-manifest.json');
 // measures only JavaScript owned by that route. Shared root/layout chunks are excluded from
 // every route report instead of being charged hundreds of times. Each limit is a ratchet
 // that may move down as code is split, never up to hide a regression.
-const MAX_MAIN_BUNDLE_KB = 210;
+//
+// 210 -> 215 (Sept 2026), owner-approved, for the Next 15.5.25 security upgrade. This is the
+// one case the ratchet rule did not anticipate: the floor itself moved, in vendor code, and
+// the alternative was shipping two known critical RCEs. Recording the cause rather than
+// quietly absorbing it is the point of the note.
+//
+// Measured on the upgraded tree, gzip, by rebuilding with each piece removed:
+//   Next 15 + React root shell   101.06KB
+//   Sentry client SDK            112.65KB
+//   total                        213.71KB
+// Ruled out by measurement, not assumption: Sentry is not in the root shell because Next
+// 15.3+ hoists instrumentation-client.ts (neutralising that file moved the total 0.01KB,
+// chunk hashes unchanged); consolidating the client init into it saved 0.10KB;
+// optimizePackageImports expansion and Sentry excludeDebugStatements are byte-identical
+// because disableLogger is already active. 7.02KB was recovered for real by switching the
+// Sentry feedback widget to its async variant — it set autoInject: false and nothing in the
+// app opens it, so every visitor downloaded a widget none of them could reach.
+//
+// The remaining discretionary weight is Sentry Session Replay (~36KB). It stays because
+// replaysOnErrorSampleRate is 1.0 and it must buffer from page load to capture pre-error
+// frames, so it cannot be lazy-loaded without losing the thing it is for. Dropping it is
+// the lever if this needs to come back down; that is an observability decision, not a
+// build one.
+const MAX_MAIN_BUNDLE_KB = 215;
 const MAX_ROUTE_BUNDLE_KB = 100;
 const MAX_FIRST_LOAD_JS_KB = 300;
 

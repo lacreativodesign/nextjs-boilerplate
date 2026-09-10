@@ -1,33 +1,291 @@
-name: Deploy Firestore Indexes
+name: Firestore Indexes
+
+# Inspects, and on explicit approval adds, Firestore composite indexes.
+#
+# WHY THIS WAS REWRITTEN TWICE
+#
+# The original authenticated with a `FIREBASE_TOKEN` secret that is not configured,
+# so the token rendered empty and every run since at least 2026-08-14 failed with
+# "Failed to authenticate, have you run firebase login?". It also ran on push to
+# main, so those failures were silent.
+#
+# The first rewrite fixed authentication but kept `firebase deploy`, one identity for
+# both modes, and a free-text project input. Review found all three unsafe. The worst
+# of them: `firebase deploy --only firestore:indexes` reconciles in BOTH directions,
+# and on this repository it would propose removing most of the live index set.
+# firebase-tools 13.35.1 strips `__name__` when reading live indexes
+# (lib/firestore/api.js listIndexes) but compares `fields.length` exactly
+# (indexMatchesSpec), and 85 of the 169 declared indexes spell `__name__` out — so
+# each would be queued as a create AND its live counterpart as a delete.
+#
+# This workflow therefore never runs `firebase deploy`. It diffs the manifest against
+# the live inventory itself, refuses to continue if anything live is unaccounted for,
+# and applies creates only, via `gcloud firestore indexes composite create` — which
+# has no capacity to delete. The logic lives in scripts/firestore-index-reconcile.mjs
+# and scripts/firestore-index-apply.mjs, both unit-tested under __tests__/ci/.
+#
+# SAFETY PROPERTIES, enforced below rather than documented
+#
+#   - `inventory` is read-only BY IAM: it assumes a reader service account with no
+#     index write permission, so it cannot mutate even if this file is wrong.
+#     `deploy` is the only job that names the writer identity.
+#   - The target project is a constant. No input can retarget it.
+#   - `deploy` runs only from refs/heads/main, only in `deploy` mode, and only inside
+#     an environment whose reviewers the owner controls.
+#   - Nothing is deleted: the reconciler fails closed on any live index the manifest
+#     does not describe, and the apply step re-validates that every command creates.
+#   - Indexes are waited on until READY. Acceptance is not availability.
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'firestore.indexes.json'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'inventory = read-only diff (safe). deploy = create missing indexes.'
+        required: true
+        default: inventory
+        type: choice
+        options:
+          - inventory
+          - deploy
+      confirm_project_id:
+        description: 'For deploy only: type the target project id exactly to confirm.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  # Mints an OIDC token for Google. Grants nothing inside this repository.
+  id-token: write
+
+concurrency:
+  group: firestore-indexes
+  cancel-in-progress: false
+
+env:
+  # The one project this workflow may ever touch. Deliberately not an input: a
+  # free-text project field is a way to point a production credential elsewhere.
+  PROJECT_ID: la-creativo-erp
+  FIRESTORE_DATABASE: '(default)'
 
 jobs:
-  deploy-indexes:
+  # -------------------------------------------------------------------------
+  # Read-only. Safe from any branch, by anyone who can dispatch, at any time.
+  # Its credential cannot write. See the owner setup in the PR description.
+  # -------------------------------------------------------------------------
+  inventory:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      # Published so the deploy job can prove it is applying the plan the owner saw.
+      plan-digest: ${{ steps.reconcile.outputs.plan-digest }}
+      manifest-sha256: ${{ steps.reconcile.outputs.manifest-sha256 }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools@latest
+      - name: Authenticate as the READ-ONLY inventory identity
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          # Distinct from the deployer. Holds a custom role limited to
+          # datastore.indexes.get and datastore.indexes.list, and nothing else.
+          service_account: ${{ vars.GCP_FIRESTORE_INDEX_READER_SA }}
 
-      - name: Deploy Firestore Indexes
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Read the live index inventory
+        shell: bash
         run: |
-          firebase deploy --only firestore:indexes \
-            --project la-creativo-erp \
-            --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --non-interactive
+          set -euo pipefail
+          gcloud firestore indexes composite list \
+            --project="$PROJECT_ID" \
+            --database="$FIRESTORE_DATABASE" \
+            --format=json > live-indexes.json
+          node -e 'console.log("live indexes:", JSON.parse(require("fs").readFileSync("live-indexes.json","utf8")).length)'
 
-      - name: Confirm deployment
-        run: echo "Firestore indexes deployed successfully"
+      - name: Reconcile the manifest against live, fail closed on any removal
+        id: reconcile
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/firestore-index-reconcile.mjs \
+            --manifest firestore.indexes.json \
+            --live live-indexes.json \
+            --project "$PROJECT_ID" \
+            --plan create-plan.json | tee reconcile.log
+          PLAN_DIGEST=$(node -e 'const c=require("node:crypto"),f=require("node:fs");console.log(c.createHash("sha256").update(f.readFileSync("create-plan.json")).digest("hex"))')
+          MANIFEST_SHA=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("create-plan.json","utf8")).manifestSha256)')
+          echo "plan-digest=$PLAN_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "manifest-sha256=$MANIFEST_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the proposed plan for review BEFORE any approval
+        if: always()
+        shell: bash
+        env:
+          PLAN_DIGEST: ${{ steps.reconcile.outputs.plan-digest }}
+          MANIFEST_SHA: ${{ steps.reconcile.outputs.manifest-sha256 }}
+        run: |
+          set -euo pipefail
+          # This job holds only the read-only identity, and it runs before the
+          # environment gate on `deploy`. So the owner can read the exact proposed
+          # additions here and then decide whether to release the write identity.
+          {
+            echo "## Firestore index plan"
+            echo
+            echo "- project: \`$PROJECT_ID\`"
+            echo "- database: \`$FIRESTORE_DATABASE\`"
+            echo "- commit: \`$GITHUB_SHA\`"
+            echo "- manifest sha256: \`$MANIFEST_SHA\`"
+            echo "- plan digest: \`$PLAN_DIGEST\`"
+            echo
+            echo '```'
+            cat reconcile.log 2>/dev/null || echo "(reconciliation failed; see the step log)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain an authentication or permission failure
+        if: failure()
+        shell: bash
+        run: |
+          # The exact permission set these calls need was not verifiable when this was
+          # written (Google Cloud documentation was unreachable from the authoring
+          # environment), so rather than guessing a broader role, this run is the
+          # verification: gcloud names the permission it was denied, and only the
+          # read-only identity is in play while finding out.
+          echo "If this failed at authentication, check that these repository variables are set"
+          echo "and that the service account trusts this repository via Workload Identity:"
+          echo "  GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_FIRESTORE_INDEX_READER_SA"
+          echo
+          echo "If it failed with PERMISSION_DENIED, the message above names the missing"
+          echo "permission. Add exactly that permission to the reader's custom role - do not"
+          echo "substitute a broad predefined role such as roles/datastore.viewer, which also"
+          echo "grants read access to document data this job has no need for."
+
+      - name: Upload inventory and create plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firestore-index-inventory
+          path: |
+            live-indexes.json
+            create-plan.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  # -------------------------------------------------------------------------
+  # Write path. Gated four ways: mode, ref, environment approval, and a
+  # reconciliation that must find nothing to delete.
+  # -------------------------------------------------------------------------
+  deploy:
+    needs: inventory
+    if: ${{ inputs.mode == 'deploy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Required reviewers on this environment are what make the deploy owner-approved.
+    # Restrict its deployment branches to `main` in the environment settings too, so
+    # the rule survives an edit to this file.
+    environment: firestore-indexes-production
+    steps:
+      - name: Refuse anything but an approved main deploy
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          CONFIRM: ${{ inputs.confirm_project_id }}
+        run: |
+          set -euo pipefail
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "Refusing to deploy: dispatched from $REF, not refs/heads/main."
+            exit 1
+          fi
+          if [ "$CONFIRM" != "$PROJECT_ID" ]; then
+            echo "Refusing to deploy: confirm_project_id does not match $PROJECT_ID."
+            exit 1
+          fi
+          echo "Deploying indexes to $PROJECT_ID from $REF at $SHA"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Authenticate as the WRITE-CAPABLE deployer identity
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          # Adds datastore.indexes.create to get/list. Reachable only from this job,
+          # which runs only after an environment approval.
+          service_account: ${{ vars.GCP_FIRESTORE_INDEX_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Re-read the live inventory and re-check for removals
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Re-read rather than trust the inventory job's artifact: the project may
+          # have changed between the two, and a stale diff is how a deletion slips in.
+          gcloud firestore indexes composite list \
+            --project="$PROJECT_ID" \
+            --database="$FIRESTORE_DATABASE" \
+            --format=json > live-indexes.json
+          node scripts/firestore-index-reconcile.mjs \
+            --manifest firestore.indexes.json \
+            --live live-indexes.json \
+            --project "$PROJECT_ID" \
+            --plan create-plan.json
+
+      - name: Create the missing indexes, and only those
+        shell: bash
+        env:
+          APPROVED_PLAN_DIGEST: ${{ needs.inventory.outputs.plan-digest }}
+        run: |
+          set -euo pipefail
+          # --expect-digest binds this write to the exact plan published in the
+          # inventory job summary, which is what the owner read before approving.
+          # A manifest substituted after approval changes the digest and fails here.
+          node scripts/firestore-index-apply.mjs \
+            --plan create-plan.json \
+            --project "$PROJECT_ID" \
+            --database "$FIRESTORE_DATABASE" \
+            --expect-digest "$APPROVED_PLAN_DIGEST"
+
+      - name: Wait for every index to reach READY
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A create returns as soon as it is accepted. Until the build finishes, the
+          # query it exists for keeps failing, so "submitted" is not the finish line.
+          for _ in $(seq 1 60); do
+            gcloud firestore indexes composite list \
+              --project="$PROJECT_ID" \
+              --database="$FIRESTORE_DATABASE" \
+              --format=json > live-indexes.json
+            BUILDING=$(node -e 'const rows=JSON.parse(require("fs").readFileSync("live-indexes.json","utf8"));console.log(rows.filter((r)=>r.state&&r.state!=="READY").length)')
+            if [ "$BUILDING" = "0" ]; then
+              echo "All indexes READY."
+              exit 0
+            fi
+            echo "$BUILDING index(es) still building; re-checking in 30s."
+            sleep 30
+          done
+          echo "Still building after 30 minutes. The creates were accepted, but do not"
+          echo "treat the certification gate as unblocked until this reports all READY."
+          exit 1
+
+      - name: Upload post-deploy inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firestore-index-inventory-after-deploy
+          path: |
+            live-indexes.json
+            create-plan.json
+          retention-days: 30
+          if-no-files-found: warn

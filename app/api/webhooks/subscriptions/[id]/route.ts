@@ -8,7 +8,8 @@ import { requireWebhookAdmin, webhookSubscriptionSchema } from '../../_utils';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireWebhookAdmin();
     if (!auth.ok)
@@ -40,7 +41,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireWebhookAdmin();
     if (!auth.ok)

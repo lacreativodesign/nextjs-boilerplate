@@ -4,9 +4,10 @@ import { markActivityReadForUser } from '@/lib/activity/activity-service';
 
 export const runtime = 'nodejs';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-export async function PUT(_: Request, { params }: Params) {
+export async function PUT(_: Request, props: Params) {
+  const params = await props.params;
   const me = await getCurrentUser();
   if (!me) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
