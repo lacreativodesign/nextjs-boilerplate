@@ -4,8 +4,8 @@ const PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'b
 
 export const runtime = 'nodejs';
 
-export async function GET(_: Request, context: { params: { trackingId: string } }) {
-  const trackingId = String(context.params.trackingId || '').trim();
+export async function GET(_: Request, context: { params: Promise<{ trackingId: string }> }) {
+  const trackingId = String((await context.params).trackingId || '').trim();
   if (trackingId) {
     await markTrackingOpen(trackingId).catch(() => undefined);
   }

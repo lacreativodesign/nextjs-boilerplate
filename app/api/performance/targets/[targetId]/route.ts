@@ -12,7 +12,8 @@ const managerRoles = new Set([
   'finance',
 ]);
 
-export async function PATCH(req: NextRequest, { params }: { params: { targetId: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ targetId: string }> }) {
+  const params = await props.params;
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   if (!managerRoles.has(normalizeRole(me.role))) {
@@ -44,7 +45,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { targetId: 
   return NextResponse.json({ ok: true, target: { id: updated.id, ...(updated.data() || {}) } });
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { targetId: string } }) {
+export async function DELETE(_: NextRequest, props: { params: Promise<{ targetId: string }> }) {
+  const params = await props.params;
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   if (normalizeRole(me.role) !== 'admin' && normalizeRole(me.role) !== 'super_admin') {

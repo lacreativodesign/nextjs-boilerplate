@@ -6,7 +6,8 @@ import { requireAutomationAdmin } from '../../../_utils';
 
 export const runtime = 'nodejs';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const auth = await requireAutomationAdmin();
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 

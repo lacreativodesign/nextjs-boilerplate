@@ -20,7 +20,12 @@ Sentry.init({
   // request PII to events by default, which would defeat the beforeSend scrubbing.
   sendDefaultPii: false,
   integrations: [
-    Sentry.feedbackIntegration({
+    // BUILD-02: the async variant registers the same integration but fetches the feedback
+    // UI bundle on first use instead of shipping it in the root shell. Nothing in the app
+    // opens the widget and `autoInject: false` means it is never rendered automatically,
+    // so this is byte-for-byte the same behaviour for every current code path — it just
+    // stops every visitor downloading a widget none of them can reach.
+    Sentry.feedbackAsyncIntegration({
       autoInject: false,
       colorScheme: 'system',
       showBranding: false,

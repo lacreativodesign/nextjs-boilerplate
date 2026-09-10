@@ -4,7 +4,8 @@ import { deleteSavedAdvancedSearch } from '@/lib/search/advanced-search';
 
 export const runtime = 'nodejs';
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId || !session.uid) {

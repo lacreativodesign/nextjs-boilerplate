@@ -8,9 +8,10 @@ import { adminDb } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, props: Params) {
+  const params = await props.params;
   try {
     const current = await getCurrentUser();
     if (!current) {
@@ -19,7 +20,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     await checkRateLimit(req, 'standard', current.uid);
 
-    const token = cookies().get('lac_session')?.value;
+    const token = (await cookies()).get('lac_session')?.value;
     const currentId = token ? hashSessionToken(token) : null;
 
     if (currentId && currentId === params.id) {

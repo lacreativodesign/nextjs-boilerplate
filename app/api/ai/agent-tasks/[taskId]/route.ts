@@ -9,9 +9,10 @@ export const dynamic = 'force-dynamic';
 
 const ALLOWED_ROLES = new Set(['admin', 'super_admin', 'finance']);
 
-export async function GET(_req: NextRequest, { params }: { params: { taskId: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ taskId: string }> }) {
+  const params = await props.params;
   try {
-    const user = await getCurrentUser({ cookies: cookies() });
+    const user = await getCurrentUser({ cookies: await cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }

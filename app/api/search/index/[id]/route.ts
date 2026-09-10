@@ -4,7 +4,7 @@ import { removeIndexedDocument } from '@/lib/search/global-search';
 
 export const runtime = 'nodejs';
 
-export async function DELETE(_request: Request, context: { params: { id: string } }) {
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {
@@ -13,7 +13,7 @@ export async function DELETE(_request: Request, context: { params: { id: string 
 
     const removed = await removeIndexedDocument({
       tenantId: session.tenantId,
-      id: context.params.id,
+      id: (await context.params).id,
     });
     return NextResponse.json({ ok: removed });
   } catch (error) {

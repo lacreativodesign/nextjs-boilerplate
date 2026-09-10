@@ -6,7 +6,8 @@ import { normalizeTenantId } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

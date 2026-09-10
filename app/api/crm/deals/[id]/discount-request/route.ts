@@ -5,7 +5,8 @@ import { canManageOwnDeals, requireCrmUser } from '@/lib/crm';
 import { AppError, resolveErrorResponse } from '@/lib/errors';
 import { logError } from '@/lib/logging';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireCrmUser();
     if (!auth.ok) {

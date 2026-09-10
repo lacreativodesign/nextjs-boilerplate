@@ -6,10 +6,10 @@ import { PrintActions } from '@/components/help-center/PrintActions';
 import { findRelatedArticles, getArticleBySlug, helpCategories } from '@/lib/help-center/data';
 
 type ArticlePageProps = {
-  params: {
+  params: Promise<{
     category: string;
     slug: string;
-  };
+  }>;
 };
 
 export function generateStaticParams() {
@@ -28,7 +28,8 @@ function slugifyHeading(value: string) {
     .replace(/(^-|-$)/g, '');
 }
 
-export default function HelpArticlePage({ params }: ArticlePageProps) {
+export default async function HelpArticlePage(props: ArticlePageProps) {
+  const params = await props.params;
   const found = getArticleBySlug(params.category, params.slug);
   if (!found) notFound();
 

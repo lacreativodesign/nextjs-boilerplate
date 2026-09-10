@@ -15,8 +15,9 @@ const updateTaskStatusSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; taskId: string } },
+  props: { params: Promise<{ id: string; taskId: string }> },
 ) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId) {

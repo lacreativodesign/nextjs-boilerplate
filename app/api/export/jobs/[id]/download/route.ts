@@ -4,7 +4,8 @@ import { requireBulkDataAccess } from '@/lib/api/bulk-data-guard';
 
 export const runtime = 'nodejs';
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireBulkDataAccess();
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });

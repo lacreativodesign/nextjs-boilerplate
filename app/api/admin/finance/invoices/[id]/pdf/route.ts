@@ -56,7 +56,8 @@ type TenantDoc = {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireAdmin();
     if (!auth.ok) {

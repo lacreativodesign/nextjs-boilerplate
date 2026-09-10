@@ -20,7 +20,8 @@ function daysBetween(startIso: string, endIso: string) {
   return Math.max(1, Math.ceil((end - start) / dayMs));
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId)

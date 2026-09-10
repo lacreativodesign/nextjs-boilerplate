@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -15,9 +16,8 @@ import {
 import { toastError } from '@/lib/toast';
 import type { Budget, YearComparison } from '@/lib/types/budget';
 
-type BudgetDetailPageProps = { params: { id: string } };
-
-export default function BudgetDetailPage({ params }: BudgetDetailPageProps) {
+export default function BudgetDetailPage() {
+  const params = useParams<{ id: string }>();
   const [budget, setBudget] = useState<Budget | null>(null);
   const [comparison, setComparison] = useState<YearComparison | null>(null);
   const [loading, setLoading] = useState(true);
