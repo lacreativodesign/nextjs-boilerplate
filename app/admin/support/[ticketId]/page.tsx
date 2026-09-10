@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TicketThread } from '@/components/support/TicketThread';
@@ -41,12 +42,6 @@ type TicketMessage = {
   };
 };
 
-type RouteParams = {
-  params: {
-    ticketId: string;
-  };
-};
-
 function fmtDate(value: string | null) {
   if (!value) return '-';
   const date = new Date(value);
@@ -54,7 +49,8 @@ function fmtDate(value: string | null) {
   return date.toLocaleString();
 }
 
-export default function SupportTicketDetailPage({ params }: RouteParams) {
+export default function SupportTicketDetailPage() {
+  const params = useParams<{ ticketId: string }>();
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);

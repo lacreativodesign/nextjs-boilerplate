@@ -32,16 +32,51 @@ describe('S31: accessibility', () => {
   });
 
   it('the core jsx-a11y rules are enforced at error level, not warn', () => {
-    const config = read('eslint.config.mjs');
+    const config = JSON.parse(read('.eslintrc.json')) as {
+      rules: Record<string, unknown>;
+      overrides?: Array<{ files: string[]; rules: Record<string, unknown> }>;
+    };
+    const severity = (rule: string) => {
+      const value = config.rules[rule];
+      return Array.isArray(value) ? value[0] : value;
+    };
+
     for (const rule of [
       'jsx-a11y/alt-text',
       'jsx-a11y/aria-props',
       'jsx-a11y/aria-role',
       'jsx-a11y/role-has-required-aria-props',
     ]) {
-      const re = new RegExp(`'${rule.replace('/', '\\/')}':\\s*'error'`);
-      expect(config).toMatch(re);
+      expect(severity(rule)).toBe('error');
     }
-    expect(config).not.toMatch(/'jsx-a11y\/alt-text':\s*'warn'/);
+
+    // The lib/pdf override narrows which elements alt-text inspects, because `Image` there is
+    // @react-pdf/renderer's PDF primitive and has no alt prop at all. It must never downgrade
+    // the severity — real <img> elements in that tree still have to fail the build.
+    for (const override of config.overrides ?? []) {
+      const value = override.rules['jsx-a11y/alt-text'];
+      if (value !== undefined) {
+        expect(Array.isArray(value) ? value[0] : value).toBe('error');
+      }
+    }
+  });
+
+  it('no flat config can shadow the eslintrc gate', () => {
+    // `next lint` probes eslint.config.* BEFORE .eslintrc.json and, on finding one, switches
+    // to flat mode. A flat config that cannot load does not fall back — it takes the whole
+    // lint gate down with it, which is exactly what an ESLint-9-only `eslint/config` import
+    // did here while this repo pins ESLint 8. Worse, the rules above lived in that dead file,
+    // so they were pinned by this test while enforcing nothing. Keep the live config the only
+    // config until ESLint itself is upgraded.
+    for (const candidate of [
+      'eslint.config.js',
+      'eslint.config.mjs',
+      'eslint.config.cjs',
+      'eslint.config.ts',
+      'eslint.config.mts',
+      'eslint.config.cts',
+    ]) {
+      expect(fs.existsSync(path.join(process.cwd(), candidate))).toBe(false);
+    }
   });
 });

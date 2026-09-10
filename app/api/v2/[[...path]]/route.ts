@@ -6,12 +6,13 @@ function resolveRequestedPath(path?: string[]) {
   return `/${path.join('/')}`;
 }
 
-async function handle(_request: NextRequest, context: { params: { path?: string[] } }) {
+async function handle(_request: NextRequest, context: { params: Promise<{ path?: string[] }> }) {
+  const params = await context.params;
   const response = NextResponse.json(
     {
       ok: false,
       error: 'API version v2 is not published yet.',
-      requestedPath: resolveRequestedPath(context.params.path),
+      requestedPath: resolveRequestedPath(params.path),
       migrationGuide: '/docs/api-changelog#v1-to-v2-migration-guide',
     },
     { status: 501 },

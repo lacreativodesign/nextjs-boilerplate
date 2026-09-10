@@ -6,7 +6,7 @@ import { getRoleRoute } from '@/lib/roleRouting';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const session = cookies().get('lac_session')?.value;
+  const session = (await cookies()).get('lac_session')?.value;
 
   if (!session) {
     redirect('/login');

@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { showToast } from '@/lib/utils/toast';
 import { apiFetch } from '@/lib/api/client';
@@ -14,7 +15,8 @@ const STAGES = [
   'closed_lost',
 ];
 
-export default function SalesDealDetailPage({ params }: { params: { id: string } }) {
+export default function SalesDealDetailPage() {
+  const params = useParams<{ id: string }>();
   const [deal, setDeal] = useState<any>(null);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [reason, setReason] = useState('');

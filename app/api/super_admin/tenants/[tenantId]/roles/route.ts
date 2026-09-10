@@ -20,7 +20,8 @@ const VALID_ROLE_KEYS = new Set([
   'client',
 ]);
 
-export async function PATCH(req: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireSuperAdmin(req);
     const tenantId = params.tenantId;

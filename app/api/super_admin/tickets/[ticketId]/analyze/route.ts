@@ -9,7 +9,7 @@ import { triageTicket } from '@/lib/support/triage';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type RouteContext = { params: { ticketId: string } };
+type RouteContext = { params: Promise<{ ticketId: string }> };
 
 /**
  * Run triage on a single ticket, on demand, super-admin only.
@@ -22,7 +22,7 @@ type RouteContext = { params: { ticketId: string } };
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const user = await requireSuperAdmin(req);
-    const ticketId = context.params.ticketId;
+    const ticketId = (await context.params).ticketId;
 
     const ref = adminDb.collection(PLATFORM_TICKETS_COLLECTION).doc(ticketId);
     const snap = await ref.get();

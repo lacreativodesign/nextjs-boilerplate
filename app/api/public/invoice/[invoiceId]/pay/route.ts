@@ -10,7 +10,8 @@ import { amountToMinorUnits, minorUnitsToAmount } from '@/lib/finance/minorUnits
 
 export const runtime = 'nodejs';
 
-export async function POST(req: Request, { params }: { params: { invoiceId: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ invoiceId: string }> }) {
+  const params = await props.params;
   try {
     const invoiceId = String(params.invoiceId || '').trim();
     if (!invoiceId) {

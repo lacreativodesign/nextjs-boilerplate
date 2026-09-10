@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 import { buildUserPermissionSnapshot } from '@/lib/permissions/permission-engine';
 
-export async function GET(_: Request, { params }: { params: { userId: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const auth = await requireAdminOrSuperAdmin();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 

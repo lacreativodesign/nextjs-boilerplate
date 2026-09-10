@@ -64,7 +64,7 @@ async function resolveAction(
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser({ cookies: cookies() });
+    const user = await getCurrentUser({ cookies: await cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }

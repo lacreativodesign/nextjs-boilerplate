@@ -22,7 +22,8 @@ function canManageInventory(role: string) {
   return isAdminOrSuper(role) || normalized === 'owner' || normalized === 'production_manager';
 }
 
-export async function POST(request: NextRequest, { params }: { params: { poId: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ poId: string }> }) {
+  const params = await props.params;
   try {
     const session = await getCurrentUser();
     if (!session?.tenantId) {

@@ -7,7 +7,8 @@ import { writeAuditLog } from '@/lib/tenant/audit';
 import { validateRequest } from '@/lib/validations/validate';
 import { updateTenantBrandingSchema } from '@/lib/validations/tenant-admin';
 
-export async function POST(req: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireSuperAdmin(req);
     const tenantId = params.tenantId;

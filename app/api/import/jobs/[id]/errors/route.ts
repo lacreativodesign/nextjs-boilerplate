@@ -20,7 +20,8 @@ function toCsv(errors: Array<Record<string, unknown>>) {
   return `${header}\n${body}`;
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireBulkDataAccess();
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });

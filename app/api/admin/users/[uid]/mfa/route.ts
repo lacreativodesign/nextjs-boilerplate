@@ -6,9 +6,10 @@ import { requireAdminOrSuperAdmin } from '@/app/api/admin/_utils';
 
 export const runtime = 'nodejs';
 
-type Params = { params: { uid: string } };
+type Params = { params: Promise<{ uid: string }> };
 
-export async function GET(req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, props: Params) {
+  const params = await props.params;
   try {
     const access = await requireAdminOrSuperAdmin();
     if (!access.ok) {
@@ -47,7 +48,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, props: Params) {
+  const params = await props.params;
   try {
     const access = await requireAdminOrSuperAdmin();
     if (!access.ok) {

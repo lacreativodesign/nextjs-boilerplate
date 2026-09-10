@@ -58,7 +58,13 @@ const OWNERSHIP_EXEMPT_ROUTES: Record<string, string> = {
 
 /** Document-id expressions that are derived from the request rather than the session. */
 const REQUEST_SOURCED =
-  /\b(body|payload|parsed|validated|input)\b\s*[?.]|searchParams\.get|params\.\w/;
+  // `params.\w` covers both the old sync context and the migrated
+  // `const params = await props.params` form. The awaited alternative is required for the
+  // inline `(await context.params).id` shape the Next 15 async-params migration also emits:
+  // there the character after `params` is `)`, not `.`, so `params\.\w` silently stops
+  // matching and the route drops out of the scan entirely — taking its ownership check with
+  // it. Without this branch the detector goes quiet on exactly the routes it exists to watch.
+  /\b(body|payload|parsed|validated|input)\b\s*[?.]|searchParams\.get|params\.\w|\bawait\s+[\w$.]*\bparams\b/;
 
 /** Recognised tenant-ownership assertions. */
 const OWNERSHIP_ASSERTIONS: RegExp[] = [
@@ -245,5 +251,35 @@ describe('P0-1: lib/tenant/ownership.ts fails closed', () => {
   it('makes the super_admin bypass explicit and opt-in', () => {
     expect(src).toContain('allowSuperAdmin = true');
     expect(src).toContain('if (allowSuperAdmin && isSuperAdminRole(callerRole)) return true;');
+  });
+});
+
+describe('P0-1: the request-sourced detector recognises every params shape in the tree', () => {
+  /**
+   * This detector decides whether a route loads a document by a request-supplied id, which
+   * is what makes an ownership assertion mandatory. If a shape stops matching, the route
+   * silently leaves the scan and its ownership requirement leaves with it — the guard goes
+   * quiet on exactly the routes it exists to watch, and the only visible symptom is an
+   * exemption reported as stale.
+   *
+   * That is not hypothetical: the Next 15 async-params migration introduced the
+   * `(await context.params).id` shape, where the character after `params` is `)` rather
+   * than `.`, and `params\.\w` alone stopped matching it. Both shapes are in the tree now,
+   * so both are pinned here.
+   */
+  const cases: Array<[string, string, boolean]> = [
+    ['sync context params', ' context.params.id', true],
+    ['awaited then destructured (const params = await props.params)', ' params.id', true],
+    ['awaited inline off context', ' (await context.params).id', true],
+    ['awaited inline off props', ' (await props.params).ticketId', true],
+    ['search parameter', " searchParams.get('id')", true],
+    ['request body', ' body.id', true],
+    ['validated payload', ' validated?.id', true],
+    ['session-sourced id is not request-sourced', ' me.tenantId', false],
+    ['a literal id is not request-sourced', " 'fixed-doc-id'", false],
+  ];
+
+  it.each(cases)('%s', (_label, rhs, expected) => {
+    expect(REQUEST_SOURCED.test(rhs)).toBe(expected);
   });
 });

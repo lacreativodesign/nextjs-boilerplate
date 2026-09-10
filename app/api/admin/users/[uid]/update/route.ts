@@ -9,7 +9,8 @@ import { POST as updateUser } from '../../update/route';
  * drift apart. Preserve the legacy URL for callers, but inject the path uid into the
  * canonical payload and execute exactly the same policy.
  */
-export async function POST(req: Request, { params }: { params: { uid: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ uid: string }> }) {
+  const params = await props.params;
   const body = await req.json().catch(() => ({}));
   const headers = new Headers(req.headers);
   headers.set('content-type', 'application/json');

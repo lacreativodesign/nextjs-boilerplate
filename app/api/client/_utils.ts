@@ -65,7 +65,7 @@ async function resolveClientId(uid: string, data: Record<string, any>) {
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('lac_session')?.value;
     if (!sessionCookie) return null;
 

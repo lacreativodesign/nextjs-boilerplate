@@ -24,7 +24,8 @@ function canManageTax(role?: string | null) {
   return normalized === 'finance' || isAdminRole(normalized);
 }
 
-export async function GET(_: Request, { params }: { params: { taxRateId: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ taxRateId: string }> }) {
+  const params = await props.params;
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -46,7 +47,8 @@ export async function GET(_: Request, { params }: { params: { taxRateId: string 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { taxRateId: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ taxRateId: string }> }) {
+  const params = await props.params;
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -120,7 +122,8 @@ export async function PATCH(req: Request, { params }: { params: { taxRateId: str
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { taxRateId: string } }) {
+export async function DELETE(_: Request, props: { params: Promise<{ taxRateId: string }> }) {
+  const params = await props.params;
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

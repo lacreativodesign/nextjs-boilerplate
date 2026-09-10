@@ -32,7 +32,8 @@ const entitySchema = z.enum([
 
 export const runtime = 'nodejs';
 
-export async function POST(request: NextRequest, { params }: { params: { entity: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ entity: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireBulkDataAccess();
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });

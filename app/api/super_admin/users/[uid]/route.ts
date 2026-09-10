@@ -15,7 +15,8 @@ import {
 import { syncUserClaims } from '@/lib/auth/sync-user-claims';
 import { isUserAccessDisabled, syncFirebaseUserAccessState } from '@/lib/auth/user-access-state';
 
-export async function PATCH(req: NextRequest, { params }: { params: { uid: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ uid: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireSuperAdmin(req);
     const uid = params.uid;
