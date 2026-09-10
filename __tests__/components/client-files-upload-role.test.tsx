@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -116,6 +116,22 @@ describe('STOR-2: the client files upload control follows the published Storage 
         'Client file uploads are performed by the client. Super Admin has read access only.',
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it('lets client open the upload drawer, so the path stays live end to end', async () => {
+    // The test above asserts the BUTTON renders. This one clicks it, which is the part
+    // that actually proves role 'client' still reaches the upload path: the drawer that
+    // mounts here carries the file input and the handleUpload trigger, and it is gated a
+    // SECOND time on `!isSuperAdmin`. Asserting the control exists would still pass if
+    // that second gate were inverted; opening it would not.
+    mockRole('client');
+    render(<ClientFilesPage />);
+    await waitFor(() => expect(queryUploadTrigger()).toBeInTheDocument());
+
+    fireEvent.click(queryUploadTrigger() as HTMLElement);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Upload' })).toBeInTheDocument());
+    expect(document.querySelector('input[type="file"]')).not.toBeNull();
   });
 
   it.each(['super_admin', 'client'])('renders the file list for %s', async (role) => {
