@@ -25,6 +25,14 @@ const customJestConfig = {
     // most safety-critical route in the change as entirely untested. Add a route here when
     // it earns a suite of its own, never to move a number.
     'app/api/super_admin/restore/route.ts',
+    // STOR-2 rendered this page under the same rule: __tests__/components/
+    // client-files-upload-role.test.tsx renders ClientFilesPage itself and drives it
+    // through MSW for both roles, so the role gate, the notice, the file list and the
+    // drawer-open path all execute here. Without it the coverage those tests genuinely
+    // produce never reaches coverage/lcov.info, and Sonar scores the one file the change
+    // touches as 0% on new code.
+    'app/client/files/page.tsx',
+
     // Added for the Next 15 async-params migration, on that same rule and no other. Each
     // of these already had a behavioural or security suite that drives its handlers before
     // this PR existed; the migration changed their request-handling signature, so their
