@@ -20,6 +20,7 @@ import * as path from 'path';
 import {
   assertDefaultDatabase,
   assertNoDeletions,
+  describeIndex,
   findKeyCollisions,
   indexKey,
   notReady,
@@ -28,6 +29,7 @@ import {
   reconcile,
   runReconcile,
   sha256,
+  decodeSegment,
 } from '@/scripts/firestore-index-reconcile.mjs';
 import { applyPlan, planDigest } from '@/scripts/firestore-index-apply.mjs';
 
@@ -40,6 +42,8 @@ const D = 'DESCENDING';
 type Field = { fieldPath: string; order?: string; arrayConfig?: string };
 /** Shape the .mjs module returns; TypeScript infers it too loosely across the JS boundary. */
 type Indexish = { collectionGroup: string };
+/** Raw manifest entry, before normalisation. */
+type RawIndex = { collectionGroup: string; queryScope?: string; fields?: Field[] };
 const idx = (collectionGroup: string, fields: Field[], queryScope = 'COLLECTION') => ({
   collectionGroup,
   queryScope,
@@ -241,26 +245,41 @@ describe('this repository’s actual manifest', () => {
     expect(findKeyCollisions(manifest)).toEqual([]);
   });
 
-  it('keeps the two indexes whose __name__ direction is deliberate', () => {
-    // projects(managerId, status) and milestones(projectId, dueDate) both end on an
-    // ASCENDING field but declare __name__ DESCENDING. Those are distinct indexes and
-    // must survive de-duplication rather than being folded into their neighbours.
-    const keys = new Set(manifest.map(indexKey));
-    for (const index of [
-      idx('projects', [
+  it('declares projects(managerId) and milestones(dueDate) once, in the implicit form', () => {
+    // An earlier revision of this suite asserted the OPPOSITE: that these two kept an
+    // explicit `__name__ DESCENDING` because the direction was deliberate. The first
+    // verified production inventory (run 34442383509) falsified that premise — neither
+    // the ascending nor the descending form of either index exists in la-creativo-erp —
+    // and no query asks for them: `managerId` is only ever filtered on `clients` and
+    // `users`, never `projects`, and the milestones read in the gantt route filters
+    // tenantId and projectId without ordering by dueDate at all.
+    //
+    // So the descending variants were dropped as stale rather than kept as deliberate.
+    // The comparison rule they were standing in for — that a CONTRADICTORY `__name__` is
+    // a genuinely different index and must not be folded into its neighbour — is a
+    // property of `indexKey` and is tested directly further up; it does not need a live
+    // manifest entry to demonstrate it.
+    const keys = manifest.map(indexKey);
+    for (const fields of [
+      [
         { fieldPath: 'tenantId', order: A },
         { fieldPath: 'managerId', order: A },
         { fieldPath: 'status', order: A },
-        { fieldPath: '__name__', order: D },
-      ]),
-      idx('milestones', [
+      ],
+      [
         { fieldPath: 'tenantId', order: A },
         { fieldPath: 'projectId', order: A },
         { fieldPath: 'dueDate', order: A },
-        { fieldPath: '__name__', order: D },
-      ]),
+      ],
     ]) {
-      expect(keys.has(indexKey(index))).toBe(true);
+      const collectionGroup = fields[1].fieldPath === 'managerId' ? 'projects' : 'milestones';
+      const implicit = indexKey(idx(collectionGroup, fields));
+      const contradictory = indexKey(
+        idx(collectionGroup, [...fields, { fieldPath: '__name__', order: D }]),
+      );
+
+      expect(keys.filter((key) => key === implicit)).toHaveLength(1);
+      expect(keys).not.toContain(contradictory);
     }
   });
 
@@ -498,5 +517,417 @@ describe('runReconcile — the plan that the approval binds to', () => {
         { log: () => {}, run: () => ({ status: 0, stderr: '' }) },
       ),
     ).toThrow(/does not match the approved digest/);
+  });
+});
+
+/**
+ * Reconciliation against the FIRST VERIFIED PRODUCTION INVENTORY.
+ *
+ * On 2026-09-10 the read-only inventory job ran against la-creativo-erp for the first
+ * time (GitHub Actions run 34442383509) and reported 144 live indexes, 104 already
+ * present, 59 to create and 40 unaccounted for. The forty below are that result, copied
+ * verbatim from the reconciler's own fail-closed output, and they are the reason this
+ * block exists: a manifest that does not describe them can never reach a clean state, and
+ * `assertNoDeletions` refuses every future run until it does.
+ *
+ * Twenty-two of the forty were not missing at all. The manifest declared the same index
+ * with an explicit `__name__ DESCENDING` while the last ordered field was ASCENDING — a
+ * direction Firestore never appends implicitly — so each one simultaneously proposed a
+ * create production did not need and orphaned the live index production actually had.
+ * That is one systematic defect, and it predates this PR: all twenty-six such entries
+ * are present on main.
+ *
+ * These pin the outcome against the real evidence rather than a synthetic example.
+ */
+describe('the verified production inventory of 2026-09-10', () => {
+  /** The 40 live indexes the first real inventory reported as unaccounted for. */
+  const UNACCOUNTED: Array<[string, Field[]]> = [
+    [
+      'taxRates',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isActive', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'recurringInvoiceTemplates',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'frequency', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'hr_performance',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'reviewerId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'recurringInvoiceTemplates',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+        { fieldPath: 'nextRunDate', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'clients',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'salesOwner', order: 'ASCENDING' },
+        { fieldPath: 'createdAt', order: 'DESCENDING' },
+      ],
+    ],
+    [
+      'expenses',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'productionTimeEntries',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'projectId', order: 'ASCENDING' },
+        { fieldPath: 'userId', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'invoices%20',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+        { fieldPath: 'dueDate', order: 'DESCENDING' },
+      ],
+    ],
+    [
+      'invoices',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'dueDate', order: 'ASCENDING' },
+        { fieldPath: 'isPaid', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'webhook_subscriptions',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'createdAt', order: 'DESCENDING' },
+      ],
+    ],
+    [
+      'hr_leaveRequests',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'approverId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'invoices',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'users',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'role', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'production_jobs',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'completedAt', order: 'ASCENDING' },
+        { fieldPath: 'completedBy', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'payments',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'followUps',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+        { fieldPath: 'assignedTo', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'deals',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'assignedTo', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'files',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'payroll',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'billing_invoices',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'createdAt', order: 'DESCENDING' },
+      ],
+    ],
+    [
+      'production_jobs',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'assignedTo', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'invoices',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'projects',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'teamMemberIds', arrayConfig: 'CONTAINS' },
+        { fieldPath: 'createdAt', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'projects',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'assignedTo', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'email_templates',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'updatedAt', order: 'DESCENDING' },
+      ],
+    ],
+    [
+      'followUps',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+        { fieldPath: 'createdBy', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'tasks',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'projectId', order: 'ASCENDING' },
+        { fieldPath: 'assignedTo', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'tasks',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'projectId', order: 'ASCENDING' },
+        { fieldPath: 'dueDate', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'user_invitations',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'invoices',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isRecurring', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'hr_leaveRequests',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+        { fieldPath: 'startDate', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'hr_leaveRequests',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'employeeId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'hr_employees',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'employmentType', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'invoices',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'clientId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'milestones',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'projectId', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'hr_timeEntries',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'projectId', order: 'ASCENDING' },
+        { fieldPath: 'employeeId', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'campaigns',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'isDeleted', order: 'ASCENDING' },
+        { fieldPath: 'createdBy', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'taxRates',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'region', order: 'ASCENDING' },
+        { fieldPath: 'isActive', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'hr_employees',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'department', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+    [
+      'projects',
+      [
+        { fieldPath: 'tenantId', order: 'ASCENDING' },
+        { fieldPath: 'dueDate', order: 'ASCENDING' },
+        { fieldPath: 'status', order: 'ASCENDING' },
+      ],
+    ],
+  ];
+
+  const liveManifest = parseManifest(JSON.parse(read('firestore.indexes.json')));
+
+  /** As gcloud reports them: percent-encoded name segment, implicit __name__ appended. */
+  const asLiveRow = (collectionGroup: string, fields: Field[], i = 0) => {
+    const last = fields[fields.length - 1];
+    return {
+      name:
+        'projects/la-creativo-erp/databases/(default)/collectionGroups/' +
+        collectionGroup +
+        '/indexes/ix' +
+        i,
+      queryScope: 'COLLECTION',
+      state: 'READY',
+      fields: [...fields, { fieldPath: '__name__', order: last.order === D ? D : A }],
+    };
+  };
+
+  it('describes every one of the 40 live indexes that were unaccounted for', () => {
+    const live = parseLiveIndexes(UNACCOUNTED.map(([cg, fields], i) => asLiveRow(cg, fields, i)));
+    const { extra } = reconcile(liveManifest, live);
+
+    // Non-zero here means the next owner inventory fails closed again, naming these.
+    expect(extra.map((index: Indexish) => describeIndex(index))).toEqual([]);
+  });
+
+  it('declares no index whose __name__ contradicts the direction Firestore appends', () => {
+    // The defect class that produced 22 of the 40. An explicit __name__ is only
+    // meaningful when it DIFFERS from the implicit one, and every entry that differed
+    // described an index production does not have and no query asks for.
+    const raw = JSON.parse(read('firestore.indexes.json')).indexes as RawIndex[];
+    const offenders = raw
+      .filter((index) => {
+        const fields = index.fields || [];
+        const named = fields.find((f) => f.fieldPath === '__name__');
+        if (!named) return false;
+        const rest = fields.filter((f) => f.fieldPath !== '__name__');
+        const last = rest[rest.length - 1];
+        const implicit = (last && (last.order || last.arrayConfig)) === D ? D : A;
+        return named.order !== implicit;
+      })
+      .map(
+        (index) =>
+          index.collectionGroup + ': ' + (index.fields || []).map((f) => f.fieldPath).join(', '),
+      );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('reads a percent-encoded collection group as the id it actually encodes', () => {
+    // Production contains `collectionGroups/invoices%20` — a collection group whose id
+    // ends in a space. Compared without decoding it is the literal string "invoices%20",
+    // matches nothing, and stays unaccounted for permanently.
+    const [row] = parseLiveIndexes([
+      asLiveRow('invoices%20', [
+        { fieldPath: 'tenantId', order: A },
+        { fieldPath: 'status', order: A },
+        { fieldPath: 'dueDate', order: D },
+      ]),
+    ]);
+
+    expect(row.collectionGroup).toBe('invoices ');
+    expect(row.collectionGroup).not.toBe('invoices');
+  });
+
+  it('leaves an undecodable name alone instead of throwing on the whole inventory', () => {
+    // decodeURIComponent raises URIError on a stray '%'. A live inventory is not
+    // something to crash on: the name compares as itself and reports unaccounted, which
+    // is fail-closed rather than a lost run.
+    expect(decodeSegment('100%')).toBe('100%');
+    expect(decodeSegment('invoices')).toBe('invoices');
+  });
+
+  it('keeps the default-database pin working through decoding', () => {
+    const live = parseLiveIndexes([asLiveRow('invoices', [{ fieldPath: 'tenantId', order: A }])]);
+    expect(live[0].database).toBe('(default)');
+    expect(() => assertDefaultDatabase(live)).not.toThrow();
   });
 });

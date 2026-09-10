@@ -131,6 +131,31 @@ export function parseManifest(manifest) {
 }
 
 /**
+ * A resource-name path segment, decoded.
+ *
+ * Firestore resource names percent-encode each segment, and the Admin API's index
+ * resource carries no separate `collectionGroup` field — so the collection group has to
+ * be read out of the name, and reading it without decoding is only correct for names
+ * made of unreserved characters. The 2026-09-10 production inventory contains
+ * `collectionGroups/invoices%20`, i.e. a collection group whose id ends in a SPACE. Left
+ * encoded, it compares as the literal seven-character string `invoices%20` and can never
+ * match a manifest entry spelling the real id, so the index is permanently unaccounted
+ * for and the reconciler can never reach a clean state.
+ *
+ * Malformed input is returned unchanged rather than throwing: `decodeURIComponent` raises
+ * URIError on a stray `%`, and a live inventory is not something to crash on — an
+ * undecodable name still compares as itself and simply reports as unaccounted, which is
+ * the fail-closed outcome.
+ */
+export function decodeSegment(segment) {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+/**
  * Live indexes as `gcloud firestore indexes composite list --format=json` reports
  * them. Unlike firebase-tools, gcloud does NOT strip `__name__`; `indexKey` does.
  *
@@ -142,8 +167,8 @@ export function parseLiveIndexes(live) {
   return rows.map((index) => {
     const match = /databases\/([^/]+)\/collectionGroups\/([^/]+)\/indexes\//.exec(index.name || '');
     return {
-      collectionGroup: index.collectionGroup || (match ? match[2] : ''),
-      database: match ? match[1] : '',
+      collectionGroup: index.collectionGroup || (match ? decodeSegment(match[2]) : ''),
+      database: match ? decodeSegment(match[1]) : '',
       queryScope: index.queryScope || 'COLLECTION',
       fields: index.fields || [],
       state: index.state || '',
