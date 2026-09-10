@@ -1,9 +1,11 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 
-export default function SalesManagerDealDetailPage({ params }: { params: { id: string } }) {
+export default function SalesManagerDealDetailPage() {
+  const params = useParams<{ id: string }>();
   const [deal, setDeal] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
 

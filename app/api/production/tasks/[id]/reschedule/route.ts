@@ -31,7 +31,8 @@ function dayDelta(fromIso: string, toIso: string) {
   return Math.round((new Date(toIso).getTime() - new Date(fromIso).getTime()) / DAY_MS);
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const me = await getCurrentUser();
     if (!me?.tenantId)

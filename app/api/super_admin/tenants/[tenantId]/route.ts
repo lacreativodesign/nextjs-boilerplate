@@ -11,7 +11,8 @@ import { isCompExpired, resolveBillingMode, type CompedGrant } from '@/lib/billi
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   try {
     await requireSuperAdmin(req);
     const tenantId = params.tenantId;
@@ -61,7 +62,8 @@ export async function GET(req: NextRequest, { params }: { params: { tenantId: st
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireSuperAdmin(req);
     const tenantId = params.tenantId;

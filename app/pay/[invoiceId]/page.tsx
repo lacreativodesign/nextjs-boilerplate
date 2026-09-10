@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 
@@ -92,7 +93,8 @@ function dateValue(input?: string | null) {
   return d.toLocaleDateString();
 }
 
-export default function PublicInvoicePaymentPage({ params }: { params: { invoiceId: string } }) {
+export default function PublicInvoicePaymentPage() {
+  const params = useParams<{ invoiceId: string }>();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);

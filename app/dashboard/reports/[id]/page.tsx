@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
@@ -16,7 +17,8 @@ const ReportViewer = dynamic(
   },
 );
 
-export default function ReportDetailPage({ params }: { params: { id: string } }) {
+export default function ReportDetailPage() {
+  const params = useParams<{ id: string }>();
   const [report, setReport] = useState<Report | null>(null);
   const [data, setData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);

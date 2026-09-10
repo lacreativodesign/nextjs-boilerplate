@@ -41,7 +41,8 @@ const canAccessReport = (report: Report, userId: string) => {
   return false;
 };
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await getCurrentUserOrThrow(request);
     const tenantId = await getTenantIdForRequestOrThrow(request);

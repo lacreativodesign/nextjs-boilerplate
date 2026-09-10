@@ -4,7 +4,8 @@ import { canAccessReport, getCustomReportOrThrow, requireReportsUser } from '../
 
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { user, tenantId } = await requireReportsUser(request);
     const report = await getCustomReportOrThrow(tenantId, params.id);

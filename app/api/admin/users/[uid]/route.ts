@@ -4,7 +4,8 @@ import { getCurrentUser } from '../../_utils';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: Request, { params }: { params: { uid: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ uid: string }> }) {
+  const params = await props.params;
   try {
     const current = await getCurrentUser();
 

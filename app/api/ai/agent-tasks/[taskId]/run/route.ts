@@ -38,9 +38,10 @@ Rules:
 - Keep the summary under 300 words.
 - Use plain English, no jargon.`;
 
-export async function POST(_req: NextRequest, { params }: { params: { taskId: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ taskId: string }> }) {
+  const params = await props.params;
   try {
-    const user = await getCurrentUser({ cookies: cookies() });
+    const user = await getCurrentUser({ cookies: await cookies() });
     if (!user || !ALLOWED_ROLES.has(user.role)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
