@@ -14,6 +14,7 @@
  * property rather than a claim.
  */
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import {
@@ -25,7 +26,10 @@ import {
   parseLiveIndexes,
   parseManifest,
   reconcile,
+  runReconcile,
+  sha256,
 } from '@/scripts/firestore-index-reconcile.mjs';
+import { applyPlan, planDigest } from '@/scripts/firestore-index-apply.mjs';
 
 const read = (relative: string): string =>
   fs.readFileSync(path.join(process.cwd(), relative), 'utf8');
@@ -291,5 +295,208 @@ describe('this repository’s actual manifest', () => {
     const service = read('lib/activity/activity-service.ts');
     expect(service).toContain("PRESENCE_COLLECTION = 'activity_presence'");
     expect(manifest.some((i) => i.collectionGroup === 'activity_presence')).toBe(true);
+  });
+});
+
+/**
+ * The CLI orchestration, which the tests above deliberately did not reach.
+ *
+ * Everything above exercises the pure comparison functions. `runReconcile` is the
+ * function that actually WRITES `create-plan.json`, and the whole approval model rests
+ * on what it puts there: the deploy job binds its write to this file's digest, and
+ * `firestore-index-apply.mjs` re-validates the contents before spawning anything. Two
+ * properties in particular were untested and are the reason this block exists.
+ *
+ * The first is an ORDERING property. `assertNoDeletions` is called before the plan is
+ * written, so a run that must fail closed leaves no plan behind at all. If those two
+ * steps were ever swapped, a reconciliation that should have stopped would still have
+ * produced an approvable artifact — the failure would be recorded, but the plan would
+ * exist and could be fed to the applier. Asserting the throw is not enough; the absence
+ * of the file is the property.
+ *
+ * The second is the CROSS-SCRIPT DIGEST SEAM. The workflow computes the approved digest
+ * by hashing the plan file's bytes, while the applier hashes the string it reads back.
+ * Those are two independent implementations of "the same plan", and if they ever
+ * disagreed the binding in property E would be vacuous — the deploy would either fail
+ * on every run or, worse, compare two things that are never equal and be dropped. So
+ * the round trip is driven here end to end rather than assumed.
+ */
+describe('runReconcile — the plan that the approval binds to', () => {
+  const tmp = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'firestore-index-reconcile-'));
+
+  /** A manifest and live inventory written to disk, as the workflow supplies them. */
+  const scenario = (manifestIndexes: unknown[], liveRows: unknown[]) => {
+    const dir = tmp();
+    const manifestPath = path.join(dir, 'firestore.indexes.json');
+    const livePath = path.join(dir, 'live-indexes.json');
+    const planPath = path.join(dir, 'create-plan.json');
+    fs.writeFileSync(manifestPath, `${JSON.stringify({ indexes: manifestIndexes }, null, 2)}\n`);
+    fs.writeFileSync(livePath, JSON.stringify(liveRows, null, 2));
+    return { dir, manifestPath, livePath, planPath };
+  };
+
+  const argv = (s: ReturnType<typeof scenario>): string[] => [
+    '--manifest',
+    s.manifestPath,
+    '--live',
+    s.livePath,
+    '--project',
+    'la-creativo-erp',
+    '--plan',
+    s.planPath,
+  ];
+
+  const silent = { log: () => {}, error: () => {} };
+
+  const LEADS = idx('leads', [
+    { fieldPath: 'tenantId', order: A },
+    { fieldPath: 'createdAt', order: D },
+  ]);
+  const PROJECTS = idx('projects', [
+    { fieldPath: 'tenantId', order: A },
+    { fieldPath: 'status', order: A },
+  ]);
+
+  it('requires the live inventory and the project, rather than defaulting them', () => {
+    // A default here would mean reconciling against nothing, which reads as
+    // "everything is missing" — the most destructive possible starting point.
+    expect(() => runReconcile(['--project', 'la-creativo-erp'], silent)).toThrow(/--live/);
+    expect(() => runReconcile(['--live', 'x.json'], silent)).toThrow(/--project/);
+  });
+
+  it('writes a plan containing ONLY the indexes that are missing', () => {
+    const s = scenario(
+      [LEADS, PROJECTS],
+      [
+        liveIdx('leads', [
+          { fieldPath: 'tenantId', order: A },
+          { fieldPath: 'createdAt', order: D },
+        ]),
+      ],
+    );
+
+    runReconcile(argv(s), silent);
+    const plan = JSON.parse(fs.readFileSync(s.planPath, 'utf8'));
+
+    // `leads` is already live; only `projects` may be created.
+    expect(plan.indexes).toHaveLength(1);
+    expect(plan.indexes[0].collectionGroup).toBe('projects');
+  });
+
+  it('ties the plan to the exact manifest bytes it was computed from', () => {
+    const s = scenario([LEADS], []);
+    runReconcile(argv(s), silent);
+    const plan = JSON.parse(fs.readFileSync(s.planPath, 'utf8'));
+
+    // An approval must not be transferable to a different manifest.
+    expect(plan.manifestSha256).toBe(sha256(fs.readFileSync(s.manifestPath)));
+  });
+
+  it('names the target explicitly, so the applier can refuse a foreign plan', () => {
+    const s = scenario([LEADS], []);
+    runReconcile(argv(s), silent);
+    const plan = JSON.parse(fs.readFileSync(s.planPath, 'utf8'));
+
+    expect(plan.project).toBe('la-creativo-erp');
+    expect(plan.database).toBe('(default)');
+  });
+
+  it('writes NO plan at all when a live index is unaccounted for', () => {
+    // The ordering property: fail closed before the artifact exists, not after.
+    // A plan written and then abandoned is still a plan someone can approve.
+    const s = scenario(
+      [LEADS],
+      [
+        liveIdx('leads', [
+          { fieldPath: 'tenantId', order: A },
+          { fieldPath: 'createdAt', order: D },
+        ]),
+        liveIdx('secrets', [{ fieldPath: 'ownerId', order: A }]),
+      ],
+    );
+
+    expect(() => runReconcile(argv(s), silent)).toThrow(/Refusing to proceed/);
+    expect(fs.existsSync(s.planPath)).toBe(false);
+  });
+
+  it('refuses before writing a plan when a foreign database appears', () => {
+    const s = scenario([LEADS], []);
+    fs.writeFileSync(
+      s.livePath,
+      JSON.stringify([
+        {
+          name: 'projects/p/databases/analytics/collectionGroups/leads/indexes/ix1',
+          queryScope: 'COLLECTION',
+          state: 'READY',
+          fields: [{ fieldPath: 'tenantId', order: A }],
+        },
+      ]),
+    );
+
+    expect(() => runReconcile(argv(s), silent)).toThrow(/database other than/);
+    expect(fs.existsSync(s.planPath)).toBe(false);
+  });
+
+  it('produces a plan the applier accepts, digest and all, without a shell', () => {
+    // The seam between the two scripts. The workflow hashes the plan FILE; the applier
+    // hashes the string it reads back. This drives that exact round trip so the two
+    // cannot silently diverge and leave the approval binding comparing nothing.
+    const s = scenario([LEADS, PROJECTS], []);
+    runReconcile(argv(s), silent);
+
+    const bytes = fs.readFileSync(s.planPath);
+    const workflowDigest = sha256(bytes); // what the inventory job publishes
+    const serialized = fs.readFileSync(s.planPath, 'utf8');
+    expect(planDigest(serialized)).toBe(workflowDigest);
+
+    const spawned: string[][] = [];
+    const result = applyPlan(
+      serialized,
+      { project: 'la-creativo-erp', database: '(default)', expectDigest: workflowDigest },
+      {
+        log: () => {},
+        run: (_cmd: string, args: string[]) => {
+          spawned.push(args);
+          return { status: 0, stderr: '' };
+        },
+      },
+    );
+
+    expect(result.created).toBe(2);
+    // Every spawned command creates; none can delete, and the target is fixed.
+    for (const args of spawned) {
+      expect(args.slice(0, 4)).toEqual(['firestore', 'indexes', 'composite', 'create']);
+      expect(args).toContain('--project=la-creativo-erp');
+      expect(args).toContain('--database=(default)');
+      expect(args.filter((a) => a.startsWith('--project='))).toHaveLength(1);
+    }
+  });
+
+  it('fails the applier when the plan is regenerated differently after approval', () => {
+    // Property E, driven through both scripts: approve one plan, then let live state
+    // change so the reconciler produces a different one. The write must not proceed.
+    const s = scenario([LEADS, PROJECTS], []);
+    runReconcile(argv(s), silent);
+    const approvedDigest = sha256(fs.readFileSync(s.planPath));
+
+    // Someone creates `leads` by hand between the approval and the deploy.
+    fs.writeFileSync(
+      s.livePath,
+      JSON.stringify([
+        liveIdx('leads', [
+          { fieldPath: 'tenantId', order: A },
+          { fieldPath: 'createdAt', order: D },
+        ]),
+      ]),
+    );
+    runReconcile(argv(s), silent);
+
+    expect(() =>
+      applyPlan(
+        fs.readFileSync(s.planPath, 'utf8'),
+        { project: 'la-creativo-erp', database: '(default)', expectDigest: approvedDigest },
+        { log: () => {}, run: () => ({ status: 0, stderr: '' }) },
+      ),
+    ).toThrow(/does not match the approved digest/);
   });
 });

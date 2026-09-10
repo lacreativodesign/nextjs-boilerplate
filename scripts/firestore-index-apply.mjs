@@ -177,7 +177,12 @@ export function applyPlan(serializedPlan, target, io = {}) {
   const log = io.log || console.log;
 
   const digest = planDigest(serializedPlan);
-  if (target.expectDigest && target.expectDigest !== digest) {
+  // `!== undefined`, not a truthiness test: an approved digest that arrives EMPTY is a
+  // broken binding, not an absent one. A workflow output that failed to render would
+  // otherwise disable the one control that ties this write to what the owner approved,
+  // and it would do it silently. Absent (undefined) still means "caller is validating
+  // something else"; blank means "the binding is broken" and must stop.
+  if (target.expectDigest !== undefined && target.expectDigest !== digest) {
     // The plan the owner approved is not the plan about to run. Refuse rather than
     // apply something nobody looked at.
     throw new Error(
@@ -227,10 +232,20 @@ if (invokedDirectly) {
   try {
     const argv = process.argv.slice(2);
     const planPath = arg(argv, 'plan') || 'create-plan.json';
+    const expectDigest = arg(argv, 'expect-digest');
+    // Required on the CLI, which is the only path that reaches a live project. The
+    // library entry point above still allows an absent digest so the unit suite can
+    // exercise plan validation on its own, but nothing writes to Firestore without
+    // naming the plan the owner approved.
+    if (!/^[0-9a-f]{64}$/.test(expectDigest || '')) {
+      throw new Error(
+        '--expect-digest <sha256> is required: a create must be bound to the approved plan.',
+      );
+    }
     applyPlan(readFileSync(planPath, 'utf8'), {
       project: arg(argv, 'project') || ALLOWED_PROJECT,
       database: arg(argv, 'database') || ALLOWED_DATABASE,
-      expectDigest: arg(argv, 'expect-digest'),
+      expectDigest,
     });
   } catch (err) {
     console.error(`\nIndex apply failed.\n  ${err.message}`);

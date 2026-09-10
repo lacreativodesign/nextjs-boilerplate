@@ -7,7 +7,9 @@
  * production project, so a regression here surfaces as a deleted index rather than
  * as a red build.
  */
+import { spawnSync } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import {
@@ -323,6 +325,22 @@ describe('the apply plan is a validated schema, not a command line', () => {
     ).toThrow(/does not match the approved digest/);
   });
 
+  it('treats an EMPTY approved digest as a broken binding, not as no binding', () => {
+    // The failure mode this closes: a workflow output that does not render arrives as
+    // '' rather than being absent. Under a truthiness test that reads as "nothing to
+    // check" and the write proceeds unbound — silently, which is the worst version of
+    // it. The only control tying this create to what the owner approved must not be
+    // switchable off by an empty string.
+    const serialized = plan([definition()]);
+    expect(() =>
+      applyPlan(
+        serialized,
+        { ...target, expectDigest: '' },
+        { run: () => ({ status: 0 }), log: () => {} },
+      ),
+    ).toThrow(/does not match the approved digest/);
+  });
+
   it('runs when the digest matches the approved one', () => {
     const serialized = plan([definition()]);
     const digest = planDigest(serialized);
@@ -357,5 +375,83 @@ describe('the apply plan is a validated schema, not a command line', () => {
       log: () => {},
     });
     expect(result.created).toBe(0);
+  });
+});
+
+/**
+ * The command-line entry point, driven as a real process.
+ *
+ * Everything above imports `applyPlan` directly, which is the right way to test the
+ * validation rules but skips the argument handling that stands between a workflow step
+ * and a live project. The production path is `node scripts/firestore-index-apply.mjs`,
+ * and the property that matters there is that it cannot be run unbound: without a
+ * well-formed `--expect-digest` there is nothing tying the create to the plan the owner
+ * read, so the entry point refuses rather than defaulting to "no expectation".
+ */
+describe('the apply CLI cannot write unbound to an approved plan', () => {
+  const script = path.join(process.cwd(), 'scripts', 'firestore-index-apply.mjs');
+
+  const withPlanFile = (body: (planPath: string) => void): void => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'firestore-index-apply-'));
+    const planPath = path.join(dir, 'create-plan.json');
+    fs.writeFileSync(
+      planPath,
+      `${JSON.stringify(
+        {
+          project: ALLOWED_PROJECT,
+          database: ALLOWED_DATABASE,
+          manifestSha256: 'a'.repeat(64),
+          // Inlined rather than reusing the helper above: that one is scoped to its own
+          // describe, and this block deliberately shares nothing with the in-process tests.
+          indexes: [
+            {
+              collectionGroup: 'leads',
+              queryScope: 'COLLECTION',
+              fields: [{ fieldPath: 'tenantId', order: 'ASCENDING' }],
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    body(planPath);
+  };
+
+  const run = (args: string[]) =>
+    spawnSync(process.execPath, [script, ...args], { encoding: 'utf8' });
+
+  it('refuses to run with no --expect-digest at all', () => {
+    withPlanFile((planPath) => {
+      const result = run(['--plan', planPath]);
+      expect(result.status).not.toBe(0);
+      expect(`${result.stderr}${result.stdout}`).toMatch(/--expect-digest .* is required/);
+    });
+  });
+
+  it('refuses an empty --expect-digest', () => {
+    withPlanFile((planPath) => {
+      const result = run(['--plan', planPath, '--expect-digest', '']);
+      expect(result.status).not.toBe(0);
+      expect(`${result.stderr}${result.stdout}`).toMatch(/--expect-digest .* is required/);
+    });
+  });
+
+  it('refuses a malformed --expect-digest rather than comparing it', () => {
+    withPlanFile((planPath) => {
+      const result = run(['--plan', planPath, '--expect-digest', 'not-a-sha']);
+      expect(result.status).not.toBe(0);
+      expect(`${result.stderr}${result.stdout}`).toMatch(/--expect-digest .* is required/);
+    });
+  });
+
+  it('gets past the binding check with a well-formed digest, and fails on the mismatch', () => {
+    // Proves the guard above is about the ARGUMENT being present and well-formed, and
+    // that a real digest still goes on to be compared rather than waved through.
+    withPlanFile((planPath) => {
+      const result = run(['--plan', planPath, '--expect-digest', 'b'.repeat(64)]);
+      expect(result.status).not.toBe(0);
+      expect(`${result.stderr}${result.stdout}`).toMatch(/does not match the approved digest/);
+    });
   });
 });
