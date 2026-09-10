@@ -17,6 +17,11 @@ const customJestConfig = {
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
     '!lib/**/*.d.ts',
+    // The demo password policy is `.mjs` so that plain `node scripts/verify-golden-tenant-
+    // signin.mjs` and the two TypeScript consumers can all import the SAME rule; the glob
+    // above only takes .ts/.tsx, and Sonar analyses `lib/` either way, so without this the
+    // one file that decides how a credential is read would report as untested.
+    'lib/**/*.mjs',
     // `app/` is not instrumented as a whole: most route files have no suite, and pulling
     // all of them in would report a global number that says nothing about what is tested.
     // This route is the exception — PR5 rewrote it and added a behavioural suite that
@@ -214,6 +219,22 @@ const customJestConfig = {
     'app/api/performance/targets/[targetId]/route.ts',
     'app/api/search/saved/[id]/route.ts',
     'app/api/admin/jobs/[id]/retry/route.ts',
+
+    // Same exception, same reason: PR6 rewrote both Super Admin demo endpoints and added a
+    // behavioural suite that drives each one end to end through the shared handler
+    // (__tests__/api/pr6-demo-route-contract) — including the path where authorization fails
+    // and no tenant data may be touched. That coverage is real; without these entries it never
+    // reaches coverage/lcov.info and Sonar scores a destructive endpoint as entirely untested.
+    'app/api/super_admin/demo/_handler.ts',
+    'app/api/super_admin/demo/seed/route.ts',
+    'app/api/super_admin/demo/reset/route.ts',
+    // `scripts/` is likewise not instrumented as a whole. This one is the exception
+    // because it decides whether a certification run may proceed, and it has a
+    // behavioural suite of its own (__tests__/ci/pr6-golden-tenant-precondition) that
+    // drives every branch including the ones that must not print the password. Unlike
+    // the routes above this is for the local gate only: `scripts/` is outside
+    // sonar.sources, so Sonar neither sees the file nor scores it.
+    'scripts/verify-golden-tenant-signin.mjs',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],

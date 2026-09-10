@@ -6,8 +6,8 @@
  *   - BASE_URL            deployment URL (read by playwright.config.ts)
  *   - E2E_DEMO_PASSWORD   shared password for the demo_* accounts
  *
- * Without E2E_DEMO_PASSWORD the helper calls test.skip(), so the suite degrades
- * gracefully (e.g. when the GitHub secret is missing). Run with:
+ * Missing credentials are a hard failure. A skipped authenticated suite must
+ * never be presented as launch-readiness evidence. Run with:
  *   npm run test:smoke
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -34,9 +34,7 @@ const ROLE_PAGES: Record<SmokeRole, string[]> = {
 const ERROR_TEXT = /Unable to load|Something went wrong|Server error|CSRF validation failed/i;
 
 async function assertNoErrorBanner(page: Page): Promise<void> {
-  // Soft text check — generous, resilient to copy differences.
   await expect(page.getByText(ERROR_TEXT), 'no error-banner text').toHaveCount(0);
-  // Any alert region carrying one of those error messages.
   await expect(
     page.locator('[role="alert"]').filter({ hasText: ERROR_TEXT }),
     'no error alert region',
@@ -48,7 +46,6 @@ for (const role of Object.keys(ROLE_PAGES) as SmokeRole[]) {
     test(`logs in and loads ${role} pages without errors`, async ({ page }) => {
       await loginAs(page, role);
 
-      // 1. Landed somewhere authenticated (not /login) within this role's area.
       const landing = ROLE_LANDING[role];
       const pathname = new URL(page.url()).pathname;
       expect(pathname, 'should not be on /login after auth').not.toMatch(/\/login$/);
@@ -57,7 +54,6 @@ for (const role of Object.keys(ROLE_PAGES) as SmokeRole[]) {
         `should land on ${landing} area, got ${pathname}`,
       ).toBeTruthy();
 
-      // 2. Load this role's key pages — no 4xx/5xx, no error banner.
       for (const href of ROLE_PAGES[role]) {
         const response = await page.goto(href);
         const status = response?.status() ?? 0;

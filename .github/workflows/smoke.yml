@@ -1,18 +1,61 @@
-name: E2E Smoke (per-role)
+name: E2E Smoke (per-role + golden tenant)
 
-# Manual-first to avoid noise. Runs the per-role smoke suite against a deployment.
-# Requires repo secrets:
-#   E2E_BASE_URL        deployment URL to test against (e.g. https://app.example.com)
-#   E2E_DEMO_PASSWORD   shared password for the seeded demo_* accounts
-# When E2E_DEMO_PASSWORD is missing the tests skip gracefully (see e2e/helpers/auth.ts).
+# Manual deployment certification suite. This workflow already exists on main,
+# so it can be dispatched against a PR ref before merge. Missing credentials are
+# a hard failure: skipped authenticated tests must never be launch evidence.
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # A fully-failing suite needs 13 tests x 3 attempts (2 retries) x Playwright's
+    # 30s per-test timeout ~= 20 min of test time alone, so a 20 min budget killed
+    # the job before it could report. The gate must be able to report a failure,
+    # not only time out.
+    timeout-minutes: 30
+    env:
+      BASE_URL: ${{ secrets.E2E_BASE_URL }}
+      E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+      # Only needed while the target sits behind Vercel Deployment Protection.
+      # A custom-domain target is exempt and needs no bypass.
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      # Certification names an exact SHA, and E2E_BASE_URL may be a branch alias that
+      # re-points at whatever deployed last. The deployment is asked which commit it is
+      # serving, and the run stops if it is not this one.
+      EXPECTED_COMMIT_SHA: ${{ github.sha }}
+
     steps:
+      - name: Verify E2E configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BASE_URL" || { echo "E2E_BASE_URL is required"; exit 1; }
+          test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
+          # The password is used exactly as configured, so surrounding whitespace is a
+          # configuration error rather than something to silently absorb. Catching it here
+          # costs nothing: the same rule runs in lib/demo/password-policy.mjs, but only
+          # after ~3 minutes of checkout and install, and after a wasted sign-in attempt.
+          # The value is compared, never printed.
+          leading_stripped="${E2E_DEMO_PASSWORD#"${E2E_DEMO_PASSWORD%%[![:space:]]*}"}"
+          trimmed="${leading_stripped%"${leading_stripped##*[![:space:]]}"}"
+          if [ "$E2E_DEMO_PASSWORD" != "$trimmed" ]; then
+            echo "E2E_DEMO_PASSWORD has leading or trailing whitespace. Re-enter it with no"
+            echo "surrounding spaces and no trailing newline, in the GitHub Actions secret"
+            echo "and in the deployment environment, from the same source."
+            exit 1
+          fi
+          case "$BASE_URL" in
+            https://*) ;;
+            *) echo "E2E_BASE_URL must use https://"; exit 1 ;;
+          esac
+
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -22,19 +65,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright (chromium)
+      - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run smoke suite
+      # Seeding here is what removes the drift this gate kept tripping over. The demo
+      # accounts are rotated to the SAME `E2E_DEMO_PASSWORD` the browser is about to type,
+      # into the SAME Firebase project the deployment just told us it reads — so neither
+      # copy of the secret nor the project can be the odd one out. The tenant is fixed to
+      # `bizosto-demo` inside lib/demo/seed.ts, and the seeder aborts if the credentials
+      # point at a project other than the one resolved below.
+      - name: Rebuild the golden tenant fixture
+        shell: bash
         env:
-          BASE_URL: ${{ secrets.E2E_BASE_URL }}
-          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
-        run: npx playwright test e2e/smoke
+          # Scoped to this step rather than the job: it is the only step that needs
+          # Firebase admin rights, and `npm ci`, the browser install and the Playwright
+          # run have no business seeing a service account key.
+          FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FIREBASE_ADMIN_KEY:-}" ]; then
+            echo "FIREBASE_ADMIN_KEY is not configured, so this run cannot rebuild the"
+            echo "golden tenant. It will still certify, but a stale demo credential will"
+            echo "be reported rather than repaired. Add the deployment's service account"
+            echo "as an Actions secret to make this gate self-sufficient."
+            exit 0
+          fi
+          DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs --print-project)"
+          export DEMO_FIREBASE_PROJECT_ID
+          echo "Seeding bizosto-demo into the project the deployment serves: $DEMO_FIREBASE_PROJECT_ID"
+          npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts --reset
+
+      # A wrong credential used to cost twenty minutes and end in "Incorrect password",
+      # which is also what Firebase says when the account does not exist. This asks the
+      # deployment which Firebase project it serves and signs one demo account in against
+      # it, so the whole chain — this URL, this project, this account, this password — is
+      # either proven in seconds or reported with the real reason. The suite still performs
+      # every browser login itself; nothing here substitutes for one.
+      - name: Verify the golden tenant credential against the deployment
+        run: node scripts/verify-golden-tenant-signin.mjs
+
+      - name: Run golden tenant and per-role suites
+        run: npx playwright test e2e/golden e2e/smoke
 
       - name: Upload report
-        if: ${{ !cancelled() }}
+        # `always()`, not `!cancelled()`: a job timeout is reported as cancelled, so
+        # `!cancelled()` dropped the report in exactly the run that needed it most.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 7
+          retention-days: 14

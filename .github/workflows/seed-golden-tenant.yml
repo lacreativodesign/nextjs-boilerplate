@@ -1,0 +1,88 @@
+name: Seed Golden Tenant
+
+# Rebuilds the `bizosto-demo` fixture and rotates its ten demo Auth accounts to the
+# password THIS repository holds.
+#
+# WHY IT IS A WORKFLOW AND NOT A BUTTON
+#
+# The Golden Tenant gate needs the ten demo accounts to carry the same password the
+# Playwright run types. That password used to live in two stores kept in step by hand —
+# the deployment's server environment, which the Super Admin reset button reads, and this
+# repository's `E2E_DEMO_PASSWORD`, which the browser types. Nothing checked they agreed,
+# and when they drifted the gate failed all thirteen tests with "Incorrect password".
+#
+# Seeding from the same secret store the suite reads removes the drift rather than
+# documenting it: there is now one copy of the password that decides the outcome, and it
+# is the one the tests use.
+#
+# SAFETY
+#
+# `--reset` deletes every `bizosto-demo` document in nine collections. The demo tenant
+# shares its Firebase project with real tenants, so two bounds apply and both fail closed:
+#
+#   - the tenant is fixed to `bizosto-demo` inside lib/demo/seed.ts, not passed in;
+#   - the operator must name the Firebase project, and the run aborts before touching
+#     anything if `FIREBASE_ADMIN_KEY` points at a different one.
+#
+# Dispatch requires write access to the repository. No secret value is printed: the seeder
+# reports accounts and counts, never the password.
+
+on:
+  workflow_dispatch:
+    inputs:
+      firebase_project_id:
+        description: 'Firebase project this seed may write to (must match FIREBASE_ADMIN_KEY)'
+        required: true
+        type: string
+      reset:
+        description: 'Delete the bizosto-demo fixture before re-seeding it'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+# One rebuild at a time. Two concurrent resets would race each other's deletes and
+# re-seeds and could leave the fixture half-built.
+concurrency:
+  group: seed-golden-tenant
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
+      E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+      DEMO_FIREBASE_PROJECT_ID: ${{ inputs.firebase_project_id }}
+
+    steps:
+      - name: Verify seed configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_ADMIN_KEY" || {
+            echo "FIREBASE_ADMIN_KEY is required. Add the same service account the deployment uses."
+            exit 1
+          }
+          test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
+          # The seeder rejects anything shorter; say so here rather than after a checkout.
+          test "${#E2E_DEMO_PASSWORD}" -ge 16 || {
+            echo "E2E_DEMO_PASSWORD must be at least 16 characters"
+            exit 1
+          }
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild the golden tenant
+        run: npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts ${{ inputs.reset && '--reset' || '' }}

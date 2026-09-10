@@ -53,3 +53,10 @@ firestore-debug.log
 database-debug.log
 pubsub-debug.log
 ui-debug.log
+
+# Playwright output
+playwright-report/
+test-results/
+
+# Playwright deployment-protection bypass state
+e2e/.auth/
