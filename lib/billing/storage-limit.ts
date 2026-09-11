@@ -1,6 +1,6 @@
 import { AggregateField } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { normalizePlan, type PlanTier } from '@/lib/tenant/plan-access';
+import { type PlanTier } from '@/lib/tenant/plan-access';
 import { plans, normalizePlanKey } from '@/lib/billing/plans';
 
 /**
@@ -11,15 +11,44 @@ import { plans, normalizePlanKey } from '@/lib/billing/plans';
  * That is both a revenue leak (storage is a paid dimension of the plan) and an uncapped
  * cost: every byte lives in the Firebase Storage bucket and is billed to Bizosto.
  *
- * Usage is the sum of the `size` field across the tenant's live file records:
- *   - `files`             (project deliverables, AM files, client uploads)
- *   - `employeeDocuments` (HR documents)
+ * PR4 completes that accounting. Usage is the sum of every LIVE metadata record that
+ * stands for a distinct physical object in the bucket:
+ *
+ *   - `files`               project/AM/production deliverables and client uploads (`size`)
+ *   - `employeeDocuments`   HR documents (`size`)
+ *   - `erp_file_versions`   the chunked managed-file store (`size`)
+ *   - `documents`           the general document library (`fileSize`)
+ *
+ * Two of those were previously unmetered, and both were real quota bypasses:
+ *
+ *   PR4-A. `documents` was never counted and /api/documents/upload never checked the
+ *   limit, so every byte stored through the document library — the live upload path
+ *   behind the UI — was free.
+ *
+ *   PR4-B. The managed-file store was counted off `erp_files.size`, which only ever
+ *   holds the CURRENT version's size. FileManager.storeVersion() writes a NEW physical
+ *   object per version (`.../v{n}-{ts}-{name}`) and never removes the old one — indeed
+ *   restoreVersion() depends on it still being there. Ten versions of a 40MB file
+ *   billed 400MB and metered 40MB. Counting `erp_file_versions` instead counts each
+ *   object exactly once: the current version is one row in that collection, so the
+ *   `erp_files` row must NOT also be counted or the current version is double-charged.
  *
  * Limits come from the canonical catalog in lib/billing/plans.ts (limits.storage, in
- * bytes) so there is a single source of truth. Soft-deleted records are excluded, which
- * matches what a customer expects when they delete a file. NOTE: nothing currently purges
- * the underlying object from the bucket on soft-delete, so reclaimed quota does not yet
- * reclaim real bytes — a retention/purge job is tracked separately.
+ * bytes) so there is a single source of truth, and no upload route carries a pricing
+ * table of its own.
+ *
+ * Deletion. Quota is recovered only when the bytes actually go: every delete path that
+ * clears a record now removes the underlying Storage object first (see
+ * StorageService.deleteFile and the files/employeeDocuments delete routes), so a
+ * metadata-only delete can no longer manufacture free quota while Bizosto keeps paying
+ * for the object.
+ *
+ * Concurrency. The advisory checkStorageLimit() read this module used to export is gone.
+ * A read cannot stop two simultaneous uploads from both observing the same free space,
+ * and every caller has moved to lib/billing/storage-reservation.ts, which decides inside
+ * a Firestore transaction. Leaving the read exported would leave the race one import
+ * away from coming back. What remains here is the accounting — the byte sources, the
+ * plan ceiling and the refusal contract — that the reservation is built on.
  */
 
 export const STORAGE_LIMIT_EXCEEDED = 'storage_limit_exceeded';
@@ -35,7 +64,8 @@ export interface StorageLimitCheck {
   plan: PlanTier;
 }
 
-function storageLimitForPlan(plan: PlanTier): number {
+/** Resolves the entitled byte ceiling for a plan from the canonical catalog. */
+export function storageLimitForPlan(plan: PlanTier): number {
   // trial mirrors starter storage; paid tiers come straight from plans.ts.
   const key = normalizePlanKey(plan);
   const limit = plans[key]?.limits?.storage;
@@ -44,70 +74,83 @@ function storageLimitForPlan(plan: PlanTier): number {
   return typeof limit === 'number' ? limit : plans.starter.limits.storage;
 }
 
-async function sumCollectionBytes(collection: string, tenantId: string): Promise<number> {
-  const snap = await adminDb
-    .collection(collection)
-    .where('tenantId', '==', tenantId)
-    .where('isDeleted', '==', false)
-    .aggregate({ total: AggregateField.sum('size') })
-    .get();
-
-  const total = Number(snap.data().total || 0);
-  return Number.isFinite(total) && total > 0 ? total : 0;
+/** Coerces any caller-supplied byte count to a safe, non-negative integer. */
+export function normalizeBytes(value: unknown): number {
+  const bytes = Number(value);
+  return Number.isFinite(bytes) && bytes > 0 ? Math.floor(bytes) : 0;
 }
 
 /**
- * P0-2: the chunked managed-file store (`erp_files`, written by lib/files/file-manager.ts)
- * was never counted, so every byte uploaded through /api/files/upload was free. It marks
- * deletion with `deletedAt: null` rather than `isDeleted: false`, hence the separate query.
+ * The tenant's plan document plus one aggregate query per byte-bearing surface.
+ *
+ * Exposed as a single set so that the non-transactional read (getTenantStorageUsage)
+ * and the transactional reservation both count the SAME sources. A surface added here
+ * is metered everywhere at once; there is no second place to remember.
+ *
+ * Collection ids are written as string literals on purpose: the Firestore inventory
+ * generator (scripts/generate-firestore-schema.mjs) only resolves static ids, so
+ * routing them through constants would drop real collections out of the generated
+ * schema docs.
  */
-async function sumManagedFileBytes(tenantId: string): Promise<number> {
-  const snap = await adminDb
-    .collection('erp_files')
-    .where('tenantId', '==', tenantId)
-    .where('deletedAt', '==', null)
-    .aggregate({ total: AggregateField.sum('size') })
-    .get();
+export function tenantStorageSources(tenantId: string) {
+  const id = String(tenantId ?? '').trim();
 
-  const total = Number(snap.data().total || 0);
-  return Number.isFinite(total) && total > 0 ? total : 0;
+  return {
+    tenantRef: adminDb.collection('tenants').doc(id),
+    byteSources: [
+      // Project deliverables, AM/production files and client uploads.
+      adminDb
+        .collection('files')
+        .where('tenantId', '==', id)
+        .where('isDeleted', '==', false)
+        .aggregate({ total: AggregateField.sum('size') }),
+      // HR employee documents.
+      adminDb
+        .collection('employeeDocuments')
+        .where('tenantId', '==', id)
+        .where('isDeleted', '==', false)
+        .aggregate({ total: AggregateField.sum('size') }),
+      // Managed-file store: one row per physical object, every version included.
+      adminDb
+        .collection('erp_file_versions')
+        .where('tenantId', '==', id)
+        .aggregate({ total: AggregateField.sum('size') }),
+      // Document library. Deleted documents carry a deletedAt timestamp AND have had
+      // their Storage object removed, so excluding them tracks the real bytes.
+      adminDb
+        .collection('documents')
+        .where('tenantId', '==', id)
+        .where('deletedAt', '==', null)
+        .aggregate({ total: AggregateField.sum('fileSize') }),
+    ],
+  };
+}
+
+/** Sums the aggregate snapshots returned by `tenantStorageSources().byteSources`. */
+export function totalStorageBytes(
+  snapshots: Array<{ data: () => { total?: number | null } }>,
+): number {
+  return snapshots.reduce((running, snap) => running + normalizeBytes(snap.data()?.total), 0);
 }
 
 /** Total live bytes stored by a tenant across every file-bearing collection. */
 export async function getTenantStorageUsage(tenantId: string): Promise<number> {
-  const [fileBytes, hrDocumentBytes, managedFileBytes] = await Promise.all([
-    sumCollectionBytes('files', tenantId),
-    sumCollectionBytes('employeeDocuments', tenantId),
-    sumManagedFileBytes(tenantId),
-  ]);
-  return fileBytes + hrDocumentBytes + managedFileBytes;
-}
-
-/** Checks whether the tenant can store `incomingBytes` more without exceeding its plan. */
-export async function checkStorageLimit(
-  tenantId: string,
-  incomingBytes: number,
-): Promise<StorageLimitCheck> {
-  const incoming =
-    Number.isFinite(incomingBytes) && incomingBytes > 0 ? Math.floor(incomingBytes) : 0;
-
-  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-  const plan = normalizePlan(tenantSnap.data()?.plan);
-  const limit = storageLimitForPlan(plan);
-
-  if (limit < 0) {
-    return { ok: true, limit, used: 0, incoming, plan };
-  }
-
-  const used = await getTenantStorageUsage(tenantId);
-  return { ok: used + incoming <= limit, limit, used, incoming, plan };
+  const { byteSources } = tenantStorageSources(tenantId);
+  const snapshots = await Promise.all(byteSources.map((query) => query.get()));
+  return totalStorageBytes(snapshots);
 }
 
 function toGb(bytes: number): string {
   return (bytes / 1024 ** 3).toFixed(1);
 }
 
-/** Standard 403 body for an exceeded storage limit, with clear upgrade guidance. */
+/**
+ * Standard 403 body for an exceeded storage limit, with clear upgrade guidance.
+ *
+ * The shape is the machine-readable contract the UI keys off: a stable `error` code
+ * plus the three numbers needed to explain the refusal. It carries this tenant's own
+ * figures only — never anything about another tenant.
+ */
 export function storageLimitResponseBody(check: StorageLimitCheck) {
   return {
     ok: false,

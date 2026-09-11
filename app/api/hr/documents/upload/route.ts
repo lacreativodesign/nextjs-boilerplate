@@ -9,11 +9,19 @@ import {
 } from '../../_utils';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
-import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import {
+  admitTenantUpload,
+  releaseUploadAdmission,
+  uploadAdmissionResponseBody,
+  type UploadAdmission,
+} from '@/lib/billing/upload-admission';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  // Held across the whole request so the `finally` below always releases it.
+  let admission: UploadAdmission | null = null;
+
   try {
     const access = await requireHrAccess();
     if (!access.ok) {
@@ -43,11 +51,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
-    const storageCheck = await checkStorageLimit(access.user.tenantId, size);
-    if (!storageCheck.ok) {
-      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
-    }
-
     // Validate the target employee belongs to the actor's tenant BEFORE writing or
     // notifying. A cross-tenant userId must not reveal existence — return 404.
     const targetSnap = await adminDb.collection('users').doc(userId).get();
@@ -74,6 +77,25 @@ export async function POST(req: Request) {
       docRef = adminDb.collection('employeeDocuments').doc();
     }
 
+    // PR4-C: the browser wrote this object to Cloud Storage before calling us, so the
+    // `size` in the body is the caller's claim about its own upload, not a fact. Admission
+    // measures the object through the Admin SDK, reserves exactly that many bytes in one
+    // atomic transaction (so two concurrent uploads cannot both take the last of the
+    // quota), and deletes the object again if the tenant has no room for it.
+    admission = await admitTenantUpload({
+      tenantId: access.user.tenantId,
+      storagePath,
+      kind: 'hr_document_register',
+      // One storagePath is one physical object: a retried registration must reuse its
+      // reservation rather than be charged for the same bytes twice.
+      idempotencyKey: storagePath,
+    });
+    if (!admission.ok) {
+      return NextResponse.json(uploadAdmissionResponseBody(admission), {
+        status: admission.status,
+      });
+    }
+
     const payload = {
       id: docRef.id,
       userId,
@@ -82,7 +104,8 @@ export async function POST(req: Request) {
       storagePath,
       downloadUrl,
       // S11: persisted so HR documents are counted against the plan storage limit.
-      size,
+      // PR4-C: the size Cloud Storage actually recorded, never the declared one.
+      size: admission.bytes,
       uploadedBy: access.user.uid,
       tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
@@ -123,5 +146,9 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('HR documents upload error', err);
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
+  } finally {
+    // The metadata record now counts these bytes (or the upload failed and the space
+    // must go straight back), so the reservation must not outlive the request.
+    await releaseUploadAdmission(admission);
   }
 }

@@ -135,9 +135,24 @@ describe('P0-2: chunk session handling is bounded and bound to its opener', () =
   });
 
   it('charges quota on real bytes after assembly', () => {
-    expect(src).toContain('checkStorageLimit(params.tenantId, buffer.length)');
+    // PR4-E upgraded this from a checkStorageLimit() read to an atomic reservation:
+    // a read cannot stop two uploads assembling at the same moment from both being
+    // admitted against the same remaining quota.
+    expect(src).toContain('bytes: buffer.length,');
+    expect(src).toContain('reserveTenantStorage({');
     expect(src).toContain('size: buffer.length,');
-    expect(src.indexOf('checkStorageLimit')).toBeLessThan(src.indexOf('this.storeVersion({'));
+    expect(src.indexOf('reserveTenantStorage')).toBeLessThan(src.indexOf('this.storeVersion({'));
+  });
+
+  it('releases the reservation whether or not the version was stored', () => {
+    expect(src).toContain('await releaseTenantStorage(reservation);');
+    expect(src.indexOf('this.storeVersion({')).toBeLessThan(
+      src.indexOf('await releaseTenantStorage(reservation);'),
+    );
+  });
+
+  it('reuses the reservation when the final chunk is retried', () => {
+    expect(src).toContain('idempotencyKey: `upload-session:${params.tenantId}:${params.uploadId}`');
   });
 
   it('always releases temp bytes and the session record', () => {
@@ -149,14 +164,19 @@ describe('P0-2: chunk session handling is bounded and bound to its opener', () =
 describe('P0-2: the managed-file store counts against the plan quota', () => {
   const src = read('lib/billing/storage-limit.ts');
 
-  it('sums erp_files with its own deletedAt convention', () => {
-    expect(src).toContain("collection('erp_files')");
-    expect(src).toContain("where('deletedAt', '==', null)");
+  it('counts every stored version, not just the current one', () => {
+    // P0-2 summed erp_files.size, which only ever holds the CURRENT version's size,
+    // while storeVersion() writes a new physical object per version and keeps the old
+    // ones (restoreVersion depends on them). PR4-B counts the version rows instead, so
+    // each object is charged exactly once.
+    expect(src).toContain("collection('erp_file_versions')");
+    expect(src).toContain("AggregateField.sum('size')");
   });
 
   it('includes managed-file bytes in total tenant usage', () => {
-    expect(src).toContain('managedFileBytes');
-    expect(src).toContain('fileBytes + hrDocumentBytes + managedFileBytes');
+    expect(src).toContain('export async function getTenantStorageUsage');
+    expect(src).toContain('totalStorageBytes(snapshots)');
+    expect(src).toContain('byteSources');
   });
 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
+import { deleteTenantObject } from '@/lib/storage/tenant-object';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,25 @@ export async function POST(req: Request) {
       String(data.tenantId || '') !== String(access.user.tenantId || '')
     ) {
       return NextResponse.json({ ok: false, error: 'Document not found' }, { status: 404 });
+    }
+
+    // PR4-D: free the bytes before freeing the quota. This route used to mark the record
+    // deleted and stop there, so the object stayed in the bucket — still billed to
+    // Bizosto — while the tenant instantly got its quota back. Uploading and deleting in
+    // a loop therefore stored without bound on any plan. If the object cannot be removed
+    // the record is left alone, so usage keeps counting bytes that still exist.
+    const storagePath = String(data.storagePath || '');
+    const ownerTenantId = String(data.tenantId || '');
+    if (storagePath) {
+      const purge = await deleteTenantObject(storagePath, ownerTenantId);
+      // Addressable but not removed is a real failure: recovering the quota now would
+      // hand back space for bytes Bizosto is still being billed for.
+      if (purge.addressable && !purge.removed) {
+        return NextResponse.json(
+          { ok: false, error: 'Could not remove the stored file. Nothing was deleted.' },
+          { status: 502 },
+        );
+      }
     }
 
     await ref.update({

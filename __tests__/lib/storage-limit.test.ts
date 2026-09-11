@@ -44,32 +44,63 @@ describe('S11: the canonical catalog carries the sold storage limits', () => {
   });
 });
 
-describe('S11: every upload route enforces the storage limit', () => {
-  it.each(UPLOAD_ROUTES)('%s checks the limit before persisting', (rel) => {
+describe('S11/PR4: every upload route enforces the storage limit', () => {
+  // PR4-C replaced the advisory checkStorageLimit() read on these six browser-direct
+  // routes with admitTenantUpload(), which measures the object, reserves the space
+  // atomically and removes the object when the tenant has no room. The invariant these
+  // tests protect is unchanged and stricter: no route may persist a file record without
+  // first spending its own tenant's quota.
+  it.each(UPLOAD_ROUTES)('%s admits the upload before persisting', (rel) => {
     const src = read(rel);
-    expect(src).toContain('checkStorageLimit(');
-    expect(src).toContain('storageLimitResponseBody(');
+    expect(src).toContain('admitTenantUpload(');
+    expect(src).toContain('uploadAdmissionResponseBody(');
   });
 
   it.each(UPLOAD_ROUTES)('%s resolves the tenant from the session, never the body', (rel) => {
     const src = read(rel);
-    expect(src).toMatch(/checkStorageLimit\((me|auth\.user|access\.user)\.tenantId/);
+    expect(src).toMatch(/tenantId: (me|auth\.user|access\.user)\.tenantId/);
+    expect(src).not.toMatch(/tenantId: body/);
     expect(src).not.toMatch(/checkStorageLimit\(\s*body/);
+  });
+
+  it.each(UPLOAD_ROUTES)('%s meters the measured size, not the declared one', (rel) => {
+    const src = read(rel);
+    expect(src).toContain('size: admission.bytes,');
+    // The bare `size,` shorthand would persist the caller's declared number.
+    expect(src).not.toMatch(/^\s+size,$/m);
+  });
+
+  it.each(UPLOAD_ROUTES)('%s always releases its reservation', (rel) => {
+    const src = read(rel);
+    expect(src).toContain('} finally {');
+    expect(src).toContain('await releaseUploadAdmission(admission);');
   });
 });
 
 describe('S11: usage is measured from real file sizes', () => {
   const src = read('lib/billing/storage-limit.ts');
 
-  it('sums the size field across both file-bearing collections', () => {
-    expect(src).toContain("sumCollectionBytes('files', tenantId)");
-    expect(src).toContain("sumCollectionBytes('employeeDocuments', tenantId)");
+  it('sums every byte-bearing collection, including the two PR4 found unmetered', () => {
+    expect(src).toContain("collection('files')");
+    expect(src).toContain("collection('employeeDocuments')");
+    // PR4-B: one row per physical object, so every version is counted.
+    expect(src).toContain("collection('erp_file_versions')");
+    // PR4-A: the live document-library upload path.
+    expect(src).toContain("collection('documents')");
     expect(src).toContain("AggregateField.sum('size')");
+    expect(src).toContain("AggregateField.sum('fileSize')");
+  });
+
+  it('never double-counts the managed file row against its own current version', () => {
+    // erp_files.size mirrors the current erp_file_versions row; counting both would
+    // charge the current version twice.
+    expect(src).not.toContain("collection('erp_files')");
   });
 
   it('scopes every sum to the tenant and excludes soft-deleted records', () => {
-    expect(src).toContain("where('tenantId', '==', tenantId)");
+    expect(src).toContain("where('tenantId', '==', id)");
     expect(src).toContain("where('isDeleted', '==', false)");
+    expect(src).toContain("where('deletedAt', '==', null)");
   });
 
   it('reads limits from the canonical catalog, not hardcoded numbers', () => {
@@ -81,15 +112,18 @@ describe('S11: usage is measured from real file sizes', () => {
     expect(src).toContain('plans.starter.limits.storage');
   });
 
-  it('rejects an upload that would cross the limit', () => {
-    expect(src).toMatch(/ok: used \+ incoming <= limit/);
+  it('no longer exports the advisory read that the race came through', () => {
+    // PR4-E: every caller now reserves inside a transaction. Keeping checkStorageLimit()
+    // exported would leave the read-then-write gate one import away from returning.
+    expect(src).not.toContain('export async function checkStorageLimit');
+    expect(read('lib/billing/storage-reservation.ts')).toMatch(/if \(used \+ incoming > limit\)/);
   });
 });
 
 describe('S11: HR documents are no longer invisible', () => {
-  it('both HR routes persist the file size', () => {
-    expect(read('app/api/hr/documents/upload/route.ts')).toMatch(/^\s+size,$/m);
-    expect(read('app/api/admin/hr/documents/upload/route.ts')).toMatch(/^\s+size,$/m);
+  it('both HR routes persist the measured file size', () => {
+    expect(read('app/api/hr/documents/upload/route.ts')).toContain('size: admission.bytes,');
+    expect(read('app/api/admin/hr/documents/upload/route.ts')).toContain('size: admission.bytes,');
   });
 
   it('the admin HR route now stamps a tenantId on the document record', () => {
@@ -98,6 +132,6 @@ describe('S11: HR documents are no longer invisible', () => {
     const payloadEnd = src.indexOf('};', payloadStart);
     const payload = src.slice(payloadStart, payloadEnd);
     expect(payload).toContain('tenantId: access.user.tenantId');
-    expect(payload).toContain('size');
+    expect(payload).toContain('size: admission.bytes');
   });
 });

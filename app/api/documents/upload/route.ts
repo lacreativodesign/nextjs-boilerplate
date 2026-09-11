@@ -4,6 +4,8 @@ import { StorageService } from '@/lib/storage/storage-service';
 import { adminDb } from '@/lib/firebaseAdmin';
 import type { DocumentCategory, DocumentVisibility } from '@/types/documents';
 import { validateFile, validateAssembledFile } from '@/lib/files/validation';
+import { storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import { StorageLimitExceededError } from '@/lib/billing/storage-reservation';
 
 export const runtime = 'nodejs';
 
@@ -121,6 +123,12 @@ export async function POST(request: Request) {
       message: 'File uploaded successfully',
     });
   } catch (error: any) {
+    // PR4-A: an over-quota upload is the caller's answer to get, not a server fault. It
+    // returns the same machine-readable 403 contract as every other upload surface, so
+    // the UI can tell "you are out of space" apart from "the upload broke".
+    if (error instanceof StorageLimitExceededError) {
+      return NextResponse.json(storageLimitResponseBody(error.check), { status: 403 });
+    }
     console.error('Error uploading file:', error);
     return NextResponse.json({ error: error?.message || 'Upload failed' }, { status: 500 });
   }
