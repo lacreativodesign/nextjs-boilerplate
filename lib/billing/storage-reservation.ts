@@ -76,6 +76,15 @@ export interface TenantStorageReservation extends StorageLimitCheck {
   tenantId: string;
   /** null when nothing was reserved (zero bytes, or an unlimited plan). */
   reservationId: string | null;
+  /**
+   * This caller's own claim on the reservation above.
+   *
+   * Duplicate in-flight requests for one object SHARE a reservation — that is what makes
+   * retries idempotent — but they are not interchangeable owners of it. Each holds its
+   * own claim, and the reservation survives until every claim is gone. Releasing quotes
+   * this id so one claimant can only ever drop its own hold.
+   */
+  claimId: string | null;
   /** Authoritative byte count this reservation is holding. */
   bytes: number;
 }
@@ -163,6 +172,7 @@ export async function reserveTenantStorage(params: {
         plan,
         tenantId: id,
         reservationId: null,
+        claimId: null,
         bytes: 0,
       };
     }
@@ -173,9 +183,28 @@ export async function reserveTenantStorage(params: {
 
     const committed = totalStorageBytes(aggregateSnaps);
 
+    // The ledger document is the serialization anchor. It is read above and written on
+    // every successful reservation — whether that creates one or joins an existing one —
+    // so a concurrent transaction that read the same ledger state conflicts, retries,
+    // and re-counts against what actually committed.
+    const writeLedgerAnchor = () => {
+      const ledgerData = (ledgerSnap.data() || {}) as Record<string, unknown>;
+      const seq = Number(ledgerData.reservationSeq);
+      tx.set(
+        ledgerRef,
+        {
+          tenantId: id,
+          reservationSeq: Number.isFinite(seq) ? seq + 1 : 1,
+          lastReservedAt: now,
+        },
+        { merge: true },
+      );
+    };
+
     const expired: Array<FirebaseFirestore.QueryDocumentSnapshot> = [];
     let held = 0;
     let alreadyHeld: number | null = null;
+    let alreadyHeldClaimants: string[] = [];
 
     for (const doc of reservationsSnap.docs) {
       const data = doc.data() || {};
@@ -193,6 +222,9 @@ export async function reserveTenantStorage(params: {
         // A retry of this exact upload. Its bytes are already reserved; charging them
         // again would deny a request the tenant has in fact already been charged for.
         alreadyHeld = normalizeBytes(data.bytes);
+        alreadyHeldClaimants = Array.isArray(data.claimants)
+          ? (data.claimants as unknown[]).map((claim) => String(claim))
+          : [];
         continue;
       }
 
@@ -219,9 +251,21 @@ export async function reserveTenantStorage(params: {
           plan,
           tenantId: id,
           reservationId: null,
+          claimId: null,
           bytes: 0,
         };
       }
+
+      // Join the existing reservation as an ADDITIONAL claimant rather than inheriting
+      // it. Both callers now depend on the same held bytes, and neither can release them
+      // out from under the other: the reservation survives until the last claim is gone.
+      const claimId = crypto.randomBytes(16).toString('hex');
+      tx.set(
+        reservationsRef.doc(reservationId),
+        { claimants: [...alreadyHeldClaimants, claimId] },
+        { merge: true },
+      );
+      writeLedgerAnchor();
 
       return {
         ok: true,
@@ -231,6 +275,7 @@ export async function reserveTenantStorage(params: {
         plan,
         tenantId: id,
         reservationId,
+        claimId,
         bytes: alreadyHeld,
       };
     }
@@ -247,6 +292,7 @@ export async function reserveTenantStorage(params: {
         plan,
         tenantId: id,
         reservationId: null,
+        claimId: null,
         bytes: 0,
       };
     }
@@ -255,28 +301,17 @@ export async function reserveTenantStorage(params: {
       tx.delete(doc.ref);
     }
 
+    const claimId = crypto.randomBytes(16).toString('hex');
     tx.set(reservationsRef.doc(reservationId), {
       tenantId: id,
       bytes: incoming,
       kind: params.kind,
+      claimants: [claimId],
       createdAt: now,
       expiresAt: now + STORAGE_RESERVATION_TTL_MS,
     });
 
-    // The ledger document is the serialization anchor. It is read above and written here
-    // on every successful reservation, so a concurrent transaction that read the same
-    // ledger state conflicts, retries, and re-counts against the committed bytes.
-    const ledgerData = (ledgerSnap.data() || {}) as Record<string, unknown>;
-    const seq = Number(ledgerData.reservationSeq);
-    tx.set(
-      ledgerRef,
-      {
-        tenantId: id,
-        reservationSeq: Number.isFinite(seq) ? seq + 1 : 1,
-        lastReservedAt: now,
-      },
-      { merge: true },
-    );
+    writeLedgerAnchor();
 
     return {
       ok: true,
@@ -286,25 +321,67 @@ export async function reserveTenantStorage(params: {
       plan,
       tenantId: id,
       reservationId,
+      claimId,
       bytes: incoming,
     };
   });
 }
 
 /**
- * Releases a reservation. Call this in a `finally` block: on success the metadata record
- * now counts as committed bytes, and on failure the space must go straight back.
+ * Drops THIS caller's claim on a reservation, and deletes the reservation only when no
+ * claim is left.
+ *
+ * Release used to delete the document outright. Duplicate in-flight requests for one
+ * object share a reservation, so whichever duplicate finished first — including by
+ * FAILING before it committed anything — handed back capacity the other was still
+ * relying on. A third request could take the freed space and commit, the surviving
+ * duplicate could then commit too, and the tenant ended up over its plan ceiling with no
+ * reservation left anywhere to explain it.
+ *
+ * The invariant this restores: capacity held for an object stays held until that
+ * object's metadata is committed usage, or until EVERY in-flight claimant has abandoned
+ * it. One request can never free capacity another live request still depends on.
+ *
+ * The whole thing runs in a transaction so two claimants releasing at once cannot both
+ * read "one claim left" and both delete. Removing a claim id that is no longer there is
+ * a no-op, so a double release is harmless.
+ *
+ * A reservation carrying no claimants at all is one written before this change; deleting
+ * it outright preserves exactly the old behaviour for anything in flight across a deploy.
  *
  * Never throws. A release that cannot be written costs at most those bytes for the
  * remainder of the TTL, which is strictly better than failing an otherwise successful
  * upload.
  */
 export async function releaseTenantStorage(
-  reservation: { tenantId: string; reservationId: string | null } | null | undefined,
+  reservation:
+    { tenantId: string; reservationId: string | null; claimId?: string | null } | null | undefined,
 ): Promise<void> {
   if (!reservation?.reservationId || !reservation.tenantId) return;
+
+  const ref = reservationDocRef(reservation.tenantId, reservation.reservationId);
+
   try {
-    await reservationDocRef(reservation.tenantId, reservation.reservationId).delete();
+    await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+
+      const data = snap.data() || {};
+      const claimants = Array.isArray(data.claimants)
+        ? (data.claimants as unknown[]).map((claim) => String(claim))
+        : [];
+
+      const remaining = reservation.claimId
+        ? claimants.filter((claim) => claim !== reservation.claimId)
+        : claimants;
+
+      if (remaining.length === 0) {
+        tx.delete(ref);
+        return;
+      }
+
+      tx.set(ref, { claimants: remaining }, { merge: true });
+    });
   } catch (error) {
     console.error('[STORAGE] Failed to release storage reservation', error);
   }

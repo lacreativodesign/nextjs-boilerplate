@@ -475,3 +475,204 @@ describeWithEmulator('PR4 — tenant storage is metered and atomic under concurr
     ).rejects.toThrow(/Tenant context is required/);
   });
 });
+
+/**
+ * PR4 remediation — a reservation must outlive any one of its claimants.
+ *
+ * Two simultaneous duplicate requests for the SAME object share one reservation: that is
+ * what makes retries idempotent. But release deleted that reservation document outright,
+ * so whichever duplicate finished first — including by FAILING — handed back capacity
+ * the other one was still relying on. A third request could then take the freed space
+ * and commit, and when the surviving duplicate committed too, the tenant was over its
+ * plan ceiling with no reservation anywhere to blame.
+ *
+ * This is distinct from every retry case already covered. Those are sequential: the
+ * first claimant has finished before the second begins. This is two claimants ALIVE AT
+ * ONCE, one of them failing BEFORE its metadata commit.
+ *
+ * The invariant: capacity held for an object stays held until that object's metadata is
+ * committed usage, or until every in-flight claimant has abandoned it.
+ */
+describeWithEmulator('PR4 — a reservation outlives any single claimant', () => {
+  const KEY = 'tenants/storage-starter/client-files/p/f.pdf#1700000000000001';
+  const OTHER_KEY = 'tenants/storage-starter/client-files/p/other.pdf#1700000000000002';
+
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  afterAll(async () => {
+    await resetDb();
+  });
+
+  /** Leaves exactly `free` bytes of headroom on the Starter tenant. */
+  async function headroom(free: number) {
+    await seedDocumentBytes(STARTER, STARTER_LIMIT - free);
+  }
+
+  /** Commits metadata for an object, turning held capacity into committed usage. */
+  async function commitObject(tenantId: string, bytes: number, id: string) {
+    await adminDb
+      .collection('documents')
+      .doc(id)
+      .set({ tenantId, fileSize: bytes, deletedAt: null });
+  }
+
+  it('a failed duplicate cannot free capacity the surviving duplicate still needs', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    // A and B are duplicates of the same upload, both in flight, neither committed.
+    const a = await reserve(STARTER, X, KEY);
+    const b = await reserve(STARTER, X, KEY);
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+
+    // A fails BEFORE committing its metadata and runs its release.
+    await releaseTenantStorage(a);
+
+    // C is a different object asking for the same headroom. B is still alive and still
+    // depends on that capacity, so C must be refused.
+    const c = await reserve(STARTER, X, OTHER_KEY);
+    expect(c.ok).toBe(false);
+
+    // B now finishes and its bytes become committed usage.
+    await commitObject(STARTER, X, 'object-b');
+    await releaseTenantStorage(b);
+
+    // The ceiling held.
+    expect(await getTenantStorageUsage(STARTER)).toBeLessThanOrEqual(STARTER_LIMIT);
+    expect(await getTenantStorageUsage(STARTER)).toBe(STARTER_LIMIT);
+  });
+
+  it('committed plus still-held bytes never exceed the plan through the whole interleaving', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    const a = await reserve(STARTER, X, KEY);
+    const b = await reserve(STARTER, X, KEY);
+    await releaseTenantStorage(a);
+
+    const c = await reserve(STARTER, X, OTHER_KEY);
+    if (c.ok) await commitObject(STARTER, X, 'object-c');
+    await commitObject(STARTER, X, 'object-b');
+    await releaseTenantStorage(b);
+    await releaseTenantStorage(c);
+
+    const committed = await getTenantStorageUsage(STARTER);
+    const heldSnap = await adminDb
+      .collection('tenant_storage_ledgers')
+      .doc(STARTER)
+      .collection('reservations')
+      .get();
+    const held = heldSnap.docs.reduce((sum, doc) => sum + Number(doc.data().bytes || 0), 0);
+
+    expect(committed + held).toBeLessThanOrEqual(STARTER_LIMIT);
+  });
+
+  it('both duplicates succeeding leaves exactly one charge', async () => {
+    await headroom(4 * GB);
+
+    const a = await reserve(STARTER, 2 * GB, KEY);
+    const b = await reserve(STARTER, 2 * GB, KEY);
+    expect(a.ok && b.ok).toBe(true);
+    expect(a.reservationId).toBe(b.reservationId);
+
+    const heldSnap = await adminDb
+      .collection('tenant_storage_ledgers')
+      .doc(STARTER)
+      .collection('reservations')
+      .get();
+    expect(heldSnap.size).toBe(1);
+    expect(Number(heldSnap.docs[0].data().bytes)).toBe(2 * GB);
+  });
+
+  it('the first duplicate failing leaves the second able to finish', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    const a = await reserve(STARTER, X, KEY);
+    const b = await reserve(STARTER, X, KEY);
+    await releaseTenantStorage(a);
+
+    await commitObject(STARTER, X, 'object-b');
+    await releaseTenantStorage(b);
+    expect(await getTenantStorageUsage(STARTER)).toBe(STARTER_LIMIT);
+  });
+
+  it('the second duplicate failing leaves the first able to finish', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    const a = await reserve(STARTER, X, KEY);
+    const b = await reserve(STARTER, X, KEY);
+    await releaseTenantStorage(b);
+
+    await commitObject(STARTER, X, 'object-a');
+    await releaseTenantStorage(a);
+    expect(await getTenantStorageUsage(STARTER)).toBe(STARTER_LIMIT);
+  });
+
+  it('both duplicates failing returns the capacity in full', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    const a = await reserve(STARTER, X, KEY);
+    const b = await reserve(STARTER, X, KEY);
+    await releaseTenantStorage(a);
+    await releaseTenantStorage(b);
+
+    // Nothing committed, nothing held: the space is genuinely back.
+    const heldSnap = await adminDb
+      .collection('tenant_storage_ledgers')
+      .doc(STARTER)
+      .collection('reservations')
+      .get();
+    expect(heldSnap.size).toBe(0);
+    expect((await reserve(STARTER, X, OTHER_KEY)).ok).toBe(true);
+  });
+
+  it('a duplicate arriving after the metadata commit reserves nothing new', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    const a = await reserve(STARTER, X, KEY);
+    await commitObject(STARTER, X, 'object-a');
+    await releaseTenantStorage(a);
+
+    // The bytes are committed usage now, so there is no headroom left at all.
+    expect(await getTenantStorageUsage(STARTER)).toBe(STARTER_LIMIT);
+    expect((await reserve(STARTER, X, OTHER_KEY)).ok).toBe(false);
+  });
+
+  it('one tenant’s claims never reach another', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    const a = await reserve(STARTER, X, KEY);
+    await reserve(STARTER, X, KEY);
+    await releaseTenantStorage(a);
+
+    // OTHER is a different tenant entirely; STARTER's held capacity is invisible to it.
+    expect((await reserve(OTHER, X, KEY)).ok).toBe(true);
+  });
+
+  it('an abandoned claim still expires, so quota is never stranded', async () => {
+    const X = 2 * GB;
+    await headroom(X);
+
+    await reserve(STARTER, X, KEY);
+    await reserve(STARTER, X, KEY);
+
+    // Both claimants die without releasing. The lease is what returns the capacity.
+    const stale = Date.now() - STORAGE_RESERVATION_TTL_MS - 1000;
+    const snap = await adminDb
+      .collection('tenant_storage_ledgers')
+      .doc(STARTER)
+      .collection('reservations')
+      .get();
+    await Promise.all(snap.docs.map((doc) => doc.ref.update({ expiresAt: stale })));
+
+    expect((await reserve(STARTER, X, OTHER_KEY)).ok).toBe(true);
+  });
+});
