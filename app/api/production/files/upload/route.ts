@@ -12,7 +12,7 @@ import { isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
   releaseUploadAdmission,
-  uploadAdmissionResponseBody,
+  uploadAdmissionRefusal,
   type UploadAdmission,
 } from '@/lib/billing/upload-admission';
 
@@ -36,8 +36,7 @@ function cleanString(value: any) {
 }
 
 export async function POST(req: Request) {
-  // Held across the whole request so the `finally` below always releases it.
-  let admission: UploadAdmission | null = null;
+  let admission: UploadAdmission | null = null; // released in the `finally` below
 
   try {
     const me = await getProductionUser();
@@ -120,24 +119,15 @@ export async function POST(req: Request) {
       docRef = adminDb.collection('files').doc();
     }
 
-    // PR4-C: the browser wrote this object to Cloud Storage before calling us, so the
-    // `size` in the body is the caller's claim about its own upload, not a fact. Admission
-    // measures the object through the Admin SDK, reserves exactly that many bytes in one
-    // atomic transaction (so two concurrent uploads cannot both take the last of the
-    // quota), and deletes the object again if the tenant has no room for it.
+    // PR4-C: the `size` in the body is the caller's claim about bytes the browser
+    // already wrote. Admission measures the object, reserves it atomically, and
+    // removes it if refused. See lib/billing/upload-admission.ts.
     admission = await admitTenantUpload({
       tenantId: me.tenantId,
       storagePath,
       kind: 'project_file_register',
-      // One storagePath is one physical object: a retried registration must reuse its
-      // reservation rather than be charged for the same bytes twice.
-      idempotencyKey: storagePath,
     });
-    if (!admission.ok) {
-      return NextResponse.json(uploadAdmissionResponseBody(admission), {
-        status: admission.status,
-      });
-    }
+    if (!admission.ok) return uploadAdmissionRefusal(admission);
     const mimeType = cleanString(body?.mimeType);
     const version = body?.version ? String(body.version).trim() : null;
     const notes = body?.notes ? String(body.notes).trim() : null;
@@ -171,8 +161,7 @@ export async function POST(req: Request) {
       fileName,
       storagePath,
       downloadUrl,
-      // PR4-C: the size Cloud Storage actually recorded, never the declared one.
-      size: admission.bytes,
+      size: admission.bytes, // measured by Cloud Storage, never the declared value
       mimeType,
       uploadedByUid: me.uid,
       uploadedByName: cleanString(me.name || me.fullName || me.displayName || ''),
@@ -240,8 +229,7 @@ export async function POST(req: Request) {
       : 'Unable to upload file right now.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
   } finally {
-    // The metadata record now counts these bytes (or the upload failed and the space
-    // must go straight back), so the reservation must not outlive the request.
+    // The record now counts these bytes, or the upload failed and the space goes back.
     await releaseUploadAdmission(admission);
   }
 }

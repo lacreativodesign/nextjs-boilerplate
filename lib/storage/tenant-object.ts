@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { adminStorage } from '@/lib/firebaseAdmin';
 import { getStorageBucketName } from '@/lib/storage/bucket';
 import { isTenantStoragePath } from '@/lib/storage/paths';
@@ -112,4 +113,31 @@ export async function deleteTenantObject(
     console.error('[STORAGE] Failed to remove tenant storage object', error);
     return { addressable: true, removed: false };
   }
+}
+
+/**
+ * Frees a record's bytes before its quota is freed, for the delete routes.
+ *
+ * Returns a response when the delete must NOT proceed, and null when it may. Those are
+ * the three outcomes of deleteTenantObject(): a real removal failure blocks the delete,
+ * so usage keeps counting bytes that still exist; an unaddressable legacy path does not,
+ * because the tenant must still be able to remove its own record.
+ *
+ * Lives here rather than in each route: the three delete routes were otherwise carrying
+ * the same block, which is duplication and an untested branch in each.
+ */
+export async function purgeRecordStorageObject(
+  record: Record<string, unknown> | undefined,
+): Promise<NextResponse | null> {
+  const storagePath = String(record?.storagePath || '');
+  if (!storagePath) return null;
+
+  const purge = await deleteTenantObject(storagePath, String(record?.tenantId || ''));
+  if (purge.addressable && !purge.removed) {
+    return NextResponse.json(
+      { ok: false, error: 'Could not remove the stored file. Nothing was deleted.' },
+      { status: 502 },
+    );
+  }
+  return null;
 }

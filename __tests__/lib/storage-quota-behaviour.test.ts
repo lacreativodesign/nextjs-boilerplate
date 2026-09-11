@@ -59,8 +59,10 @@ import { deleteTenantObject, getVerifiedTenantObjectSize } from '@/lib/storage/t
 import {
   admitTenantUpload,
   releaseUploadAdmission,
+  uploadAdmissionRefusal,
   uploadAdmissionResponseBody,
 } from '@/lib/billing/upload-admission';
+import { purgeRecordStorageObject } from '@/lib/storage/tenant-object';
 
 const GB = 1024 ** 3;
 const STARTER_LIMIT = 20 * GB;
@@ -360,12 +362,7 @@ describe('PR4: object removal reports what actually happened', () => {
 
 describe('PR4: admission control for browser-direct uploads', () => {
   const admit = (tenantId = TENANT) =>
-    admitTenantUpload({
-      tenantId,
-      storagePath: PATH,
-      kind: 'client_file_register',
-      idempotencyKey: PATH,
-    });
+    admitTenantUpload({ tenantId, storagePath: PATH, kind: 'client_file_register' });
 
   it('measures, reserves and admits, reporting the measured size', async () => {
     getMetadata.mockResolvedValue([{ size: 1024 }]);
@@ -435,5 +432,69 @@ describe('PR4: admission control for browser-direct uploads', () => {
 
     await expect(releaseUploadAdmission(admission)).resolves.toBeUndefined();
     await expect(releaseUploadAdmission(null)).resolves.toBeUndefined();
+  });
+});
+
+describe('PR4: the refusal a route returns', () => {
+  it('renders a quota refusal as a 403 carrying the contract', async () => {
+    seedDocumentBytes(TENANT, STARTER_LIMIT);
+    getMetadata.mockResolvedValue([{ size: 1024 }]);
+
+    const admission = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+    const response = uploadAdmissionRefusal(admission);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: STORAGE_LIMIT_EXCEEDED,
+      limit: STARTER_LIMIT,
+    });
+  });
+
+  it('renders an unmeasurable object as a 400', async () => {
+    getMetadata.mockRejectedValue(new Error('404'));
+
+    const admission = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+    const response = uploadAdmissionRefusal(admission);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ ok: false });
+  });
+});
+
+describe('PR4: a delete frees the bytes before it frees the quota', () => {
+  it('lets the delete proceed once the object is gone', async () => {
+    await expect(
+      purgeRecordStorageObject({ storagePath: PATH, tenantId: TENANT }),
+    ).resolves.toBeNull();
+    expect(deleteObject).toHaveBeenCalledWith(PATH, { ignoreNotFound: true });
+  });
+
+  it('blocks the delete with a 502 when the object could not be removed', async () => {
+    deleteObject.mockRejectedValue(new Error('permission denied'));
+
+    const blocked = await purgeRecordStorageObject({ storagePath: PATH, tenantId: TENANT });
+    expect(blocked?.status).toBe(502);
+    await expect(blocked?.json()).resolves.toMatchObject({ ok: false });
+  });
+
+  it('lets a legacy flat path delete rather than trapping the record', async () => {
+    await expect(
+      purgeRecordStorageObject({ storagePath: 'projects/legacy/f.pdf', tenantId: TENANT }),
+    ).resolves.toBeNull();
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op for a record that never carried a storage path', async () => {
+    await expect(purgeRecordStorageObject({ tenantId: TENANT })).resolves.toBeNull();
+    await expect(purgeRecordStorageObject(undefined)).resolves.toBeNull();
+    expect(deleteObject).not.toHaveBeenCalled();
   });
 });

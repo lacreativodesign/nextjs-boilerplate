@@ -199,7 +199,7 @@ describe('PR4: every upload surface reaches the canonical enforcement layer', ()
   it.each(BROWSER_DIRECT_ROUTES)('%s admits the upload before persisting', (rel) => {
     const src = read(rel);
     expect(src).toContain('admitTenantUpload(');
-    expect(src).toContain('uploadAdmissionResponseBody(');
+    expect(src).toContain('return uploadAdmissionRefusal(admission);');
   });
 
   it('no upload route carries a storage limit of its own', () => {
@@ -251,14 +251,15 @@ describe('PR4-C: the metered size is measured, never declared', () => {
 describe('PR4-D: quota is recovered only when the bytes are actually gone', () => {
   it.each(DELETE_ROUTES)('%s removes the Storage object before clearing the record', (rel) => {
     const src = read(rel);
-    expect(src).toContain('deleteTenantObject(storagePath, ownerTenantId)');
-    expect(src.indexOf('deleteTenantObject')).toBeLessThan(src.indexOf('isDeleted: true'));
+    expect(src).toContain('await purgeRecordStorageObject(data)');
+    expect(src).toContain('if (blocked) return blocked;');
+    expect(src.indexOf('purgeRecordStorageObject')).toBeLessThan(src.indexOf('isDeleted: true'));
   });
 
-  it.each(DELETE_ROUTES)('%s keeps the record when the object could not be removed', (rel) => {
-    const src = read(rel);
-    expect(src).toContain('if (purge.addressable && !purge.removed)');
-    expect(src).toContain('{ status: 502 }');
+  it('a real removal failure blocks the delete so usage keeps counting the bytes', () => {
+    const helper = read('lib/storage/tenant-object.ts');
+    expect(helper).toContain('if (purge.addressable && !purge.removed)');
+    expect(helper).toContain('{ status: 502 }');
   });
 
   it('a legacy flat path still deletes instead of trapping the record forever', () => {
@@ -266,17 +267,15 @@ describe('PR4-D: quota is recovered only when the bytes are actually gone', () =
     // unaddressable path is pre-S5 data. Its object cannot be proven to belong to this
     // tenant, so it is not touched — but the tenant must still be able to delete its
     // own record.
-    const helper = read('lib/storage/tenant-object.ts');
-    expect(helper).toContain('addressable: false, removed: false');
-    DELETE_ROUTES.forEach((rel) => {
-      expect(read(rel)).toContain('purge.addressable && !purge.removed');
-    });
+    expect(read('lib/storage/tenant-object.ts')).toContain('addressable: false, removed: false');
   });
 
-  it.each(DELETE_ROUTES)('%s scopes the purge to the record’s owning tenant', (rel) => {
+  it('the purge is scoped to the record’s owning tenant', () => {
     // A super_admin may delete another tenant's record; the object still lives under
     // the OWNER's prefix, so the owner's id is what proves the path.
-    expect(read(rel)).toContain("const ownerTenantId = String(data.tenantId || '');");
+    expect(read('lib/storage/tenant-object.ts')).toContain(
+      "await deleteTenantObject(storagePath, String(record?.tenantId || ''));",
+    );
   });
 
   it('the document library already removed its object, and still does', () => {

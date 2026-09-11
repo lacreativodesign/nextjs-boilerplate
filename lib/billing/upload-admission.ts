@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { storageLimitResponseBody, type StorageLimitCheck } from '@/lib/billing/storage-limit';
 import {
   releaseTenantStorage,
@@ -53,8 +54,6 @@ export async function admitTenantUpload(params: {
   tenantId: string;
   storagePath: string;
   kind: StorageReservationKind;
-  /** Optional stable key so a retried registration reuses its reservation. */
-  idempotencyKey?: string;
 }): Promise<UploadAdmission> {
   const tenantId = String(params.tenantId ?? '').trim();
   if (!tenantId) {
@@ -93,7 +92,9 @@ export async function admitTenantUpload(params: {
     tenantId,
     bytes: measured.size,
     kind: params.kind,
-    idempotencyKey: params.idempotencyKey,
+    // One storagePath is one physical object, so it is the natural idempotency key: a
+    // retried registration reuses its reservation instead of being charged twice.
+    idempotencyKey: params.storagePath,
   });
 
   if (!reservation.ok) {
@@ -122,4 +123,16 @@ export function uploadAdmissionResponseBody(admission: UploadAdmission) {
     return storageLimitResponseBody(admission.check);
   }
   return { ok: false, error: admission.error || 'Upload rejected.' };
+}
+
+/**
+ * The response a route returns for a refused admission — a quota 403 carrying the
+ * machine-readable contract, or a 400 for an object that could not be measured.
+ *
+ * Returned from here rather than rebuilt at each call site: the six routes that register
+ * a browser-direct upload were otherwise carrying the same eight lines of wiring each,
+ * which is both duplication and eight lines of untested branch per route.
+ */
+export function uploadAdmissionRefusal(admission: UploadAdmission): NextResponse {
+  return NextResponse.json(uploadAdmissionResponseBody(admission), { status: admission.status });
 }

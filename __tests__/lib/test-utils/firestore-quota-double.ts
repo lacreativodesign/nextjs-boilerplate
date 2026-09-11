@@ -103,6 +103,15 @@ export class FakeQuery {
     return new FakeAggregate(this, spec);
   }
 
+  /** Ordering and paging do not change which rows these suites assert on. */
+  orderBy() {
+    return this;
+  }
+
+  limit() {
+    return this;
+  }
+
   rows() {
     return Array.from(this.db.bucket(this.path).entries())
       .filter(([, data]) =>

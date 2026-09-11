@@ -53,7 +53,7 @@ describe('S11/PR4: every upload route enforces the storage limit', () => {
   it.each(UPLOAD_ROUTES)('%s admits the upload before persisting', (rel) => {
     const src = read(rel);
     expect(src).toContain('admitTenantUpload(');
-    expect(src).toContain('uploadAdmissionResponseBody(');
+    expect(src).toContain('return uploadAdmissionRefusal(admission);');
   });
 
   it.each(UPLOAD_ROUTES)('%s resolves the tenant from the session, never the body', (rel) => {
