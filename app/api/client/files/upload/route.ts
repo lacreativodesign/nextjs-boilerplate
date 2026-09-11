@@ -9,7 +9,14 @@ import {
 } from '@/lib/notifications';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
-import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import {
+  admitTenantUpload,
+  commitUploadRegistration,
+  registrationIdForPath,
+  releaseUploadAdmission,
+  uploadAdmissionRefusal,
+  type UploadAdmission,
+} from '@/lib/billing/upload-admission';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +25,8 @@ function cleanString(value: any) {
 }
 
 export async function POST(req: Request) {
+  let admission: UploadAdmission | null = null; // released in the `finally` below
+
   try {
     const auth = await requireClient();
     if (!auth.ok) {
@@ -31,10 +40,6 @@ export async function POST(req: Request) {
     const downloadUrl = cleanString(body?.downloadUrl);
     const size = Number(body?.size || 0);
 
-    const storageCheck = await checkStorageLimit(auth.user.tenantId ?? '', size);
-    if (!storageCheck.ok) {
-      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
-    }
     const mimeType = cleanString(body?.mimeType);
 
     if (!projectId)
@@ -65,10 +70,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    const ref = adminDb.collection('files').doc();
+    // PR4-C: the `size` in the body is the caller's claim about bytes the browser
+    // already wrote. Admission measures the object, reserves it atomically, and
+    // removes it if refused. See lib/billing/upload-admission.ts.
+    admission = await admitTenantUpload({
+      tenantId: auth.user.tenantId ?? '',
+      storagePath,
+      kind: 'client_file_register',
+      collection: 'files',
+    });
+    if (!admission.ok) return uploadAdmissionRefusal(admission);
 
-    await ref.set({
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    // PR4: one storage path is one physical object, so its record id is derived from
+    // the path. A retry after a partial failure upserts that record instead of adding
+    // a second one that would count the same object's bytes twice.
+    const ref = adminDb.collection('files').doc(registrationIdForPath(storagePath));
+
+    const payload = {
       id: ref.id,
       tenantId: auth.user.tenantId,
       projectId,
@@ -79,7 +98,7 @@ export async function POST(req: Request) {
       fileName,
       storagePath,
       downloadUrl,
-      size,
+      size: admission.bytes, // measured by Cloud Storage, never the declared value
       mimeType,
       uploadedByUid: auth.user.uid,
       uploadedByName: cleanString(
@@ -92,6 +111,15 @@ export async function POST(req: Request) {
       isDeleted: false,
       uploadedAt: now,
       updatedAt: now,
+    };
+
+    // PR4: generation-guarded so a late request cannot overwrite a newer object's
+    // record with stale bytes. See commitUploadRegistration().
+    await commitUploadRegistration({
+      collection: 'files',
+      registrationId: ref.id,
+      generation: admission.generation,
+      payload,
     });
 
     const actorName = cleanString(
@@ -143,5 +171,8 @@ export async function POST(req: Request) {
       rawMessage.toLowerCase().includes('indexes');
     const safeMessage = isIndexError ? 'Missing Firestore index.' : 'Unable to upload file.';
     return NextResponse.json({ ok: false, error: safeMessage }, { status: 500 });
+  } finally {
+    // The record now counts these bytes, or the upload failed and the space goes back.
+    await releaseUploadAdmission(admission);
   }
 }

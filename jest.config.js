@@ -54,6 +54,21 @@ const customJestConfig = {
     'app/api/notifications/[id]/read/route.ts',
     'app/api/projects/[id]/route.ts',
     'app/api/ai/tools/sales-write/route.ts',
+    // PR4: the six routes that register a browser-direct upload, covered by
+    // __tests__/api/storage-quota-upload-routes. Each now measures the object through the
+    // Admin SDK, reserves that many bytes, persists the measured figure and removes the
+    // object when it refuses — six near-identical call sites, which is exactly where a
+    // copy-paste slip hides. The suite drives all six handlers through success, an
+    // over-quota refusal, a missing object, an oversized object, reservation release and
+    // a cross-tenant path, so their coverage is evidence about changed production lines
+    // and belongs in lcov.info. The suite was written for the change, not for the number:
+    // it fails if any one of the six loses its enforcement.
+    'app/api/client/files/upload/route.ts',
+    'app/api/am/files/upload/route.ts',
+    'app/api/production/files/upload/route.ts',
+    'app/api/admin/files/create/route.ts',
+    'app/api/hr/documents/upload/route.ts',
+    'app/api/admin/hr/documents/upload/route.ts',
     // The app/api/files/[id] family, covered by __tests__/api/files-routes-tenant-isolation.
     // Each resolves a file from a URL id, so the tenant scoping of that lookup is the only
     // thing between a caller and another tenant's file; the suite asserts that scoping, the

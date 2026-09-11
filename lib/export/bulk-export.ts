@@ -149,6 +149,10 @@ export class BulkExportService {
       storagePath,
       signedUrl,
       fileName,
+      // PR4: the generated export stays in the bucket and nothing purges it, so repeated
+      // exports accumulate without bound. Persisting the byte count is what lets
+      // canonical storage accounting see them.
+      size: Buffer.byteLength(content, 'utf8'),
       totalRows,
       processedRows,
       updatedAt: new Date().toISOString(),

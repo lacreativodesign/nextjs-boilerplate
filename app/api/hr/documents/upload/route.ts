@@ -9,11 +9,20 @@ import {
 } from '../../_utils';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
-import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import {
+  admitTenantUpload,
+  commitUploadRegistration,
+  registrationIdForPath,
+  releaseUploadAdmission,
+  uploadAdmissionRefusal,
+  type UploadAdmission,
+} from '@/lib/billing/upload-admission';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  let admission: UploadAdmission | null = null; // released in the `finally` below
+
   try {
     const access = await requireHrAccess();
     if (!access.ok) {
@@ -43,11 +52,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
-    const storageCheck = await checkStorageLimit(access.user.tenantId, size);
-    if (!storageCheck.ok) {
-      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
-    }
-
     // Validate the target employee belongs to the actor's tenant BEFORE writing or
     // notifying. A cross-tenant userId must not reveal existence — return 404.
     const targetSnap = await adminDb.collection('users').doc(userId).get();
@@ -71,8 +75,22 @@ export async function POST(req: Request) {
       }
       docRef = existingRef;
     } else {
-      docRef = adminDb.collection('employeeDocuments').doc();
+      // PR4: one storage path is one physical object, so its record id is derived
+      // from the path. A retry after a partial failure upserts that record instead
+      // of adding a second one that would count the same object's bytes twice.
+      docRef = adminDb.collection('employeeDocuments').doc(registrationIdForPath(storagePath));
     }
+
+    // PR4-C: the `size` in the body is the caller's claim about bytes the browser
+    // already wrote. Admission measures the object, reserves it atomically, and
+    // removes it if refused. See lib/billing/upload-admission.ts.
+    admission = await admitTenantUpload({
+      tenantId: access.user.tenantId,
+      storagePath,
+      kind: 'hr_document_register',
+      collection: 'employeeDocuments',
+    });
+    if (!admission.ok) return uploadAdmissionRefusal(admission);
 
     const payload = {
       id: docRef.id,
@@ -82,7 +100,7 @@ export async function POST(req: Request) {
       storagePath,
       downloadUrl,
       // S11: persisted so HR documents are counted against the plan storage limit.
-      size,
+      size: admission.bytes, // measured by Cloud Storage, never the declared value
       uploadedBy: access.user.uid,
       tenantId: access.user.tenantId,
       createdAt: serverTimestamp(),
@@ -90,7 +108,14 @@ export async function POST(req: Request) {
       isDeleted: false,
     };
 
-    await docRef.set(payload, { merge: true });
+    // PR4: generation-guarded so a late request cannot overwrite a newer object's
+    // record with stale bytes. See commitUploadRegistration().
+    await commitUploadRegistration({
+      collection: 'employeeDocuments',
+      registrationId: docRef.id,
+      generation: admission.generation,
+      payload,
+    });
 
     await createHrEvent({
       type: 'hr.document_uploaded',
@@ -123,5 +148,8 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('HR documents upload error', err);
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
+  } finally {
+    // The record now counts these bytes, or the upload failed and the space goes back.
+    await releaseUploadAdmission(admission);
   }
 }

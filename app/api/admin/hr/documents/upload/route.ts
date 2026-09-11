@@ -4,11 +4,20 @@ import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
 import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
-import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import {
+  admitTenantUpload,
+  commitUploadRegistration,
+  registrationIdForPath,
+  releaseUploadAdmission,
+  uploadAdmissionRefusal,
+  type UploadAdmission,
+} from '@/lib/billing/upload-admission';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  let admission: UploadAdmission | null = null; // released in the `finally` below
+
   try {
     const access = await requireHrAccess();
     if (!access.ok) {
@@ -37,10 +46,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
-    const storageCheck = await checkStorageLimit(access.user.tenantId, size);
-    if (!storageCheck.ok) {
-      return NextResponse.json(storageLimitResponseBody(storageCheck), { status: 403 });
-    }
+    // PR4-C: the `size` in the body is the caller's claim about bytes the browser
+    // already wrote. Admission measures the object, reserves it atomically, and
+    // removes it if refused. See lib/billing/upload-admission.ts.
+    admission = await admitTenantUpload({
+      tenantId: access.user.tenantId,
+      storagePath,
+      kind: 'hr_document_register',
+      collection: 'employeeDocuments',
+    });
+    if (!admission.ok) return uploadAdmissionRefusal(admission);
 
     const payload = {
       userId,
@@ -52,14 +67,25 @@ export async function POST(req: Request) {
       // tenant-scoped HR document list AND to storage accounting. Same defect class as
       // the file records fixed earlier; this admin route was the missed sibling.
       tenantId: access.user.tenantId,
-      size,
+      size: admission.bytes, // measured by Cloud Storage, never the declared value
       uploadedBy: access.user.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isDeleted: false,
     };
 
-    const ref = await adminDb.collection('employeeDocuments').add(payload);
+    // PR4: one storage path is one physical object, so its record id is derived from
+    // the path. `add()` minted a fresh id per POST, so a retry after a partial failure
+    // wrote a second live record for the same object and counted its bytes twice.
+    const ref = adminDb.collection('employeeDocuments').doc(registrationIdForPath(storagePath));
+    // PR4: generation-guarded so a late request cannot overwrite a newer object's
+    // record with stale bytes. See commitUploadRegistration().
+    await commitUploadRegistration({
+      collection: 'employeeDocuments',
+      registrationId: ref.id,
+      generation: admission.generation,
+      payload,
+    });
 
     await createHrEvent({
       type: 'hr.document_uploaded',
@@ -85,5 +111,8 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('HR documents upload error', err);
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
+  } finally {
+    // The record now counts these bytes, or the upload failed and the space goes back.
+    await releaseUploadAdmission(admission);
   }
 }
