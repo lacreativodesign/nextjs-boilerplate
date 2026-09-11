@@ -11,6 +11,7 @@ import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
+  registrationIdForPath,
   releaseUploadAdmission,
   uploadAdmissionRefusal,
   type UploadAdmission,
@@ -79,7 +80,10 @@ export async function POST(req: Request) {
     if (!admission.ok) return uploadAdmissionRefusal(admission);
 
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const ref = adminDb.collection('files').doc();
+    // PR4: one storage path is one physical object, so its record id is derived from
+    // the path. A retry after a partial failure upserts that record instead of adding
+    // a second one that would count the same object's bytes twice.
+    const ref = adminDb.collection('files').doc(registrationIdForPath(storagePath));
 
     await ref.set({
       id: ref.id,

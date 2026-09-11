@@ -16,6 +16,13 @@ type SumSpec = { __sum: string };
 export class FakeDb {
   /** collection path -> docId -> data */
   readonly cols = new Map<string, Map<string, Row>>();
+  /**
+   * Collection paths whose aggregate reads should reject, so a suite can model what
+   * Firestore does when a query has no index to serve it (FAILED_PRECONDITION).
+   */
+  readonly failingAggregates = new Set<string>();
+  /** Collection paths whose writes should reject, to model a mid-request failure. */
+  readonly failingWrites = new Set<string>();
   private seq = 0;
 
   collection(path: string) {
@@ -137,6 +144,9 @@ export class FakeCollection extends FakeQuery {
   }
 
   async add(data: Row) {
+    if (this.db.failingWrites.has(this.path)) {
+      throw new Error(`write to ${this.path} failed`);
+    }
     const ref = this.doc();
     await ref.set(data);
     return ref;
@@ -150,6 +160,14 @@ export class FakeAggregate {
   ) {}
 
   get() {
+    if (this.query.db.failingAggregates.has(this.query.path)) {
+      const error = new Error(
+        `9 FAILED_PRECONDITION: The query requires an index for ${this.query.path}.`,
+      );
+      (error as Error & { code?: number }).code = 9;
+      return Promise.reject(error);
+    }
+
     const rows = this.query.rows();
     const out: Row = {};
     Object.entries(this.spec).forEach(([key, sum]) => {

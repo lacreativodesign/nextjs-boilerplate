@@ -36,8 +36,20 @@ export interface VerifiedTenantObject {
   ok: boolean;
   /** Authoritative byte size recorded by Cloud Storage. 0 when `ok` is false. */
   size: number;
+  /**
+   * Cloud Storage's generation for the object: a new value every time the object at a
+   * path is replaced. Path alone does not identify bytes — an overwrite keeps the path
+   * and changes everything about what is stored there — so this is what makes a
+   * reservation or a registration refer to one specific set of bytes.
+   */
+  generation: string;
   /** Populated when `ok` is false, safe to return to the caller. */
   error?: string;
+}
+
+/** Identifies one specific set of bytes: the path plus the generation stored there. */
+export function tenantObjectKey(storagePath: string, generation: string): string {
+  return `${storagePath}#${generation}`;
 }
 
 /**
@@ -51,21 +63,33 @@ export async function getVerifiedTenantObjectSize(
   tenantId: string,
 ): Promise<VerifiedTenantObject> {
   if (!isTenantStoragePath(storagePath, tenantId)) {
-    return { ok: false, size: 0, error: 'Invalid storage path.' };
+    return { ok: false, size: 0, generation: '', error: 'Invalid storage path.' };
   }
 
   try {
     const [metadata] = await tenantBucket().file(storagePath).getMetadata();
     const size = Number(metadata?.size);
+    const generation = String(metadata?.generation ?? '').trim();
 
     if (!Number.isFinite(size) || size < 0) {
-      return { ok: false, size: 0, error: 'Uploaded file could not be measured.' };
+      return { ok: false, size: 0, generation: '', error: 'Uploaded file could not be measured.' };
     }
 
-    return { ok: true, size: Math.floor(size) };
+    // Without a generation the bytes at this path cannot be identified, and reusing a
+    // reservation or a registration for them would be a guess. Fail closed instead.
+    if (!generation) {
+      return {
+        ok: false,
+        size: 0,
+        generation: '',
+        error: 'Uploaded file could not be identified.',
+      };
+    }
+
+    return { ok: true, size: Math.floor(size), generation };
   } catch {
     // Includes the 404 a caller gets for describing an object it never uploaded.
-    return { ok: false, size: 0, error: 'Uploaded file was not found in storage.' };
+    return { ok: false, size: 0, generation: '', error: 'Uploaded file was not found in storage.' };
   }
 }
 
@@ -91,8 +115,8 @@ export interface TenantObjectRemoval {
  *   addressable: false  the stored path is not under this tenant's prefix. Every route
  *                       has validated the prefix at write time since S5, so this is
  *                       legacy data written against a flat path. The object cannot be
- *                       proven to belong to this tenant, so it is not touched — and the
- *                       caller must not be left unable to delete its own record either.
+ *                       proven to belong to this tenant, so it is NOT deleted — and the
+ *                       record must not be cleared either (see purgeRecordStorageObject).
  *   removed: false      a real failure. The caller must keep the record so usage keeps
  *                       counting bytes that still exist.
  *   removed: true       the bytes are gone and the quota may be recovered.
@@ -115,29 +139,57 @@ export async function deleteTenantObject(
   }
 }
 
+/** Machine-readable code for a record whose object predates tenant-scoped paths. */
+export const LEGACY_STORAGE_PATH = 'legacy_storage_path';
+
 /**
  * Frees a record's bytes before its quota is freed, for the delete routes.
  *
- * Returns a response when the delete must NOT proceed, and null when it may. Those are
- * the three outcomes of deleteTenantObject(): a real removal failure blocks the delete,
- * so usage keeps counting bytes that still exist; an unaddressable legacy path does not,
- * because the tenant must still be able to remove its own record.
+ * Returns a response when the delete must NOT proceed, and null when it may.
  *
- * Lives here rather than in each route: the three delete routes were otherwise carrying
- * the same block, which is duplication and an untested branch in each.
+ * Both failure outcomes block the delete, and for the same reason: usage excludes
+ * soft-deleted records, so clearing a record whose object is still in the bucket
+ * recovers quota for bytes Bizosto is still being billed for. That is the quota bypass
+ * this PR exists to close, and it does not stop being one because the path is old.
+ *
+ * An earlier revision let an unaddressable legacy path through, on the reasoning that a
+ * tenant must not be trapped with an undeletable record. That traded a monetization
+ * invariant for a usability one, and it was the wrong trade: it let pre-S5 records
+ * manufacture free quota while their bytes stayed billable and invisible. The record now
+ * stays live and counted, and the refusal says exactly what has to happen instead —
+ * a privileged cleanup that can establish ownership of a flat path, which no
+ * tenant-scoped request can do safely.
  */
 export async function purgeRecordStorageObject(
   record: Record<string, unknown> | undefined,
 ): Promise<NextResponse | null> {
   const storagePath = String(record?.storagePath || '');
+  // A record that never had an object has no bytes to free and nothing to count.
   if (!storagePath) return null;
 
   const purge = await deleteTenantObject(storagePath, String(record?.tenantId || ''));
-  if (purge.addressable && !purge.removed) {
+
+  if (!purge.addressable) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: LEGACY_STORAGE_PATH,
+        message:
+          'This file is stored under a legacy path that cannot be verified as belonging ' +
+          'to your workspace, so it cannot be removed automatically. It still counts ' +
+          'towards your storage until support removes it. Contact support to have it ' +
+          'cleared.',
+      },
+      { status: 409 },
+    );
+  }
+
+  if (!purge.removed) {
     return NextResponse.json(
       { ok: false, error: 'Could not remove the stored file. Nothing was deleted.' },
       { status: 502 },
     );
   }
+
   return null;
 }

@@ -14,6 +14,8 @@
  * fixture many certified suites depend on.
  */
 
+import { readFileSync } from 'fs';
+import { join as pathJoin } from 'path';
 import { FakeDb } from './test-utils/firestore-quota-double';
 
 let db: FakeDb;
@@ -55,14 +57,18 @@ import {
   StorageLimitExceededError,
   STORAGE_RESERVATION_TTL_MS,
 } from '@/lib/billing/storage-reservation';
-import { deleteTenantObject, getVerifiedTenantObjectSize } from '@/lib/storage/tenant-object';
+import {
+  deleteTenantObject,
+  getVerifiedTenantObjectSize,
+  tenantObjectKey,
+} from '@/lib/storage/tenant-object';
 import {
   admitTenantUpload,
   releaseUploadAdmission,
   uploadAdmissionRefusal,
   uploadAdmissionResponseBody,
 } from '@/lib/billing/upload-admission';
-import { purgeRecordStorageObject } from '@/lib/storage/tenant-object';
+import { LEGACY_STORAGE_PATH, purgeRecordStorageObject } from '@/lib/storage/tenant-object';
 
 const GB = 1024 ** 3;
 const STARTER_LIMIT = 20 * GB;
@@ -305,10 +311,11 @@ describe('PR4: reservations admit, deny and account correctly', () => {
 
 describe('PR4: the object size is measured, not declared', () => {
   it('returns the size Cloud Storage recorded', async () => {
-    getMetadata.mockResolvedValue([{ size: '4096' }]);
+    getMetadata.mockResolvedValue([{ size: '4096', generation: '1700000000000001' }]);
     await expect(getVerifiedTenantObjectSize(PATH, TENANT)).resolves.toEqual({
       ok: true,
       size: 4096,
+      generation: '1700000000000001',
     });
   });
 
@@ -327,7 +334,7 @@ describe('PR4: the object size is measured, not declared', () => {
   });
 
   it('fails closed when the metadata carries no usable size', async () => {
-    getMetadata.mockResolvedValue([{ size: 'not-a-number' }]);
+    getMetadata.mockResolvedValue([{ size: 'not-a-number', generation: '1700000000000001' }]);
     const result = await getVerifiedTenantObjectSize(PATH, TENANT);
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/could not be measured/);
@@ -365,7 +372,7 @@ describe('PR4: admission control for browser-direct uploads', () => {
     admitTenantUpload({ tenantId, storagePath: PATH, kind: 'client_file_register' });
 
   it('measures, reserves and admits, reporting the measured size', async () => {
-    getMetadata.mockResolvedValue([{ size: 1024 }]);
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
     const admission = await admit();
 
     expect(admission.ok).toBe(true);
@@ -379,7 +386,7 @@ describe('PR4: admission control for browser-direct uploads', () => {
 
   it('refuses and removes the object when the tenant is out of space', async () => {
     seedDocumentBytes(TENANT, STARTER_LIMIT);
-    getMetadata.mockResolvedValue([{ size: 1024 }]);
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
 
     const admission = await admit();
     expect(admission.ok).toBe(false);
@@ -394,7 +401,7 @@ describe('PR4: admission control for browser-direct uploads', () => {
   it('refuses an object larger than the app ceiling and removes it', async () => {
     // Storage rules allow 50MB per object; the app ceiling is 25MB, and validateFile()
     // only ever saw the declared size.
-    getMetadata.mockResolvedValue([{ size: 40 * 1024 * 1024 }]);
+    getMetadata.mockResolvedValue([{ size: 40 * 1024 * 1024, generation: '1700000000000002' }]);
 
     const admission = await admit();
     expect(admission.ok).toBe(false);
@@ -427,7 +434,7 @@ describe('PR4: admission control for browser-direct uploads', () => {
 
   it('releasing a refused admission is safe', async () => {
     seedDocumentBytes(TENANT, STARTER_LIMIT);
-    getMetadata.mockResolvedValue([{ size: 1024 }]);
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
     const admission = await admit();
 
     await expect(releaseUploadAdmission(admission)).resolves.toBeUndefined();
@@ -438,7 +445,7 @@ describe('PR4: admission control for browser-direct uploads', () => {
 describe('PR4: the refusal a route returns', () => {
   it('renders a quota refusal as a 403 carrying the contract', async () => {
     seedDocumentBytes(TENANT, STARTER_LIMIT);
-    getMetadata.mockResolvedValue([{ size: 1024 }]);
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
 
     const admission = await admitTenantUpload({
       tenantId: TENANT,
@@ -485,10 +492,80 @@ describe('PR4: a delete frees the bytes before it frees the quota', () => {
     await expect(blocked?.json()).resolves.toMatchObject({ ok: false });
   });
 
-  it('lets a legacy flat path delete rather than trapping the record', async () => {
-    await expect(
-      purgeRecordStorageObject({ storagePath: 'projects/legacy/f.pdf', tenantId: TENANT }),
-    ).resolves.toBeNull();
+  it('blocks the delete with a 409 for an unprovable legacy path', async () => {
+    // A pre-S5 flat path cannot be proven to belong to this tenant, so the object is not
+    // touched. The record must therefore NOT be cleared: usage excludes soft-deleted
+    // records, so clearing it would recover quota for bytes still in the bucket — the
+    // exact bypass this PR closes. An earlier revision let this through.
+    const blocked = await purgeRecordStorageObject({
+      storagePath: 'projects/legacy/f.pdf',
+      tenantId: TENANT,
+    });
+
+    expect(blocked?.status).toBe(409);
+    await expect(blocked?.json()).resolves.toMatchObject({
+      ok: false,
+      error: LEGACY_STORAGE_PATH,
+    });
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+
+  it('a legacy record keeps counting, so no free quota is manufactured', async () => {
+    db.seed('files', [
+      [
+        'legacy',
+        { tenantId: TENANT, size: 4 * GB, isDeleted: false, storagePath: 'projects/l.pdf' },
+      ],
+    ]);
+    expect(await getTenantStorageUsage(TENANT)).toBe(4 * GB);
+
+    // The delete is refused, so the record is never marked deleted...
+    const blocked = await purgeRecordStorageObject({
+      storagePath: 'projects/l.pdf',
+      tenantId: TENANT,
+    });
+    expect(blocked).not.toBeNull();
+
+    // ...and its bytes still count.
+    expect(await getTenantStorageUsage(TENANT)).toBe(4 * GB);
+  });
+
+  it('a failed physical deletion cannot manufacture free quota either', async () => {
+    deleteObject.mockRejectedValue(new Error('permission denied'));
+    db.seed('files', [
+      ['stuck', { tenantId: TENANT, size: 2 * GB, isDeleted: false, storagePath: PATH }],
+    ]);
+
+    const blocked = await purgeRecordStorageObject({ storagePath: PATH, tenantId: TENANT });
+    expect(blocked?.status).toBe(502);
+    expect(await getTenantStorageUsage(TENANT)).toBe(2 * GB);
+  });
+
+  it('a successful deletion is the only thing that recovers quota', async () => {
+    db.seed('files', [
+      ['live', { tenantId: TENANT, size: 2 * GB, isDeleted: false, storagePath: PATH }],
+    ]);
+    expect(await getTenantStorageUsage(TENANT)).toBe(2 * GB);
+
+    const blocked = await purgeRecordStorageObject({ storagePath: PATH, tenantId: TENANT });
+    expect(blocked).toBeNull();
+
+    // The route may now clear the record, and only now do the bytes stop counting.
+    db.bucket('files').set('live', {
+      ...db.bucket('files').get('live'),
+      isDeleted: true,
+    });
+    expect(await getTenantStorageUsage(TENANT)).toBe(0);
+  });
+
+  it('never purges under another tenant’s prefix', async () => {
+    const blocked = await purgeRecordStorageObject({
+      storagePath: `tenants/${OTHER}/client-files/p1/f1.pdf`,
+      tenantId: TENANT,
+    });
+
+    // Not addressable as this tenant, so refused rather than deleted cross-tenant.
+    expect(blocked?.status).toBe(409);
     expect(deleteObject).not.toHaveBeenCalled();
   });
 
@@ -496,5 +573,245 @@ describe('PR4: a delete frees the bytes before it frees the quota', () => {
     await expect(purgeRecordStorageObject({ tenantId: TENANT })).resolves.toBeNull();
     await expect(purgeRecordStorageObject(undefined)).resolves.toBeNull();
     expect(deleteObject).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * PR4 remediation — a reservation may only be reused for the same bytes.
+ *
+ * Admission keys its reservation on the object, so a retry reuses what it already holds
+ * instead of being charged twice. That is only safe while the key means one set of
+ * bytes. Cloud Storage lets an object at a path be replaced, which keeps the path and
+ * changes the size, so a path-only key would let a retry for a LARGER object reuse a
+ * smaller object's reservation and overshoot the plan.
+ */
+describe('PR4: reservation reuse is byte-stable and object-identified', () => {
+  it('reuses a reservation for the identical byte count', async () => {
+    seedDocumentBytes(TENANT, STARTER_LIMIT - 2 * GB);
+    const key = 'tenants/a/client-files/p/f.pdf#1700000000000001';
+
+    const first = await reserveTenantStorage({
+      tenantId: TENANT,
+      bytes: 1 * GB,
+      kind: 'client_file_register',
+      idempotencyKey: key,
+    });
+    const retry = await reserveTenantStorage({
+      tenantId: TENANT,
+      bytes: 1 * GB,
+      kind: 'client_file_register',
+      idempotencyKey: key,
+    });
+
+    expect(retry.ok).toBe(true);
+    expect(retry.reservationId).toBe(first.reservationId);
+    expect(db.bucket(reservationsPath(TENANT)).size).toBe(1);
+  });
+
+  it('refuses to reuse a reservation holding a different byte count', async () => {
+    seedDocumentBytes(TENANT, STARTER_LIMIT - 2 * GB);
+    const key = 'tenants/a/client-files/p/f.pdf#1700000000000001';
+
+    await reserveTenantStorage({
+      tenantId: TENANT,
+      bytes: 1024,
+      kind: 'client_file_register',
+      idempotencyKey: key,
+    });
+
+    // The same key asking for 2GB is not a retry of the 1KB upload. Honouring it would
+    // admit 2GB against a 1KB reservation.
+    const collision = await reserveTenantStorage({
+      tenantId: TENANT,
+      bytes: 2 * GB,
+      kind: 'client_file_register',
+      idempotencyKey: key,
+    });
+
+    expect(collision.ok).toBe(false);
+    expect(collision.reservationId).toBeNull();
+    expect(db.bucket(reservationsPath(TENANT)).size).toBe(1);
+  });
+
+  it('the object key changes when the bytes at a path are replaced', () => {
+    const path = `tenants/${TENANT}/client-files/p/f.pdf`;
+    expect(tenantObjectKey(path, '1')).not.toBe(tenantObjectKey(path, '2'));
+    expect(tenantObjectKey(path, '1')).toBe(tenantObjectKey(path, '1'));
+  });
+
+  it('a replaced, larger object cannot ride the smaller object’s reservation', async () => {
+    // 10MB of headroom, which is under the 25MB per-object app ceiling so the quota
+    // branch is what decides. A small object is admitted and its reservation is live.
+    const MB = 1024 * 1024;
+    seedDocumentBytes(TENANT, STARTER_LIMIT - 10 * MB);
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
+
+    const first = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+    expect(first.ok).toBe(true);
+    expect(first.bytes).toBe(1024);
+
+    // The object at that same path is replaced with one larger than the headroom.
+    getMetadata.mockResolvedValue([{ size: 20 * MB, generation: '1700000000000002' }]);
+    const second = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+
+    // It gets its own decision against the real remaining quota, and is refused.
+    expect(second.ok).toBe(false);
+    expect(second.check?.incoming).toBe(20 * MB);
+    expect(second.generation).toBe('1700000000000002');
+  });
+
+  it('a replaced object that does fit is charged its own, larger size', async () => {
+    seedDocumentBytes(TENANT, 1 * GB);
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
+    const first = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+    expect(first.bytes).toBe(1024);
+
+    getMetadata.mockResolvedValue([{ size: 4096, generation: '1700000000000002' }]);
+    const second = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+
+    expect(second.ok).toBe(true);
+    expect(second.bytes).toBe(4096);
+    // A distinct object, so a distinct reservation — not the 1KB one reused.
+    expect(second.reservation?.reservationId).not.toBe(first.reservation?.reservationId);
+    // ...but the same record, because it is the same path.
+    expect(second.registrationId).toBe(first.registrationId);
+  });
+
+  it('an object with no generation is refused rather than guessed at', async () => {
+    getMetadata.mockResolvedValue([{ size: 1024 }]);
+    const admission = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+    });
+
+    expect(admission.ok).toBe(false);
+    expect(admission.status).toBe(400);
+  });
+});
+
+/**
+ * PR4 remediation — a missing Firestore index must refuse uploads, never admit them.
+ *
+ * Canonical usage sums `documents` with `tenantId == x AND deletedAt == null`. The
+ * read-only production inventory run against this PR head reports that index as the one
+ * and only entry the live project does not yet carry, so the owner must create it before
+ * the application depends on it (see the PR body for the exact procedure).
+ *
+ * What matters for the monetization invariant is the failure mode if that sequencing is
+ * ever missed. A usage query that cannot be served must not be read as "this tenant has
+ * used nothing" — that would turn a missing index into an unmetered-upload bypass on
+ * every path at once. It propagates instead: no reservation is granted and the upload is
+ * refused. Loud and closed, never quiet and open.
+ */
+describe('PR4: a usage query that cannot be served fails closed', () => {
+  it('refuses the reservation instead of counting the tenant as empty', async () => {
+    seedDocumentBytes(TENANT, 1 * GB);
+    db.failingAggregates.add('documents');
+
+    await expect(
+      reserveTenantStorage({ tenantId: TENANT, bytes: 1024, kind: 'document_upload' }),
+    ).rejects.toThrow(/FAILED_PRECONDITION/);
+
+    // Nothing was granted, so nothing can be stored against a usage figure of zero.
+    expect(db.bucket(reservationsPath(TENANT)).size).toBe(0);
+  });
+
+  it('refuses a browser-direct admission for the same reason', async () => {
+    db.failingAggregates.add('documents');
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
+
+    await expect(
+      admitTenantUpload({ tenantId: TENANT, storagePath: PATH, kind: 'client_file_register' }),
+    ).rejects.toThrow(/FAILED_PRECONDITION/);
+    expect(db.bucket(reservationsPath(TENANT)).size).toBe(0);
+  });
+
+  it('the same holds for every other byte source, not just documents', async () => {
+    for (const collection of ['files', 'employeeDocuments', 'erp_file_versions', 'importJobs']) {
+      db = new FakeDb();
+      db.seed('tenants', [[TENANT, { plan: 'starter' }]]);
+      db.failingAggregates.add(collection);
+
+      await expect(
+        reserveTenantStorage({ tenantId: TENANT, bytes: 1024, kind: 'document_upload' }),
+      ).rejects.toThrow(/FAILED_PRECONDITION/);
+    }
+  });
+});
+
+/**
+ * PR4 remediation — the surfaces previously waved through as "ancillary".
+ *
+ * Each was examined rather than classified by category. Import payloads, export outputs
+ * and DocuSign signed documents are all tenant-controlled, uncapped in count, and purged
+ * by nothing, so they accumulate without bound in Bizosto-billed storage; they are now
+ * counted. The tenant logo (fixed path, overwritten, super_admin only) and support
+ * screenshots (3MB, one per rate-limited and deduped ticket, on the platform support
+ * desk) are bounded, and stay outside paid quota.
+ */
+describe('PR4: unbounded ancillary surfaces are metered', () => {
+  it('counts bulk-import payloads', async () => {
+    db.seed('importJobs', [['j1', { tenantId: TENANT, size: 2 * GB, storagePath: 'x' }]]);
+    expect(await getTenantStorageUsage(TENANT)).toBe(2 * GB);
+  });
+
+  it('counts bulk-export outputs', async () => {
+    db.seed('exportJobs', [['e1', { tenantId: TENANT, size: 3 * GB, storagePath: 'x' }]]);
+    expect(await getTenantStorageUsage(TENANT)).toBe(3 * GB);
+  });
+
+  it('counts DocuSign signed documents', async () => {
+    db.seed(`tenants/${TENANT}/docusignEnvelopes`, [
+      ['env1', { signedDocumentSize: 1 * GB }],
+      ['env2', { signedDocumentSize: 2 * GB }],
+    ]);
+    expect(await getTenantStorageUsage(TENANT)).toBe(3 * GB);
+  });
+
+  it('keeps every ancillary surface tenant-scoped', async () => {
+    db.seed('importJobs', [['j1', { tenantId: OTHER, size: 5 * GB }]]);
+    db.seed('exportJobs', [['e1', { tenantId: OTHER, size: 5 * GB }]]);
+    db.seed(`tenants/${OTHER}/docusignEnvelopes`, [['env1', { signedDocumentSize: 5 * GB }]]);
+
+    expect(await getTenantStorageUsage(TENANT)).toBe(0);
+    expect(await getTenantStorageUsage(OTHER)).toBe(15 * GB);
+  });
+
+  it('an over-quota tenant cannot add another import payload', async () => {
+    db.seed('importJobs', [['j1', { tenantId: TENANT, size: STARTER_LIMIT }]]);
+    const reservation = await reserveTenantStorage({
+      tenantId: TENANT,
+      bytes: 1024,
+      kind: 'bulk_import_upload',
+    });
+    expect(reservation.ok).toBe(false);
+  });
+
+  it('leaves the bounded platform surfaces out of paid quota', () => {
+    const src = readFileSync(pathJoin(process.cwd(), 'lib/billing/storage-limit.ts'), 'utf8');
+    const sources = src.slice(
+      src.indexOf('export function tenantStorageSources'),
+      src.indexOf('\n}', src.indexOf('export function tenantStorageSources')),
+    );
+    // Bounded: a fixed overwritten path, and one 3MB object per rate-limited ticket.
+    expect(sources).not.toContain('branding');
+    expect(sources).not.toContain('platform_tickets');
   });
 });

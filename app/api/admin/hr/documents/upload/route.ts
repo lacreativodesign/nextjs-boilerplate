@@ -6,6 +6,7 @@ import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
+  registrationIdForPath,
   releaseUploadAdmission,
   uploadAdmissionRefusal,
   type UploadAdmission,
@@ -71,7 +72,11 @@ export async function POST(req: Request) {
       isDeleted: false,
     };
 
-    const ref = await adminDb.collection('employeeDocuments').add(payload);
+    // PR4: one storage path is one physical object, so its record id is derived from
+    // the path. `add()` minted a fresh id per POST, so a retry after a partial failure
+    // wrote a second live record for the same object and counted its bytes twice.
+    const ref = adminDb.collection('employeeDocuments').doc(registrationIdForPath(storagePath));
+    await ref.set(payload, { merge: true });
 
     await createHrEvent({
       type: 'hr.document_uploaded',

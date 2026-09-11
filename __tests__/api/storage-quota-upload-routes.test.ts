@@ -107,6 +107,8 @@ import { POST as adminCreate } from '@/app/api/admin/files/create/route';
 import { POST as hrUpload } from '@/app/api/hr/documents/upload/route';
 import { POST as adminHrUpload } from '@/app/api/admin/hr/documents/upload/route';
 import { STORAGE_LIMIT_EXCEEDED } from '@/lib/billing/storage-limit';
+import { getTenantStorageUsage } from '@/lib/billing/storage-limit';
+import { createNotification } from '@/lib/notifications';
 
 const jsonRequest = (body: unknown) =>
   new Request('https://bizosto.test/api', {
@@ -242,7 +244,7 @@ beforeEach(() => {
   ]);
   db.seed('users', [[EMPLOYEE, { tenantId: TENANT, role: 'sales' }]]);
 
-  getMetadata.mockReset().mockResolvedValue([{ size: MEASURED }]);
+  getMetadata.mockReset().mockResolvedValue([{ size: MEASURED, generation: '1700000000000001' }]);
   deleteObject.mockReset().mockResolvedValue(undefined);
 });
 
@@ -299,7 +301,7 @@ describe.each(SURFACES)('PR4-C: $name', ({ handler, collection, storagePath, bod
   it('refuses an object larger than the app ceiling and removes it', async () => {
     // Storage rules stop at 50MB per object; the app ceiling is 25MB, and the declared
     // size is the only thing the earlier validation ever saw.
-    getMetadata.mockResolvedValue([{ size: 40 * 1024 * 1024 }]);
+    getMetadata.mockResolvedValue([{ size: 40 * 1024 * 1024, generation: '1700000000000002' }]);
 
     const response = await handler(jsonRequest(body({})));
     expect(response.status).toBe(400);
@@ -328,3 +330,78 @@ describe.each(SURFACES)('PR4-C: $name', ({ handler, collection, storagePath, bod
     expect(liveRecords()).toHaveLength(0);
   });
 });
+
+/**
+ * PR4 remediation — one physical object may only ever produce one live quota-counted
+ * record, no matter how the request fails or how many times it is retried.
+ *
+ * Registration used to mint a random document id per POST. Admission is released as soon
+ * as the record lands, which is correct, so a request that committed its record and then
+ * failed on a later step returned a failure the caller would retry — and the retry wrote
+ * a SECOND live record for the same bytes. Canonical usage then counted one object
+ * twice, and no reservation could prevent it because by then there was none to hold.
+ */
+describe.each(SURFACES)(
+  'PR4: $name is idempotent per physical object',
+  ({ handler, collection, storagePath, body }) => {
+    const liveRecords = () =>
+      Array.from(db.bucket(collection).values()).filter((row) => row.tenantId === TENANT);
+
+    it('a duplicate POST does not create a second record', async () => {
+      await handler(jsonRequest(body({})));
+      await handler(jsonRequest(body({})));
+
+      expect(liveRecords()).toHaveLength(1);
+      expect(liveRecords()[0].size).toBe(MEASURED);
+    });
+
+    it('a retry after the record committed but a later step failed does not double-count', async () => {
+      // The record lands, then a notification/audit write throws. The route reports a
+      // failure and the caller retries the identical request.
+      (createNotification as jest.Mock).mockRejectedValueOnce(new Error('notify down'));
+
+      await handler(jsonRequest(body({}))).catch(() => undefined);
+      await handler(jsonRequest(body({})));
+
+      expect(liveRecords()).toHaveLength(1);
+      expect(await getTenantStorageUsage(TENANT)).toBe(MEASURED);
+    });
+
+    it('concurrent duplicate registrations collapse to one record', async () => {
+      await Promise.all([
+        handler(jsonRequest(body({}))),
+        handler(jsonRequest(body({}))),
+        handler(jsonRequest(body({}))),
+      ]);
+
+      expect(liveRecords()).toHaveLength(1);
+      expect(await getTenantStorageUsage(TENANT)).toBe(MEASURED);
+    });
+
+    it('replacing the object at the same path updates that record instead of adding one', async () => {
+      await handler(jsonRequest(body({})));
+      expect(liveRecords()[0].size).toBe(MEASURED);
+
+      // The browser overwrites the same path: Cloud Storage keeps one set of bytes there
+      // and reports a new generation. Counting a second record would charge for bytes that
+      // no longer exist.
+      const replaced = 7 * 1024 * 1024;
+      getMetadata.mockResolvedValue([{ size: replaced, generation: '1700000000000999' }]);
+      await handler(jsonRequest(body({})));
+
+      expect(liveRecords()).toHaveLength(1);
+      expect(liveRecords()[0].size).toBe(replaced);
+      expect(await getTenantStorageUsage(TENANT)).toBe(replaced);
+    });
+
+    it('one physical object is never counted twice, however many times it is registered', async () => {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await handler(jsonRequest(body({})));
+      }
+
+      expect(liveRecords()).toHaveLength(1);
+      expect(await getTenantStorageUsage(TENANT)).toBe(MEASURED);
+      expect(getMetadata).toHaveBeenCalledWith(storagePath);
+    });
+  },
+);

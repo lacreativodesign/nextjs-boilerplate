@@ -69,7 +69,8 @@ export type StorageReservationKind =
   | 'managed_file_upload'
   | 'project_file_register'
   | 'client_file_register'
-  | 'hr_document_register';
+  | 'hr_document_register'
+  | 'bulk_import_upload';
 
 export interface TenantStorageReservation extends StorageLimitCheck {
   tenantId: string;
@@ -198,8 +199,30 @@ export async function reserveTenantStorage(params: {
       held += normalizeBytes(data.bytes);
     }
 
-    // Idempotent retry: hand back the reservation this key already holds, unchanged.
+    // Idempotent retry: hand back the reservation this key already holds — but ONLY if
+    // it is holding the same number of bytes.
+    //
+    // Reuse is safe exactly when the retry is for the same bytes. A key whose live
+    // reservation holds a DIFFERENT byte count is not a retry of the same upload: it is
+    // a second set of bytes wearing the first one's name, and honouring it would admit
+    // the larger upload against the smaller reservation and overshoot the plan. Callers
+    // key on path + Cloud Storage generation, so this should be unreachable; it is
+    // enforced here anyway, because a key collision that silently under-charges is
+    // precisely the failure the reservation exists to prevent.
     if (alreadyHeld !== null) {
+      if (alreadyHeld !== incoming) {
+        return {
+          ok: false,
+          limit,
+          used: committed + held + alreadyHeld,
+          incoming,
+          plan,
+          tenantId: id,
+          reservationId: null,
+          bytes: 0,
+        };
+      }
+
       return {
         ok: true,
         limit,

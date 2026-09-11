@@ -33,6 +33,30 @@ import { plans, normalizePlanKey } from '@/lib/billing/plans';
  *   object exactly once: the current version is one row in that collection, so the
  *   `erp_files` row must NOT also be counted or the current version is double-charged.
  *
+ * PR4 remediation added three more, after each ancillary surface was examined rather
+ * than waved through as "operational":
+ *
+ *   `importJobs`          tenant-uploaded payloads, <=25MB each, one object per import,
+ *                         no retention or cleanup anywhere — unbounded and
+ *                         tenant-controlled.
+ *   `exportJobs`          tenant-triggered outputs sized by the tenant's own data, one
+ *                         object per export, no cleanup — unbounded and
+ *                         tenant-controlled.
+ *   `docusignEnvelopes`   signed contracts: persistent tenant BUSINESS documents, one
+ *                         per envelope, no cleanup.
+ *
+ * Two surfaces stay outside paid quota, with the reasons recorded so the decision can be
+ * re-examined rather than inherited:
+ *
+ *   tenant branding logo  written by super_admin to a FIXED path and overwritten in
+ *                         place, <=2MB. Bounded platform overhead; a tenant cannot
+ *                         accumulate them.
+ *   support screenshots   <=3MB, exactly one per ticket (the path is the ticket id),
+ *                         behind strict rate limiting and content-hash dedup, and
+ *                         attached to the PLATFORM support desk rather than to tenant
+ *                         business data. Metering it would also let a full workspace
+ *                         quietly lose the ability to report a problem.
+ *
  * Limits come from the canonical catalog in lib/billing/plans.ts (limits.storage, in
  * bytes) so there is a single source of truth, and no upload route carries a pricing
  * table of its own.
@@ -122,6 +146,26 @@ export function tenantStorageSources(tenantId: string) {
         .where('tenantId', '==', id)
         .where('deletedAt', '==', null)
         .aggregate({ total: AggregateField.sum('fileSize') }),
+      // Bulk-import payloads. Tenant-uploaded, up to 25MB each, one object per import,
+      // and nothing purges them — so they accumulate without bound until metered.
+      adminDb
+        .collection('importJobs')
+        .where('tenantId', '==', id)
+        .aggregate({ total: AggregateField.sum('size') }),
+      // Bulk-export outputs. Tenant-triggered, sized by the tenant's own data, one
+      // object per export, and nothing purges them either.
+      adminDb
+        .collection('exportJobs')
+        .where('tenantId', '==', id)
+        .aggregate({ total: AggregateField.sum('size') }),
+      // DocuSign signed documents: persistent tenant business records, one per envelope,
+      // never purged. The subcollection lives under the tenant document, so it is
+      // tenant-scoped by construction and needs no filter of its own.
+      adminDb
+        .collection('tenants')
+        .doc(id)
+        .collection('docusignEnvelopes')
+        .aggregate({ total: AggregateField.sum('signedDocumentSize') }),
     ],
   };
 }

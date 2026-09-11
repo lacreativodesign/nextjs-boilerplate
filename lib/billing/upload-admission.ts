@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { storageLimitResponseBody, type StorageLimitCheck } from '@/lib/billing/storage-limit';
 import {
@@ -6,7 +7,11 @@ import {
   type StorageReservationKind,
   type TenantStorageReservation,
 } from '@/lib/billing/storage-reservation';
-import { deleteTenantObject, getVerifiedTenantObjectSize } from '@/lib/storage/tenant-object';
+import {
+  deleteTenantObject,
+  getVerifiedTenantObjectSize,
+  tenantObjectKey,
+} from '@/lib/storage/tenant-object';
 import { MAX_FILE_SIZE } from '@/lib/files/validation';
 
 /**
@@ -34,6 +39,15 @@ export interface UploadAdmission {
   ok: boolean;
   /** Authoritative byte size from Cloud Storage; use this, never the declared size. */
   bytes: number;
+  /** Cloud Storage's generation for the measured object. */
+  generation: string;
+  /**
+   * Deterministic Firestore document id for this object's metadata record.
+   *
+   * Derived from the storage path, so one path is one record no matter how many times
+   * the registration is retried. See registrationIdForPath().
+   */
+  registrationId: string;
   /** Present when admission succeeded; pass to releaseUploadAdmission() when done. */
   reservation: TenantStorageReservation | null;
   /** Present when refused for quota — render with storageLimitResponseBody(). */
@@ -42,6 +56,33 @@ export interface UploadAdmission {
   error?: string;
   /** HTTP status the route should return when `ok` is false. */
   status: number;
+}
+
+/**
+ * The Firestore document id that a storage path's metadata record must use.
+ *
+ * Registration used to mint a random id per POST, so a request that committed its
+ * record and then failed on a later step — a notification, an audit write — returned a
+ * failure the caller would retry, and the retry wrote a SECOND live record for the same
+ * physical object. Canonical usage then counted one object's bytes twice, and nothing
+ * in the reservation could prevent it: by then the reservation had already been
+ * released, exactly as it should have been.
+ *
+ * Deriving the id from the storage path makes registration an upsert. A retry lands on
+ * the record it already wrote, and so does a concurrent duplicate. Cloud Storage keeps
+ * one set of bytes per path, so one path is one object is one record; replacing the
+ * object at a path updates that record in place with the new size and generation rather
+ * than adding a second one that would charge for bytes no longer stored.
+ *
+ * The path is hashed rather than used directly because a Firestore document id may not
+ * contain '/' and is length-bounded.
+ */
+export function registrationIdForPath(storagePath: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(String(storagePath ?? ''))
+    .digest('hex')
+    .slice(0, 40);
 }
 
 /**
@@ -57,7 +98,16 @@ export async function admitTenantUpload(params: {
 }): Promise<UploadAdmission> {
   const tenantId = String(params.tenantId ?? '').trim();
   if (!tenantId) {
-    return { ok: false, bytes: 0, reservation: null, check: null, error: 'Forbidden', status: 403 };
+    return {
+      ok: false,
+      bytes: 0,
+      generation: '',
+      registrationId: '',
+      reservation: null,
+      check: null,
+      error: 'Forbidden',
+      status: 403,
+    };
   }
 
   const measured = await getVerifiedTenantObjectSize(params.storagePath, tenantId);
@@ -65,6 +115,8 @@ export async function admitTenantUpload(params: {
     return {
       ok: false,
       bytes: 0,
+      generation: '',
+      registrationId: '',
       reservation: null,
       check: null,
       error: measured.error || 'Uploaded file could not be measured.',
@@ -81,6 +133,8 @@ export async function admitTenantUpload(params: {
     return {
       ok: false,
       bytes: measured.size,
+      generation: measured.generation,
+      registrationId: '',
       reservation: null,
       check: null,
       error: 'File exceeds the maximum upload size.',
@@ -92,9 +146,10 @@ export async function admitTenantUpload(params: {
     tenantId,
     bytes: measured.size,
     kind: params.kind,
-    // One storagePath is one physical object, so it is the natural idempotency key: a
-    // retried registration reuses its reservation instead of being charged twice.
-    idempotencyKey: params.storagePath,
+    // Path AND generation. The path alone is not the object: replacing the bytes at a
+    // path keeps the path and changes the size, so a path-only key would let a retry
+    // for a larger object reuse the smaller object's reservation and overshoot.
+    idempotencyKey: tenantObjectKey(params.storagePath, measured.generation),
   });
 
   if (!reservation.ok) {
@@ -103,13 +158,23 @@ export async function admitTenantUpload(params: {
     return {
       ok: false,
       bytes: measured.size,
+      generation: measured.generation,
+      registrationId: '',
       reservation: null,
       check: reservation,
       status: 403,
     };
   }
 
-  return { ok: true, bytes: measured.size, reservation, check: null, status: 200 };
+  return {
+    ok: true,
+    bytes: measured.size,
+    generation: measured.generation,
+    registrationId: registrationIdForPath(params.storagePath),
+    reservation,
+    check: null,
+    status: 200,
+  };
 }
 
 /** Releases an admission's reservation. Safe to call with a refused admission. */

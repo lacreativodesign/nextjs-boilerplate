@@ -256,18 +256,32 @@ describe('PR4-D: quota is recovered only when the bytes are actually gone', () =
     expect(src.indexOf('purgeRecordStorageObject')).toBeLessThan(src.indexOf('isDeleted: true'));
   });
 
+  it.each(BROWSER_DIRECT_ROUTES)('%s derives its record id from the storage path', (rel) => {
+    // A random id per POST let a retry after a partial failure write a SECOND live
+    // record for one physical object, and canonical usage counted its bytes twice.
+    const src = read(rel);
+    expect(src).toContain('registrationIdForPath(storagePath)');
+    expect(src).not.toMatch(/collection\('(files|employeeDocuments)'\)\.doc\(\)/);
+    expect(src).not.toMatch(/collection\('(files|employeeDocuments)'\)\.add\(/);
+  });
+
   it('a real removal failure blocks the delete so usage keeps counting the bytes', () => {
     const helper = read('lib/storage/tenant-object.ts');
-    expect(helper).toContain('if (purge.addressable && !purge.removed)');
+    expect(helper).toContain('if (!purge.removed)');
     expect(helper).toContain('{ status: 502 }');
   });
 
-  it('a legacy flat path still deletes instead of trapping the record forever', () => {
+  it('an unprovable legacy path blocks the delete instead of freeing quota', () => {
     // Every route has validated the tenant prefix at write time since S5, so an
     // unaddressable path is pre-S5 data. Its object cannot be proven to belong to this
-    // tenant, so it is not touched — but the tenant must still be able to delete its
-    // own record.
-    expect(read('lib/storage/tenant-object.ts')).toContain('addressable: false, removed: false');
+    // tenant, so it is not deleted — and the record must not be cleared either, because
+    // usage excludes soft-deleted records and clearing it would recover quota for bytes
+    // still in the bucket.
+    const helper = read('lib/storage/tenant-object.ts');
+    expect(helper).toContain('addressable: false, removed: false');
+    expect(helper).toContain('if (!purge.addressable)');
+    expect(helper).toContain('LEGACY_STORAGE_PATH');
+    expect(helper).toContain('{ status: 409 }');
   });
 
   it('the purge is scoped to the record’s owning tenant', () => {
@@ -291,14 +305,26 @@ describe('PR4: usage and reservations cannot cross tenants', () => {
   const limit = read('lib/billing/storage-limit.ts');
   const reservation = read('lib/billing/storage-reservation.ts');
 
-  it('every usage query is filtered by the tenant', () => {
+  it('every byte source is scoped to one tenant, by filter or by path', () => {
     const start = limit.indexOf('export function tenantStorageSources');
     const sources = limit.slice(start, limit.indexOf('\n}', start));
-    const collections = sources.match(/\.collection\('/g) || [];
-    const filters = sources.match(/where\('tenantId', '==', id\)/g) || [];
-    // One tenant filter per byte-bearing collection; the tenants doc is addressed by id.
-    expect(collections.length).toBe(5);
-    expect(filters.length).toBe(collections.length - 1);
+
+    // A source is tenant-scoped either by an explicit equality filter, or by hanging off
+    // the tenant document itself (`tenants/{id}/...`), which is scoped by construction.
+    // Count the subcollection sources first, then remove them so the rest are top-level.
+    const subcollection = /\.doc\(id\)\s*\.collection\('[a-zA-Z_]+'\)/g;
+    const subcollectionSources = (sources.match(subcollection) || []).length;
+    const topLevelOnly = sources.replace(subcollection, '');
+    const topLevelSources = (topLevelOnly.match(/\.collection\('(?!tenants')[a-zA-Z_]+'\)/g) || [])
+      .length;
+    const tenantFilters = (sources.match(/where\('tenantId', '==', id\)/g) || []).length;
+
+    expect(topLevelSources).toBeGreaterThan(0);
+    // Every top-level source carries its own tenant filter; nothing is left unscoped.
+    expect(tenantFilters).toBe(topLevelSources);
+    // And any subcollection source is reached through `tenants/{id}`.
+    expect(subcollectionSources).toBeGreaterThan(0);
+    expect(sources).not.toMatch(/collectionGroup\(/);
   });
 
   it('the reservation ledger is keyed by tenant and never read across tenants', () => {
