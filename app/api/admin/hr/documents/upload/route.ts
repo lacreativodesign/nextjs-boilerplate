@@ -6,6 +6,7 @@ import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
+  commitUploadRegistration,
   registrationIdForPath,
   releaseUploadAdmission,
   uploadAdmissionRefusal,
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
       tenantId: access.user.tenantId,
       storagePath,
       kind: 'hr_document_register',
+      collection: 'employeeDocuments',
     });
     if (!admission.ok) return uploadAdmissionRefusal(admission);
 
@@ -76,7 +78,14 @@ export async function POST(req: Request) {
     // the path. `add()` minted a fresh id per POST, so a retry after a partial failure
     // wrote a second live record for the same object and counted its bytes twice.
     const ref = adminDb.collection('employeeDocuments').doc(registrationIdForPath(storagePath));
-    await ref.set(payload, { merge: true });
+    // PR4: generation-guarded so a late request cannot overwrite a newer object's
+    // record with stale bytes. See commitUploadRegistration().
+    await commitUploadRegistration({
+      collection: 'employeeDocuments',
+      registrationId: ref.id,
+      generation: admission.generation,
+      payload,
+    });
 
     await createHrEvent({
       type: 'hr.document_uploaded',

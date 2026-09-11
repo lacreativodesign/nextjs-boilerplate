@@ -221,8 +221,9 @@ describe('PR4-C: the metered size is measured, never declared', () => {
   });
 
   it('fails closed when the object is missing or cannot be measured', () => {
-    expect(helper).toContain("error: 'Uploaded file was not found in storage.'");
+    expect(helper).toContain("'Uploaded file was not found in storage.'");
     expect(helper).toContain("error: 'Uploaded file could not be measured.'");
+    expect(helper).toContain("error: 'Uploaded file could not be identified.'");
   });
 
   it('refuses a path outside the caller’s own tenant prefix', () => {
@@ -236,7 +237,31 @@ describe('PR4-C: the metered size is measured, never declared', () => {
   });
 
   it('removes a rejected object instead of leaving a billable orphan', () => {
-    expect(admission).toContain('await deleteTenantObject(params.storagePath, tenantId);');
+    expect(admission).toContain(
+      'await deleteTenantObject(params.storagePath, tenantId, measured.generation);',
+    );
+  });
+
+  it('never deletes a generation it did not measure', () => {
+    // Deleting by path alone could destroy a replacement that landed after measurement.
+    expect(helper).toContain('ifGenerationMatch: target');
+    expect(helper).toContain('Refusing to delete without a generation');
+    expect(admission).not.toMatch(/deleteTenantObject\(params\.storagePath, tenantId\)/);
+  });
+
+  it('recognises an already-registered object before charging for it again', () => {
+    // The reservation is released once the record lands, so a retry would otherwise be
+    // charged a second time for bytes canonical usage already contains.
+    expect(admission).toContain('alreadyRegistered: true');
+    expect(admission).toContain('existingGeneration === measured.generation');
+    expect(admission.indexOf('existingGeneration === measured.generation')).toBeLessThan(
+      admission.indexOf('const reservation = await reserveTenantStorage('),
+    );
+  });
+
+  it('guards the metadata commit against a stale generation', () => {
+    expect(admission).toContain('export async function commitUploadRegistration');
+    expect(admission).toContain('stored > incoming');
   });
 
   it('reserves the measured size, not the declared one', () => {
@@ -271,6 +296,14 @@ describe('PR4-D: quota is recovered only when the bytes are actually gone', () =
     expect(helper).toContain('{ status: 502 }');
   });
 
+  it.each(BROWSER_DIRECT_ROUTES)('%s commits through the guarded primitive', (rel) => {
+    const src = read(rel);
+    expect(src).toContain('await commitUploadRegistration({');
+    expect(src).toContain('generation: admission.generation,');
+    // A raw set() would skip the stale-generation guard.
+    expect(src).not.toMatch(/await (docRef|ref)\.set\(payload, \{ merge: true \}\)/);
+  });
+
   it('an unprovable legacy path blocks the delete instead of freeing quota', () => {
     // Every route has validated the tenant prefix at write time since S5, so an
     // unaddressable path is pre-S5 data. Its object cannot be proven to belong to this
@@ -279,7 +312,6 @@ describe('PR4-D: quota is recovered only when the bytes are actually gone', () =
     // still in the bucket.
     const helper = read('lib/storage/tenant-object.ts');
     expect(helper).toContain('addressable: false, removed: false');
-    expect(helper).toContain('if (!purge.addressable)');
     expect(helper).toContain('LEGACY_STORAGE_PATH');
     expect(helper).toContain('{ status: 409 }');
   });
@@ -287,9 +319,10 @@ describe('PR4-D: quota is recovered only when the bytes are actually gone', () =
   it('the purge is scoped to the record’s owning tenant', () => {
     // A super_admin may delete another tenant's record; the object still lives under
     // the OWNER's prefix, so the owner's id is what proves the path.
-    expect(read('lib/storage/tenant-object.ts')).toContain(
-      "await deleteTenantObject(storagePath, String(record?.tenantId || ''));",
-    );
+    const helper = read('lib/storage/tenant-object.ts');
+    expect(helper).toContain("const tenantId = String(record?.tenantId || '');");
+    expect(helper).toContain('getVerifiedTenantObjectSize(storagePath, tenantId)');
+    expect(helper).toContain('deleteTenantObject(storagePath, tenantId, measured.generation)');
   });
 
   it('the document library already removed its object, and still does', () => {
@@ -458,7 +491,23 @@ describe('PR4: STOR-2 Storage rules are intact', () => {
   });
 
   it('rules are not asked to enforce byte quotas they cannot see', () => {
-    // Storage rules cannot read Firestore usage; quota lives in the API layer.
-    expect(rules).not.toMatch(/storageLimit|quota|plan/i);
+    // Storage rules cannot read Firestore usage; quota lives in the API layer. The word
+    // "quota" appears only in the comment explaining why brand/** sits outside it.
+    const directives = rules
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+      .join('\n');
+    expect(directives).not.toMatch(/storageLimit|quota|plan/i);
+  });
+
+  it('browser writes cannot replace an object that has already been measured', () => {
+    ['projects', 'client-files', 'employees', 'employee-documents'].forEach((prefix) => {
+      const start = rules.indexOf(`match /tenants/{tenantId}/${prefix}/{allPaths=**}`);
+      expect(start).toBeGreaterThan(-1);
+      // The rule block ends at the first closing brace on its own line.
+      const block = rules.slice(start, rules.indexOf('\n    }', start));
+      expect(block).toContain('allow update: if false;');
+      expect(block).not.toMatch(/allow create, update:/);
+    });
   });
 });

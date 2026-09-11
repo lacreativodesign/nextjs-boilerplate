@@ -12,6 +12,7 @@ import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
+  commitUploadRegistration,
   registrationIdForPath,
   releaseUploadAdmission,
   uploadAdmissionRefusal,
@@ -155,6 +156,7 @@ export async function POST(req: Request) {
       tenantId: me.tenantId,
       storagePath,
       kind: 'project_file_register',
+      collection: 'files',
     });
     if (!admission.ok) return uploadAdmissionRefusal(admission);
     const mimeType = cleanString(body?.mimeType);
@@ -203,7 +205,14 @@ export async function POST(req: Request) {
       updatedAt: now,
     };
 
-    await docRef.set(payload, { merge: true });
+    // PR4: generation-guarded so a late request cannot overwrite a newer object's
+    // record with stale bytes. See commitUploadRegistration().
+    await commitUploadRegistration({
+      collection: 'files',
+      registrationId: docRef.id,
+      generation: admission.generation,
+      payload,
+    });
 
     emitFileUploadedEvent({
       projectId,

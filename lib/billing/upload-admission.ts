@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { adminDb } from '@/lib/firebaseAdmin';
 import { NextResponse } from 'next/server';
 import { storageLimitResponseBody, type StorageLimitCheck } from '@/lib/billing/storage-limit';
 import {
@@ -56,6 +57,11 @@ export interface UploadAdmission {
   error?: string;
   /** HTTP status the route should return when `ok` is false. */
   status: number;
+  /**
+   * True when this exact physical object is ALREADY a live metadata record, so its bytes
+   * are already in canonical usage and nothing further may be charged for them.
+   */
+  alreadyRegistered: boolean;
 }
 
 /**
@@ -95,6 +101,8 @@ export async function admitTenantUpload(params: {
   tenantId: string;
   storagePath: string;
   kind: StorageReservationKind;
+  /** Where this surface keeps its metadata: 'files' or 'employeeDocuments'. */
+  collection: string;
 }): Promise<UploadAdmission> {
   const tenantId = String(params.tenantId ?? '').trim();
   if (!tenantId) {
@@ -107,6 +115,7 @@ export async function admitTenantUpload(params: {
       check: null,
       error: 'Forbidden',
       status: 403,
+      alreadyRegistered: false,
     };
   }
 
@@ -121,6 +130,7 @@ export async function admitTenantUpload(params: {
       check: null,
       error: measured.error || 'Uploaded file could not be measured.',
       status: 400,
+      alreadyRegistered: false,
     };
   }
 
@@ -129,7 +139,7 @@ export async function admitTenantUpload(params: {
   // passed both gates, so the real length has to be re-checked here — and the object
   // removed, because it is already costing money.
   if (measured.size > MAX_FILE_SIZE) {
-    await deleteTenantObject(params.storagePath, tenantId);
+    await deleteTenantObject(params.storagePath, tenantId, measured.generation);
     return {
       ok: false,
       bytes: measured.size,
@@ -139,6 +149,60 @@ export async function admitTenantUpload(params: {
       check: null,
       error: 'File exceeds the maximum upload size.',
       status: 400,
+      alreadyRegistered: false,
+    };
+  }
+
+  const registrationId = registrationIdForPath(params.storagePath);
+
+  // PR4 remediation: is this exact physical object ALREADY a live record?
+  //
+  // Admission reserves the full measured size, but the record is only written
+  // afterwards, so once a registration has committed its bytes are already in canonical
+  // usage. Charging them again on retry is double-counting the same object — and at
+  // exact quota the retry is refused, whereupon the refusal path deletes the object. A
+  // successful upload destroyed by retrying it. The deterministic record id stops the
+  // DUPLICATE; only this stops the second CHARGE, because by retry time the first
+  // reservation has been released exactly as it should have been.
+  const existing = await adminDb.collection(params.collection).doc(registrationId).get();
+  const existingData = existing.exists ? existing.data() || {} : null;
+  const existingIsLive = existingData ? existingData.isDeleted !== true : false;
+  const existingGeneration = String(existingData?.storageGeneration ?? '');
+
+  if (existingData && existingIsLive && existingGeneration === measured.generation) {
+    // Already counted, once. Nothing to reserve, and emphatically nothing to delete.
+    return {
+      ok: true,
+      bytes: measured.size,
+      generation: measured.generation,
+      registrationId,
+      reservation: null,
+      check: null,
+      status: 200,
+      alreadyRegistered: true,
+    };
+  }
+
+  if (
+    existingData &&
+    existingIsLive &&
+    existingGeneration &&
+    existingGeneration !== measured.generation
+  ) {
+    // The path holds different bytes than the record that owns it. Browser uploads mint
+    // a unique path per upload and Storage rules allow create-only on these prefixes
+    // (see storage.rules), so this cannot arise from an approved flow. Refuse, and do
+    // NOT delete: the newer generation belongs to whoever wrote it, not to this request.
+    return {
+      ok: false,
+      bytes: measured.size,
+      generation: measured.generation,
+      registrationId: '',
+      reservation: null,
+      check: null,
+      error: 'This storage path already holds a different file.',
+      status: 409,
+      alreadyRegistered: false,
     };
   }
 
@@ -153,8 +217,9 @@ export async function admitTenantUpload(params: {
   });
 
   if (!reservation.ok) {
-    // The bytes are already in the bucket and this upload is refused, so they must go.
-    await deleteTenantObject(params.storagePath, tenantId);
+    // The bytes are already in the bucket and this upload is refused, so they must go —
+    // but only if they are still the exact generation this request measured.
+    await deleteTenantObject(params.storagePath, tenantId, measured.generation);
     return {
       ok: false,
       bytes: measured.size,
@@ -163,6 +228,7 @@ export async function admitTenantUpload(params: {
       reservation: null,
       check: reservation,
       status: 403,
+      alreadyRegistered: false,
     };
   }
 
@@ -170,10 +236,11 @@ export async function admitTenantUpload(params: {
     ok: true,
     bytes: measured.size,
     generation: measured.generation,
-    registrationId: registrationIdForPath(params.storagePath),
+    registrationId,
     reservation,
     check: null,
     status: 200,
+    alreadyRegistered: false,
   };
 }
 
@@ -200,4 +267,45 @@ export function uploadAdmissionResponseBody(admission: UploadAdmission) {
  */
 export function uploadAdmissionRefusal(admission: UploadAdmission): NextResponse {
   return NextResponse.json(uploadAdmissionResponseBody(admission), { status: admission.status });
+}
+
+/**
+ * Commits a browser-direct upload's metadata record, refusing to go backwards.
+ *
+ * Two requests can be in flight for one path, and they do not necessarily finish in the
+ * order they started: request A measures generation G1, the object is replaced, request
+ * B measures G2 and commits, and then A finally lands. A plain `set(..., {merge:true})`
+ * lets A overwrite the record back to G1's size — so canonical usage would describe
+ * bytes that are no longer stored, and the record would name an object that no longer
+ * exists at that path.
+ *
+ * The write therefore runs in a transaction that reads the record first and drops the
+ * update when the stored generation is NEWER than this one. Cloud Storage generations
+ * are monotonically increasing for a path, so "newer" is a numeric comparison. The
+ * record always ends up describing whichever object actually owns the path.
+ *
+ * Returns whether this request's data was written. `false` means a newer generation won,
+ * which is a success for the caller: the record is already correct.
+ */
+export async function commitUploadRegistration(params: {
+  collection: string;
+  registrationId: string;
+  generation: string;
+  payload: Record<string, unknown>;
+}): Promise<boolean> {
+  const ref = adminDb.collection(params.collection).doc(params.registrationId);
+  const incoming = Number(params.generation);
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const stored = Number(snap.exists ? (snap.data() || {}).storageGeneration : Number.NaN);
+
+    // A newer generation already owns this path; this request is stale and must not win.
+    if (Number.isFinite(stored) && Number.isFinite(incoming) && stored > incoming) {
+      return false;
+    }
+
+    tx.set(ref, { ...params.payload, storageGeneration: params.generation }, { merge: true });
+    return true;
+  });
 }

@@ -11,6 +11,7 @@ import { validateFile } from '@/lib/files/validation';
 import { isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
+  commitUploadRegistration,
   registrationIdForPath,
   releaseUploadAdmission,
   uploadAdmissionRefusal,
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
       tenantId: auth.user.tenantId ?? '',
       storagePath,
       kind: 'client_file_register',
+      collection: 'files',
     });
     if (!admission.ok) return uploadAdmissionRefusal(admission);
 
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
     // a second one that would count the same object's bytes twice.
     const ref = adminDb.collection('files').doc(registrationIdForPath(storagePath));
 
-    await ref.set({
+    const payload = {
       id: ref.id,
       tenantId: auth.user.tenantId,
       projectId,
@@ -109,6 +111,15 @@ export async function POST(req: Request) {
       isDeleted: false,
       uploadedAt: now,
       updatedAt: now,
+    };
+
+    // PR4: generation-guarded so a late request cannot overwrite a newer object's
+    // record with stale bytes. See commitUploadRegistration().
+    await commitUploadRegistration({
+      collection: 'files',
+      registrationId: ref.id,
+      generation: admission.generation,
+      payload,
     });
 
     const actorName = cleanString(

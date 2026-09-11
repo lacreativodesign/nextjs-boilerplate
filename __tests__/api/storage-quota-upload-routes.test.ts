@@ -108,7 +108,12 @@ import { POST as hrUpload } from '@/app/api/hr/documents/upload/route';
 import { POST as adminHrUpload } from '@/app/api/admin/hr/documents/upload/route';
 import { STORAGE_LIMIT_EXCEEDED } from '@/lib/billing/storage-limit';
 import { getTenantStorageUsage } from '@/lib/billing/storage-limit';
-import { createNotification } from '@/lib/notifications';
+import {
+  createNotification,
+  createNotificationEvent,
+  getUserIdsByRoles,
+} from '@/lib/notifications';
+import { logActivity } from '@/lib/activity/tracker';
 
 const jsonRequest = (body: unknown) =>
   new Request('https://bizosto.test/api', {
@@ -246,6 +251,13 @@ beforeEach(() => {
 
   getMetadata.mockReset().mockResolvedValue([{ size: MEASURED, generation: '1700000000000001' }]);
   deleteObject.mockReset().mockResolvedValue(undefined);
+
+  // Reset the downstream collaborators too: a `mockRejectedValueOnce` queued by one test
+  // and not consumed leaks into the next, which makes a real failure look like a flake.
+  (createNotification as jest.Mock).mockReset().mockResolvedValue(undefined);
+  (createNotificationEvent as jest.Mock).mockReset().mockResolvedValue(undefined);
+  (getUserIdsByRoles as jest.Mock).mockReset().mockResolvedValue([]);
+  (logActivity as jest.Mock).mockReset().mockResolvedValue(undefined);
 });
 
 describe.each(SURFACES)('PR4-C: $name', ({ handler, collection, storagePath, body }) => {
@@ -287,7 +299,10 @@ describe.each(SURFACES)('PR4-C: $name', ({ handler, collection, storagePath, bod
     await handler(jsonRequest(body({})));
     // The bytes are already in the bucket; a refusal that left them would bill Bizosto
     // for an orphan no record points at.
-    expect(deleteObject).toHaveBeenCalledWith(storagePath, { ignoreNotFound: true });
+    expect(deleteObject).toHaveBeenCalledWith(storagePath, {
+      ignoreNotFound: true,
+      ifGenerationMatch: expect.any(String),
+    });
   });
 
   it('refuses an object that is not in the bucket at all', async () => {
@@ -305,7 +320,10 @@ describe.each(SURFACES)('PR4-C: $name', ({ handler, collection, storagePath, bod
 
     const response = await handler(jsonRequest(body({})));
     expect(response.status).toBe(400);
-    expect(deleteObject).toHaveBeenCalledWith(storagePath, { ignoreNotFound: true });
+    expect(deleteObject).toHaveBeenCalledWith(storagePath, {
+      ignoreNotFound: true,
+      ifGenerationMatch: expect.any(String),
+    });
     expect(liveRecords()).toHaveLength(0);
   });
 
@@ -378,20 +396,23 @@ describe.each(SURFACES)(
       expect(await getTenantStorageUsage(TENANT)).toBe(MEASURED);
     });
 
-    it('replacing the object at the same path updates that record instead of adding one', async () => {
+    it('a different generation at a registered path is refused, and the object survives', async () => {
       await handler(jsonRequest(body({})));
       expect(liveRecords()[0].size).toBe(MEASURED);
 
-      // The browser overwrites the same path: Cloud Storage keeps one set of bytes there
-      // and reports a new generation. Counting a second record would charge for bytes that
-      // no longer exist.
+      // Storage rules allow CREATE only on these prefixes and every upload mints a fresh
+      // path, so this cannot arise from an approved flow. If it somehow does the request
+      // is refused — and critically the newer object is NOT deleted, because it belongs
+      // to whoever wrote it, not to this request.
       const replaced = 7 * 1024 * 1024;
       getMetadata.mockResolvedValue([{ size: replaced, generation: '1700000000000999' }]);
-      await handler(jsonRequest(body({})));
+      const response = await handler(jsonRequest(body({})));
 
+      expect(response.status).toBe(409);
       expect(liveRecords()).toHaveLength(1);
-      expect(liveRecords()[0].size).toBe(replaced);
-      expect(await getTenantStorageUsage(TENANT)).toBe(replaced);
+      expect(liveRecords()[0].size).toBe(MEASURED);
+      expect(deleteObject).not.toHaveBeenCalled();
+      expect(await getTenantStorageUsage(TENANT)).toBe(MEASURED);
     });
 
     it('one physical object is never counted twice, however many times it is registered', async () => {
@@ -402,6 +423,75 @@ describe.each(SURFACES)(
       expect(liveRecords()).toHaveLength(1);
       expect(await getTenantStorageUsage(TENANT)).toBe(MEASURED);
       expect(getMetadata).toHaveBeenCalledWith(storagePath);
+    });
+  },
+);
+
+/**
+ * TRIPWIRE — a retry of an ALREADY-COMMITTED upload, at exact quota.
+ *
+ * Admission measures the object and reserves its FULL size. The metadata record is only
+ * addressed afterwards. So once the first registration has committed, canonical usage
+ * already contains those bytes — and an ordinary retry asks to reserve them a SECOND
+ * time. A tenant sitting exactly at its limit therefore has its retry refused, and the
+ * refusal path deletes the object: a successful upload destroyed by retrying it.
+ *
+ * The deterministic document id fixed record duplication. It does not make quota
+ * admission idempotent, because by retry time the first reservation has been released.
+ */
+describe.each(SURFACES)(
+  'PR4 tripwire: $name — committed retry at exact quota',
+  ({ handler, collection, storagePath, body }) => {
+    const liveRecords = () =>
+      Array.from(db.bucket(collection).values()).filter((row) => row.tenantId === TENANT);
+
+    /** Leaves the tenant with room for exactly one MEASURED-sized object. */
+    const fillToExactlyOneObjectOfHeadroom = () => {
+      db.seed('documents', [
+        ['filler', { tenantId: TENANT, fileSize: STARTER_LIMIT - MEASURED, deletedAt: null }],
+      ]);
+    };
+
+    it('a same-generation retry succeeds, charges nothing more, and keeps the object', async () => {
+      fillToExactlyOneObjectOfHeadroom();
+
+      const first = await handler(jsonRequest(body({})));
+      expect(first.status).toBe(200);
+      expect(await getTenantStorageUsage(TENANT)).toBe(STARTER_LIMIT);
+
+      // The tenant is now exactly at quota, and the object is already counted once.
+      const retry = await handler(jsonRequest(body({})));
+
+      expect(retry.status).toBe(200);
+      expect(liveRecords()).toHaveLength(1);
+      expect(await getTenantStorageUsage(TENANT)).toBe(STARTER_LIMIT);
+      // The decisive assertion: retrying a successful upload must never delete it.
+      expect(deleteObject).not.toHaveBeenCalled();
+    });
+
+    it('a retry after a lost response keeps the object and the single charge', async () => {
+      fillToExactlyOneObjectOfHeadroom();
+      await handler(jsonRequest(body({})));
+
+      // The caller never saw the 200 and simply sends the request again.
+      const retry = await handler(jsonRequest(body({})));
+
+      expect(retry.status).toBe(200);
+      expect(deleteObject).not.toHaveBeenCalled();
+      expect(await getTenantStorageUsage(TENANT)).toBe(STARTER_LIMIT);
+    });
+
+    it('a retry after a post-commit downstream failure keeps the object', async () => {
+      fillToExactlyOneObjectOfHeadroom();
+      (createNotification as jest.Mock).mockRejectedValueOnce(new Error('notify down'));
+
+      await handler(jsonRequest(body({}))).catch(() => undefined);
+      const retry = await handler(jsonRequest(body({})));
+
+      expect(retry.status).toBe(200);
+      expect(liveRecords()).toHaveLength(1);
+      expect(deleteObject).not.toHaveBeenCalled();
+      expect(await getTenantStorageUsage(TENANT)).toBe(STARTER_LIMIT);
     });
   },
 );

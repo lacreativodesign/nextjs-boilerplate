@@ -62,6 +62,7 @@ import {
   getVerifiedTenantObjectSize,
   tenantObjectKey,
 } from '@/lib/storage/tenant-object';
+import { commitUploadRegistration } from '@/lib/billing/upload-admission';
 import {
   admitTenantUpload,
   releaseUploadAdmission,
@@ -316,6 +317,7 @@ describe('PR4: the object size is measured, not declared', () => {
       ok: true,
       size: 4096,
       generation: '1700000000000001',
+      missing: false,
     });
   });
 
@@ -343,23 +345,28 @@ describe('PR4: the object size is measured, not declared', () => {
 
 describe('PR4: object removal reports what actually happened', () => {
   it('reports removal for an object inside the tenant prefix', async () => {
-    await expect(deleteTenantObject(PATH, TENANT)).resolves.toEqual({
+    await expect(deleteTenantObject(PATH, TENANT, '1700000000000001')).resolves.toEqual({
       addressable: true,
       removed: true,
     });
-    expect(deleteObject).toHaveBeenCalledWith(PATH, { ignoreNotFound: true });
+    expect(deleteObject).toHaveBeenCalledWith(PATH, {
+      ignoreNotFound: true,
+      ifGenerationMatch: expect.any(String),
+    });
   });
 
   it('reports a real failure so the caller keeps the record', async () => {
     deleteObject.mockRejectedValue(new Error('permission denied'));
-    await expect(deleteTenantObject(PATH, TENANT)).resolves.toEqual({
+    await expect(deleteTenantObject(PATH, TENANT, '1700000000000001')).resolves.toEqual({
       addressable: true,
       removed: false,
     });
   });
 
   it('reports a legacy flat path as unaddressable without touching it', async () => {
-    await expect(deleteTenantObject('projects/legacy/file.pdf', TENANT)).resolves.toEqual({
+    await expect(
+      deleteTenantObject('projects/legacy/file.pdf', TENANT, '1700000000000001'),
+    ).resolves.toEqual({
       addressable: false,
       removed: false,
     });
@@ -369,7 +376,12 @@ describe('PR4: object removal reports what actually happened', () => {
 
 describe('PR4: admission control for browser-direct uploads', () => {
   const admit = (tenantId = TENANT) =>
-    admitTenantUpload({ tenantId, storagePath: PATH, kind: 'client_file_register' });
+    admitTenantUpload({
+      tenantId,
+      storagePath: PATH,
+      kind: 'client_file_register',
+      collection: 'files',
+    });
 
   it('measures, reserves and admits, reporting the measured size', async () => {
     getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
@@ -391,7 +403,10 @@ describe('PR4: admission control for browser-direct uploads', () => {
     const admission = await admit();
     expect(admission.ok).toBe(false);
     expect(admission.status).toBe(403);
-    expect(deleteObject).toHaveBeenCalledWith(PATH, { ignoreNotFound: true });
+    expect(deleteObject).toHaveBeenCalledWith(PATH, {
+      ignoreNotFound: true,
+      ifGenerationMatch: expect.any(String),
+    });
 
     const body = uploadAdmissionResponseBody(admission) as Record<string, unknown>;
     expect(body.error).toBe(STORAGE_LIMIT_EXCEEDED);
@@ -406,7 +421,10 @@ describe('PR4: admission control for browser-direct uploads', () => {
     const admission = await admit();
     expect(admission.ok).toBe(false);
     expect(admission.status).toBe(400);
-    expect(deleteObject).toHaveBeenCalledWith(PATH, { ignoreNotFound: true });
+    expect(deleteObject).toHaveBeenCalledWith(PATH, {
+      ignoreNotFound: true,
+      ifGenerationMatch: expect.any(String),
+    });
     expect(uploadAdmissionResponseBody(admission)).toEqual({
       ok: false,
       error: 'File exceeds the maximum upload size.',
@@ -451,6 +469,7 @@ describe('PR4: the refusal a route returns', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
     const response = uploadAdmissionRefusal(admission);
 
@@ -468,6 +487,7 @@ describe('PR4: the refusal a route returns', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
     const response = uploadAdmissionRefusal(admission);
 
@@ -478,10 +498,14 @@ describe('PR4: the refusal a route returns', () => {
 
 describe('PR4: a delete frees the bytes before it frees the quota', () => {
   it('lets the delete proceed once the object is gone', async () => {
+    getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
     await expect(
       purgeRecordStorageObject({ storagePath: PATH, tenantId: TENANT }),
     ).resolves.toBeNull();
-    expect(deleteObject).toHaveBeenCalledWith(PATH, { ignoreNotFound: true });
+    expect(deleteObject).toHaveBeenCalledWith(PATH, {
+      ignoreNotFound: true,
+      ifGenerationMatch: expect.any(String),
+    });
   });
 
   it('blocks the delete with a 502 when the object could not be removed', async () => {
@@ -547,6 +571,7 @@ describe('PR4: a delete frees the bytes before it frees the quota', () => {
     ]);
     expect(await getTenantStorageUsage(TENANT)).toBe(2 * GB);
 
+    getMetadata.mockResolvedValue([{ size: 2 * GB, generation: '1700000000000001' }]);
     const blocked = await purgeRecordStorageObject({ storagePath: PATH, tenantId: TENANT });
     expect(blocked).toBeNull();
 
@@ -650,6 +675,7 @@ describe('PR4: reservation reuse is byte-stable and object-identified', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
     expect(first.ok).toBe(true);
     expect(first.bytes).toBe(1024);
@@ -660,6 +686,7 @@ describe('PR4: reservation reuse is byte-stable and object-identified', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
 
     // It gets its own decision against the real remaining quota, and is refused.
@@ -675,6 +702,7 @@ describe('PR4: reservation reuse is byte-stable and object-identified', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
     expect(first.bytes).toBe(1024);
 
@@ -683,6 +711,7 @@ describe('PR4: reservation reuse is byte-stable and object-identified', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
 
     expect(second.ok).toBe(true);
@@ -699,6 +728,7 @@ describe('PR4: reservation reuse is byte-stable and object-identified', () => {
       tenantId: TENANT,
       storagePath: PATH,
       kind: 'client_file_register',
+      collection: 'files',
     });
 
     expect(admission.ok).toBe(false);
@@ -738,7 +768,12 @@ describe('PR4: a usage query that cannot be served fails closed', () => {
     getMetadata.mockResolvedValue([{ size: 1024, generation: '1700000000000001' }]);
 
     await expect(
-      admitTenantUpload({ tenantId: TENANT, storagePath: PATH, kind: 'client_file_register' }),
+      admitTenantUpload({
+        tenantId: TENANT,
+        storagePath: PATH,
+        kind: 'client_file_register',
+        collection: 'files',
+      }),
     ).rejects.toThrow(/FAILED_PRECONDITION/);
     expect(db.bucket(reservationsPath(TENANT)).size).toBe(0);
   });
@@ -813,5 +848,136 @@ describe('PR4: unbounded ancillary surfaces are metered', () => {
     // Bounded: a fixed overwritten path, and one 3MB object per rate-limited ticket.
     expect(sources).not.toContain('branding');
     expect(sources).not.toContain('platform_tickets');
+  });
+});
+
+/**
+ * PR4 remediation — cleanup may only ever remove the generation it measured.
+ *
+ * Deleting by path is a time-of-check/time-of-use bug. A request measures P as G1,
+ * decides to refuse it, and by the time it deletes, P holds G2. A path delete removes
+ * G2 — bytes this request never measured and does not own — and the victim is whoever
+ * uploaded G2. `ifGenerationMatch` makes that impossible.
+ */
+describe('PR4: cleanup is generation-safe', () => {
+  /** The bucket double: the delete rejects unless the precondition matches what is there. */
+  const bucketHolds = (generation: string) => {
+    deleteObject.mockImplementation((_path: string, options?: { ifGenerationMatch?: string }) => {
+      if (options?.ifGenerationMatch && options.ifGenerationMatch !== generation) {
+        const error = new Error('412 Precondition Failed');
+        (error as Error & { code?: number }).code = 412;
+        return Promise.reject(error);
+      }
+      return Promise.resolve(undefined);
+    });
+  };
+
+  it('A: a refusal for G1 leaves a replacement G2 untouched', async () => {
+    bucketHolds('1700000000000002'); // the path now holds G2
+    const removal = await deleteTenantObject(PATH, TENANT, '1700000000000001'); // we measured G1
+
+    expect(removal).toEqual({ addressable: true, removed: false });
+  });
+
+  it('B: oversize cleanup for G1 also leaves G2 untouched', async () => {
+    // 40MB is over the 25MB app ceiling, so admission cleans up — but the path has moved on.
+    bucketHolds('1700000000000002');
+    getMetadata.mockResolvedValue([{ size: 40 * 1024 * 1024, generation: '1700000000000001' }]);
+
+    const admission = await admitTenantUpload({
+      tenantId: TENANT,
+      storagePath: PATH,
+      kind: 'client_file_register',
+      collection: 'files',
+    });
+
+    expect(admission.ok).toBe(false);
+    expect(admission.status).toBe(400);
+    // It tried, naming G1, and the precondition refused: G2 survives.
+    expect(deleteObject).toHaveBeenCalledWith(PATH, {
+      ignoreNotFound: true,
+      ifGenerationMatch: '1700000000000001',
+    });
+  });
+
+  it('C: an unchanged G1 refusal does remove G1', async () => {
+    bucketHolds('1700000000000001');
+    const removal = await deleteTenantObject(PATH, TENANT, '1700000000000001');
+
+    expect(removal).toEqual({ addressable: true, removed: true });
+  });
+
+  it('D: a caller with no generation cannot delete anything', async () => {
+    const removal = await deleteTenantObject(PATH, TENANT, '');
+
+    expect(removal).toEqual({ addressable: true, removed: false });
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+
+  it('a foreign prefix is never deleted, generation or not', async () => {
+    const removal = await deleteTenantObject(
+      `tenants/${OTHER}/client-files/p/f.pdf`,
+      TENANT,
+      '1700000000000001',
+    );
+
+    expect(removal).toEqual({ addressable: false, removed: false });
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * PR4 remediation — a late request must not drag a record back to older bytes.
+ *
+ * Two requests for one path need not finish in the order they started. If A measured G1
+ * and B measured and committed G2, then A landing late must not rewrite the record to
+ * G1's size: canonical usage would describe bytes that are no longer stored, and the
+ * record would name an object that no longer owns the path.
+ */
+describe('PR4: a stale generation cannot overwrite newer metadata', () => {
+  const REG = 'registration-1';
+
+  const commit = (generation: string, size: number) =>
+    commitUploadRegistration({
+      collection: 'files',
+      registrationId: REG,
+      generation,
+      payload: { tenantId: TENANT, size, isDeleted: false, storagePath: PATH },
+    });
+
+  it('a newer generation wins over an older one that lands late', async () => {
+    // B commits G2 first...
+    await expect(commit('1700000000000002', 8 * 1024 * 1024)).resolves.toBe(true);
+    // ...then A, which measured G1, finally lands.
+    await expect(commit('1700000000000001', 2 * 1024 * 1024)).resolves.toBe(false);
+
+    const record = db.bucket('files').get(REG);
+    expect(record?.storageGeneration).toBe('1700000000000002');
+    expect(record?.size).toBe(8 * 1024 * 1024);
+    expect(await getTenantStorageUsage(TENANT)).toBe(8 * 1024 * 1024);
+  });
+
+  it('out-of-order concurrent completion still ends on the newer object', async () => {
+    await Promise.all([
+      commit('1700000000000001', 2 * 1024 * 1024),
+      commit('1700000000000002', 8 * 1024 * 1024),
+    ]);
+
+    const record = db.bucket('files').get(REG);
+    expect(record?.storageGeneration).toBe('1700000000000002');
+    expect(record?.size).toBe(8 * 1024 * 1024);
+  });
+
+  it('the same generation re-committing is allowed and idempotent', async () => {
+    await expect(commit('1700000000000002', 8 * 1024 * 1024)).resolves.toBe(true);
+    await expect(commit('1700000000000002', 8 * 1024 * 1024)).resolves.toBe(true);
+
+    expect(db.bucket('files').size).toBe(1);
+    expect(await getTenantStorageUsage(TENANT)).toBe(8 * 1024 * 1024);
+  });
+
+  it('a first write with no prior record always lands', async () => {
+    await expect(commit('1700000000000001', 1024)).resolves.toBe(true);
+    expect(db.bucket('files').get(REG)?.storageGeneration).toBe('1700000000000001');
   });
 });

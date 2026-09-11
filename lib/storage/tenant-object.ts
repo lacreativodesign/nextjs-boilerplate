@@ -43,6 +43,8 @@ export interface VerifiedTenantObject {
    * reservation or a registration refer to one specific set of bytes.
    */
   generation: string;
+  /** True when Cloud Storage reports no object at this path at all. */
+  missing: boolean;
   /** Populated when `ok` is false, safe to return to the caller. */
   error?: string;
 }
@@ -63,7 +65,7 @@ export async function getVerifiedTenantObjectSize(
   tenantId: string,
 ): Promise<VerifiedTenantObject> {
   if (!isTenantStoragePath(storagePath, tenantId)) {
-    return { ok: false, size: 0, generation: '', error: 'Invalid storage path.' };
+    return { ok: false, size: 0, generation: '', missing: false, error: 'Invalid storage path.' };
   }
 
   try {
@@ -72,7 +74,13 @@ export async function getVerifiedTenantObjectSize(
     const generation = String(metadata?.generation ?? '').trim();
 
     if (!Number.isFinite(size) || size < 0) {
-      return { ok: false, size: 0, generation: '', error: 'Uploaded file could not be measured.' };
+      return {
+        ok: false,
+        size: 0,
+        generation: '',
+        missing: false,
+        error: 'Uploaded file could not be measured.',
+      };
     }
 
     // Without a generation the bytes at this path cannot be identified, and reusing a
@@ -82,14 +90,25 @@ export async function getVerifiedTenantObjectSize(
         ok: false,
         size: 0,
         generation: '',
+        missing: false,
         error: 'Uploaded file could not be identified.',
       };
     }
 
-    return { ok: true, size: Math.floor(size), generation };
-  } catch {
-    // Includes the 404 a caller gets for describing an object it never uploaded.
-    return { ok: false, size: 0, generation: '', error: 'Uploaded file was not found in storage.' };
+    return { ok: true, size: Math.floor(size), generation, missing: false };
+  } catch (error) {
+    // A 404 means there is genuinely nothing stored here, which a delete path may act on;
+    // anything else is unreadable and must be treated as "still there, unknown".
+    const missing = (error as { code?: number } | null)?.code === 404;
+    return {
+      ok: false,
+      size: 0,
+      generation: '',
+      missing,
+      error: missing
+        ? 'Uploaded file was not found in storage.'
+        : 'Uploaded file could not be read from storage.',
+    };
   }
 }
 
@@ -102,38 +121,47 @@ export interface TenantObjectRemoval {
 }
 
 /**
- * Removes a tenant-owned object from the bucket.
+ * Removes ONE SPECIFIC GENERATION of a tenant-owned object.
  *
- * Used on the quota-denial path: when a browser-direct upload is refused, the bytes are
- * already sitting in the bucket. Leaving them there would bill Bizosto for an object no
- * record points at — an orphan the tenant cannot see or delete. Removing it makes the
- * refusal actually free the space it refused.
+ * Deleting by path alone is a time-of-check/time-of-use bug. A request measures the
+ * object at path P as generation G1, decides to refuse it, and by the time it deletes,
+ * the browser has replaced P with G2. A delete by path removes G2 — bytes this request
+ * never measured, never charged for, and does not own. The victim is whoever uploaded
+ * G2, and they lose a file they were told was stored.
  *
- * Also used by the delete routes, which may only recover quota once the bytes have
- * actually gone. The three outcomes are deliberately distinct:
+ * `ifGenerationMatch` makes the delete conditional on the object still being the exact
+ * one that was measured. A mismatch fails the precondition, nothing is deleted, and the
+ * caller is told the removal did not happen — which every caller already treats as
+ * "keep counting these bytes". Fail-closed in the direction that never destroys data.
  *
- *   addressable: false  the stored path is not under this tenant's prefix. Every route
- *                       has validated the prefix at write time since S5, so this is
- *                       legacy data written against a flat path. The object cannot be
- *                       proven to belong to this tenant, so it is NOT deleted — and the
- *                       record must not be cleared either (see purgeRecordStorageObject).
- *   removed: false      a real failure. The caller must keep the record so usage keeps
- *                       counting bytes that still exist.
- *   removed: true       the bytes are gone and the quota may be recovered.
+ * A caller with no generation cannot name what it wants removed, so nothing is removed.
  *
  * Never throws: a failed cleanup must not turn a correct 403 into a 500.
  */
 export async function deleteTenantObject(
   storagePath: string,
   tenantId: string,
+  generation: string,
 ): Promise<TenantObjectRemoval> {
   if (!isTenantStoragePath(storagePath, tenantId)) {
     return { addressable: false, removed: false };
   }
+
+  const target = String(generation ?? '').trim();
+  if (!target) {
+    // Refusing here is what stops a path-only delete from reaching an unmeasured object.
+    console.error('[STORAGE] Refusing to delete without a generation', { storagePath });
+    return { addressable: true, removed: false };
+  }
+
   try {
-    await tenantBucket().file(storagePath).delete({ ignoreNotFound: true });
+    await tenantBucket()
+      .file(storagePath)
+      .delete({ ignoreNotFound: true, ifGenerationMatch: target });
     return { addressable: true, removed: true };
   } catch (error) {
+    // Includes 412 Precondition Failed: the object is no longer the one we measured, so
+    // it is emphatically not ours to remove.
     console.error('[STORAGE] Failed to remove tenant storage object', error);
     return { addressable: true, removed: false };
   }
@@ -167,23 +195,39 @@ export async function purgeRecordStorageObject(
   // A record that never had an object has no bytes to free and nothing to count.
   if (!storagePath) return null;
 
-  const purge = await deleteTenantObject(storagePath, String(record?.tenantId || ''));
+  const tenantId = String(record?.tenantId || '');
+  const measured = await getVerifiedTenantObjectSize(storagePath, tenantId);
 
-  if (!purge.addressable) {
+  // Nothing stored: the bytes are already gone, so clearing the record is honest.
+  if (measured.missing) return null;
+
+  if (!measured.ok) {
+    // Either a path this tenant cannot be proven to own, or an object that could not be
+    // read. Both leave bytes possibly still billable, so the record stays and keeps
+    // counting. Only the legacy case gets its own code, because it needs a human.
+    if (!isTenantStoragePath(storagePath, tenantId)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: LEGACY_STORAGE_PATH,
+          message:
+            'This file is stored under a legacy path that cannot be verified as belonging ' +
+            'to your workspace, so it cannot be removed automatically. It still counts ' +
+            'towards your storage until support removes it. Contact support to have it ' +
+            'cleared.',
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
-      {
-        ok: false,
-        error: LEGACY_STORAGE_PATH,
-        message:
-          'This file is stored under a legacy path that cannot be verified as belonging ' +
-          'to your workspace, so it cannot be removed automatically. It still counts ' +
-          'towards your storage until support removes it. Contact support to have it ' +
-          'cleared.',
-      },
-      { status: 409 },
+      { ok: false, error: 'Could not read the stored file. Nothing was deleted.' },
+      { status: 502 },
     );
   }
 
+  // Delete exactly the generation just measured, so a replacement that landed in between
+  // is never destroyed by this request.
+  const purge = await deleteTenantObject(storagePath, tenantId, measured.generation);
   if (!purge.removed) {
     return NextResponse.json(
       { ok: false, error: 'Could not remove the stored file. Nothing was deleted.' },
