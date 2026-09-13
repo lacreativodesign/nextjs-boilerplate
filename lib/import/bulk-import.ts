@@ -3,6 +3,10 @@ import { z } from 'zod';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getStorageBucketName } from '@/lib/storage/bucket';
+import {
+  releaseTenantStorage,
+  reserveTenantStorageOrThrow,
+} from '@/lib/billing/storage-reservation';
 import type {
   ImportEntity,
   ImportFieldMapping,
@@ -234,34 +238,59 @@ export class BulkImportService {
     const key = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${params.fileName.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
     const storagePath = `tenants/${params.tenantId}/imports/${params.entity}/${key}`;
 
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-    await bucket.file(storagePath).save(params.buffer, {
-      metadata: {
-        contentType: params.mimeType,
-      },
+    // PR4: an import payload is a tenant upload that stays in the bucket for good, so it
+    // spends plan storage like any other. Reserved on the real buffer length before a
+    // byte is written, and released once the job record — which is what canonical usage
+    // counts — has landed.
+    const reservation = await reserveTenantStorageOrThrow({
+      tenantId: params.tenantId,
+      bytes: params.buffer.length,
+      kind: 'bulk_import_upload',
     });
 
-    const nowIso = new Date().toISOString();
-    const ref = await adminDb.collection('importJobs').add({
-      tenantId: params.tenantId,
-      entity: params.entity,
-      fileName: params.fileName,
-      format,
-      storagePath,
-      status: 'uploaded',
-      progress: 0,
-      totalRows: 0,
-      processedRows: 0,
-      createdBy: params.userId,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      mappings: params.mappings,
-      errors: [],
-      templateId: params.templateId ?? null,
-    } satisfies Omit<ImportJob, 'id'>);
+    const bucketName = getStorageBucketName();
+    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
+    const object = bucket.file(storagePath);
 
-    return ref.id;
+    try {
+      await object.save(params.buffer, {
+        metadata: {
+          contentType: params.mimeType,
+        },
+      });
+
+      const nowIso = new Date().toISOString();
+      const ref = await adminDb.collection('importJobs').add({
+        tenantId: params.tenantId,
+        entity: params.entity,
+        fileName: params.fileName,
+        format,
+        storagePath,
+        // PR4: the payload stays in the bucket for the life of the job and nothing purges
+        // it, so a tenant can accumulate import payloads without bound. Persisting the
+        // byte count is what lets canonical storage accounting see them.
+        size: params.buffer.length,
+        status: 'uploaded',
+        progress: 0,
+        totalRows: 0,
+        processedRows: 0,
+        createdBy: params.userId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        mappings: params.mappings,
+        errors: [],
+        templateId: params.templateId ?? null,
+      } satisfies Omit<ImportJob, 'id'>);
+
+      return ref.id;
+    } catch (error) {
+      // The object may already be in the bucket. Releasing the reservation without
+      // removing it would hand back quota for bytes still being billed.
+      await object.delete({ ignoreNotFound: true }).catch(() => undefined);
+      throw error;
+    } finally {
+      await releaseTenantStorage(reservation);
+    }
   }
 
   static async parseJobFile(job: ImportJob): Promise<Record<string, string>[]> {

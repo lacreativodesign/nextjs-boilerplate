@@ -206,6 +206,11 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
     reason:
       'Serialization anchor for in-flight staff-seat reservations. Holds no business data and every entry expires within minutes; restoring one would re-park capacity that is no longer being provisioned.',
   },
+  tenant_storage_ledgers: {
+    class: 'ephemeral',
+    reason:
+      'Serialization anchor for in-flight storage reservations. Holds no business data and every entry expires within minutes; restoring one would re-park quota for uploads that are no longer running.',
+  },
 
   // ---- subcollection: reached only under a parent document, never at the root ----
   counters: {
@@ -218,7 +223,8 @@ export const COLLECTION_REGISTRY: Record<string, CollectionClassification> = {
   },
   reservations: {
     class: 'subcollection',
-    reason: 'Lives under tenant_seat_ledgers/{tenantId}/reservations — not a top-level collection.',
+    reason:
+      'Lives under tenant_seat_ledgers/{tenantId}/reservations and tenant_storage_ledgers/{tenantId}/reservations — not a top-level collection.',
   },
   _: {
     class: 'subcollection',

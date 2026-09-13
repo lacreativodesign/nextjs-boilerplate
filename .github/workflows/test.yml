@@ -75,6 +75,17 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-bizosto
 
+      # Plan storage ceilings have the same property as seat ceilings: a read-then-write
+      # gate passes two simultaneous uploads against the same remaining quota. The
+      # reservation that closes it is a Firestore transaction, so it can only be proven
+      # against the real emulator.
+      - name: Storage quota concurrency Firestore emulator invariants
+        run: >-
+          npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-bizosto
+          "npx jest __tests__/integration/storage-quota-concurrency.emulator.test.ts --runInBand --coverage=false"
+        env:
+          GCLOUD_PROJECT: demo-bizosto
+
       - name: Build application
         run: npm run build
         env:

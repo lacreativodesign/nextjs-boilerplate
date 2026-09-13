@@ -18,7 +18,7 @@ Notes:
   or delimiter (e.g. `audit_logs` vs `auditLogs`) reflect real naming drift to
   reconcile, not generator noise.
 
-## Collections (195)
+## Collections (197)
 
 - `abandoned_signup_deletions`
 - `abandoned_signup_reminders`
@@ -89,6 +89,7 @@ Notes:
 - `emails`
 - `employeeDocuments`
 - `employees`
+- `erp_file_versions`
 - `erp_files`
 - `events`
 - `eventsQueue`
@@ -203,6 +204,7 @@ Notes:
 - `tenant_quotas`
 - `tenant_seat_ledgers`
 - `tenant_stats`
+- `tenant_storage_ledgers`
 - `tenants`
 - `throttle_exceptions`
 - `ticket_counter`

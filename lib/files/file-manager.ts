@@ -7,7 +7,8 @@ import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getStorageBucketName } from '@/lib/storage/bucket';
 import { isTenantOwned } from '@/lib/tenant/ownership';
 import { validateAssembledFile, MAX_FILE_SIZE } from '@/lib/files/validation';
-import { checkStorageLimit, storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import { storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import { releaseTenantStorage, reserveTenantStorage } from '@/lib/billing/storage-reservation';
 import type {
   ManagedFile,
   FileVersion,
@@ -18,7 +19,11 @@ import type {
   FileSharePermission,
 } from '@/types/files';
 
-const FILES_COLLECTION = 'erp_files';
+// `erp_files` is spelled as a literal at each call site below, like the seat ledger in
+// lib/billing/seat-reservation.ts: the Firestore inventory generator
+// (scripts/generate-firestore-schema.mjs) only resolves statically-written collection
+// ids, so routing it through a constant drops a live collection out of
+// docs/database/collections.generated.md.
 const FILE_VERSIONS_COLLECTION = 'erp_file_versions';
 const FOLDERS_COLLECTION = 'erp_folders';
 const FILE_SHARES_COLLECTION = 'erp_file_shares';
@@ -135,7 +140,7 @@ export class FileManager {
     limit?: number;
   }) {
     let query: FirebaseFirestore.Query = adminDb
-      .collection(FILES_COLLECTION)
+      .collection('erp_files')
       .where('tenantId', '==', params.tenantId)
       .where('deletedAt', '==', null)
       .orderBy('updatedAt', 'desc')
@@ -163,7 +168,7 @@ export class FileManager {
   }
 
   static async getFileById(fileId: string, tenantId: string) {
-    const snapshot = await adminDb.collection(FILES_COLLECTION).doc(fileId).get();
+    const snapshot = await adminDb.collection('erp_files').doc(fileId).get();
     if (!snapshot.exists) return null;
     const file = { id: snapshot.id, ...snapshot.data() } as ManagedFile;
     if (file.tenantId !== tenantId || file.deletedAt) return null;
@@ -330,27 +335,45 @@ export class FileManager {
         throw new UploadRejected(assembledCheck.error || 'Uploaded file failed validation');
       }
 
-      // Quota is charged on real bytes, after assembly, never on the declared size.
-      const quota = await checkStorageLimit(params.tenantId, buffer.length);
-      if (!quota.ok) {
-        throw new UploadRejected(storageLimitResponseBody(quota).message, 403);
+      // Quota is charged on real bytes, after assembly, never on the declared size —
+      // and RESERVED rather than merely checked. checkStorageLimit() is a read: two
+      // uploads assembling at the same moment both observed the same free space and
+      // both were admitted, so a tenant could finish over its plan limit.
+      //
+      // The upload session stores exactly one object, so its id is a natural
+      // idempotency key: a retried final chunk reuses the reservation it already holds
+      // instead of charging the tenant for the same bytes twice.
+      const reservation = await reserveTenantStorage({
+        tenantId: params.tenantId,
+        bytes: buffer.length,
+        kind: 'managed_file_upload',
+        idempotencyKey: `upload-session:${params.tenantId}:${params.uploadId}`,
+      });
+      if (!reservation.ok) {
+        throw new UploadRejected(storageLimitResponseBody(reservation).message, 403);
       }
 
-      const result = await this.storeVersion({
-        tenantId: params.tenantId,
-        userId: session.userId,
-        userEmail: session.userEmail,
-        fileName: session.fileName,
-        mimeType: session.mimeType,
-        size: buffer.length,
-        folderId: session.folderId ?? undefined,
-        changes: session.changes ?? undefined,
-        fileId: session.fileId ?? undefined,
-        fileBuffer: buffer,
-        permissions: session.permissions,
-      });
+      try {
+        const result = await this.storeVersion({
+          tenantId: params.tenantId,
+          userId: session.userId,
+          userEmail: session.userEmail,
+          fileName: session.fileName,
+          mimeType: session.mimeType,
+          size: buffer.length,
+          folderId: session.folderId ?? undefined,
+          changes: session.changes ?? undefined,
+          fileId: session.fileId ?? undefined,
+          fileBuffer: buffer,
+          permissions: session.permissions,
+        });
 
-      return { completed: true as const, ...result };
+        return { completed: true as const, ...result };
+      } finally {
+        // The erp_file_versions row now counts these bytes; on failure the space goes
+        // straight back rather than waiting out the reservation TTL.
+        await releaseTenantStorage(reservation);
+      }
     } finally {
       // Temp bytes and the session record are released whether or not the upload succeeded.
       await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
@@ -411,7 +434,7 @@ export class FileManager {
     // Without this a user who learns another tenant's erp_files id can push a new
     // version and overwrite that record's name/size/storagePath/checksum.
     if (params.fileId) {
-      const existing = await adminDb.collection(FILES_COLLECTION).doc(params.fileId).get();
+      const existing = await adminDb.collection('erp_files').doc(params.fileId).get();
       if (
         existing.exists &&
         !isTenantOwned({
@@ -440,7 +463,7 @@ export class FileManager {
       }
     }
 
-    const fileRoot = params.fileId ?? adminDb.collection(FILES_COLLECTION).doc().id;
+    const fileRoot = params.fileId ?? adminDb.collection('erp_files').doc().id;
     const existingVersions = await adminDb
       .collection(FILE_VERSIONS_COLLECTION)
       .where('tenantId', '==', params.tenantId)
@@ -507,7 +530,7 @@ export class FileManager {
 
     currentVersions.docs.forEach((doc) => batch.update(doc.ref, { isCurrent: false }));
 
-    const fileRef = adminDb.collection(FILES_COLLECTION).doc(fileRoot);
+    const fileRef = adminDb.collection('erp_files').doc(fileRoot);
     const fileSnap = await fileRef.get();
 
     if (fileSnap.exists) {
@@ -580,7 +603,7 @@ export class FileManager {
       throw new Error('Forbidden');
     }
 
-    const fileRef = adminDb.collection(FILES_COLLECTION).doc(params.fileId);
+    const fileRef = adminDb.collection('erp_files').doc(params.fileId);
 
     const currentVersions = await adminDb
       .collection(FILE_VERSIONS_COLLECTION)
@@ -666,7 +689,7 @@ export class FileManager {
       }
     }
 
-    batch.update(adminDb.collection(FILES_COLLECTION).doc(params.fileId), {
+    batch.update(adminDb.collection('erp_files').doc(params.fileId), {
       tags: admin.firestore.FieldValue.arrayUnion(
         ...params.tags.map((tag) => tag.name.trim().toLowerCase()),
       ),
@@ -680,7 +703,7 @@ export class FileManager {
     const file = await this.getFileById(params.fileId, params.tenantId);
     if (!file) throw new Error('File not found');
     const nextTags = file.tags.filter((tag) => tag !== params.tagName.trim().toLowerCase());
-    await adminDb.collection(FILES_COLLECTION).doc(params.fileId).update({
+    await adminDb.collection('erp_files').doc(params.fileId).update({
       tags: nextTags,
       updatedAt: admin.firestore.Timestamp.now(),
     });
@@ -701,7 +724,7 @@ export class FileManager {
     const file = await this.getFileById(params.fileId, params.tenantId);
     if (!file) throw new Error('File not found');
     await adminDb
-      .collection(FILES_COLLECTION)
+      .collection('erp_files')
       .doc(params.fileId)
       .update({
         folderId: params.folderId || null,
@@ -723,7 +746,7 @@ export class FileManager {
     }
 
     const filesInFolder = await adminDb
-      .collection(FILES_COLLECTION)
+      .collection('erp_files')
       .where('tenantId', '==', params.tenantId)
       .where('folderId', '==', params.folderId)
       .where('deletedAt', '==', null)

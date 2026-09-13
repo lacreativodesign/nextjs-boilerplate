@@ -1473,6 +1473,14 @@
       "collectionGroup": "documents",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "deletedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
         {
           "fieldPath": "tenantId",
           "order": "ASCENDING"

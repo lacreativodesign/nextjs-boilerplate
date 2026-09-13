@@ -32,6 +32,22 @@ rules_version = '2';
 // Deletes are denied outright: nothing in the app calls deleteObject() from the browser,
 // so every removal goes through the Admin SDK where tenant and role are re-checked.
 //
+// PR4: UPDATE is now denied on the four file prefixes too, leaving CREATE only. Every
+// browser upload site mints a fresh id for each upload — crypto.randomUUID(), or
+// `${Date.now()}-${random}` — and the path builders in lib/storage/paths.ts embed that id,
+// so an approved upload never addresses an existing object. Nothing in the product
+// overwrites a file path; replacing a file creates a new one.
+//
+// Allowing UPDATE anyway meant the bytes behind an already-registered path could change
+// after the server measured them. That turns quota accounting into a guess (the record
+// says 5MB, the bucket holds 7MB) and makes cleanup dangerous (a request that measured
+// one generation could delete another). Denying UPDATE removes the whole class by
+// construction rather than reasoning about deltas for a flow the product does not have.
+//
+// `brand/**` deliberately keeps UPDATE: the tenant logo is written to a FIXED path and
+// replacing it IS an overwrite. It is super_admin-only, capped at 2MB, and outside paid
+// quota, so none of the above applies to it.
+//
 // Note: these rules govern direct object access. Files already shared through a
 // getDownloadURL() token remain reachable via that token; rotating those is tracked
 // separately.
@@ -103,25 +119,29 @@ service firebase.storage {
 
     match /tenants/{tenantId}/projects/{allPaths=**} {
       allow read: if canProjectFiles(tenantId);
-      allow create, update: if canProjectFiles(tenantId) && withinSizeLimit();
+      allow create: if canProjectFiles(tenantId) && withinSizeLimit();
+      allow update: if false;
       allow delete: if false;
     }
 
     match /tenants/{tenantId}/client-files/{allPaths=**} {
       allow read: if canClientFiles(tenantId);
-      allow create, update: if canClientFiles(tenantId) && withinSizeLimit();
+      allow create: if canClientFiles(tenantId) && withinSizeLimit();
+      allow update: if false;
       allow delete: if false;
     }
 
     match /tenants/{tenantId}/employees/{allPaths=**} {
       allow read: if canEmployeeFiles(tenantId);
-      allow create, update: if canEmployeeFiles(tenantId) && withinSizeLimit();
+      allow create: if canEmployeeFiles(tenantId) && withinSizeLimit();
+      allow update: if false;
       allow delete: if false;
     }
 
     match /tenants/{tenantId}/employee-documents/{allPaths=**} {
       allow read: if canEmployeeDocuments(tenantId);
-      allow create, update: if canEmployeeDocuments(tenantId) && withinSizeLimit();
+      allow create: if canEmployeeDocuments(tenantId) && withinSizeLimit();
+      allow update: if false;
       allow delete: if false;
     }
 

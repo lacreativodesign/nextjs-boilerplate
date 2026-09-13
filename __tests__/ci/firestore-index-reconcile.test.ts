@@ -1031,13 +1031,20 @@ describe('indexes the pre-deploy evidence audit rejected', () => {
 
   it('adds no NEW index to the two collection groups that do not exist in code', () => {
     // Production carries eight `audit_logs` and three `documents` composite indexes even
-    // though the code writes `auditLogs` and only ever reaches `documents` by doc id.
+    // though the code writes `auditLogs` and only ever reached `documents` by doc id.
     // Those are live, so they stay: this repository cannot prove they hold no data, and
     // preserving an index that exists is not the same act as creating a new one.
     //
-    // What must not happen is the manifest growing a NEW index on either. Pinning the
-    // exact preserved set means any addition fails here and has to be justified against
-    // live evidence first — which is the whole point of the no-deletion gate in reverse.
+    // What must not happen is the manifest growing an UNJUSTIFIED index on either.
+    // Pinning the exact set means any addition fails here and has to be justified
+    // against a live query first — which is the whole point of the no-deletion gate in
+    // reverse.
+    //
+    // PR4 adds exactly one, and retires the premise behind the original `documents`
+    // entry: `documents` is no longer reached by doc id alone. getTenantStorageUsage()
+    // now sums the tenant's live document bytes, so
+    // `where(tenantId ==) + where(deletedAt == null)` is a real, hot, per-upload query
+    // and needs its composite index. `audit_logs` is untouched.
     const shapes = (JSON.parse(read('firestore.indexes.json')).indexes as RawIndex[])
       .filter(
         (index) => index.collectionGroup === 'audit_logs' || index.collectionGroup === 'documents',
@@ -1063,6 +1070,7 @@ describe('indexes the pre-deploy evidence audit rejected', () => {
         'audit_logs: tenantId ASCENDING, timestamp DESCENDING',
         'audit_logs: tenantId ASCENDING, userId ASCENDING, createdAt DESCENDING',
         'audit_logs: tenantId ASCENDING, userId ASCENDING, timestamp DESCENDING',
+        'documents: tenantId ASCENDING, deletedAt ASCENDING',
         'documents: tenantId ASCENDING, fileType ASCENDING, createdAt DESCENDING',
         'documents: tenantId ASCENDING, folderId ASCENDING, createdAt DESCENDING',
         'documents: tenantId ASCENDING, uploadedBy ASCENDING, createdAt DESCENDING',

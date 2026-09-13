@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { requireBulkDataAccess } from '@/lib/api/bulk-data-guard';
 import { BulkImportService } from '@/lib/import/bulk-import';
 import { validateFile } from '@/lib/files/validation';
+import { storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import { StorageLimitExceededError } from '@/lib/billing/storage-reservation';
 
 const bodySchema = z.object({
   entity: z.enum([
@@ -66,6 +68,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, jobId });
   } catch (error) {
+    // PR4: an import payload is metered storage, so being out of room is the caller's
+    // answer to get, in the same machine-readable shape as every other upload surface.
+    if (error instanceof StorageLimitExceededError) {
+      return NextResponse.json(storageLimitResponseBody(error.check), { status: 403 });
+    }
     console.error('Import upload error', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Upload failed' },

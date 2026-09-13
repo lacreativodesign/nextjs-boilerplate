@@ -4,6 +4,8 @@ import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import { StorageService } from '@/lib/storage/storage-service';
 import type { Document } from '@/types/documents';
 import { validateFile, validateAssembledFile } from '@/lib/files/validation';
+import { storageLimitResponseBody } from '@/lib/billing/storage-limit';
+import { StorageLimitExceededError } from '@/lib/billing/storage-reservation';
 
 export const runtime = 'nodejs';
 
@@ -62,6 +64,10 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
 
     return NextResponse.json({ documentId: newDocumentId });
   } catch (error: any) {
+    // A new version is a new physical object, so it is charged like any other upload.
+    if (error instanceof StorageLimitExceededError) {
+      return NextResponse.json(storageLimitResponseBody(error.check), { status: 403 });
+    }
     console.error('Error creating version:', error);
     return NextResponse.json(
       { error: error?.message || 'Failed to create version' },

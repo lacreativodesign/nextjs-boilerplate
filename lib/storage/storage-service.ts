@@ -7,6 +7,11 @@ import { promisify } from 'util';
 import * as admin from 'firebase-admin';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getStorageBucketName } from '@/lib/storage/bucket';
+import {
+  releaseTenantStorage,
+  reserveTenantStorageOrThrow,
+  type StorageReservationKind,
+} from '@/lib/billing/storage-reservation';
 import type {
   Document,
   DocumentCategory,
@@ -50,6 +55,8 @@ export class StorageService {
     tags?: string[];
     title?: string;
     description?: string;
+    /** Which upload surface is spending the quota; defaults to a direct upload. */
+    reservationKind?: StorageReservationKind;
   }): Promise<string> {
     this.validateFile(params.file, params.mimeType);
 
@@ -68,82 +75,108 @@ export class StorageService {
       throw new Error('Virus scan failed or file is infected.');
     }
 
+    // PR4-A: the document library is a paid storage surface exactly like every other
+    // upload path, and this is where its bytes are committed. Before PR4 nothing here
+    // consulted the tenant's plan at all, so /api/documents/upload stored without bound.
+    //
+    // The reservation is taken on the REAL assembled length: the server is holding the
+    // buffer, so there is no caller-declared size to trust. It is held until the
+    // `documents` record lands, at which point that record is what counts against the
+    // tenant, and released in the `finally` below whether the upload succeeded or not.
+    const reservation = await reserveTenantStorageOrThrow({
+      tenantId: params.tenantId,
+      bytes: params.file.length,
+      kind: params.reservationKind ?? 'document_upload',
+    });
+
     const bucketName = getStorageBucketName();
     const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
     const file = bucket.file(storagePath);
 
-    await file.save(params.file, {
-      metadata: {
-        contentType: params.mimeType,
+    try {
+      await file.save(params.file, {
         metadata: {
-          tenantId: params.tenantId,
-          uploadedBy: params.userId,
-          checksum,
+          contentType: params.mimeType,
+          metadata: {
+            tenantId: params.tenantId,
+            uploadedBy: params.userId,
+            checksum,
+          },
         },
-      },
-    });
+      });
 
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-    });
+      const [url] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      });
 
-    let folderPath: string | undefined;
-    if (params.folderId) {
-      const folderDoc = await adminDb.collection('folders').doc(params.folderId).get();
-      folderPath = folderDoc.data()?.path;
+      let folderPath: string | undefined;
+      if (params.folderId) {
+        const folderDoc = await adminDb.collection('folders').doc(params.folderId).get();
+        folderPath = folderDoc.data()?.path;
+      }
+
+      const now = admin.firestore.Timestamp.now();
+
+      const document: Omit<Document, 'id'> = {
+        tenantId: params.tenantId,
+        fileName: uniqueFileName,
+        originalFileName: params.fileName,
+        fileSize: params.file.length,
+        mimeType: params.mimeType,
+        fileExtension: fileExtension.replace('.', ''),
+        storageProvider: 'firebase',
+        storagePath,
+        storageUrl: url,
+        category: params.category,
+        folderId: params.folderId,
+        folderPath,
+        relatedResourceType: params.relatedResourceType,
+        relatedResourceId: params.relatedResourceId,
+        uploadedBy: params.userId,
+        uploadedByEmail: params.userEmail,
+        visibility: params.visibility || 'private',
+        tags: params.tags || [],
+        title: params.title,
+        description: params.description,
+        version: 1,
+        isLatestVersion: true,
+        status: 'ready',
+        isEncrypted: false,
+        checksum,
+        virusScanStatus,
+        downloadCount: 0,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        previewUrl: this.isPreviewable(params.mimeType) ? url : undefined,
+      };
+
+      const docRef = await adminDb.collection('documents').add(document);
+
+      if (params.folderId) {
+        await adminDb
+          .collection('folders')
+          .doc(params.folderId)
+          .update({
+            documentCount: admin.firestore.FieldValue.increment(1),
+            totalSize: admin.firestore.FieldValue.increment(params.file.length),
+            updatedAt: now,
+          });
+      }
+
+      return docRef.id;
+    } catch (error) {
+      // The object may already be in the bucket. Releasing the reservation without
+      // removing it would hand the tenant back quota it is still being billed for, and
+      // leave an orphan no record points at.
+      await file.delete({ ignoreNotFound: true }).catch(() => undefined);
+      throw error;
+    } finally {
+      // Success: the `documents` record now counts these bytes. Failure: the space goes
+      // straight back. Either way the reservation must not outlive the request.
+      await releaseTenantStorage(reservation);
     }
-
-    const now = admin.firestore.Timestamp.now();
-
-    const document: Omit<Document, 'id'> = {
-      tenantId: params.tenantId,
-      fileName: uniqueFileName,
-      originalFileName: params.fileName,
-      fileSize: params.file.length,
-      mimeType: params.mimeType,
-      fileExtension: fileExtension.replace('.', ''),
-      storageProvider: 'firebase',
-      storagePath,
-      storageUrl: url,
-      category: params.category,
-      folderId: params.folderId,
-      folderPath,
-      relatedResourceType: params.relatedResourceType,
-      relatedResourceId: params.relatedResourceId,
-      uploadedBy: params.userId,
-      uploadedByEmail: params.userEmail,
-      visibility: params.visibility || 'private',
-      tags: params.tags || [],
-      title: params.title,
-      description: params.description,
-      version: 1,
-      isLatestVersion: true,
-      status: 'ready',
-      isEncrypted: false,
-      checksum,
-      virusScanStatus,
-      downloadCount: 0,
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-      previewUrl: this.isPreviewable(params.mimeType) ? url : undefined,
-    };
-
-    const docRef = await adminDb.collection('documents').add(document);
-
-    if (params.folderId) {
-      await adminDb
-        .collection('folders')
-        .doc(params.folderId)
-        .update({
-          documentCount: admin.firestore.FieldValue.increment(1),
-          totalSize: admin.firestore.FieldValue.increment(params.file.length),
-          updatedAt: now,
-        });
-    }
-
-    return docRef.id;
   }
 
   /**
@@ -236,12 +269,12 @@ export class StorageService {
 
     const original = originalDoc.data() as Document;
 
-    await adminDb.collection('documents').doc(params.originalDocumentId).update({
-      isLatestVersion: false,
-      updatedAt: admin.firestore.Timestamp.now(),
-    });
-
+    // Store the new version FIRST. The original is only demoted once the new version
+    // actually exists: uploadFile() can now refuse the upload (plan storage limit, virus
+    // scan, validation), and demoting beforehand left the document with no version marked
+    // latest — it vanished from every isLatestVersion listing while its bytes remained.
     const newDocId = await this.uploadFile({
+      reservationKind: 'document_version',
       tenantId: params.tenantId,
       userId: params.userId,
       userEmail: params.userEmail,
@@ -258,14 +291,18 @@ export class StorageService {
       description: original.description,
     });
 
-    await adminDb
-      .collection('documents')
-      .doc(newDocId)
-      .update({
-        version: original.version + 1,
-        previousVersionId: params.originalDocumentId,
-        updatedAt: admin.firestore.Timestamp.now(),
-      });
+    const now = admin.firestore.Timestamp.now();
+    const batch = adminDb.batch();
+    batch.update(adminDb.collection('documents').doc(params.originalDocumentId), {
+      isLatestVersion: false,
+      updatedAt: now,
+    });
+    batch.update(adminDb.collection('documents').doc(newDocId), {
+      version: original.version + 1,
+      previousVersionId: params.originalDocumentId,
+      updatedAt: now,
+    });
+    await batch.commit();
 
     return newDocId;
   }

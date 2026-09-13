@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { createHrEvent, normalizeRole, requireHrAccess, serverTimestamp } from '../../_utils';
+import { purgeRecordStorageObject } from '@/lib/storage/tenant-object';
 
 export const runtime = 'nodejs';
 
@@ -39,6 +40,12 @@ export async function POST(req: Request) {
         );
       }
     }
+
+    // PR4-D: free the bytes before freeing the quota. This route used to clear the record
+    // and stop there, so the object stayed in the bucket — still billed — while the
+    // tenant instantly got its quota back. Upload, delete, repeat stored without bound.
+    const blocked = await purgeRecordStorageObject(data);
+    if (blocked) return blocked;
 
     await ref.update({
       isDeleted: true,

@@ -41,6 +41,8 @@ export interface ImportJob {
   fileName: string;
   format: ImportFileFormat;
   storagePath: string;
+  /** Bytes stored in Cloud Storage for this job's object. Counted against plan quota. */
+  size?: number;
   status: ImportJobStatus;
   progress: number;
   totalRows: number;
@@ -86,6 +88,8 @@ export interface ExportJob {
   format: 'csv' | 'excel';
   fileName: string;
   storagePath?: string;
+  /** Bytes stored in Cloud Storage for this job's object. Counted against plan quota. */
+  size?: number;
   signedUrl?: string;
   totalRows: number;
   processedRows: number;

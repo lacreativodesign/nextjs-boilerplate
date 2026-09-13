@@ -107,9 +107,25 @@ describe('storage.rules — dangerous patterns', () => {
   });
 
   it('caps every write with the size ceiling', () => {
-    const writeGrants = activeRules.match(/allow create, update:\s*if\s+([^;]+);/g) || [];
+    // PR4 narrowed the four file prefixes to CREATE only, so the grants are now a mix of
+    // `allow create:` and the one remaining `allow create, update:` on brand/**. Every
+    // one of them must still carry the ceiling.
+    const writeGrants = activeRules.match(/allow create(?:, update)?:\s*if\s+([^;]+);/g) || [];
     expect(writeGrants.length).toBe(5);
     expect(writeGrants.filter((grant) => !grant.includes('withinSizeLimit()'))).toEqual([]);
+  });
+
+  it('grants no update on the four browser file prefixes', () => {
+    // PR4: every browser upload mints a fresh path, so an approved upload never
+    // addresses an existing object. Denying UPDATE means the bytes behind a path cannot
+    // change after the server has measured and charged for them — which is what makes
+    // quota accounting exact and cleanup safe. brand/** is the deliberate exception: a
+    // tenant logo lives at a fixed path and replacing it IS an overwrite.
+    ['projects', 'client-files', 'employees', 'employee-documents'].forEach((prefix) => {
+      const block = matchBlock(`match /tenants/{tenantId}/${prefix}/{allPaths=**}`);
+      expect(block).toContain('allow update: if false;');
+      expect(block).not.toMatch(/allow create, update:/);
+    });
   });
 });
 
@@ -117,9 +133,7 @@ describe('storage.rules — per-prefix authorization', () => {
   it.each(PREFIX_GRANTS)('$prefix/** is gated by $guard', ({ prefix, guard }) => {
     expect(activeRules).toContain(`match /tenants/{tenantId}/${prefix}/{allPaths=**}`);
     expect(activeRules).toContain(`allow read: if ${guard}(tenantId);`);
-    expect(activeRules).toContain(
-      `allow create, update: if ${guard}(tenantId) && withinSizeLimit();`,
-    );
+    expect(activeRules).toContain(`allow create: if ${guard}(tenantId) && withinSizeLimit();`);
   });
 
   it('restricts HR prefixes to HR and admin roles, never the external client', () => {
