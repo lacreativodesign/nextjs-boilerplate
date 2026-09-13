@@ -1,23 +1,136 @@
 name: Deploy Security Rules
 
+# Publishes firestore.rules and storage.rules to the production Firebase project.
+#
+# WHY THIS WAS REWRITTEN
+#
+# Every run of this workflow failed with "Failed to authenticate, have you run
+# firebase login?" — including the run triggered by the merge of PR #1005, which
+# tightened the paid browser upload prefixes in storage.rules to CREATE-only. The
+# bucket therefore kept serving whatever ruleset was last published by some other
+# means, and the repository's storage.rules was not the live ruleset.
+#
+# The cause is exact, and it is visible in firebase-tools' own requireAuth:
+# the step passed `--token "${{ secrets.FIREBASE_TOKEN }}"` and that secret is not
+# configured, so GitHub rendered an EMPTY string. An empty `--token` is falsy, so
+# the CLI skipped the token path; no `firebase login` had run, so there was no
+# signed-in user either; and it fell through to its Application Default
+# Credentials path, which on a runner with no ADC throws — surfacing as exactly
+# that message. So the workflow was not merely using a deprecated mechanism, it
+# was authenticating with nothing at all.
+#
+# Legacy CI tokens are also on their way out of firebase-tools entirely: both the
+# `--token` flag and the FIREBASE_TOKEN variable log a deprecation warning and are
+# documented to be removed in a future major version. Re-minting a CI token would
+# have restored the pipeline onto a mechanism with an expiry date, and a long-lived
+# refresh token held as a repository secret is precisely the credential shape this
+# repository moved away from for Firestore indexes.
+#
+# Authentication is therefore keyless Workload Identity Federation, the same
+# provider architecture already certified in deploy-indexes.yml. The ADC that the
+# google-github-actions/auth step writes is what the CLI's fallback path wanted all
+# along, so the fix is to SUPPLY ADC rather than to keep feeding the CLI a token.
+#
+# SAFETY PROPERTIES, enforced below rather than documented
+#
+#   - No long-lived Google credential exists. No service-account JSON key is
+#     created, stored, or referenced; the identity is federated per run and the
+#     token expires with the job.
+#   - A dedicated deployment identity. Not the Firestore index reader or deployer:
+#     those hold index permissions this job must not have, and this job holds rules
+#     permissions they must not have.
+#   - The target project is a constant. No input can retarget it.
+#   - Publication is refused unless github.ref is exactly refs/heads/main, checked
+#     in BOTH jobs and before Google authentication, so neither a feature-branch
+#     workflow_dispatch nor a push to the historical `master` branch can publish.
+#   - Both rules guards run before publication, in the same job as the publish, so
+#     the publish step is unreachable without them.
+#   - The publish happens inside an environment whose reviewers the owner controls.
+#
+# Owner setup — the Google Cloud and GitHub configuration this file expects, and the
+# minimum IAM permissions it needs — is in docs/runbooks/firebase-rules-deploy.md.
+
 on:
   push:
     branches: [main, master]
     paths:
       - 'firestore.rules'
       - 'storage.rules'
+      # Included so that merging a change to this pipeline exercises the repaired
+      # pipeline, instead of requiring a no-op edit to a production ruleset to find
+      # out whether the deployment path works. A push to `master` still cannot
+      # publish: the ref guard below fails closed on anything but refs/heads/main.
+      - '.github/workflows/deploy-rules.yml'
+  # Kept for controlled recovery — re-publishing the repository's rules after a
+  # console edit, for instance. It is NOT a way around the ref guard: a dispatch
+  # from a feature branch fails preflight before any Google credential is minted.
   workflow_dispatch:
+
+permissions:
+  # Read the repository. Nothing in this workflow writes to GitHub.
+  contents: read
+  # Mints an OIDC token for Google. Grants nothing inside this repository, and is
+  # what removes the need for any stored credential.
+  id-token: write
 
 # Rules are global and take effect immediately. Never let two publishes race.
 concurrency:
   group: deploy-firestore-rules
   cancel-in-progress: false
 
+env:
+  # The one project this workflow may ever touch. Deliberately not an input: a
+  # free-text project field is a way to point a production credential elsewhere.
+  PROJECT_ID: la-creativo-erp
+  # Pinned, not `@latest`. This is the version already certified in this repository
+  # — test.yml runs all three Firestore emulator suites on it, and the index
+  # reconciler is written against its documented behaviour — so the CLI publishing
+  # production rules is the CLI this repository's gates have actually exercised.
+  # `@latest` would let a Firebase CLI release nobody here has run reach a
+  # production publish with no gate in between.
+  FIREBASE_CLI_VERSION: 13.35.1
+
 jobs:
-  deploy-rules:
+  # -------------------------------------------------------------------------
+  # Everything that can be decided without a Google credential. Runs outside the
+  # protected environment so an unsafe dispatch fails here, before a reviewer is
+  # asked for anything and before any token is minted.
+  # -------------------------------------------------------------------------
+  preflight:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Refuse anything but a main-ref publish, and require the deploy config
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          # Non-secret configuration, read as repository variables. Checked for
+          # emptiness because an unset `vars.X` renders as '' rather than failing,
+          # and an empty workload_identity_provider is an authentication error
+          # forty lines later instead of a named missing setting here.
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOYER_SA: ${{ vars.GCP_FIREBASE_RULES_DEPLOYER_SA }}
+        run: |
+          set -euo pipefail
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Refusing to publish Security Rules: ref is $REF, not refs/heads/main."
+            exit 1
+          fi
+          if [ "$PROJECT_ID" != "la-creativo-erp" ]; then
+            echo "::error::Refusing to publish: target project $PROJECT_ID is not la-creativo-erp."
+            exit 1
+          fi
+          if [ -z "$WIF_PROVIDER" ]; then
+            echo "::error::Repository variable GCP_WORKLOAD_IDENTITY_PROVIDER is not set."
+            exit 1
+          fi
+          if [ -z "$DEPLOYER_SA" ]; then
+            echo "::error::Repository variable GCP_FIREBASE_RULES_DEPLOYER_SA is not set."
+            exit 1
+          fi
+          echo "Preflight passed for $PROJECT_ID at $SHA on $REF."
+
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -29,9 +142,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The Quality Gates workflow runs in parallel with this one, so it cannot
-      # be relied on to block a bad publish. Re-run the rules guard here so a
-      # dangerous ruleset fails BEFORE it reaches Firebase.
+      # The Quality Gates workflow runs in parallel with this one, so it cannot be
+      # relied on to block a bad publish. The guards run here so the reviewer who
+      # approves the environment sees them green BEFORE approving, and again in the
+      # deploy job so the publish cannot be reached without them.
       - name: Firestore rules guard
         run: npx jest __tests__/config/firestore-rules-guard.test.ts --coverage=false
 
@@ -41,15 +155,137 @@ jobs:
       - name: Storage rules guard
         run: npx jest __tests__/config/storage-rules-guard.test.ts --coverage=false
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools@latest
-
-      - name: Deploy Firestore and Storage Rules
+  # -------------------------------------------------------------------------
+  # The publish. Gated four ways: preflight, the ref check repeated here, the
+  # environment's reviewers, and the two rules guards re-run in this job.
+  # -------------------------------------------------------------------------
+  deploy:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Required reviewers on this environment are what make the publish
+    # owner-approved. Restrict its deployment branches to `main` in the environment
+    # settings too, so the rule survives an edit to this file.
+    environment: firebase-rules-production
+    steps:
+      # Repeated rather than inherited from preflight. The environment's branch
+      # restriction is configured outside this repository and the `needs:` edge is
+      # one line away from deletion, so the ref is re-proven in the job that holds
+      # the credential — and before the credential is minted.
+      - name: Re-prove the ref before any Google credential is minted
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
         run: |
-          firebase deploy --only firestore:rules,storage:rules \
-            --project la-creativo-erp \
-            --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --non-interactive
+          set -euo pipefail
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Refusing to publish Security Rules: ref is $REF, not refs/heads/main."
+            exit 1
+          fi
+          echo "Publishing Security Rules to $PROJECT_ID from $REF at $SHA."
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Re-run in this job so that no edit to `preflight` can decouple the guards
+      # from the publish: the publish step below is unreachable unless these pass.
+      - name: Firestore rules guard
+        run: npx jest __tests__/config/firestore-rules-guard.test.ts --coverage=false
+
+      - name: Storage rules guard
+        run: npx jest __tests__/config/storage-rules-guard.test.ts --coverage=false
+
+      - name: Authenticate as the rules deployment identity
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          # A dedicated identity, not the index reader or deployer. It holds Firebase
+          # Rules publication permissions and nothing else — no index write, no
+          # document data, no bucket objects. See the runbook for the exact set.
+          service_account: ${{ vars.GCP_FIREBASE_RULES_DEPLOYER_SA }}
+
+      # setup-gcloud is deliberately not installed: nothing here runs a `gcloud`
+      # command. The Firebase CLI reads the Application Default Credentials that the
+      # step above writes, which is all the authentication this publish needs.
+
+      - name: Publish Firestore and Storage Security Rules
+        shell: bash
+        env:
+          # Skips firebase-tools' *informational* client-side permission probe. That
+          # probe is not a security control — it is a cloudresourcemanager
+          # testIamPermissions call whose own error handler swallows failures and
+          # continues ("command may fail"), and Google Cloud IAM still enforces every
+          # API call server-side either way. It is skipped because of what it asks
+          # for: the CLI maps `--only firestore:rules` to its `firestore` target and
+          # so probes for datastore.indexes.create, .update and .delete. Granting
+          # index WRITE authority to a rules deployer, to satisfy a probe, would hand
+          # this job the power deploy-indexes.yml deliberately keeps behind a separate
+          # identity and a separate approval. The runtime path touches no index API at
+          # all: with `--only firestore:rules`, firebase-tools sets its own
+          # firestoreIndexes flag to false and its deployIndexes step returns
+          # immediately. So this makes the job LESS privileged, not more.
+          FIREBASE_SKIP_INFORMATIONAL_IAM: 'true'
+        run: |
+          set -euo pipefail
+          # Exactly these two rulesets. Not hosting (firebase.json declares a hosting
+          # target), not indexes (deploy-indexes.yml owns those, and `firebase deploy`
+          # would reconcile them in both directions), not functions, not data.
+          # --non-interactive is not only about prompts: it is also what stops the CLI
+          # from trying to modify the project IAM policy when storage rules use
+          # cross-service functions.
+          # --debug is deliberately absent; it logs request and response bodies,
+          # including bearer tokens.
+          npx --yes "firebase-tools@${FIREBASE_CLI_VERSION}" deploy \
+            --only firestore:rules,storage:rules \
+            --project "$PROJECT_ID" \
+            --non-interactive 2>&1 | tee deploy-rules.log
 
       - name: Confirm deployment
-        run: echo "Firestore and Storage rules deployed successfully"
+        shell: bash
+        env:
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          echo "Firestore and Storage rules deployed successfully"
+          {
+            echo "## Security Rules published"
+            echo
+            echo "- project: \`$PROJECT_ID\`"
+            echo "- ref: \`$REF\`"
+            echo "- commit: \`$SHA\`"
+            echo "- firebase-tools: \`$FIREBASE_CLI_VERSION\` (pinned)"
+            echo "- targets: \`firestore:rules,storage:rules\`"
+            echo "- authentication: keyless Workload Identity Federation (no stored credential)"
+            echo
+            echo '```'
+            cat deploy-rules.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain an authentication or permission failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "If this failed at the authentication step, check that both repository"
+          echo "variables are set and that the service account trusts this repository"
+          echo "through the existing Workload Identity provider:"
+          echo "  GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_FIREBASE_RULES_DEPLOYER_SA"
+          echo
+          echo "If it failed with PERMISSION_DENIED, the message above names the exact"
+          echo "permission and resource that was refused. Add that one permission to the"
+          echo "deployer's role - do not substitute a broad predefined role such as"
+          echo "roles/firebase.admin, roles/editor or roles/storage.admin, each of which"
+          echo "would also grant access to document data or bucket objects that"
+          echo "publishing a ruleset has no need for. The expected minimum set, and why"
+          echo "each entry is on it, is in docs/runbooks/firebase-rules-deploy.md."
