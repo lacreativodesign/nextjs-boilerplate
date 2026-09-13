@@ -45,9 +45,11 @@ The trust boundary is:
 | Google IAM                 | Rules publication only — no index write, no document data, no bucket objects                       |
 | Deploy scope               | `--only firestore:rules,storage:rules`, nothing else                                               |
 
-Five of those six are independent of this repository's contents: three of them
-(the IAM binding, the environment reviewer, the environment branch restriction)
-hold even if this workflow file is edited.
+Four of those six live outside this repository entirely — the provider, the IAM
+binding, the Google IAM role, and the environment's protections. So the IAM
+binding, the required reviewer and the branch restriction all still hold even if
+this workflow file is edited. Only the ref guard and the deploy scope are in the
+repository, and both are pinned by the workflow contract test.
 
 ## Minimum Google IAM
 
@@ -149,7 +151,7 @@ gcloud projects add-iam-policy-binding la-creativo-erp \
   --role="projects/la-creativo-erp/roles/bizostoFirebaseRulesDeployer"
 ```
 
-### 3. Let GitHub impersonate it, from this repository and this branch only
+### 3. Let GitHub impersonate it, scoped to this repository
 
 Reuse the **existing** Workload Identity provider — the one already in the
 `GCP_WORKLOAD_IDENTITY_PROVIDER` repository variable. Do not create a second one.
@@ -239,8 +241,10 @@ In order, and not before:
 Verify independently — the workflow reporting success is the CLI reporting success:
 
 ```bash
-# Firestore rules currently serving
-gcloud alpha firebase rules releases describe cloud.firestore --project=la-creativo-erp
+# The releases currently serving, read through the same API the CLI publishes to.
+# `cloud.firestore` and `firebase.storage/<bucket>` each name their live ruleset.
+curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  "https://firebaserules.googleapis.com/v1/projects/la-creativo-erp/releases"
 ```
 
 Or in the Firebase console, Firestore → Rules and Storage → Rules, and confirm the
