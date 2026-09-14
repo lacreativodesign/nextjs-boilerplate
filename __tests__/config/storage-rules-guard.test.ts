@@ -189,8 +189,22 @@ describe('storage.rules — deployment', () => {
     'utf8',
   );
 
+  /**
+   * The workflow minus its comment lines — i.e. what it actually RUNS. The comments
+   * discuss the `storage:rules` spelling at length in order to explain why it is wrong,
+   * so matching against the raw file would let prose satisfy a deployment assertion.
+   */
+  const commands = workflow
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+
   it('is published by the deploy workflow, not only committed to the repo', () => {
-    expect(workflow).toContain('storage:rules');
+    // `storage`, not `storage:rules`: firebase-tools reads anything after `storage:` as
+    // a named .firebaserc deploy target, so `storage:rules` matched nothing and aborted
+    // the publish. See __tests__/config/firebase-storage-bucket-binding.test.ts.
+    expect(commands).toMatch(/--only\s+\S*\bstorage\b(?![:\w])/);
+    expect(commands).not.toContain('storage:rules');
   });
 
   it('redeploys when the ruleset changes', () => {
