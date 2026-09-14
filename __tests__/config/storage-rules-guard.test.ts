@@ -65,9 +65,15 @@ describe('storage.rules — structural guarantees', () => {
     expect(rulesSource.trimStart().startsWith("rules_version = '2';")).toBe(true);
   });
 
-  it('is wired into firebase.json', () => {
+  it('is wired into firebase.json, against the explicit production bucket', () => {
+    // The array form is load-bearing, not stylistic: the single-object form makes
+    // firebase-tools resolve the bucket through Google's v1alpha defaultBucket endpoint,
+    // which 404s for this project and fails the publish.
+    // __tests__/config/firebase-storage-bucket-binding.test.ts holds the full argument.
     const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase.json'), 'utf8'));
-    expect(cfg.storage?.rules).toBe('storage.rules');
+    expect(cfg.storage).toEqual([
+      { bucket: 'la-creativo-erp.firebasestorage.app', rules: 'storage.rules' },
+    ]);
   });
 
   it('denies everything outside a tenant prefix', () => {

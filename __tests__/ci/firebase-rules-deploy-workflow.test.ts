@@ -205,9 +205,31 @@ describe('the deploy target cannot be redirected or widened', () => {
     expect(commands).toContain('if [ "$PROJECT_ID" != "la-creativo-erp" ]; then');
   });
 
-  it('deploys exactly firestore:rules,storage:rules and nothing else', () => {
+  it('deploys exactly firestore:rules,storage and nothing else', () => {
     const only = commands.match(/--only\s+(\S+)/g) || [];
-    expect(only).toEqual(['--only firestore:rules,storage:rules']);
+    expect(only).toEqual(['--only firestore:rules,storage']);
+  });
+
+  it('never asks for `storage:rules`, a scope that silently matches nothing', () => {
+    // firebase-tools 13.35.1 is asymmetric here, and the asymmetry cost a production
+    // deploy. deploy/firestore/prepare.js special-cases the literals `firestore:rules`
+    // and `firestore:indexes`. deploy/storage/prepare.js does not: everything after
+    // `storage:` is read as the name of a NAMED DEPLOY TARGET from .firebaserc. With no
+    // .firebaserc in this repository, `storage:rules` requested a target called "rules",
+    // matched no config entry, and aborted the publish with "Could not find rules for
+    // the following storage targets: rules". Bare `storage` sets that file's allStorage
+    // flag and deploys every entry of firebase.json's storage array.
+    expect(commands).not.toContain('storage:rules');
+    expect(commands).toMatch(/--only\s+firestore:rules,storage(?![:\w])/);
+  });
+
+  it('keeps the storage scope from widening past a ruleset', () => {
+    // Bare `storage` is not a privilege increase: the storage deploy target's
+    // prepare/deploy/release trio only compiles a ruleset, uploads it, and repoints a
+    // release. There is no bucket-object, CORS, lifecycle or metadata path in it. What
+    // WOULD widen the publish is naming another target, so the scope stays exhaustive.
+    const only = commands.match(/--only\s+(\S+)/)?.[1] ?? '';
+    expect(only.split(',').sort()).toEqual(['firestore:rules', 'storage']);
   });
 
   it('invokes firebase deploy exactly once', () => {
@@ -282,8 +304,8 @@ describe('both rules guards run before production publication', () => {
     const deploy = job('deploy');
     expect(deploy).toContain('firestore-rules-guard.test.ts');
     expect(deploy).toContain('storage-rules-guard.test.ts');
-    assertOrder(deploy, 'storage-rules-guard.test.ts', '--only firestore:rules,storage:rules');
-    assertOrder(deploy, 'firestore-rules-guard.test.ts', '--only firestore:rules,storage:rules');
+    assertOrder(deploy, 'storage-rules-guard.test.ts', '--only firestore:rules,storage');
+    assertOrder(deploy, 'firestore-rules-guard.test.ts', '--only firestore:rules,storage');
   });
 
   it('runs both guards before the environment approval too', () => {

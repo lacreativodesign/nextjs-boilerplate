@@ -240,13 +240,37 @@ jobs:
           # Exactly these two rulesets. Not hosting (firebase.json declares a hosting
           # target), not indexes (deploy-indexes.yml owns those, and `firebase deploy`
           # would reconcile them in both directions), not functions, not data.
+          #
+          # `storage`, NOT `storage:rules`. The two do not parse the same way, and the
+          # asymmetry is in firebase-tools itself:
+          #
+          #   - deploy/firestore/prepare.js reads the `--only` list and special-cases
+          #     the literals `firestore:rules` and `firestore:indexes`, which is why
+          #     `firestore:rules` correctly means "rules, not indexes".
+          #   - deploy/storage/prepare.js has no such case. Everything after `storage:`
+          #     is treated as the name of a NAMED DEPLOY TARGET from .firebaserc
+          #     (`firebase target:apply storage <name> <bucket>`). This repository has
+          #     no .firebaserc and no named targets, so `storage:rules` asked for a
+          #     target called "rules", matched nothing, and the CLI aborted with
+          #     "Could not find rules for the following storage targets: rules".
+          #
+          # Bare `storage` sets that file's own `allStorage` flag, which deploys every
+          # entry of firebase.json's `storage` array. That is not a widening: the
+          # storage deploy target has exactly one deployable artefact — a ruleset. Its
+          # prepare/deploy/release trio only ever compiles a ruleset, uploads it and
+          # repoints a release; there is no bucket object, CORS, lifecycle or metadata
+          # path in it. Firestore's scope is untouched and still excludes indexes, and
+          # `filterTargets` still resolves to `storage` + `firestore` only, so hosting
+          # remains unpublished. __tests__/ci/firebase-rules-deploy-workflow.test.ts
+          # pins all three of those properties.
+          #
           # --non-interactive is not only about prompts: it is also what stops the CLI
           # from trying to modify the project IAM policy when storage rules use
           # cross-service functions.
           # --debug is deliberately absent; it logs request and response bodies,
           # including bearer tokens.
           npx --yes "firebase-tools@${FIREBASE_CLI_VERSION}" deploy \
-            --only firestore:rules,storage:rules \
+            --only firestore:rules,storage \
             --project "$PROJECT_ID" \
             --non-interactive 2>&1 | tee deploy-rules.log
 
@@ -265,7 +289,8 @@ jobs:
             echo "- ref: \`$REF\`"
             echo "- commit: \`$SHA\`"
             echo "- firebase-tools: \`$FIREBASE_CLI_VERSION\` (pinned)"
-            echo "- targets: \`firestore:rules,storage:rules\`"
+            echo "- targets: \`firestore:rules,storage\` (Firestore rules only — indexes excluded)"
+            echo "- storage bucket: \`la-creativo-erp.firebasestorage.app\` (explicit, from firebase.json)"
             echo "- authentication: keyless Workload Identity Federation (no stored credential)"
             echo
             echo '```'
