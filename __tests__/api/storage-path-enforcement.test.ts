@@ -67,9 +67,14 @@ describe('S5: every upload route validates the client-supplied storagePath', () 
 describe('S5: storage.rules', () => {
   const rules = read('storage.rules');
 
-  it('is wired into firebase.json', () => {
+  it('is wired into firebase.json, against the explicit production bucket', () => {
+    // Array form with an explicit bucket — see
+    // __tests__/config/firebase-storage-bucket-binding.test.ts for why the
+    // single-object form cannot publish on this project.
     const cfg = JSON.parse(read('firebase.json'));
-    expect(cfg.storage?.rules).toBe('storage.rules');
+    expect(cfg.storage).toEqual([
+      { bucket: 'la-creativo-erp.firebasestorage.app', rules: 'storage.rules' },
+    ]);
   });
 
   it('scopes access by the tenant segment of the path', () => {

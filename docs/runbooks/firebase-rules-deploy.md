@@ -43,7 +43,7 @@ The trust boundary is:
 | Workflow guard             | Fails closed unless `github.ref` is exactly `refs/heads/main`, in both jobs, before authentication |
 | GitHub environment         | `firebase-rules-production`, required reviewer, branch-restricted to `main`                        |
 | Google IAM                 | Rules publication only — no index write, no document data, no bucket objects                       |
-| Deploy scope               | `--only firestore:rules,storage:rules`, nothing else                                               |
+| Deploy scope               | `--only firestore:rules,storage`, nothing else                                                     |
 
 Four of those six live outside this repository entirely — the provider, the IAM
 binding, the Google IAM role, and the environment's protections. So the IAM
@@ -51,24 +51,130 @@ binding, the required reviewer and the branch restriction all still hold even if
 this workflow file is edited. Only the ref guard and the deploy scope are in the
 repository, and both are pinned by the workflow contract test.
 
+## The Storage bucket is bound explicitly
+
+After PR #1006 repaired authentication, the next production run reached the
+Firebase CLI and failed there:
+
+```
+Firebase Storage has not been set up on project 'la-creativo-erp'.
+Go to https://console.firebase.google.com/project/la-creativo-erp/storage
+and click 'Get Started' to set up Firebase Storage.
+```
+
+That message was false. The bucket `la-creativo-erp.firebasestorage.app` existed,
+served traffic, and was visible in both the Firebase console and Google Cloud
+Storage. Two separate defects produced it, and the first masked the second.
+
+### Defect 1 — default-bucket discovery
+
+The message is emitted from exactly one place in firebase-tools 13.35.1: the 404
+branch of `getDefaultBucket()` in `lib/gcp/storage.js`. That function has exactly
+one caller in the entire library:
+
+```js
+// lib/deploy/storage/prepare.js
+if (!Array.isArray(rulesConfig) && options.project) {
+  const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
+  rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
+}
+```
+
+`firebase.json` declared `"storage": { "rules": "storage.rules" }` — an object, not
+an array — so the CLI asked Google's `v1alpha projects/{p}/defaultBucket` endpoint
+which bucket the release should name. That endpoint answered 404, and the CLI
+reported it as "Storage has not been set up" regardless of the bucket's real state.
+
+The array form skips that branch outright, because `Array.isArray` is true. The
+bucket then comes straight from the config entry:
+
+```js
+// lib/deploy/storage/release.js
+toRelease.push({ bucket: ruleConfig.bucket, rules: ruleConfig.rules });
+```
+
+So `firebase.json` now reads:
+
+```json
+"storage": [
+  {
+    "bucket": "la-creativo-erp.firebasestorage.app",
+    "rules": "storage.rules"
+  }
+]
+```
+
+Three details matter, and
+`__tests__/config/firebase-storage-bucket-binding.test.ts` pins all of them:
+
+- **The array form is required, not stylistic.** firebase-tools' own shipped schema
+  (`schema/firebase-config.json`) sets `additionalProperties: false` on the
+  single-object form and does **not** list `bucket` among its keys. Adding a bucket
+  to the object form is invalid config; the array form is the only way to declare
+  one.
+- **The bucket is the bare name**, never `gs://la-creativo-erp.firebasestorage.app`.
+  It is interpolated un-encoded into the Rules release resource name
+  `projects/{p}/releases/firebase.storage/{bucket}`, so a scheme would inject `//`
+  into the REST path and name a release that does not exist.
+- **`bucket`, not `target`.** A named target is a legitimate feature, but it
+  resolves the bucket through `.firebaserc` at deploy time. This repository has no
+  `.firebaserc`, and the production bucket belongs in version control.
+
+### Defect 2 — the `storage:rules` scope matched nothing
+
+Fixing the bucket alone was not enough. The workflow asked for
+`--only firestore:rules,storage:rules`, and firebase-tools is asymmetric about
+what text after a colon means:
+
+- `deploy/firestore/prepare.js` reads the `--only` list and special-cases the
+  literals `firestore:rules` and `firestore:indexes`. This is why
+  `firestore:rules` correctly means "rules, not indexes".
+- `deploy/storage/prepare.js` has no such case. Everything after `storage:` is
+  treated as the name of a **named deploy target** from `.firebaserc`
+  (`firebase target:apply storage <name> <bucket>`).
+
+With no `.firebaserc`, `storage:rules` requested a storage target called `rules`,
+matched no config entry, and aborted:
+
+```
+Could not find rules for the following storage targets: rules
+```
+
+That failure sits _after_ the default-bucket lookup in the same function, so the
+404 hid it. The scope is now bare `storage`, which sets that file's own
+`allStorage` flag and deploys every entry of the `storage` array.
+
+**Bare `storage` does not widen the publish.** The storage deploy target has
+exactly one deployable artefact — a ruleset. Its `prepare`/`deploy`/`release` trio
+only compiles a ruleset, uploads it and repoints a release; there is no bucket
+object, CORS, lifecycle or metadata path in it. Verified alongside it:
+`filterTargets` still resolves to `storage` + `firestore` only, so hosting stays
+unpublished, and firestore's own `firestoreIndexes` flag is still `false`, so
+indexes stay with `deploy-indexes.yml`.
+
 ## Minimum Google IAM
 
 These were determined by reading firebase-tools 13.35.1 — the pinned version — and
-tracing every API call `firebase deploy --only firestore:rules,storage:rules`
+tracing every API call `firebase deploy --only firestore:rules,storage`
 makes, rather than by starting from a predefined role and working backwards.
 
-| Permission                          | Why the deploy needs it                                                                                                                                                                                                 |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `firebaserules.rulesets.test`       | `compileRuleset` posts each ruleset to `projects/{p}:test` to surface compilation errors before publishing                                                                                                              |
-| `firebaserules.releases.get`        | `getLatestRulesetName` resolves the current release                                                                                                                                                                     |
-| `firebaserules.releases.list`       | Same call, listing releases to find the one for this service                                                                                                                                                            |
-| `firebaserules.rulesets.get`        | `getRulesetContent` reads the live ruleset so an unchanged file is not re-uploaded                                                                                                                                      |
-| `firebaserules.rulesets.create`     | Uploads the new ruleset. This is the publish                                                                                                                                                                            |
-| `firebaserules.releases.update`     | Points the `cloud.firestore` and `firebase.storage/{bucket}` releases at the new ruleset                                                                                                                                |
-| `firebaserules.releases.create`     | The create half of `updateOrCreateRelease`, used when a release does not yet exist                                                                                                                                      |
-| `firebaserules.rulesets.list`       | Only reached on a quota-exceeded response, to report how many rulesets exist                                                                                                                                            |
-| `firebasestorage.defaultBucket.get` | `getDefaultBucket` reads `projects/{p}/defaultBucket` to learn which bucket the storage release names. `firebase.json` declares `storage.rules` without an explicit bucket, so the CLI asks Google rather than assuming |
-| `serviceusage.services.get`         | The same code path first checks that `firebasestorage.googleapis.com` is enabled. A read, and the only Service Usage call made                                                                                          |
+| Permission                              | Why the deploy needs it                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `firebaserules.rulesets.test`           | `compileRuleset` posts each ruleset to `projects/{p}:test` to surface compilation errors before publishing                                                                                                                                                                                                        |
+| `firebaserules.releases.get`            | `getLatestRulesetName` resolves the current release                                                                                                                                                                                                                                                               |
+| `firebaserules.releases.list`           | Same call, listing releases to find the one for this service                                                                                                                                                                                                                                                      |
+| `firebaserules.rulesets.get`            | `getRulesetContent` reads the live ruleset so an unchanged file is not re-uploaded                                                                                                                                                                                                                                |
+| `firebaserules.rulesets.create`         | Uploads the new ruleset. This is the publish                                                                                                                                                                                                                                                                      |
+| `firebaserules.releases.update`         | Points the `cloud.firestore` and `firebase.storage/{bucket}` releases at the new ruleset                                                                                                                                                                                                                          |
+| `firebaserules.releases.create`         | The create half of `updateOrCreateRelease`, used when a release does not yet exist                                                                                                                                                                                                                                |
+| `firebaserules.rulesets.list`           | Only reached on a quota-exceeded response, to report how many rulesets exist                                                                                                                                                                                                                                      |
+| ~~`firebasestorage.defaultBucket.get`~~ | **No longer exercised.** `getDefaultBucket` read `projects/{p}/defaultBucket` to learn which bucket the storage release should name. `firebase.json` now declares the bucket explicitly, so that endpoint is never called — see [The Storage bucket is bound explicitly](#the-storage-bucket-is-bound-explicitly) |
+| ~~`serviceusage.services.get`~~         | **No longer exercised.** The same code path first checked that `firebasestorage.googleapis.com` was enabled. It was only ever reached from `getDefaultBucket`                                                                                                                                                     |
+
+The two struck-through permissions are harmless to leave in the custom role and
+**no IAM change is required** — the role is simply a superset of what the deploy
+now calls. Prune them at the next deliberate IAM review if you want the role to
+match the traced set exactly.
 
 Grant them as one custom role on the project — this repository already uses a
 custom role for the Firestore index reader, for the same reason: a predefined role
@@ -235,8 +341,11 @@ In order, and not before:
 4. The `deploy` job waits on the `firebase-rules-production` environment.
 5. Mansoor approves.
 6. The job re-proves the ref, re-runs both guards, authenticates, and publishes.
+   The Storage release is written against the bucket `firebase.json` names
+   explicitly, `la-creativo-erp.firebasestorage.app`; the CLI makes no
+   default-bucket lookup, so it cannot report "Storage has not been set up".
 7. Read the job summary: it names the project, ref, commit, pinned CLI version,
-   deployed targets, and includes the CLI output.
+   deployed targets, the explicit Storage bucket, and includes the CLI output.
 
 Verify independently — the workflow reporting success is the CLI reporting success:
 
@@ -272,7 +381,7 @@ in the live ruleset — that is the change this pipeline failed to deliver.
 
 ## What this pipeline does not do
 
-It deploys `firestore:rules` and `storage:rules` and nothing else. Firestore
+It deploys `firestore:rules` and `storage` — two rulesets — and nothing else. Firestore
 indexes are `deploy-indexes.yml`, which is a separate identity, a separate
 environment and a separate approval, because `firebase deploy` reconciles indexes
 in both directions and would propose removing most of the live index set. Hosting
