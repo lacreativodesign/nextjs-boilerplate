@@ -79,7 +79,7 @@ describe('middleware prefetch security boundary', () => {
     expect(response.headers.get('x-frame-options')).toBeTruthy();
   });
 
-  it('allows an authenticated active-role prefetch through the normal middleware path', async () => {
+  it('allows an authenticated prefetch through the normal middleware path', async () => {
     global.fetch = jest.fn().mockResolvedValue(subscriptionResponse('active')) as typeof fetch;
 
     const response = await middleware(
@@ -96,7 +96,9 @@ describe('middleware prefetch security boundary', () => {
   });
 
   it('still applies the subscription hard lock to authenticated prefetches', async () => {
-    global.fetch = jest.fn().mockResolvedValue(subscriptionResponse('pending_checkout')) as typeof fetch;
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(subscriptionResponse('pending_checkout')) as typeof fetch;
 
     const response = await middleware(
       requestFor('/admin/clients', {
