@@ -355,10 +355,6 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   // Report-Only so violations keep reaching the readiness console while enforced.
   const nonce = generateNonce();
 
-  if (req.headers.get('x-middleware-prefetch') === '1') {
-    return withSecurityHeaders(NextResponse.next(), nonce);
-  }
-
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-nonce', nonce);
   // S15: Next.js stamps `nonce=` onto the script tags it generates ONLY when it can read a
