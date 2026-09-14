@@ -68,7 +68,7 @@ describe('middleware prefetch security boundary', () => {
 
   it('does not let a caller-controlled prefetch header bypass authentication', async () => {
     const response = await middleware(
-      requestFor('/admin/clients', {
+      requestFor('/dashboard', {
         headers: { 'x-middleware-prefetch': '1' },
       }),
       eventFor(),
@@ -83,7 +83,7 @@ describe('middleware prefetch security boundary', () => {
     global.fetch = jest.fn().mockResolvedValue(subscriptionResponse('active')) as typeof fetch;
 
     const response = await middleware(
-      requestFor('/admin/clients', {
+      requestFor('/dashboard', {
         headers: { 'x-middleware-prefetch': '1' },
         cookies: { lac_session: 'session-token' },
       }),
@@ -101,7 +101,7 @@ describe('middleware prefetch security boundary', () => {
       .mockResolvedValue(subscriptionResponse('pending_checkout')) as typeof fetch;
 
     const response = await middleware(
-      requestFor('/admin/clients', {
+      requestFor('/dashboard', {
         headers: { 'x-middleware-prefetch': '1' },
         cookies: { lac_session: 'session-token' },
       }),
