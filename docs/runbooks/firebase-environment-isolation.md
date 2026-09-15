@@ -111,28 +111,51 @@ the operator name the project.
 ## Before merging: confirm the production deployment still boots
 
 This change makes a production runtime that does not resolve to the canonical pair refuse
-to start. That is the invariant, and it means **one** value has to be confirmed in Vercel
-before merge, because it is the only part of the contract not visible from outside a
-deployment:
+to start, so all four values it checks have to be right on Production before merge. Three
+were already established from outside the deployment, and the first Preview of this branch
+established the fourth by refusing to boot and naming it.
 
-- **`FIREBASE_STORAGE_BUCKET` on the Production environment** must be either unset or
-  exactly `la-creativo-erp.firebasestorage.app`. It is an optional server-side override
-  read by `lib/storage/bucket.ts` and it decides where Admin SDK writes land, which is why
-  it is inside the boundary. If it names a different bucket today, production uploads
-  already disagree with what browsers are told — and after this change production fails
-  closed rather than continuing with the disagreement.
+**What the branch's own Preview reported** (deployment `dpl_B5hWyR2V143h9wG9c3AkEdtPgxEb`,
+commit `caca822`, Vercel runtime log, no secret disclosed):
+
+```
+Refusing to serve: this preview deployment does not satisfy the Firebase
+environment-isolation contract (P0-01).
+  - A Vercel Preview deployment must never serve the production Firebase project
+    "la-creativo-erp". ...
+  - A Vercel Preview deployment must never serve the production Storage bucket
+    "la-creativo-erp.firebasestorage.app".
+  - FIREBASE_STORAGE_BUCKET names the production bucket
+    "la-creativo-erp.firebasestorage.app" on a Vercel Preview deployment.
+  - FIREBASE_ADMIN_KEY is a service account for the production Firebase project
+    "la-creativo-erp". ...
+  - STAGING_FIREBASE_PROJECT_ID must name the isolated staging Firebase project ...
+  - STAGING_FIREBASE_STORAGE_BUCKET must name the isolated staging Storage bucket ...
+```
+
+That is the blocker restated from the inside: every one of the four production identifiers
+is present on a Preview deployment. It also tells us what Production holds, because there
+is no separate staging configuration for those variables to have come from.
+
+| Value                     | How it is established                                                                                                                                                                                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser project           | `GET https://app.bizosto.com/api/public/firebase-config` returns `la-creativo-erp`                                                                                                                                                                                               |
+| Browser bucket            | the same response returns `la-creativo-erp.firebasestorage.app`                                                                                                                                                                                                                  |
+| Admin project             | the golden tenant gate seeds through `assertIntendedFirebaseProject`, which aborts unless the Admin key's `project_id` equals the project the deployment serves; its last green run establishes `la-creativo-erp`. The Preview log above says the same of the key Preview holds. |
+| `FIREBASE_STORAGE_BUCKET` | set, to `la-creativo-erp.firebasestorage.app`, per the Preview log above                                                                                                                                                                                                         |
+
+**The one thing left to confirm by hand** is the SCOPE of that last variable in Vercel →
+Settings → Environment Variables. A Preview only receives a variable scoped to Preview or
+to All Environments, so the value above reached Preview from one of those two. If it is
+All Environments, Production carries the same production bucket and boots. If it has been
+scoped separately and Production's copy names a different bucket, production uploads
+already disagree with what browsers are told, and after this change production fails
+closed rather than continuing with the disagreement — so fix the value, do not weaken the
+contract.
 
 Also confirm neither `STAGING_FIREBASE_PROJECT_ID` nor `STAGING_FIREBASE_STORAGE_BUCKET`
 is set on Production. They are ignored there, but a stray value invites the wrong edit
 later.
-
-The other three production values are already established from outside the deployment:
-
-- **Browser project and bucket** — `GET https://app.bizosto.com/api/public/firebase-config`
-  returns `la-creativo-erp` and `la-creativo-erp.firebasestorage.app`.
-- **Admin project** — the golden tenant gate seeds through `assertIntendedFirebaseProject`,
-  which aborts unless the Admin key's `project_id` equals the project the deployment
-  serves. Its last green run therefore establishes the production key is `la-creativo-erp`.
 
 After merge, the deployment says so itself: `GET https://app.bizosto.com/api/health` must
 report `firebase.isolation: "ok"` with `browserProjectId` and `adminProjectId` both
