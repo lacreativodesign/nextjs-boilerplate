@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  describeFirebaseEnvironmentViolations,
+  evaluateFirebaseEnvironment,
+  isNonRuntimePhase,
+} from './firebase/environment.mjs';
 
 /**
  * Q4a — typed environment contract (ENV-01).
@@ -83,15 +88,14 @@ export function parseServerEnv(env: NodeJS.ProcessEnv = process.env): EnvParseRe
   return { success: false, errors };
 }
 
-/**
- * True during `next build` (Next sets NEXT_PHASE=phase-production-build) or under
- * the jest test runner. In both phases the boot-critical secrets are legitimately
- * absent, so we must NOT fail-fast: the app is intentionally buildable with stub
- * credentials (see lib/firebaseAdmin.ts).
+/*
+ * `isNonRuntimePhase` is imported from lib/firebase/environment.mjs rather than defined
+ * here. It is true during `next build` (Next sets NEXT_PHASE=phase-production-build) and
+ * under jest, where the boot-critical secrets are legitimately absent and the app is
+ * intentionally buildable with stub credentials (see lib/firebaseAdmin.ts). It now decides
+ * that for the Admin SDK bootstrap too, and two copies of "which phase is this?" is
+ * exactly the kind of drift P0-01 was.
  */
-function isNonRuntimePhase(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NEXT_PHASE === 'phase-production-build' || env.NODE_ENV === 'test';
-}
 
 /**
  * Fail-fast entry point. Call ONCE at server startup (instrumentation.register()).
@@ -100,13 +104,30 @@ function isNonRuntimePhase(env: NodeJS.ProcessEnv = process.env): boolean {
  */
 export function assertServerEnv(env: NodeJS.ProcessEnv = process.env): void {
   const result = parseServerEnv(env);
-  if (result.success) {
+  const sections: string[] = [];
+
+  if (!result.success) {
+    sections.push(
+      'Invalid server environment. Fix these variables (see .env.example):\n' +
+        result.errors.map((e) => `  - ${e}`).join('\n'),
+    );
+  }
+
+  // P0-01. The schema above proves the boot-critical variables are PRESENT and well
+  // shaped; it cannot prove they name the right Firebase environment, and until this was
+  // added a Vercel Preview happily booted against the production project. The contract
+  // lives in lib/firebase/environment.mjs so the config route, the Admin SDK and the CI
+  // certification script apply the identical rule.
+  const isolation = describeFirebaseEnvironmentViolations(evaluateFirebaseEnvironment(env));
+  if (isolation) {
+    sections.push(isolation);
+  }
+
+  if (!sections.length) {
     return;
   }
 
-  const message =
-    'Invalid server environment. Fix these variables (see .env.example):\n' +
-    result.errors.map((e) => `  - ${e}`).join('\n');
+  const message = sections.join('\n\n');
 
   if (isNonRuntimePhase(env)) {
     console.warn(`[env] ${message}`);
