@@ -108,6 +108,38 @@ the operator name the project.
 
 ---
 
+## Before merging: confirm the production deployment still boots
+
+This change makes a production runtime that does not resolve to the canonical pair refuse
+to start. That is the invariant, and it means **one** value has to be confirmed in Vercel
+before merge, because it is the only part of the contract not visible from outside a
+deployment:
+
+- **`FIREBASE_STORAGE_BUCKET` on the Production environment** must be either unset or
+  exactly `la-creativo-erp.firebasestorage.app`. It is an optional server-side override
+  read by `lib/storage/bucket.ts` and it decides where Admin SDK writes land, which is why
+  it is inside the boundary. If it names a different bucket today, production uploads
+  already disagree with what browsers are told — and after this change production fails
+  closed rather than continuing with the disagreement.
+
+Also confirm neither `STAGING_FIREBASE_PROJECT_ID` nor `STAGING_FIREBASE_STORAGE_BUCKET`
+is set on Production. They are ignored there, but a stray value invites the wrong edit
+later.
+
+The other three production values are already established from outside the deployment:
+
+- **Browser project and bucket** — `GET https://app.bizosto.com/api/public/firebase-config`
+  returns `la-creativo-erp` and `la-creativo-erp.firebasestorage.app`.
+- **Admin project** — the golden tenant gate seeds through `assertIntendedFirebaseProject`,
+  which aborts unless the Admin key's `project_id` equals the project the deployment
+  serves. Its last green run therefore establishes the production key is `la-creativo-erp`.
+
+After merge, the deployment says so itself: `GET https://app.bizosto.com/api/health` must
+report `firebase.isolation: "ok"` with `browserProjectId` and `adminProjectId` both
+`la-creativo-erp`.
+
+---
+
 ## OWNER ACTION — required before Preview certification can run
 
 **No isolated staging Firebase project existed when this was written.** No project id or

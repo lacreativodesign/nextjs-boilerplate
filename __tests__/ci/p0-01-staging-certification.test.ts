@@ -372,6 +372,16 @@ describe('P0-01: the new environment variables are documented where an operator 
     }
   });
 
+  it('tells the owner what to confirm on production before merging', () => {
+    // The contract makes a production runtime that does not resolve to the canonical pair
+    // refuse to start. FIREBASE_STORAGE_BUCKET is the only value in it that cannot be read
+    // from outside the deployment, so it is the one the owner has to check by hand.
+    expect(isolationRunbook).toMatch(
+      /Before merging: confirm the production deployment still boots/,
+    );
+    expect(isolationRunbook).toContain('FIREBASE_STORAGE_BUCKET');
+  });
+
   it('tells the owner that a refusing Preview is the correct outcome, not a bypass', () => {
     // Prose wraps, so match across the line breaks rather than pinning a column width.
     expect(isolationRunbook).toMatch(/correct fail-closed\s+result, not a regression/);
