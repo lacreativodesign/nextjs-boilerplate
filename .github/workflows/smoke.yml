@@ -3,6 +3,28 @@ name: E2E Smoke (per-role + golden tenant)
 # Manual deployment certification suite. This workflow already exists on main,
 # so it can be dispatched against a PR ref before merge. Missing credentials are
 # a hard failure: skipped authenticated tests must never be launch evidence.
+#
+# P0-01 — THIS GATE IS STAGING-ONLY, BY CONSTRUCTION
+#
+# It rebuilds the golden tenant with `--reset`, which deletes every `bizosto-demo`
+# document in nine collections. Until now the only thing deciding WHERE those deletes
+# landed was whichever service account `FIREBASE_ADMIN_KEY` happened to hold, and the
+# Preview deployments this gate certifies served the PRODUCTION Firebase project:
+# measured on main (da41e8d), the PR #1008 Preview answered /api/public/firebase-config
+# with `la-creativo-erp` and `la-creativo-erp.firebasestorage.app`.
+#
+# Two changes make a production write impossible rather than merely discouraged:
+#
+#   - the reseed is given `FIREBASE_ADMIN_KEY_STAGING`, a service account that has no
+#     access to the production project at all. There is no fall-back to the production
+#     secret; if the staging secret is absent the run stops, it does not certify anyway.
+#   - before anything is written, the deployment must PROVE it is a Vercel Preview backed
+#     by the isolated staging project, that its server and browsers agree on that project,
+#     and that this job's credential belongs to the same one.
+#
+# A run dispatched at the production URL therefore fails, which is the point. Rebuilding
+# the production demo fixture is still available, deliberately and by hand, through
+# `Actions -> Seed Golden Tenant`.
 on:
   workflow_dispatch:
     inputs:
@@ -35,6 +57,12 @@ jobs:
       # that re-points at whatever deployed last. The deployment is asked which commit it
       # is serving, and the run stops if it is not this one.
       EXPECTED_COMMIT_SHA: ${{ github.sha }}
+      # Whether the staging service account exists, NOT the account. `secrets` is a valid
+      # context in a job-level `env:` (only a job-level `if:` rejects it — DS-33), and
+      # comparing it here means the run can fail in ten seconds instead of after a
+      # checkout, without the key being in scope for `npm ci`, the browser install or
+      # Playwright.
+      STAGING_ADMIN_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING != '' }}
 
     steps:
       - name: Verify E2E configuration
@@ -60,6 +88,18 @@ jobs:
             https://*) ;;
             *) echo "E2E_BASE_URL or target_url must use https://"; exit 1 ;;
           esac
+          # P0-01. This used to read "secret missing -> skip the reseed -> certify anyway",
+          # which is the one outcome that must not exist: it would certify an unknown
+          # fixture, and the obvious repair for it would be handing this job the production
+          # service account. There is no fall-back to FIREBASE_ADMIN_KEY here, by design.
+          if [ "$STAGING_ADMIN_KEY_CONFIGURED" != "true" ]; then
+            echo "FIREBASE_ADMIN_KEY_STAGING is required. This gate rebuilds the golden"
+            echo "tenant, so it runs only against the isolated STAGING Firebase project and"
+            echo "only with that project's own service account. Add it as an Actions secret"
+            echo "(see docs/runbooks/golden-tenant-e2e.md). Do NOT supply the production"
+            echo "FIREBASE_ADMIN_KEY: a production credential is rejected by the preflight."
+            exit 1
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -82,25 +122,26 @@ jobs:
       # copy of the secret nor the project can be the odd one out. The tenant is fixed to
       # `bizosto-demo` inside lib/demo/seed.ts, and the seeder aborts if the credentials
       # point at a project other than the one resolved below.
-      - name: Rebuild the golden tenant fixture
+      #
+      # P0-01 adds the other half. `--assert-staging-target` refuses to print a project id
+      # unless the deployment proves it is a Vercel Preview on the isolated staging project,
+      # that its server and its browsers agree on that project, and that the credential in
+      # this step belongs to the same one. `set -euo pipefail` makes that refusal end the
+      # job: the assignment below fails, so nothing is seeded and no suite runs. A
+      # deployment reporting `la-creativo-erp` cannot get past this line.
+      - name: Prove the staging environment and rebuild the golden tenant fixture
         shell: bash
         env:
           # Scoped to this step rather than the job: it is the only step that needs
           # Firebase admin rights, and `npm ci`, the browser install and the Playwright
-          # run have no business seeing a service account key.
-          FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
+          # run have no business seeing a service account key. It is the STAGING account —
+          # it cannot reach the production project even if every check above were removed.
+          FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}
         run: |
           set -euo pipefail
-          if [ -z "${FIREBASE_ADMIN_KEY:-}" ]; then
-            echo "FIREBASE_ADMIN_KEY is not configured, so this run cannot rebuild the"
-            echo "golden tenant. It will still certify, but a stale demo credential will"
-            echo "be reported rather than repaired. Add the deployment's service account"
-            echo "as an Actions secret to make this gate self-sufficient."
-            exit 0
-          fi
-          DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs --print-project)"
+          DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs --assert-staging-target)"
           export DEMO_FIREBASE_PROJECT_ID
-          echo "Seeding bizosto-demo into the project the deployment serves: $DEMO_FIREBASE_PROJECT_ID"
+          echo "Seeding bizosto-demo into the proven staging project: $DEMO_FIREBASE_PROJECT_ID"
           npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts --reset
 
       # A wrong credential used to cost twenty minutes and end in "Incorrect password",

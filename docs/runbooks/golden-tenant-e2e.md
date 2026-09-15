@@ -15,12 +15,38 @@ matters:
   gate checks this rather than trusting it, and stops before sending any credential if the
   URL is serving a different commit.
 - `VERCEL_AUTOMATION_BYPASS_SECRET` — only while the target is a protected preview
-- `FIREBASE_ADMIN_KEY` — the same service account JSON the deployment uses, so the gate
-  can rotate the demo Auth accounts to the password it is about to type. Without it the
-  gate still runs and still fails closed, but it can only report a stale demo credential
-  rather than repair one.
+- `FIREBASE_ADMIN_KEY_STAGING` — the **staging** service account JSON, so the gate can
+  rotate the demo Auth accounts to the password it is about to type. Required: without it
+  the run stops before checkout. There is no fall-back to the production
+  `FIREBASE_ADMIN_KEY`, and supplying the production account here is rejected by the
+  preflight rather than silently used.
 
 Never commit or print the password. The Super Admin demo page intentionally does not display it.
+
+## This gate is staging-only (P0-01)
+
+It rebuilds the golden tenant with `--reset`, which deletes every `bizosto-demo` document
+in nine collections. Until P0-01 it did that with the production service account, against
+Preview deployments that served the production Firebase project — measured on main
+(`da41e8d`), the PR #1008 Preview answered `/api/public/firebase-config` with
+`la-creativo-erp` and `la-creativo-erp.firebasestorage.app`.
+
+So the gate now runs only against a Vercel Preview backed by the isolated staging Firebase
+project, and only with that project's own service account. Before anything is written it
+establishes four facts from the deployment itself: that it is a Preview serving the exact
+commit under test, that the project and bucket it serves are not the production ones and
+it reports its own isolation as satisfied, that its server writes where its browsers read,
+and that this job's credential belongs to that same project.
+
+**A run dispatched at the production URL fails, and that is the intended behaviour.** So
+does a run against a Preview whose staging Firebase configuration is missing. Setting up
+that configuration is an owner action, documented in full in
+[`firebase-environment-isolation.md`](./firebase-environment-isolation.md); do not point
+Preview back at the production project to get a green run.
+
+Rebuilding the **production** demo fixture is still available, deliberately and by hand,
+through `Actions -> Seed Golden Tenant`, which keeps the production credential and makes
+the operator name the project.
 
 ## Getting past Vercel Deployment Protection
 
@@ -45,11 +71,11 @@ A target on a custom domain is exempt from the protection and needs no bypass se
 
 ## Prepare the fixture
 
-**The gate does this for itself.** With `FIREBASE_ADMIN_KEY` configured, dispatching the
-gate resolves the Firebase project from the deployment under test, rebuilds the
-`bizosto-demo` fixture into that project, and rotates the ten demo accounts to the same
-`E2E_DEMO_PASSWORD` the browser is about to type. Neither copy of the secret nor the
-project can be the odd one out, so the drift below has nowhere to happen. Skip to
+**The gate does this for itself.** With `FIREBASE_ADMIN_KEY_STAGING` configured,
+dispatching the gate proves the deployment under test is the isolated staging environment,
+rebuilds the `bizosto-demo` fixture into that project, and rotates the ten demo accounts to
+the same `E2E_DEMO_PASSWORD` the browser is about to type. Neither copy of the secret nor
+the project can be the odd one out, so the drift below has nowhere to happen. Skip to
 "Run the pre-merge gate".
 
 To rebuild the fixture on its own — refreshing demo data, or repairing it outside a
@@ -80,9 +106,16 @@ Two bounds apply to the rebuild and both fail closed:
 - the run aborts before touching anything if `FIREBASE_ADMIN_KEY` targets a project other
   than the one named in the dispatch.
 
+For the automated gate a third bound applies, which is the one that matters most: its
+credential is the staging service account, which has no access to the production project
+at all.
+
 Reset is tenant-scoped: it deletes only documents belonging to `bizosto-demo` in the demo
-collections. Note that `bizosto-demo` currently shares its Firebase project with real
-tenants, so that tenant filter is the isolation boundary.
+collections. In the **production** project, where `Seed Golden Tenant` runs, `bizosto-demo`
+shares the project with real tenants, so that tenant filter is the only isolation boundary
+— which is why that workflow stays a deliberate, by-hand dispatch. The automated gate does
+not rely on it: it runs in a separate Firebase project with a credential that cannot reach
+production.
 
 ## Run the pre-merge gate
 
@@ -95,7 +128,8 @@ The workflow fails before checkout if either required GitHub secret is missing o
 account in against the deployment before the browser suite starts:
 
 ```bash
-node scripts/verify-golden-tenant-signin.mjs
+node scripts/verify-golden-tenant-signin.mjs --assert-staging-target   # before any write
+node scripts/verify-golden-tenant-signin.mjs                           # before the suite
 ```
 
 That check asks the deployment which Firebase project it serves and signs in through the

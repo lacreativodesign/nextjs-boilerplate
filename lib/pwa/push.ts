@@ -1,7 +1,7 @@
 'use client';
 
 import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
-import { getFirebaseApp } from '@/lib/firebaseClient';
+import { getFirebaseApp, waitForFirebase } from '@/lib/firebaseClient';
 
 const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
@@ -21,6 +21,9 @@ export async function registerFcmToken(
     return null;
   }
 
+  // The configuration comes from /api/public/firebase-config, which refuses a deployment
+  // that breaks the Firebase environment-isolation contract (P0-01).
+  await waitForFirebase();
   const app = getFirebaseApp();
   const messaging = getMessaging(app);
 
@@ -50,6 +53,9 @@ export async function attachForegroundNotifications(
     return () => undefined;
   }
 
+  // The configuration comes from /api/public/firebase-config, which refuses a deployment
+  // that breaks the Firebase environment-isolation contract (P0-01).
+  await waitForFirebase();
   const app = getFirebaseApp();
   const messaging = getMessaging(app);
 
