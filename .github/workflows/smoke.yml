@@ -5,6 +5,11 @@ name: E2E Smoke (per-role + golden tenant)
 # a hard failure: skipped authenticated tests must never be launch evidence.
 on:
   workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Exact deployment URL to certify (optional; falls back to E2E_BASE_URL)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -18,14 +23,17 @@ jobs:
     # not only time out.
     timeout-minutes: 30
     env:
-      BASE_URL: ${{ secrets.E2E_BASE_URL }}
+      # PR certification should pin the exact preview URL. The repository secret remains
+      # the backwards-compatible default for production-like/manual runs that do not need
+      # an override.
+      BASE_URL: ${{ inputs.target_url || secrets.E2E_BASE_URL }}
       E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
       # Only needed while the target sits behind Vercel Deployment Protection.
       # A custom-domain target is exempt and needs no bypass.
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      # Certification names an exact SHA, and E2E_BASE_URL may be a branch alias that
-      # re-points at whatever deployed last. The deployment is asked which commit it is
-      # serving, and the run stops if it is not this one.
+      # Certification names an exact SHA, and E2E_BASE_URL or target_url may be an alias
+      # that re-points at whatever deployed last. The deployment is asked which commit it
+      # is serving, and the run stops if it is not this one.
       EXPECTED_COMMIT_SHA: ${{ github.sha }}
 
     steps:
@@ -33,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$BASE_URL" || { echo "E2E_BASE_URL is required"; exit 1; }
+          test -n "$BASE_URL" || { echo "E2E_BASE_URL or target_url is required"; exit 1; }
           test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
           # The password is used exactly as configured, so surrounding whitespace is a
           # configuration error rather than something to silently absorb. Catching it here
@@ -50,7 +58,7 @@ jobs:
           fi
           case "$BASE_URL" in
             https://*) ;;
-            *) echo "E2E_BASE_URL must use https://"; exit 1 ;;
+            *) echo "E2E_BASE_URL or target_url must use https://"; exit 1 ;;
           esac
 
       - uses: actions/checkout@v4

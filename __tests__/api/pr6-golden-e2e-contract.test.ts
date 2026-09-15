@@ -47,7 +47,10 @@ describe('PR6 golden tenant certification contract', () => {
     expect(() => requireDemoPassword({})).toThrow(/E2E_DEMO_PASSWORD is required/);
     expect(auth).not.toContain('test.skip');
     expect(smoke).toContain('E2E_DEMO_PASSWORD is required');
-    expect(smoke).toContain('E2E_BASE_URL is required');
+    // `BASE_URL` now resolves from `inputs.target_url || secrets.E2E_BASE_URL`, so the
+    // guard names both sources. What is asserted is unchanged: an empty `BASE_URL` still
+    // ends the job instead of letting the suite start and report skipped tests.
+    expect(smoke).toContain('E2E_BASE_URL or target_url is required');
   });
 
   it('runs the golden journey and all per-role smoke tests in the launch gate', () => {
