@@ -53,6 +53,7 @@ firestore-debug.log
 database-debug.log
 pubsub-debug.log
 ui-debug.log
+storage-debug.log
 
 # Playwright output
 playwright-report/

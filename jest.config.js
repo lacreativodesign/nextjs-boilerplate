@@ -13,6 +13,15 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: ['<rootDir>/__tests__/**/*.test.ts?(x)'],
+  // P0-04: the Firebase Security Rules behavioural certification runs under its own
+  // project (jest.rules.config.js, `npm run test:rules`) because it needs live Firestore
+  // and Storage emulators and — unlike the three __tests__/integration emulator suites —
+  // it deliberately has NO skip path: without an emulator it fails. Leaving it in this
+  // run would turn `npm test` red on a developer machine with no emulator, and softening
+  // it to a conditional skip would let an authorization matrix report green while proving
+  // nothing. __tests__/ci/firebase-rules-behavioral-gate.test.ts runs HERE and fails if
+  // the blocking CI step, the npm script or the no-skip property is ever lost.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/__tests__/rules/'],
   collectCoverage: true,
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
