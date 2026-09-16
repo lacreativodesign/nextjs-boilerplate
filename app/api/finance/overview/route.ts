@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireFinance, toISO } from '../_utils';
 import { normalizeInvoiceStatus, normalizePaymentStatus } from '@/lib/finance/status';
-import { getRedisClient } from '@/lib/cache/redis-client';
+import { getCachedSafe, setCachedSafe } from '@/lib/cache/redis-client';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * The overview payload is a per-tenant rollup of several 500-document reads, so it is
+ * cached briefly rather than recomputed per request. Unchanged at 60 seconds.
+ */
+const OVERVIEW_CACHE_TTL_SECONDS = 60;
 
 function getMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -27,10 +33,9 @@ export async function GET() {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
-    const redis = await getRedisClient();
     const cacheKey = `overview:finance:${auth.user.tenantId}`;
-    const cached = redis ? await redis.get(cacheKey) : null;
-    if (cached) return NextResponse.json(JSON.parse(String(cached)));
+    const cached = await getCachedSafe<Record<string, unknown>>(cacheKey);
+    if (cached) return NextResponse.json(cached);
 
     const now = new Date();
     const startOfMonth = getStartOfMonth(now);
@@ -223,11 +228,7 @@ export async function GET() {
         recentEvents,
       },
     };
-    if (redis) {
-      await (redis as any)
-        .setex(cacheKey, 60, JSON.stringify(responsePayload))
-        .catch(() => undefined);
-    }
+    await setCachedSafe(cacheKey, responsePayload, OVERVIEW_CACHE_TTL_SECONDS);
     return NextResponse.json(responsePayload);
   } catch (err: any) {
     console.error('finance/overview error:', err);

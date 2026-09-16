@@ -136,6 +136,43 @@ export async function getCached<T>(key: string): Promise<T | null> {
   return redis.get<T>(key);
 }
 
+/**
+ * Best-effort cache read for a JSON response payload.
+ *
+ * Two guarantees a route handler needs that `getCached` does not make:
+ *
+ *   - It never throws. Callers compute their payload inside a try/catch whose handler
+ *     answers HTTP 500, so a cache that is merely unreachable would otherwise turn a
+ *     perfectly good response into an error page.
+ *   - It never returns something that is not a usable object. Both client
+ *     implementations above already deserialize, so a hit is normally an object. A
+ *     value that is still a string is a legacy or non-JSON entry: it is parsed
+ *     defensively and treated as a miss if that fails, never passed through
+ *     `JSON.parse(String(...))`, which on an object yields the literal
+ *     "[object Object]" and throws.
+ */
+export async function getCachedSafe<T>(key: string): Promise<T | null> {
+  let raw: unknown;
+  try {
+    raw = await getCached<unknown>(key);
+  } catch {
+    return null;
+  }
+
+  if (raw === null || raw === undefined) return null;
+
+  if (typeof raw === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return parsed !== null && typeof parsed === 'object' ? (parsed as T) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return typeof raw === 'object' ? (raw as T) : null;
+}
+
 function cacheTagKey(tag: string) {
   return `cache:tag:${tag}`;
 }
@@ -160,6 +197,28 @@ export async function setCached<T>(
       await redis.expire(tagKey, ttlSeconds);
     }),
   );
+}
+
+/**
+ * Best-effort cache write. A cache that cannot be written must not fail the request
+ * that has already produced the value.
+ *
+ * This also replaces a `(redis as any).setex(...)` call: `setex` is not part of
+ * RedisLike and the fetch fallback client does not implement it, so on that client the
+ * call threw TypeError synchronously and the `.catch()` chained onto its result never
+ * ran.
+ */
+export async function setCachedSafe<T>(
+  key: string,
+  value: T,
+  ttlSeconds: number,
+  tags: string[] = [],
+): Promise<void> {
+  try {
+    await setCached(key, value, ttlSeconds, tags);
+  } catch {
+    // Intentionally ignored: the response is already computed and correct.
+  }
 }
 
 export async function deleteCached(key: string): Promise<void> {
