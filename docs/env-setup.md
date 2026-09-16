@@ -48,3 +48,24 @@ Setup steps:
 4. Add SENTRY_ORG and SENTRY_PROJECT for source map uploads
 5. Redeploy on Vercel
 6. Verify at /super_admin/monitoring
+
+## Firebase Environment Isolation (Vercel Preview only)
+
+Production and Preview must never share a Firebase project, database or Storage bucket.
+Production needs no variables here — its identity is pinned in
+`lib/firebase/environment.mjs` — but a Vercel **Preview** deployment must declare the
+isolated staging environment it belongs to, or it fails closed at boot:
+
+- `STAGING_FIREBASE_PROJECT_ID` — the staging Firebase project a Preview must use. Must
+  not be `la-creativo-erp`, and must equal `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and the
+  `project_id` of the Preview's `FIREBASE_ADMIN_KEY`.
+- `STAGING_FIREBASE_STORAGE_BUCKET` — that project's Storage bucket. Must not be
+  `la-creativo-erp.firebasestorage.app`, and must equal
+  `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`.
+
+Both are public identifiers rather than secrets, and both are scoped to the Preview
+environment only. The GitHub Actions secret `FIREBASE_ADMIN_KEY_STAGING` is the matching
+staging service account used by the golden tenant gate.
+
+Full setup, including what has to be created in Firebase, Vercel and GitHub, is in
+`docs/runbooks/firebase-environment-isolation.md`.

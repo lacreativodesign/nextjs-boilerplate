@@ -77,6 +77,20 @@ async function ensureFirebaseClients(): Promise<FirebaseClients> {
   return clientsPromise;
 }
 
+/**
+ * The synchronous handle to the app `ensureFirebaseClients()` already created.
+ *
+ * P0-01: this used to fall back to initialising a SECOND app from the
+ * `NEXT_PUBLIC_FIREBASE_*` values inlined into the bundle at build time. That was a
+ * complete bypass of the boundary — `/api/public/firebase-config` can refuse to serve a
+ * deployment whose Firebase environment is wrong, but inlined constants answer no
+ * question and cannot be refused, so a Preview built against the production project would
+ * have written to production through this path whatever the server decided.
+ *
+ * There is now one way for a browser to obtain Firebase configuration, and it is the one
+ * the server can say no to. Callers that may run before sign-in should await
+ * `waitForFirebase()` first.
+ */
 export function getFirebaseApp(): FirebaseApp {
   if (!isBrowser) {
     throw new Error('Firebase client is only available in the browser.');
@@ -85,18 +99,12 @@ export function getFirebaseApp(): FirebaseApp {
     return getApp();
   }
 
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-
-  if (!apiKey || !authDomain || !projectId || !storageBucket || !messagingSenderId || !appId) {
-    throw new Error('Firebase public config is incomplete for realtime features.');
-  }
-
-  return initializeApp({ apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId });
+  throw new Error(
+    'Firebase has not been initialised yet. Call waitForFirebase() (or any of the async ' +
+      'getFirebase* helpers) first: the browser configuration is served by ' +
+      '/api/public/firebase-config, which refuses a deployment that breaks the Firebase ' +
+      'environment-isolation contract.',
+  );
 }
 
 export async function getFirebaseAuth(): Promise<Auth> {

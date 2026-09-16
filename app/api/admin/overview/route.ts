@@ -14,10 +14,16 @@ import {
 } from '../reports/_utils';
 import { DEFAULT_FINANCE_SETTINGS, getFinanceSettings } from '../settings/_utils';
 import { normalizeInvoiceStatus, normalizePaymentStatus } from '@/lib/finance/status';
-import { getRedisClient } from '@/lib/cache/redis-client';
+import { getCachedSafe, setCachedSafe } from '@/lib/cache/redis-client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+/**
+ * The overview payload is a per-tenant rollup of several 500-document reads, so it is
+ * cached briefly rather than recomputed per request. Unchanged at 60 seconds.
+ */
+const OVERVIEW_CACHE_TTL_SECONDS = 60;
 
 const ACTIVITY_PREFIXES = ['finance.', 'project.', 'production.', 'hr.'];
 
@@ -58,10 +64,9 @@ export async function GET() {
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
-    const redis = await getRedisClient();
     const cacheKey = `overview:admin:${auth.user.tenantId}`;
-    const cached = redis ? await redis.get(cacheKey) : null;
-    if (cached) return NextResponse.json(JSON.parse(String(cached)));
+    const cached = await getCachedSafe<Record<string, unknown>>(cacheKey);
+    if (cached) return NextResponse.json(cached);
 
     if (!auth.user.tenantId) {
       return NextResponse.json({ ok: false, error: 'Tenant context missing.' }, { status: 403 });
@@ -406,11 +411,7 @@ export async function GET() {
       },
     };
 
-    if (redis) {
-      await (redis as any)
-        .setex(cacheKey, 60, JSON.stringify(responsePayload))
-        .catch(() => undefined);
-    }
+    await setCachedSafe(cacheKey, responsePayload, OVERVIEW_CACHE_TTL_SECONDS);
 
     return NextResponse.json(responsePayload);
   } catch (err: any) {

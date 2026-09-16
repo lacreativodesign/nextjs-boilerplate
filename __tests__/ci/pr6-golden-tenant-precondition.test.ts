@@ -306,9 +306,16 @@ describe('PR6: the certification workflows are wired to the same secret', () => 
    * than one typed in by hand. That is what makes "seeded into the wrong project"
    * impossible rather than merely unlikely — it is one of the two causes the login form
    * cannot distinguish, so it has to be designed out.
+   *
+   * P0-01 renamed the mode that resolves it from `--print-project` to
+   * `--assert-staging-target`, because it no longer only reports the project: it refuses
+   * to name one at all unless the deployment proves it is the isolated staging
+   * environment. What this test asserts is unchanged — the seeder still takes its target
+   * from the deployment and still runs before the suite — and the full staging contract
+   * is pinned in __tests__/ci/p0-01-staging-certification.test.ts.
    */
   it('seeds into the project the deployment reports, not a hand-typed one', () => {
-    const resolve = smoke.indexOf('--print-project');
+    const resolve = smoke.indexOf('--assert-staging-target');
     const seedRun = smoke.indexOf('scripts/seedDemoTenant.ts --reset');
     const suite = smoke.indexOf('npx playwright test e2e/golden e2e/smoke');
 
@@ -316,13 +323,28 @@ describe('PR6: the certification workflows are wired to the same secret', () => 
     expect(resolve).toBeLessThan(seedRun);
     expect(seedRun).toBeLessThan(suite);
     expect(smoke).toContain(
-      'DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs --print-project)"',
+      'DEMO_FIREBASE_PROJECT_ID="$(node scripts/verify-golden-tenant-signin.mjs ' +
+        '--assert-staging-target)"',
     );
+    // The resolution is no longer separable from the proof: there is no mode that prints
+    // a project id without establishing the deployment is staging first.
+    expect(smoke).not.toContain('--print-project');
   });
 
   it('seeds from the same E2E_DEMO_PASSWORD secret the suite types', () => {
     expect(seed).toContain('E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}');
     expect(smoke).toContain('E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}');
+  });
+
+  /**
+   * P0-01 split the two rebuild paths by credential, not by convention. `Seed Golden
+   * Tenant` is the deliberate, by-hand production path and keeps the production account;
+   * the automated gate gets a staging account that cannot reach production at all.
+   */
+  it('keeps the by-hand production reseed and the automated gate on different credentials', () => {
+    expect(seed).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(seed).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
+    expect(smoke).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}');
   });
 
   it('makes the seed dispatch-only and forces the operator to name the project', () => {

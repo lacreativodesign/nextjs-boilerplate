@@ -30,19 +30,25 @@
  * never written to the log; the Firebase project id is, because identifying the project
  * is the point.
  *
- * Usage: node scripts/verify-golden-tenant-signin.mjs [--print-project]
- *   --print-project  print only the Firebase project id the deployment serves, so a
- *                    reseed can target the project the deployment actually reads rather
- *                    than one someone typed in. Signs nobody in.
+ * Usage: node scripts/verify-golden-tenant-signin.mjs [--assert-staging-target]
+ *   --assert-staging-target  prove the deployment is an ISOLATED STAGING environment and
+ *                    print its Firebase project id, so a destructive reseed can only ever
+ *                    land in staging. Signs nobody in. See assertStagingTarget below.
  *   BASE_URL                         deployment being certified (https)
  *   E2E_DEMO_PASSWORD                the password the browser suite will type
  *   VERCEL_AUTOMATION_BYPASS_SECRET  optional; required while the target is protected
  *   EXPECTED_COMMIT_SHA              optional; the deployment must be serving this commit
  *   E2E_ADMIN_EMAIL                  optional override, mirrors e2e/helpers/auth.ts
+ *   FIREBASE_ADMIN_KEY               --assert-staging-target only; the STAGING service
+ *                                    account. Read for its project_id and nothing else.
  */
 
 import { pathToFileURL } from 'node:url';
 import { requireDemoPassword } from '../lib/demo/password-policy.mjs';
+import {
+  assertStagingCertificationTarget,
+  readAdminProjectId,
+} from '../lib/firebase/environment.mjs';
 
 /** Mirrors ROLE_EMAILS.admin in e2e/helpers/auth.ts; pinned by the PR6 contract suite. */
 export const DEFAULT_PROBE_EMAIL = 'demo_admin@bizosto.com';
@@ -142,15 +148,18 @@ function deploymentHeaders(bypassSecret) {
  * @param {{ baseUrl: string, bypassSecret: string, expectedCommit: string }} config
  * @param {typeof fetch} fetchImpl
  */
-async function assertDeploymentCommit({ baseUrl, bypassSecret, expectedCommit }, fetchImpl) {
+async function fetchDeploymentHealth({ baseUrl, bypassSecret }, fetchImpl) {
   const response = await fetchImpl(`${baseUrl}/api/health`, {
     headers: deploymentHeaders(bypassSecret),
   });
   if (!response.ok) {
     throw new Error(`${baseUrl}/api/health returned HTTP ${response.status}.`);
   }
+  return response.json();
+}
 
-  const { commit } = await response.json();
+async function assertDeploymentCommit({ baseUrl, bypassSecret, expectedCommit }, fetchImpl) {
+  const { commit } = await fetchDeploymentHealth({ baseUrl, bypassSecret }, fetchImpl);
   const deployed = String(commit || '').trim();
   if (!expectedCommit) return deployed;
 
@@ -202,6 +211,93 @@ async function fetchDeploymentFirebaseConfig({ baseUrl, bypassSecret }, fetchImp
     throw new Error('The deployment returned an incomplete Firebase configuration.');
   }
   return config;
+}
+
+/**
+ * Proves the deployment is the ISOLATED STAGING environment, and that the Admin credential
+ * this run holds belongs to the same place. Returns the staging Firebase project id.
+ *
+ * WHY THIS EXISTS
+ *
+ * `.github/workflows/smoke.yml` rebuilds the golden tenant with `--reset`, which deletes
+ * every `bizosto-demo` document in nine collections. Until P0-01 the only thing deciding
+ * WHERE those deletes landed was whichever service account the run happened to hold, and
+ * the deployment it certified served the production Firebase project: measured on main
+ * (da41e8d), the PR #1008 Preview answered `/api/public/firebase-config` with
+ * `la-creativo-erp` and `la-creativo-erp.firebasestorage.app` — the production pair.
+ *
+ * Four independent facts have to agree before anything is written, and this establishes
+ * all four from the deployment itself rather than from configuration someone typed:
+ *
+ *   1. it is a Vercel PREVIEW deployment, serving the commit under test;
+ *   2. the project and bucket it serves browsers are not the production ones, and it
+ *      reports its own isolation contract as satisfied;
+ *   3. its SERVER writes to the same project its BROWSERS read;
+ *   4. the Admin credential in this job belongs to that same project — so a production
+ *      service account cannot seed staging, and a staging one cannot reach production.
+ *
+ * The rules themselves live in lib/firebase/environment.mjs, which is also what the
+ * deployment applies to itself. One contract, two sides of the network.
+ *
+ * The credential is read for its `project_id` and nothing else, and never printed.
+ *
+ * @param {Record<string, string | undefined>} [env]
+ * @param {typeof fetch} [fetchImpl]
+ */
+export async function assertStagingTarget(env = process.env, fetchImpl = fetch) {
+  const config = readConfig(env);
+  const commit = await assertDeploymentCommit(config, fetchImpl);
+  const reported = await fetchDeploymentHealth(config, fetchImpl);
+  const browser = await fetchDeploymentFirebaseConfig(config, fetchImpl);
+
+  // The two endpoints read the same variables, so a disagreement means one of them is
+  // stale — a cached prerender, say — and neither can then be trusted to say which project
+  // the browser suite is about to write to.
+  const health = reported?.firebase ?? {};
+  if (health.browserProjectId !== browser.projectId) {
+    throw new Error(
+      `${config.baseUrl} reports Firebase project "${health.browserProjectId}" on /api/health ` +
+        `but serves "${browser.projectId}" to browsers. Refusing to certify a deployment that ` +
+        'disagrees with itself.',
+    );
+  }
+  if (browser.storageBucket && health.browserStorageBucket !== browser.storageBucket) {
+    throw new Error(
+      `${config.baseUrl} reports Storage bucket "${health.browserStorageBucket}" on ` +
+        `/api/health but serves "${browser.storageBucket}" to browsers.`,
+    );
+  }
+
+  const credential = readAdminProjectId(env);
+  const projectId = assertStagingCertificationTarget({
+    reported,
+    credentialProjectId: credential.projectId,
+    credentialReason: credential.reason,
+  });
+
+  return {
+    projectId,
+    storageBucket: browser.storageBucket ?? null,
+    baseUrl: config.baseUrl,
+    commit,
+  };
+}
+
+/**
+ * The operator-facing summary of a proven staging target. Pure, so what the gate prints
+ * is testable rather than only observable by running it.
+ *
+ * @param {Awaited<ReturnType<typeof assertStagingTarget>>} target
+ * @returns {string}
+ */
+export function describeStagingTarget({ projectId, storageBucket, baseUrl, commit }) {
+  return [
+    'Deployment proven to be the isolated staging environment.',
+    `  deployment:       ${baseUrl}`,
+    `  commit:           ${commit || '(not reported)'}`,
+    `  firebase project: ${projectId}`,
+    `  storage bucket:   ${storageBucket || '(not reported)'}`,
+  ].join('\n');
 }
 
 /**
@@ -266,13 +362,16 @@ const invokedDirectly = process.argv[1]
   ? import.meta.url === pathToFileURL(process.argv[1]).href
   : false;
 
-if (invokedDirectly && process.argv.includes('--print-project')) {
-  // stdout carries the project id alone so a workflow can capture it; anything the
-  // operator needs to read goes to stderr.
-  resolveDeploymentFirebaseProject()
-    .then((projectId) => console.log(projectId))
+if (invokedDirectly && process.argv.includes('--assert-staging-target')) {
+  // stdout carries the project id ALONE so a workflow can capture it in a command
+  // substitution; everything an operator reads goes to stderr.
+  assertStagingTarget()
+    .then((target) => {
+      console.error(describeStagingTarget(target));
+      console.log(target.projectId);
+    })
     .catch((error) => {
-      console.error(`Could not resolve the deployment's Firebase project.\n  ${error.message}`);
+      console.error(error.message);
       process.exit(1);
     });
 } else if (invokedDirectly) {
