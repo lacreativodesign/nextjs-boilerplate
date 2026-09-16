@@ -165,28 +165,61 @@ report `firebase.isolation: "ok"` with `browserProjectId` and `adminProjectId` b
 
 ## OWNER ACTION — required before Preview certification can run
 
-**No isolated staging Firebase project existed when this was written.** No project id or
-bucket name is invented anywhere in this change: the contract requires the owner to
-declare them, and fails closed until they are declared. Every `<placeholder>` below must
-be replaced with the real value once the project exists.
+**The staging project now exists**: `bizosto-staging`, with bucket
+`bizosto-staging.firebasestorage.app`. Those identifiers are not typed from memory — they
+were read from the Preview deployment itself:
 
-Until this is done, Vercel Preview deployments of this branch will **refuse to boot**, and
-`.github/workflows/smoke.yml` will **refuse to run**. That is the correct fail-closed
-result, not a regression to work around. Do not point Preview back at
-`la-creativo-erp` to make it green.
+```
+GET <preview>/api/public/firebase-config
+{ "projectId": "bizosto-staging",
+  "storageBucket": "bizosto-staging.firebasestorage.app",
+  "authDomain": "bizosto-staging.firebaseapp.com" }
+```
+
+It is demonstrably a different project from production: different API key, and messaging
+sender id `936585406652` against production's `1091518426177`.
+
+**That response is also the agreement proof.** `/api/public/firebase-config` reaches its
+200 path only after `evaluateFirebaseEnvironment()` returns zero violations, and the
+deployment booted at all only because `assertServerEnv()` applied the same check. So a 200
+carrying staging values establishes every clause at once: `VERCEL_ENV=preview`, both
+`STAGING_FIREBASE_*` variables declared and non-production, the browser project and bucket
+matching them, the server bucket override agreeing, and the Admin service account
+belonging to `bizosto-staging` rather than to production.
+
+The contract itself still hardcodes none of this. `bizosto-staging` appears in
+documentation and in Vercel configuration only; `lib/firebase/environment.mjs` reads the
+staging identity from `STAGING_FIREBASE_PROJECT_ID` and `STAGING_FIREBASE_STORAGE_BUCKET`,
+so pointing Preview at a different staging project is a configuration change and not a
+code change. The test fixtures deliberately use a made-up `example-staging-project` for
+the same reason: the rules must hold for any declared staging project, not just this one.
+
+Steps 1-3 below are therefore done. **Step 4, the GitHub Actions secret, still has to be
+confirmed** — it lives outside Vercel and nothing observable from here can establish it.
+Until it exists, `.github/workflows/smoke.yml` stops before checkout, which is the correct
+fail-closed result.
+
+**If a Preview ever refuses to boot again, that is the contract working.** Before the
+Vercel side was configured, every Preview on this branch answered HTTP 500 and served no
+Firebase configuration at all; the runtime log named each violation. The same will happen
+if a `STAGING_FIREBASE_*` variable is unset, mis-scoped, or pointed at production. It is
+the correct fail-closed result rather than a regression to work around, and the repair is
+to fix the staging configuration. **Do not point Preview back at `la-creativo-erp` to make
+it green** — that is precisely the condition this change exists to prevent, and it would
+put a write-capable browser and a destructive golden tenant reset back on the production
+project.
 
 ### 1. Create the staging Firebase/GCP project
 
-- A **separate** Firebase project, e.g. named for staging rather than reusing
-  `la-creativo-erp`. Record its project id as `<staging-project-id>`.
+- A **separate** Firebase project, rather than reusing `la-creativo-erp`. **Done:**
+  `bizosto-staging`.
 - **Firebase Authentication** → enable the **Email/Password** provider. The golden tenant
   gate signs in through Identity Platform; without it every run fails
   `PASSWORD_LOGIN_DISABLED`.
 - **Firestore** → create the database. Deploy the same `firestore.rules` and
   `firestore.indexes.json` this repository already holds, so staging enforces the same
   rules production does.
-- **Cloud Storage** → create the default bucket. Record it as `<staging-bucket>`; for a
-  current project this is `<staging-project-id>.firebasestorage.app`. Deploy
+- **Cloud Storage** → create the default bucket. Recorded as `bizosto-staging.firebasestorage.app`. Deploy
   `storage.rules` to it.
 - **Web app** → register one and copy its public config (`apiKey`, `authDomain`,
   `projectId`, `storageBucket`, `messagingSenderId`, `appId`).
@@ -209,14 +242,14 @@ Add these scoped to **Preview only** (leave Production untouched):
 | Variable                                   | Value                                             |
 | ------------------------------------------ | ------------------------------------------------- |
 | `NEXT_PUBLIC_FIREBASE_API_KEY`             | staging web app `apiKey`                          |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | `<staging-project-id>.firebaseapp.com`            |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | `<staging-project-id>`                            |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | `<staging-bucket>`                                |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | `bizosto-staging.firebaseapp.com`                 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | `bizosto-staging`                                 |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | `bizosto-staging.firebasestorage.app`             |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | staging web app `messagingSenderId`               |
 | `NEXT_PUBLIC_FIREBASE_APP_ID`              | staging web app `appId`                           |
 | `FIREBASE_ADMIN_KEY`                       | the **staging** service-account JSON, single line |
-| `STAGING_FIREBASE_PROJECT_ID`              | `<staging-project-id>`                            |
-| `STAGING_FIREBASE_STORAGE_BUCKET`          | `<staging-bucket>`                                |
+| `STAGING_FIREBASE_PROJECT_ID`              | `bizosto-staging`                                 |
+| `STAGING_FIREBASE_STORAGE_BUCKET`          | `bizosto-staging.firebasestorage.app`             |
 
 Also confirm Production still holds `la-creativo-erp`,
 `la-creativo-erp.firebasestorage.app` and the production `FIREBASE_ADMIN_KEY`, and that
@@ -243,7 +276,7 @@ curl -s "$PREVIEW_URL/api/health" | jq '{commit, vercelEnv, firebase}'
 ```
 
 Expected: `vercelEnv: "preview"`, `firebase.isolation: "ok"`, `firebase.browserProjectId`
-and `firebase.adminProjectId` both `<staging-project-id>`, and `firebase.violations: []`.
+and `firebase.adminProjectId` both `bizosto-staging`, and `firebase.violations: []`.
 Add `-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"` while the
 deployment is protected.
 

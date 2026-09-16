@@ -350,13 +350,25 @@ describe('P0-01: the new environment variables are documented where an operator 
     }
   });
 
-  it('keeps .env.example free of an invented staging project', () => {
-    // No staging Firebase project existed when this shipped. A plausible-looking default
-    // here would be configuration an operator could copy and believe.
-    expect(envExample).toContain('# STAGING_FIREBASE_PROJECT_ID=<staging-firebase-project-id>');
+  it('records the real staging project rather than an invented one', () => {
+    // Originally these were placeholders, because no staging project existed and a
+    // plausible-looking default is configuration an operator could copy and believe. The
+    // project now exists and these values were read from the Preview deployment itself
+    // (GET <preview>/api/public/firebase-config), so the documentation names it.
+    expect(envExample).toContain('# STAGING_FIREBASE_PROJECT_ID=bizosto-staging');
     expect(envExample).toContain(
-      '# STAGING_FIREBASE_STORAGE_BUCKET=<staging-firebase-project-id>.firebasestorage.app',
+      '# STAGING_FIREBASE_STORAGE_BUCKET=bizosto-staging.firebasestorage.app',
     );
+    expect(envExample).not.toContain('<staging-firebase-project-id>');
+  });
+
+  it('keeps the staging identity out of the contract itself', () => {
+    // The documentation names the project; the code must not. Preview's identity comes
+    // from STAGING_FIREBASE_*, so moving to a different staging project stays a
+    // configuration change. Only the PRODUCTION identifiers are pinned in source.
+    const contract = read('lib/firebase/environment.mjs');
+    expect(contract).not.toContain('bizosto-staging');
+    expect(contract).toContain("PRODUCTION_FIREBASE_PROJECT_ID = 'la-creativo-erp'");
   });
 
   it('gives the owner an explicit setup list rather than a warning', () => {
@@ -384,7 +396,7 @@ describe('P0-01: the new environment variables are documented where an operator 
 
   it('tells the owner that a refusing Preview is the correct outcome, not a bypass', () => {
     // Prose wraps, so match across the line breaks rather than pinning a column width.
-    expect(isolationRunbook).toMatch(/correct fail-closed\s+result, not a regression/);
+    expect(isolationRunbook).toMatch(/correct fail-closed\s+result rather than a regression/);
     expect(isolationRunbook).toMatch(/Do not point Preview back at/);
     expect(goldenRunbook).toMatch(/do not point\s+Preview back at the production project/);
   });
