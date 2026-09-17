@@ -1,0 +1,491 @@
+# P0-06 — GitHub main branch protection, review and required-check certification
+
+**Status: TECHNICALLY CERTIFIED (ERP) — OWNER ACTION REMAINS**
+
+This document was rewritten after independent review **rejected** the first version of this
+certification for two P0 defects. **Two more of the same class were then found by self-check**,
+one of them after CI had already gone green. All four are recorded here rather than quietly
+fixed, because a certification that hides its own corrections is not evidence of anything.
+
+|                             |                                                                       |
+| --------------------------- | --------------------------------------------------------------------- |
+| ERP `main` protection       | verified live, drift-guarded, **certified**                           |
+| ERP approving reviews       | `0` — **open gap**, no independent reviewer exists                    |
+| Website `main` protection   | ✅ **applied and live** — ruleset `23581080`, **two** required checks |
+| Website dependency gate     | ✅ **`dependency-security` live and branch-required** (PR #61 merged) |
+| Website visibility          | ⚠️ **OPEN** — temporarily public so the ruleset could exist on Free   |
+| Website plan                | ⚠️ GitHub **Free**; **Pro or higher** needed for the private posture  |
+| Bypass-actor observability  | **was a false green**; now fails closed                               |
+| Website history secret scan | complete — **no credential exposed**                                  |
+| Defects recorded            | **4** — 2 rejected by review, 2 found by self-check                   |
+| Stale-prose guards          | asserted in both repositories, mutation-proven                        |
+
+---
+
+## 0. Every defect found in this certification, and what changed
+
+### Defect 1 — publishing the website was treated as a solution
+
+`lacreativodesign/bizosto-website` holds proprietary Bizosto marketing source and **must remain
+private**. On 2026-09-17 it was made public in order to get past a GitHub plan restriction that
+blocks rulesets on private repositories, and the first version of this certification then built
+on top of that state — recording the trade, but treating the blocker as "resolved".
+
+That was wrong. Publishing proprietary source to obtain a branch-protection setting is a larger
+exposure than the control it buys, and P0-06 forbids it in as many words. The API error names
+two ways out and only one of them is acceptable:
+
+```
+403 "Upgrade to GitHub Pro or make this repository public to enable this feature."
+```
+
+**The correct owner action is the plan, not the visibility.** GitHub serves repository rulesets
+on public repositories under Free, and on public _and private_ repositories under Pro, Team and
+Enterprise. So the requirement is GitHub Pro or higher — see §3.
+
+What changed in the code: repository visibility is now a **certified control**. The website is
+certified `private`, and a public reading is reported as `repository.visibility` **drift**, with
+the plan named as the remedy. A repeat of this cannot read as progress. See §6 and the tests
+under "the website must be private, and publishing it is drift".
+
+### Defect 2 — the bypass-actor check could false-pass
+
+The evaluator did this:
+
+```js
+const actors = ruleset.bypass_actors ?? [];
+if (actors.length > 0) {
+  /* fail */
+}
+```
+
+`GET /repos/{owner}/{repo}/rulesets/{id}` returns `bypass_actors` **only to callers with
+sufficient access to the ruleset**. An anonymous or under-scoped read can therefore come back
+with the field absent — and `?? []` turned _"I was not allowed to see the bypass list"_ into
+_"there is no bypass list"_, which is a **PASS**.
+
+That is a false green on the control everything else rests on: a single bypass actor makes every
+other rule advisory. The original mutation battery missed it because every bypass mutation there
+_added an actor_ — none removed the ability to look.
+
+**Fixed.** Only an explicitly observable empty array, from a read GitHub actually serves the
+bypass list to, satisfies the invariant. Everything else fails as
+`ruleset.bypass_actors_unobservable`, with its own diagnostic so it cannot be misread as "an
+actor was found":
+
+| Observation                                      | Result                             |
+| ------------------------------------------------ | ---------------------------------- |
+| property absent from the response                | **FAIL** — unobservable            |
+| `undefined`                                      | **FAIL** — unobservable            |
+| `null`                                           | **FAIL** — unobservable            |
+| any non-array (string, number, object, boolean)  | **FAIL** — unobservable            |
+| `[]` from an **anonymous** read                  | **FAIL** — unobservable            |
+| `[]` with **no stated provenance** (the default) | **FAIL** — unobservable            |
+| one or more actors                               | **FAIL** — `ruleset.bypass_actors` |
+| `[]` from a **privileged authenticated** read    | **PASS**                           |
+
+**Proven on production data, not only on fixtures.** Both live rulesets were fetched and the
+exported `evaluateRuleset` was run over the real bytes, varying only the stated provenance:
+
+| Repository           | Read as                       | Result                                  |
+| -------------------- | ----------------------------- | --------------------------------------- |
+| `nextjs-boilerplate` | privileged authenticated      | **PASS**                                |
+| `nextjs-boilerplate` | **same bytes**, anonymous     | **FAIL** — `bypass_actors_unobservable` |
+| `nextjs-boilerplate` | **same bytes**, no provenance | **FAIL** — `bypass_actors_unobservable` |
+| `bizosto-website`    | privileged authenticated      | **PASS**                                |
+| `bizosto-website`    | **same bytes**, anonymous     | **FAIL** — `bypass_actors_unobservable` |
+
+Identical bytes, opposite verdicts. The invariant is therefore about the **read**, not about the
+payload — which is the whole correction, and it is not provable from a fixture that was written
+to pass.
+
+### Defects 3 and 4 — the same class, found twice more, by self-check rather than review
+
+Neither was reported by independent review. Both are prose in a certification artefact that
+asserted a state contrary to live fact, and both are recorded because the pattern matters more
+than either instance: **prose does not fail a build, so a sentence can outlive the world it
+described.**
+
+**Defect 3.** After the contract was rewritten for a private website, one sentence survived from
+the old version. It stated that _both repositories were public_, that everything the contract
+describes was therefore _readable without authentication_, and that this was _the reason no
+personal access token was required_. Wrong three times over: it asserted the visibility the
+rewrite exists to forbid, it justified the credential model on unauthenticated reads — precisely
+the bypass false-green of Defect 2 — and it attributed the credential-light design to the wrong
+cause entirely.
+
+**Defect 4.** Found by diffing this repository's contract against the website's own copy — the
+two are deliberately separate files, and only one had been corrected. The ERP contract still
+asserted that the website **was already private** and merely had to remain so. The website is
+**public today**; `expectedVisibility` is `private` specifically so the verifier **fails** on
+that, and the record was simultaneously claiming the gap was already closed. The guard added for
+Defect 3 did not catch it because none of its patterns covered this phrasing — a guard is only as
+wide as its worst-case phrasing.
+
+**Fixed.** The contract now names the state it is actually in (`CURRENTLY PUBLIC`, with
+`certified target is PRIVATE`), and the credential model is explicitly justified on the
+run-inside-the-repository design rather than on either repository's visibility — so it survives
+the website going private, which is the whole point. Six asserted-absent patterns and one
+positive assertion now cover the class, and three mutants confirm each fires by name.
+
+Both are **described rather than quoted** above, deliberately. The guard scans this document
+too, and reproducing either sentence verbatim makes it fail — which is the guard working, not an
+inconvenience. Excluding this document from its own scan was the alternative and was rejected:
+prose is exactly where stale claims survive.
+
+**Why this keeps happening, and what actually stops it.** Every artefact here makes claims about
+live infrastructure, and live infrastructure moves. The only durable answer found in this work is
+to assert the prose: a claim worth making in a certification is a claim worth failing a build
+over. Where a statement could not be asserted, it was deleted instead.
+
+---
+
+## 1. What is actually configured on the ERP repository
+
+`lacreativodesign/nextjs-boilerplate` is **public**, owner `lacreativodesign` (a user account,
+not an organisation), default branch `main`.
+
+> **Repository-visibility governance finding.** This repository being public predates P0-06 and
+> **was not changed by this work**. It is recorded for owner review, not endorsed: "certified"
+> here describes what _is_, not what anyone approved. No visibility change was made to it, and
+> none should be made without explicit owner authorisation.
+
+Protection comes from one repository ruleset, read live from
+`GET /repos/lacreativodesign/nextjs-boilerplate/rulesets/22866162` and committed verbatim to
+[`p0-06-erp-main-ruleset.snapshot.json`](./p0-06-erp-main-ruleset.snapshot.json):
+
+| Control                         | Live state                                                      | Verdict      |
+| ------------------------------- | --------------------------------------------------------------- | ------------ |
+| Ruleset enforcement             | `active`                                                        | **PASS**     |
+| Target                          | `branch`, `ref_name.include = ["~DEFAULT_BRANCH"]`, no excludes | **PASS**     |
+| Changes reach main by PR        | `pull_request` rule present                                     | **PASS**     |
+| Branch deletion                 | `deletion` rule present                                         | **PASS**     |
+| Force push / history rewrite    | `non_fast_forward` rule present                                 | **PASS**     |
+| Unresolved review conversations | `required_review_thread_resolution: true`                       | **PASS**     |
+| Required status checks          | 4 contexts, all confirmed reporting                             | **PASS**     |
+| Up-to-date branch before merge  | `strict_required_status_checks_policy: true`                    | **PASS**     |
+| Checks on branch creation       | `do_not_enforce_on_create: false`                               | **PASS**     |
+| Merge methods                   | `["merge"]` only                                                | **PASS**     |
+| Bypass actors                   | `[]`, **observed under an authenticated read**                  | **PASS**     |
+| Second overlapping ruleset      | none — the rulesets list returns exactly one                    | **PASS**     |
+| **Approving reviews required**  | **`required_approving_review_count: 0`**                        | **OPEN GAP** |
+
+### The required checks are live, not stale
+
+A required check that no longer reports blocks every merge forever, so each context was
+confirmed actually reporting and green on `70a5403` before being certified:
+
+| Context                    | Reports as        | App              | Integration id |
+| -------------------------- | ----------------- | ---------------- | -------------- |
+| `quality`                  | check run         | `github-actions` | 15368          |
+| `SonarCloud Code Analysis` | check run         | `sonarqubecloud` | 12526          |
+| `sonar`                    | check run         | `github-actions` | 15368          |
+| `Vercel`                   | commit **status** | Vercel           | 8329           |
+
+Integration ids are certified alongside the names: a context can be re-pointed at a different
+app while keeping its name, which would satisfy a name-only check with a report this repository
+never produces.
+
+---
+
+## 2. The open gap: no independent reviewer exists
+
+`required_approving_review_count` is `0` on **both** repositories, deliberately.
+
+`GET /collaborators` returns exactly one account on each:
+
+```
+lacreativodesign — role_name: admin — id 240409176
+```
+
+That account is the author of every pull request, and GitHub does not permit a pull request
+author to approve their own. Raising the count to `1` would not add a review — it would stop
+anything merging, including the pull request that would put the setting back.
+
+Explicitly **not** done: no bot approval, no second account controlled by the author presented
+as independent review, no automated self-approval path, and nothing else weakened to compensate.
+
+The gap is machine-recorded as `{ certifiedFloor: 0, target: 1, gapOpen: true }`, and the suite
+**fails if `gapOpen` is set to `false` while the floor is still `0`** — it cannot be closed on
+paper.
+
+> ### OWNER ACTION 1 — closing the review gap (once per repository)
+>
+> Two steps, **in this order**. The second alone stops merges.
+>
+> 1. **Grant a second human write access.** The repositories share one owner, so each needs its
+>    own collaborator — adding one to the ERP repository does not cover the website.
+> 2. **Then** set `required_approving_review_count: 1`, **and** set `certifiedFloor: 1` /
+>    `gapOpen: false` for that entry in
+>    [`p0-06-main-protection.certified.json`](./p0-06-main-protection.certified.json).
+>
+> Worth doing at the same time, and only then: `dismiss_stale_reviews_on_push: true` and
+> `require_last_push_approval: true`.
+
+---
+
+## 3. The marketing website — ruleset LIVE, visibility and review still open
+
+`lacreativodesign/bizosto-website`, default branch `main`.
+
+### The ruleset is applied and correct
+
+The owner created it on 2026-09-17. Read back directly from
+`GET /repos/lacreativodesign/bizosto-website/rulesets/23581080`, authenticated, and verified
+field by field — it is the **only** ruleset on the repository:
+
+| Field                                                    | Live value                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `id` / `name`                                            | `23581080` / `Production Main Protection`                                |
+| `target` / `enforcement`                                 | `branch` / `active`                                                      |
+| `ref_name.include` / `.exclude`                          | `["~DEFAULT_BRANCH"]` / `[]`                                             |
+| `bypass_actors`                                          | **present and `[]`**                                                     |
+| `current_user_can_bypass`                                | `never`                                                                  |
+| rules                                                    | `deletion`, `non_fast_forward`, `pull_request`, `required_status_checks` |
+| conversation resolution                                  | `true`                                                                   |
+| merge methods                                            | `["merge"]`                                                              |
+| code-owner review / last-push approval / stale dismissal | `false` / `false` / `false`                                              |
+| extra approval for unattributed changes                  | `false`                                                                  |
+| strict checks / on-create                                | `true` / `false`                                                         |
+| required check                                           | `Vercel`, integration `8329`                                             |
+| approving reviews                                        | **`0` — open gap**                                                       |
+
+`GET /branches/main` reports `"protected": true`. The contract records `applied: true` and
+`rulesetId: 23581080`, so the verifier **pins its read to that id** rather than discovering the
+ruleset by name.
+
+### Two required checks, not one
+
+| Context               | Emitted by                    | Integration | Live on main                                    |
+| --------------------- | ----------------------------- | ----------- | ----------------------------------------------- |
+| `Vercel`              | Vercel app, commit **status** | `8329`      | success                                         |
+| `dependency-security` | **GitHub Actions** check run  | `15368`     | success — run `35264726041`, job `105348912555` |
+
+`dependency-security` arrived with **PR #61**, merged to main on 2026-09-17 at
+`632f5daf6e5981dd610b59199c7230f38b8cd2c0`. It runs `npm ci` then `npm run security:audit`
+(`npm audit --audit-level=high`), so it fails on **any** high or critical advisory across the
+whole lockfile, dev dependencies included. PR #61 brought the repository to **0 critical, 0
+high**. The owner then added the check to ruleset 23581080, which makes the dependency audit
+**branch-blocking rather than advisory**.
+
+The workflow is deliberately **not** path-filtered. A required check that gets skipped for pull
+requests touching unrelated files leaves GitHub waiting on it forever — the same
+dead-required-check failure mode this certification checks for elsewhere.
+
+Both integration ids are pinned. Losing either context, or re-pointing either at a different
+app, is P0-06 drift. The contract is directional, so further required checks may be added
+without failing the record — but these two may never disappear.
+
+**The ruleset control for the website is GREEN, and the dependency-security gate is GREEN and
+branch-required.** Two other controls are not.
+
+### Visibility — OPEN
+
+**The repository is currently PUBLIC**, and that is not the target state. It was published so
+the ruleset could be created at all: GitHub Free serves rulesets on public repositories only.
+That is a temporary expedient, not a remedy — the repository holds proprietary marketing source
+and must end up private.
+
+`expectedVisibility` therefore stays `private`, and a live run **fails** with
+`repository.visibility`. That failure is correct and intended, and must not be silenced by
+changing the expectation; the certification suite asserts the expectation is `private` and that
+a public reading fails, so the escape hatch is closed by test rather than by convention.
+
+> ### OWNER ACTION 2 — plan, then privacy, then re-verify
+>
+> 1. **Upgrade the account to GitHub Pro or higher.** Only the owner can do this.
+> 2. **Make `bizosto-website` private again.**
+> 3. **Re-verify that ruleset `23581080` survived the change** — read it; do not assume.
+>
+> Order matters: making the repository private while still on Free risks losing the protection,
+> because that plan refuses private-repository rulesets. The plan comes first.
+
+### Independent review — OPEN
+
+Approving reviews remain `0` on the website too, for the same reason as §2: one collaborator,
+who authors every pull request. The two repositories share an owner but not an access list —
+**each needs its own second collaborator** before its count can go to `1`.
+
+### Cross-repository access is not assumed
+
+A job token issued to this repository cannot read a private `bizosto-website` — GitHub answers
+404 — and a read that fails must never be reported as a certification. Each repository verifies
+**itself**, from a workflow running inside it under its own job token: this one runs
+`--repo=erp`, the companion in `bizosto-website` runs `--repo=website`. Neither holds a
+credential for the other.
+
+## 4. Public-exposure security audit
+
+Because the website was public between 2026-09-17 and its restoration, its **entire git history**
+was readable, not just `HEAD`. A full-history scan was run across every reachable commit.
+
+**Scope.** All 60 local branches (every remote branch materialised locally), 0 tags, **131
+reachable commits** — 75 with diffs plus 56 merge commits, which carry no diff of their own.
+History begins 2026-01-07.
+
+**Tools.** `gitleaks 8.21.2` (`--log-opts=--all`), `trufflehog 3.82.13` (git mode, full history,
+verification enabled), plus a targeted pattern sweep over every non-merge commit for Stripe
+secret/restricted/webhook keys, Google API keys, GCP service-account material, private-key
+blocks, GitHub tokens, Slack tokens, AWS access keys, Vercel tokens, SendGrid keys, Firebase FCM
+legacy keys, database and SMTP URLs carrying passwords, and OAuth client secrets.
+
+| #   | Type                                 | Path                        | Commit     | Real or false positive       | Rotation required |
+| --- | ------------------------------------ | --------------------------- | ---------- | ---------------------------- | ----------------- |
+| 1–5 | gitleaks `generic-api-key` ×5        | `tests/lead-intake.test.ts` | `10c9b902` | **False positive**           | **No**            |
+| —   | trufflehog, all detectors            | —                           | —          | **0 detections, 0 verified** | —                 |
+| —   | targeted high-risk sweep, 75 commits | —                           | —          | **0 hits**                   | —                 |
+
+**Finding 1–5 adjudication.** All five are the same literal on five lines of one test file:
+`BIZOSTO_INGEST_API_KEY: "test-key-with-at-least-24-characters"` — a self-describing fixture
+whose only job is to be long enough to pass a length check. It is not a credential, was never a
+credential, and grants nothing.
+
+**`.env` files.** No `.env` file was ever committed on any branch. Only `.env.example` exists,
+and every credential-bearing key in it is **empty**; the three non-empty values are non-secret
+configuration (an allowed-hostname list, a score threshold, a boolean).
+
+**No private keys, service-account JSON, `.pem`/`.key`/`.p12` files, or credential-shaped
+filenames** appear anywhere in the reachable history.
+
+**Result: no genuine credential was exposed by the period of public visibility. No rotation or
+revocation is required.**
+
+> Two notes recorded for completeness rather than because they change the result:
+>
+> - **Verify GitHub's own scanner too.** GitHub enables secret scanning on public repositories
+>   automatically. The Security tab should be checked directly by the owner; that API is not
+>   reachable from the environment this audit ran in. Anything it reports must be **rotated**,
+>   not merely deleted — removing a secret in a later commit does not remove it from history.
+> - **An artefact of the audit environment.** `trufflehog` reported one _verified_ GitHub token
+>   in the ERP repository, in this certification's own test file. It is a false positive caused
+>   by the sandbox: the egress proxy answers HTTP 200 to _any_ bearer token, including
+>   deliberately-garbage ones, so trufflehog's live verification cannot fail. The literal was
+>   nevertheless replaced, because a realistic `ghp_`-prefixed fake in a public repository trips
+>   every scanner and trains people to ignore alerts.
+
+---
+
+## 5. How this stops drifting silently
+
+The protection is not in this repository. It is a setting in GitHub's database that any admin can
+weaken from a settings page in about four seconds, with no commit and no history.
+
+| Piece                                                                                          | Runs                   | Blocking?       | What it proves                                     |
+| ---------------------------------------------------------------------------------------------- | ---------------------- | --------------- | -------------------------------------------------- |
+| [`p0-06-main-protection.certified.json`](./p0-06-main-protection.certified.json)               | —                      | —               | the contract for **both** repositories, as data    |
+| [`scripts/verify-github-main-protection.mjs`](../../scripts/verify-github-main-protection.mjs) | live + offline         | exit 1 on drift | the live ruleset still satisfies the contract      |
+| `__tests__/ci/github-main-protection-certification.test.ts`                                    | `npm test` → `quality` | **yes**         | the evaluator rejects every weakening, by mutation |
+| `.github/workflows/github-protection-certification.yml`                                        | daily + on demand      | no, by design   | the **live** ERP ruleset, re-read on a schedule    |
+
+**Why the live read is not in the `quality` gate.** `quality` is a required check. A live GitHub
+API read inside it is a circular lockout: the day the ruleset is wrong is the day you need to
+merge a fix, and that is exactly the day the check would refuse. It is also not reliable enough —
+anonymous GitHub reads are capped at 60/hour _per IP_ and CI runners share addresses; an
+unauthenticated read returned `HTTP 403 "API rate limit exceeded"` while this was being built.
+
+So the blocking half is offline and deterministic, and the live half reports without gating.
+
+### What the automated check can and cannot certify
+
+Stated separately, because conflating them is how the first version went wrong:
+
+| Control                             | Automated, in the scheduled workflow             | Requires an owner-privileged read |
+| ----------------------------------- | ------------------------------------------------ | --------------------------------- |
+| enforcement, target, ref conditions | ✅                                               | —                                 |
+| deletion, force-push, PR required   | ✅                                               | —                                 |
+| conversation resolution             | ✅                                               | —                                 |
+| required checks, strict, on-create  | ✅                                               | —                                 |
+| merge methods, approval floor       | ✅                                               | —                                 |
+| repository visibility               | ✅                                               | —                                 |
+| **bypass actors**                   | ✅ **only while the job token can observe them** | ⚠️ otherwise                      |
+
+For the ERP repository the job token observes `bypass_actors` and the control is automated. Where
+it cannot — any repository the workflow does not run inside — the verifier **fails the control**
+rather than passing it, and the contract records the owner attestation instead. This
+certification does not claim continuous automated coverage of a field the workflow cannot see.
+
+### The mutations that prove it has teeth
+
+Each case weakens an in-memory copy of the real snapshot and must produce a failure naming the
+right control. **Nothing was mutated on live GitHub** — proving a negative that way would mean
+briefly opening `main`.
+
+**Evaluator guards** (15, each disabled in turn) · **snapshot weakenings** (4) · **credential
+path** (4) · **workflow** (4, including the DS-33 defect, a stored PAT, `continue-on-error` and
+`permissions: write`) · **contract** (6) · **bypass observability** (the defect above, in every
+form: absent, undefined, null, four non-array types, populated, anonymous, and no stated
+provenance) · **visibility** (public website, unreadable repository) ·
+**`dependency-security`** (15).
+
+That last group is this pass's addition and exists because the check only became branch-blocking
+after PR #61. Each case removes or weakens the second required website check and must be caught:
+the context dropped entirely, re-pointed from integration `15368` to another app, renamed to a
+plausible impostor (`dependency-security-report`, `Dependency Security`, `dependency_security`,
+`security`), reordered, reduced to a single required check, and the contract's own record of it
+deleted. A removal and a re-pointing must produce **different** diagnoses — asserting only that
+"something failed" let an earlier mutant live, because a removed context has no integration id
+left to compare and failed under the next guard's name instead.
+
+The contract is **directional**, so a mutant adding a _third_ required check must NOT fail: the
+live configuration is allowed to be stronger than the record, never weaker. That case is
+asserted too, otherwise the ratchet would be a snapshot.
+
+**Prose guards** (3), added with Defect 4 and each killed by name rather than by the digest test
+alone: reinstating the claim that the website is already private, deleting the statement that
+private is the _target_, and re-justifying the credential model on repository visibility. All
+three also trip the digest check, so each was confirmed against the guard's own test name — the
+lesson from the mutant that once survived by failing under a neighbouring control's name.
+
+Three mutants survived earlier passes and the suite was strengthened rather than the result
+reported: required-check removal was indistinguishable from re-pointing; deleting the cron line
+left `schedule:` bare; and a recorded digest had already gone stale. Digests are now _checked_
+by the suite rather than asserted.
+
+Files restored after the battery and verified by SHA-256:
+
+| File                                                    | SHA-256                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------ |
+| `scripts/verify-github-main-protection.mjs`             | `3faa21a04517c55b9dbbc33aac4c238754919a8e211faee60cf3c4bcf5a55a52` |
+| `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
+| `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
+| `docs/security/p0-06-main-protection.certified.json`    | `1b6ddfacf38022764808be413c351819b301cb706f87b0efae8e418416b725a6` |
+
+---
+
+## 6. Scope
+
+No application behaviour was touched. Nothing here changes pricing, plans, role vocabulary,
+tenant architecture, Firebase security semantics, Stripe behaviour, finance or payment logic,
+onboarding, currency handling, application UI or public product functionality. `app/`,
+`components/`, `lib/`, `hooks/`, `middleware.ts`, `firestore.rules` and `storage.rules` are
+untouched.
+
+## 7. Re-running the certification
+
+```bash
+node scripts/verify-github-main-protection.mjs --repo=erp      # live, this repository
+node scripts/verify-github-main-protection.mjs --snapshot      # offline, against the record
+node scripts/verify-github-main-protection.mjs --json          # machine-readable
+npx jest __tests__/ci/github-main-protection-certification.test.ts
+```
+
+To re-record the snapshot after a _deliberate, reviewed_ protection change — **authenticated, so
+that `bypass_actors` is actually observable**:
+
+```bash
+curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' \
+  https://api.github.com/repos/lacreativodesign/nextjs-boilerplate/rulesets/22866162 \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); [d.pop(k,None) for k in ("_links","current_user_can_bypass")]; print(json.dumps(d,indent=2,sort_keys=True))' \
+  > docs/security/p0-06-erp-main-ruleset.snapshot.json
+# Required: Python and Prettier disagree about short arrays, and `format:check` is a blocking
+# gate. Without this the re-recorded snapshot turns `quality` red.
+npx prettier --write docs/security/p0-06-erp-main-ruleset.snapshot.json
+```
+
+An **unauthenticated** re-record would produce a snapshot whose bypass list cannot certify
+anything; `snapshotCapturedBy` in the contract is what states the identity that captured it.
+
+`_links` and `current_user_can_bypass` are dropped because neither is a property of the ruleset —
+the first is navigation, the second depends on which credential performed the read.
+
+Update the contract in the same commit, or the suite will fail — which is the intent.

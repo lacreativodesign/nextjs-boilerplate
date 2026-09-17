@@ -1,0 +1,245 @@
+{
+  "$comment": [
+    "P0-06 — the certified main-branch protection contract for BOTH Bizosto repositories.",
+    "",
+    "This file is the machine-readable half of docs/security/p0-06-github-main-protection.md.",
+    "scripts/verify-github-main-protection.mjs reads it and fails closed when a LIVE GitHub",
+    "ruleset no longer guarantees what is recorded here.",
+    "",
+    "Every invariant below is DIRECTIONAL: the live configuration may be stronger than the",
+    "record, never weaker. That is what makes the record a ratchet rather than a snapshot.",
+    "",
+    "It holds no credential, and it does not assume one is unnecessary.",
+    "",
+    "NEITHER repository is private today. bizosto-website is CURRENTLY PUBLIC, as a temporary",
+    "GitHub Free-plan expedient, and its certified target is PRIVATE - see expectedVisibility",
+    "on the website entry, which the verifier deliberately still FAILS. nextjs-boilerplate is",
+    "public too, which is a pre-existing governance finding rather than an approval.",
+    "",
+    "Neither visibility is what makes the drift check credential-light, and that is the whole",
+    "point of the design: each repository is verified by a workflow running INSIDE it, under",
+    "that repository's own automatic job token, so no personal access token is needed and no",
+    "repository holds a credential for the other. The check therefore keeps working unchanged",
+    "the moment the website goes private, which is when a cross-repository read would start",
+    "answering 404 - and a failed read must never be reported as a successful certification.",
+    "",
+    "An anonymous read is NOT sufficient to certify. GitHub serves bypass_actors only to callers",
+    "with sufficient access to the ruleset, so an unprivileged read cannot tell an empty bypass",
+    "list from a withheld one - see ruleset.bypass_actors_unobservable in the verifier.",
+    "",
+    "`applied` is the one field that is not an invariant. It records whether the certified",
+    "protection EXISTS on that repository yet. A repository with applied:false is an open",
+    "P0-06 gap and the live verifier fails on it — which is the point. The verifier also",
+    "looks for a matching ruleset anyway, so the day the owner applies it the check starts",
+    "evaluating the real thing instead of just reporting it missing."
+  ],
+  "repositories": [
+    {
+      "key": "erp",
+      "repository": "lacreativodesign/nextjs-boilerplate",
+      "applied": true,
+      "rulesetId": 22866162,
+      "rulesetName": "Production Main Protection",
+      "snapshot": "docs/security/p0-06-erp-main-ruleset.snapshot.json",
+      "snapshotCapturedBy": "an authenticated read by a repository admin",
+      "expectedVisibility": "public",
+      "visibilityIsGovernanceFinding": true,
+      "target": "branch",
+      "enforcement": "active",
+      "refNameInclude": ["~DEFAULT_BRANCH"],
+      "bypassActorsMustBeEmpty": true,
+      "requiredRuleTypes": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request",
+        "required_status_checks"
+      ],
+      "pullRequest": {
+        "requiredReviewThreadResolution": true,
+        "allowedMergeMethods": ["merge"],
+        "requiredApprovingReviewCount": {
+          "certifiedFloor": 0,
+          "target": 1,
+          "gapOpen": true,
+          "$comment": [
+            "THIS IS AN OPEN P0-06 CONTROL GAP, AND IT IS DELIBERATE.",
+            "",
+            "The floor is the value the live ruleset may not drop below. The target is the value",
+            "P0-06 wants. They differ because the repository has exactly ONE account with any",
+            "access at all - lacreativodesign, the owner, admin - and that account is the author",
+            "of every pull request. GitHub does not let a pull request author approve their own",
+            "pull request, so raising the live count to 1 today would not add a review: it would",
+            "stop anything merging, including the pull request that would undo it.",
+            "",
+            "So the count stays 0 until an independent reviewer exists. Closing the gap is a",
+            "two-step owner action, in this order, never the second alone:",
+            "  1. grant a second human WRITE access to the repository;",
+            "  2. set required_approving_review_count to 1 AND set certifiedFloor to 1 here.",
+            "",
+            "gapOpen is what keeps step 2 honest. The certification test refuses to let gapOpen go",
+            "false while certifiedFloor is still 0, so the gap cannot be closed on paper alone."
+          ]
+        }
+      },
+      "requiredStatusChecks": {
+        "strictRequiredStatusChecksPolicy": true,
+        "doNotEnforceOnCreate": false,
+        "contexts": [
+          {
+            "context": "quality",
+            "integrationId": 15368,
+            "$comment": "GitHub Actions. The `quality` job in .github/workflows/test.yml."
+          },
+          {
+            "context": "SonarCloud Code Analysis",
+            "integrationId": 12526,
+            "$comment": "SonarQube Cloud app. Posts the real Sonar quality gate result."
+          },
+          {
+            "context": "sonar",
+            "integrationId": 15368,
+            "$comment": "GitHub Actions. The `sonar` job in .github/workflows/test.yml."
+          },
+          {
+            "context": "Vercel",
+            "integrationId": 8329,
+            "$comment": "Vercel app. Reports as a commit STATUS, not a check run."
+          }
+        ],
+        "$comment": [
+          "All four were confirmed reporting and green on main at 70a5403 before certification,",
+          "so none is a dead context that would silently block every future merge. Anything added",
+          "here must be verified the same way first."
+        ]
+      }
+    },
+    {
+      "key": "website",
+      "repository": "lacreativodesign/bizosto-website",
+      "applied": true,
+      "rulesetId": 23581080,
+      "rulesetName": "Production Main Protection",
+      "snapshot": null,
+      "snapshotCapturedBy": null,
+      "expectedVisibility": "private",
+      "visibilityIsGovernanceFinding": false,
+      "target": "branch",
+      "enforcement": "active",
+      "refNameInclude": ["~DEFAULT_BRANCH"],
+      "bypassActorsMustBeEmpty": true,
+      "requiredRuleTypes": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request",
+        "required_status_checks"
+      ],
+      "pullRequest": {
+        "requiredReviewThreadResolution": true,
+        "allowedMergeMethods": ["merge"],
+        "requiredApprovingReviewCount": {
+          "certifiedFloor": 0,
+          "target": 1,
+          "gapOpen": true,
+          "$comment": [
+            "STILL OPEN, AND STILL DELIBERATE — the ruleset existing does not close this.",
+            "",
+            "The live ruleset now enforces everything else, but required_approving_review_count is",
+            "0 because this repository has exactly ONE account with any access, and that account",
+            "authors every pull request. GitHub does not let an author approve their own, so raising",
+            "the count to 1 would not add a review - it would stop anything merging.",
+            "",
+            "Closing it is a two-step owner action, in this order, never the second alone:",
+            "  1. grant a second human WRITE access to THIS repository (the ERP repository needs",
+            "     its own separate collaborator; they do not share one);",
+            "  2. set required_approving_review_count to 1 AND set certifiedFloor to 1 here.",
+            "",
+            "gapOpen keeps step 2 honest: the certification suite refuses to let it go false while",
+            "certifiedFloor is still 0, so the gap cannot be closed on paper alone."
+          ]
+        }
+      },
+      "requiredStatusChecks": {
+        "strictRequiredStatusChecksPolicy": true,
+        "doNotEnforceOnCreate": false,
+        "contexts": [
+          {
+            "context": "Vercel",
+            "integrationId": 8329,
+            "$comment": [
+              "The Vercel app's deployment status. Reports as a commit STATUS, not a check run.",
+              "Integration id 8329 is pinned: a context can be re-pointed at a different app while",
+              "keeping its name, which would satisfy a name-only check with a report this repository",
+              "never produces."
+            ]
+          },
+          {
+            "context": "dependency-security",
+            "integrationId": 15368,
+            "$comment": [
+              "GitHub Actions - the `dependency-security` job in",
+              ".github/workflows/dependency-security.yml, added by PR #61 and merged to main on",
+              "2026-09-17 at 632f5daf6e5981dd610b59199c7230f38b8cd2c0. It runs `npm ci` then",
+              "`npm run security:audit`, which is `npm audit --audit-level=high`, so it fails on ANY",
+              "high or critical advisory across the whole lockfile including dev dependencies.",
+              "",
+              "It is LIVE, not future work: the owner added it to ruleset 23581080 as a second",
+              "required status check, and it ran green on main after the merge (run 35264726041,",
+              "job 105348912555). PR #61 brought the repository to 0 critical and 0 high.",
+              "",
+              "The workflow is deliberately NOT path-filtered. A required check that is skipped for",
+              "pull requests touching unrelated files leaves GitHub waiting on it forever, which",
+              "would block every such merge - the same dead-required-check failure mode this",
+              "certification checks for elsewhere.",
+              "",
+              "Integration id 15368 is GitHub Actions and is pinned for the same reason as Vercel.",
+              "A check called `dependency-security` posted by anything else does not satisfy this."
+            ]
+          }
+        ],
+        "$comment": [
+          "BOTH of these are required on the live ruleset, and both were read back from",
+          "GET /repos/lacreativodesign/bizosto-website/rulesets/23581080 on 2026-09-17. The live",
+          "required_status_checks list contains exactly these two contexts and no others.",
+          "",
+          "Losing either one is P0-06 drift, and so is re-pointing either at a different",
+          "integration. The contract is DIRECTIONAL, so the owner may add further required checks",
+          "without failing this record - but these two may never disappear."
+        ]
+      },
+      "$comment": [
+        "APPLIED AND LIVE as of 2026-09-17: ruleset 23581080, read back by direct authenticated",
+        "GET and verified field by field, including bypass_actors being explicitly present and",
+        "empty and current_user_can_bypass being \"never\". It is the only ruleset on the",
+        "repository.",
+        "",
+        "THE RULESET CONTROL IS GREEN, AND IT NOW CARRIES TWO REQUIRED CHECKS.",
+        "",
+        "Vercel/8329 and dependency-security/15368. The second arrived with PR #61, which was",
+        "merged to main on 2026-09-17 (632f5daf6e5981dd610b59199c7230f38b8cd2c0) and brought the",
+        "repository to 0 critical and 0 high advisories. The owner then added it to the ruleset,",
+        "so the dependency audit is branch-blocking rather than advisory.",
+        "",
+        "TWO OTHER CONTROLS ARE STILL OPEN.",
+        "",
+        "1. VISIBILITY - OPEN. This repository is currently PUBLIC. It was published so the",
+        "   ruleset could be created at all: GitHub Free serves rulesets on public repositories",
+        "   only, and the owner cannot upgrade right now. That is a temporary expedient and NOT",
+        "   the target state - this repository holds proprietary Bizosto marketing source and",
+        "   must end up PRIVATE.",
+        "",
+        "   expectedVisibility therefore stays \"private\", and the verifier reports the current",
+        "   public state as repository.visibility DRIFT. That failure is correct and intended; it",
+        "   must not be silenced by changing the expectation. The owner action is to upgrade to",
+        "   GitHub Pro or higher, make the repository private, and then re-verify that the ruleset",
+        "   survived the visibility change.",
+        "",
+        "2. INDEPENDENT REVIEW - OPEN. See requiredApprovingReviewCount above. Another account the",
+        "   owner personally controls does not close this: P0-06 asks for INDEPENDENT review, and",
+        "   an account under the same control is not independent.",
+        "",
+        "Because rulesetId is recorded, the verifier pins the read to that id rather than",
+        "discovering the ruleset by name."
+      ]
+    }
+  ]
+}
