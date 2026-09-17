@@ -429,6 +429,48 @@ describe('P0-06: the drift check cannot lock main, and cannot leak a token', () 
     expect(script).toContain('process.exitCode = result.ok ? 0 : 1;');
     expect(script).toContain('process.exitCode = 1;');
   });
+
+  /**
+   * DS-33 again, in a new file. That incident was a job-level `if:` reading the `secrets`
+   * context, which is not one of the four contexts GitHub permits there — so GitHub rejected
+   * the whole workflow at validation time and every run completed with ZERO jobs. Nothing
+   * went red; the gates simply stopped existing.
+   *
+   * A drift detector that silently never runs is worse than no drift detector, because the
+   * certification would still point at it. __tests__/ci/workflow-gates.test.ts guards
+   * test.yml this way; this is the same guard for this file. (The YAML was also parsed with a
+   * real YAML parser while it was written — this is the part that keeps being true.)
+   */
+  it('cannot be rejected at workflow-validation time the way DS-33 was', () => {
+    for (const line of Array.from(workflow.matchAll(/^ {4}if:.*$/gm)).map((m) => m[0])) {
+      expect({ line, usesSecrets: line.includes('secrets.') }).toEqual({
+        line,
+        usesSecrets: false,
+      });
+    }
+    // The only secret it may name is the automatic, always-present job token.
+    const secretRefs = Array.from(workflow.matchAll(/secrets\.([A-Za-z_][A-Za-z0-9_]*)/g)).map(
+      (match) => match[1],
+    );
+    expect(secretRefs).toEqual(['GITHUB_TOKEN']);
+  });
+
+  it('keeps the structure GitHub needs: one job, checkout, node, the verifier', () => {
+    expect(workflow).toMatch(/^jobs:$/m);
+    expect(workflow).toMatch(/^ {2}main-protection:$/m);
+    expect(workflow).toMatch(/^ {4}runs-on: ubuntu-latest$/m);
+    expect(workflow).toMatch(/^ {4}steps:$/m);
+    expect(workflow).toContain('actions/checkout@v4');
+    expect(workflow).toContain('actions/setup-node@v4');
+  });
+
+  it('does not re-run on every unrelated merge to main', () => {
+    // The live read spends rate limit. Re-proving an unchanged ruleset on every merge would
+    // spend it for nothing and make the genuine signal noisier.
+    const pushBlock = workflow.slice(workflow.indexOf('  push:'), workflow.indexOf('permissions:'));
+    expect(pushBlock).toContain('paths:');
+    expect(pushBlock).toContain('scripts/verify-github-main-protection.mjs');
+  });
 });
 
 /**
@@ -498,22 +540,29 @@ describe('P0-06: the live read handles credentials without leaking them', () => 
   it('makes exactly one anonymous attempt when no token is configured', async () => {
     delete process.env.GITHUB_TOKEN;
     delete process.env.GH_TOKEN;
-    const fetchImpl = jest.fn(async () => ok({ id: 22866162 }));
+    const seen: Array<string | undefined> = [];
+    const fetchImpl = jest.fn(async (_url: string, init: { headers: Record<string, string> }) => {
+      seen.push(init.headers.Authorization);
+      return ok({ id: 22866162 });
+    });
 
     await fetchLiveRuleset(certified, { fetchImpl });
 
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBeUndefined();
+    expect(seen).toEqual([undefined]);
   });
 
   it('falls back to GH_TOKEN when GITHUB_TOKEN is absent', async () => {
     delete process.env.GITHUB_TOKEN;
     process.env.GH_TOKEN = SECRET;
-    const fetchImpl = jest.fn(async () => ok({ id: 22866162 }));
+    const seen: Array<string | undefined> = [];
+    const fetchImpl = jest.fn(async (_url: string, init: { headers: Record<string, string> }) => {
+      seen.push(init.headers.Authorization);
+      return ok({ id: 22866162 });
+    });
 
     await fetchLiveRuleset(certified, { fetchImpl });
 
-    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe(`Bearer ${SECRET}`);
+    expect(seen).toEqual([`Bearer ${SECRET}`]);
   });
 
   it('keeps the token out of the error when every attempt fails', async () => {

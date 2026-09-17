@@ -257,7 +257,27 @@ export function evaluateRuleset(ruleset, certified) {
 const redactUrl = (repository, rulesetId) =>
   `https://api.github.com/repos/${repository}/rulesets/${rulesetId}`;
 
-export async function fetchLiveRuleset(certified, { fetchImpl = globalThis.fetch } = {}) {
+/**
+ * The seam is typed as the narrow shape this function actually uses, not as `fetch`.
+ *
+ * Three fields is the whole contract, and saying so is what lets the certification suite
+ * drive the credential path with a plain double instead of a fabricated `Response` — a test
+ * that had to impersonate all fourteen `Response` members would be asserting things about
+ * the DOM rather than about how this function treats a token.
+ *
+ * @typedef {{ ok: boolean; status: number; json: () => Promise<any> }} RulesetResponse
+ * @typedef {(url: string, init: { headers: Record<string, string> }) => Promise<RulesetResponse>} RulesetFetch
+ */
+
+/**
+ * @param {Record<string, any>} certified
+ * @param {{ fetchImpl?: RulesetFetch }} [options]
+ * @returns {Promise<Record<string, any>>}
+ */
+export async function fetchLiveRuleset(
+  certified,
+  { fetchImpl = /** @type {RulesetFetch} */ (globalThis.fetch) } = {},
+) {
   const url = redactUrl(certified.repository, certified.rulesetId);
   const baseHeaders = {
     Accept: 'application/vnd.github+json',

@@ -253,13 +253,29 @@ A sixth group covers the credential path, which is where a token is most likely 
 | empty `Bearer` header sent when no token is configured      | 1 failed |
 | "stronger than certified" downgraded from notice to silence | 1 failed |
 
-**25 mutants applied, 25 killed, 0 survivors.** Both files were restored afterwards and
+A seventh group covers the workflow itself, because a drift detector that silently never
+runs is worse than none — the certification would still point at it. DS-33 in this repository
+was exactly that: a job-level `if:` reading `secrets` made GitHub reject the whole file at
+validation time and every run completed with **zero jobs**, with nothing going red.
+
+| Mutation                                                   | Result   |
+| ---------------------------------------------------------- | -------- |
+| job-level `if:` reads `secrets` (the DS-33 defect)         | 2 failed |
+| a stored PAT secret introduced                             | 2 failed |
+| `continue-on-error` escape hatch added                     | 1 failed |
+| `permissions` widened to `contents: write`                 | 1 failed |
+| schedule trigger removed                                   | 1 failed |
+| path filter removed (would burn rate limit on every merge) | 1 failed |
+| the verifier step replaced with a no-op                    | 1 failed |
+
+**32 mutants applied, 32 killed, 0 survivors.** Both files were restored afterwards and
 verified by SHA-256, identical before and after:
 
-| File                                                 | SHA-256                                                            |
-| ---------------------------------------------------- | ------------------------------------------------------------------ |
-| `scripts/verify-github-main-protection.mjs`          | `dde29e608e61b1d808c86e0713c5a8269ab1516a6752a57d2f0c7e41ae522eed` |
-| `docs/security/p0-06-erp-main-ruleset.snapshot.json` | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
+| File                                                    | SHA-256                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------ |
+| `scripts/verify-github-main-protection.mjs`             | `dde29e608e61b1d808c86e0713c5a8269ab1516a6752a57d2f0c7e41ae522eed` |
+| `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
+| `.github/workflows/github-protection-certification.yml` | `171b85cf026d9806df45a39dce5287218fa0ec28b02bcd90f7ce97b1de82970d` |
 
 ---
 
