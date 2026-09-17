@@ -428,14 +428,26 @@ describe('P0-06: the marketing website is certified too', () => {
     expect(website.requiredRuleTypes).toEqual(certified.requiredRuleTypes);
   });
 
-  it('requires ONLY Vercel, because that is the only check it produces', () => {
-    // The repository has no .github directory at all, so there are no Actions workflows and
-    // no check runs. Requiring anything else would block every merge forever.
+  it('requires BOTH live checks: Vercel and dependency-security', () => {
+    // This replaces an earlier, now-false assertion that Vercel was the only check the
+    // website produces. PR #61 merged .github/workflows/dependency-security.yml to main on
+    // 2026-09-17, and the owner added `dependency-security` to ruleset 23581080 as a second
+    // required check — so the dependency audit is branch-blocking, not advisory.
     expect(website.requiredStatusChecks.contexts).toEqual([
       { context: 'Vercel', integrationId: 8329 },
+      { context: 'dependency-security', integrationId: 15368 },
     ]);
     expect(website.requiredStatusChecks.strictRequiredStatusChecksPolicy).toBe(true);
     expect(website.requiredStatusChecks.doNotEnforceOnCreate).toBe(false);
+  });
+
+  it('pins dependency-security to GitHub Actions, not to its name alone', () => {
+    // A check called `dependency-security` posted by any other app must not satisfy this.
+    const ds = website.requiredStatusChecks.contexts.find(
+      (c: { context: string }) => c.context === 'dependency-security',
+    );
+    expect(ds).toBeDefined();
+    expect(ds.integrationId).toBe(15368);
   });
 
   it('carries the same approval gap, because it has the same single owner', () => {
@@ -501,7 +513,10 @@ describe('P0-06: the marketing website is certified too', () => {
           parameters: {
             strict_required_status_checks_policy: true,
             do_not_enforce_on_create: false,
-            required_status_checks: [{ context: 'Vercel', integration_id: 8329 }],
+            required_status_checks: [
+              { context: 'Vercel', integration_id: 8329 },
+              { context: 'dependency-security', integration_id: 15368 },
+            ],
           },
         },
       ],
@@ -556,7 +571,10 @@ describe('P0-06: the marketing website is certified too', () => {
           parameters: {
             strict_required_status_checks_policy: true,
             do_not_enforce_on_create: false,
-            required_status_checks: [{ context: 'Vercel', integration_id: 8329 }],
+            required_status_checks: [
+              { context: 'Vercel', integration_id: 8329 },
+              { context: 'dependency-security', integration_id: 15368 },
+            ],
           },
         },
       ],
@@ -809,9 +827,9 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     // the endpoint is private, the remedy is the plan, and the resulting failure must not be
     // silenced by editing the expectation.
     const contract = read(CERTIFIED_PATH);
-    expect(contract).toContain('NOT the target state');
+    expect(contract).toContain('NOT');
+    expect(contract).toContain('the target state');
     expect(contract).toContain('must end up PRIVATE');
-    expect(contract).toContain('upgrade the');
     expect(contract).toContain('GitHub Pro or higher');
     expect(contract).toContain('must not be silenced by changing the expectation');
     // And it must never claim the publication resolved anything.
@@ -823,10 +841,57 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     const contract = read(CERTIFIED_PATH);
     expect(contract).toContain('APPLIED AND LIVE');
     expect(contract).toContain('23581080');
-    expect(contract).toContain('THE RULESET CONTROL IS GREEN. TWO OTHER CONTROLS ARE NOT.');
+    expect(contract).toContain('THE RULESET CONTROL IS GREEN');
     // Stale prose from before the owner created it must be gone.
     expect(contract).not.toContain('NOT YET APPLIED');
     expect(contract).not.toMatch(/ruleset itself still has to be created/i);
+  });
+
+  /**
+   * TASK C items 14 and 15 — prose that has become false.
+   *
+   * Before PR #61 this repository genuinely had no GitHub Actions workflows and `Vercel` was
+   * genuinely its only check, and the certification said so in several places. Both
+   * statements are now false: `dependency-security` is emitted by GitHub Actions, is live on
+   * main, and is a required status check on ruleset 23581080.
+   *
+   * Prose does not fail a build on its own — that is exactly how a stale sentence survived an
+   * earlier rewrite here — so the claims get asserted against instead.
+   */
+  it.each([
+    ['Vercel is the only check', /only check (it|this repository) produces/i],
+    ['Vercel is the only required check', /(only|sole) required check/i],
+    ['there is no .github directory', /no \.github directory/i],
+    ['there are no Actions workflows', /no (GitHub )?Actions workflows/i],
+    ['there are no check runs', /no check runs/i],
+    ['the audit is not branch-blocking', /audit is not (branch-)?blocking/i],
+    ['dependency-security is future work', /dependency-security[^.]{0,40}(future work|follow-up)/i],
+    ['there is no audit gate', /no audit gate/i],
+  ])('no P0-06 artefact still claims %s', (_label, pattern) => {
+    // Deliberately NOT this file. It is the scanner, and it necessarily contains each
+    // phrase as its own label and pattern — including it made the guard fail against itself.
+    for (const artefact of [
+      CERTIFIED_PATH,
+      'docs/security/p0-06-github-main-protection.md',
+      'scripts/verify-github-main-protection.mjs',
+      '.github/workflows/github-protection-certification.yml',
+    ]) {
+      expect({ artefact, matches: pattern.test(read(artefact)) }).toEqual({
+        artefact,
+        matches: false,
+      });
+    }
+  });
+
+  it('the contract states dependency-security is live and branch-required', () => {
+    const contract = read(CERTIFIED_PATH);
+    expect(contract).toContain('dependency-security');
+    expect(contract).toContain('LIVE, not future work');
+    expect(contract).toContain('branch-blocking rather than advisory');
+    expect(contract).toContain('npm audit --audit-level=high');
+    // The reason the workflow must stay unfiltered is itself load-bearing: a required check
+    // that gets skipped leaves GitHub waiting on it forever.
+    expect(contract).toContain('NOT path-filtered');
   });
 
   /**
@@ -877,6 +942,190 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
    * Each case reverts the contract to a state that no longer matches reality, and each must be
    * rejected.
    */
+  /**
+   * The dependency-security gate, as a mutation battery of its own.
+   *
+   * It became branch-required on 2026-09-17, which makes it the second control on this
+   * repository that a settings edit could silently remove. Everything the certification says
+   * about it is now a claim about live infrastructure, so each way of losing it is enumerated
+   * and each must be rejected.
+   */
+  describe('dependency-security mutations are rejected', () => {
+    /** A ruleset shaped exactly like the live one, both required checks included. */
+    const liveBoth = () => ({
+      target: 'branch',
+      enforcement: 'active',
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+      bypass_actors: [],
+      rules: [
+        { type: 'deletion' },
+        { type: 'non_fast_forward' },
+        {
+          type: 'pull_request',
+          parameters: {
+            required_approving_review_count: 0,
+            dismiss_stale_reviews_on_push: false,
+            require_code_owner_review: false,
+            require_last_push_approval: false,
+            required_review_thread_resolution: true,
+            require_extra_approval_for_unattributed_changes: false,
+            allowed_merge_methods: ['merge'],
+          },
+        },
+        {
+          type: 'required_status_checks',
+          parameters: {
+            strict_required_status_checks_policy: true,
+            do_not_enforce_on_create: false,
+            required_status_checks: [
+              { context: 'Vercel', integration_id: 8329 },
+              { context: 'dependency-security', integration_id: 15368 },
+            ],
+          },
+        },
+      ],
+    });
+
+    const checksOf = (ruleset: Record<string, any>) =>
+      ruleNamed(ruleset, 'required_status_checks').parameters;
+
+    it('(1) the live-shaped ruleset with both checks passes', () => {
+      const result: Result = evaluateRuleset(liveBoth(), website, PRIVILEGED);
+      expect(result.failures).toEqual([]);
+      expect(result.ok).toBe(true);
+    });
+
+    it('(2) removing Vercel fails', () => {
+      const ruleset = liveBoth();
+      checksOf(ruleset).required_status_checks = [
+        { context: 'dependency-security', integration_id: 15368 },
+      ];
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(controls(result)).toContain('required_status_checks.contexts');
+      expect(result.failures.map((f) => f.detail).join(' ')).toContain(
+        'required check "Vercel" is no longer required',
+      );
+    });
+
+    it('(3) removing dependency-security fails', () => {
+      const ruleset = liveBoth();
+      checksOf(ruleset).required_status_checks = [{ context: 'Vercel', integration_id: 8329 }];
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(controls(result)).toContain('required_status_checks.contexts');
+      expect(result.failures.map((f) => f.detail).join(' ')).toContain(
+        'required check "dependency-security" is no longer required',
+      );
+    });
+
+    it('(4) re-pointing Vercel to a wrong integration fails', () => {
+      const ruleset = liveBoth();
+      checksOf(ruleset).required_status_checks[0].integration_id = 15368;
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(result.failures.map((f) => f.detail).join(' ')).toContain(
+        'moved from integration 8329 to 15368',
+      );
+    });
+
+    it('(5) re-pointing dependency-security to a wrong integration fails', () => {
+      // A check with the right NAME from the wrong app must not satisfy the requirement.
+      const ruleset = liveBoth();
+      checksOf(ruleset).required_status_checks[1].integration_id = 8329;
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(result.failures.map((f) => f.detail).join(' ')).toContain(
+        'moved from integration 15368 to 8329',
+      );
+    });
+
+    it('dependency-security cannot be satisfied by a similarly-named check', () => {
+      // `dependency-security-report`, `Dependency Security`, etc. are different contexts.
+      for (const impostor of [
+        'dependency-security-report',
+        'Dependency Security',
+        'dependency_security',
+        'security',
+      ]) {
+        const ruleset = liveBoth();
+        checksOf(ruleset).required_status_checks[1].context = impostor;
+        const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+        expect({ impostor, ok: result.ok }).toEqual({ impostor, ok: false });
+        expect(result.failures.map((f) => f.detail).join(' ')).toContain(
+          'required check "dependency-security" is no longer required',
+        );
+      }
+    });
+
+    it('extra required checks beyond the certified two are tolerated', () => {
+      // The contract is directional: stronger than the record is fine, weaker is not. The
+      // owner adding a third gate must not fail the certification.
+      const ruleset = liveBoth();
+      checksOf(ruleset).required_status_checks.push({ context: 'lint', integration_id: 15368 });
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(result.failures).toEqual([]);
+      expect(result.ok).toBe(true);
+    });
+
+    it('(6) strict true -> false fails', () => {
+      const ruleset = liveBoth();
+      checksOf(ruleset).strict_required_status_checks_policy = false;
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'required_status_checks.strict',
+      );
+    });
+
+    it('(7) doNotEnforceOnCreate false -> true fails', () => {
+      const ruleset = liveBoth();
+      checksOf(ruleset).do_not_enforce_on_create = true;
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'required_status_checks.do_not_enforce_on_create',
+      );
+    });
+
+    it('(8) a missing bypass list still fails, with both checks present', () => {
+      const ruleset = liveBoth();
+      delete (ruleset as Record<string, any>).bypass_actors;
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'ruleset.bypass_actors_unobservable',
+      );
+    });
+
+    it('(9) a bypass actor still fails, with both checks present', () => {
+      const ruleset = liveBoth();
+      (ruleset as Record<string, any>).bypass_actors = [
+        { actor_id: 1, actor_type: 'RepositoryRole', bypass_mode: 'always' },
+      ];
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'ruleset.bypass_actors',
+      );
+    });
+
+    it('an unprivileged read still cannot certify, with both checks present', () => {
+      expect(
+        controls(evaluateRuleset(liveBoth(), website, observedUnprivileged('an anonymous read'))),
+      ).toContain('ruleset.bypass_actors_unobservable');
+    });
+
+    it('(10) conversation resolution true -> false fails', () => {
+      const ruleset = liveBoth();
+      ruleNamed(ruleset, 'pull_request').parameters.required_review_thread_resolution = false;
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'pull_request.required_review_thread_resolution',
+      );
+    });
+
+    it('(11) the visibility expectation still rejects a public repository', () => {
+      expect(website.expectedVisibility).toBe('private');
+      expect(evaluateVisibility({ visibility: 'public', private: false }, website).ok).toBe(false);
+    });
+
+    it('(12,13) the reviewer gap and its target survive the stronger ruleset', () => {
+      // Two required checks is more protection, not a reviewer. Neither number moves.
+      const approvals = website.pullRequest.requiredApprovingReviewCount;
+      expect(approvals.certifiedFloor).toBe(0);
+      expect(approvals.target).toBe(1);
+      expect(approvals.gapOpen).toBe(true);
+    });
+  });
+
   describe('stale-state mutations are rejected', () => {
     const withWebsite = (mutate: (spec: Record<string, any>) => void): Record<string, any> => {
       const spec = JSON.parse(JSON.stringify(website));
@@ -906,7 +1155,10 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
           parameters: {
             strict_required_status_checks_policy: true,
             do_not_enforce_on_create: false,
-            required_status_checks: [{ context: 'Vercel', integration_id: 8329 }],
+            required_status_checks: [
+              { context: 'Vercel', integration_id: 8329 },
+              { context: 'dependency-security', integration_id: 15368 },
+            ],
           },
         },
       ],

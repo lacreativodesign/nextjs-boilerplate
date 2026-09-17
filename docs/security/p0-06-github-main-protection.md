@@ -10,7 +10,8 @@ certification that hides its own corrections is not evidence of anything.
 | --------------------------- | --------------------------------------------------------------------- |
 | ERP `main` protection       | verified live, drift-guarded, **certified**                           |
 | ERP approving reviews       | `0` — **open gap**, no independent reviewer exists                    |
-| Website `main` protection   | ✅ **applied and live** — ruleset `23581080`, verified field by field |
+| Website `main` protection   | ✅ **applied and live** — ruleset `23581080`, **two** required checks |
+| Website dependency gate     | ✅ **`dependency-security` live and branch-required** (PR #61 merged) |
 | Website visibility          | ⚠️ **OPEN** — temporarily public so the ruleset could exist on Free   |
 | Website plan                | ⚠️ GitHub **Free**; **Pro or higher** needed for the private posture  |
 | Bypass-actor observability  | **was a false green**; now fails closed                               |
@@ -192,11 +193,34 @@ field by field — it is the **only** ruleset on the repository:
 | required check                                           | `Vercel`, integration `8329`                                             |
 | approving reviews                                        | **`0` — open gap**                                                       |
 
-`GET /branches/main` reports `"protected": true`. The contract now records
-`applied: true` and `rulesetId: 23581080`, so the verifier **pins its read to that id** rather
-than discovering the ruleset by name.
+`GET /branches/main` reports `"protected": true`. The contract records `applied: true` and
+`rulesetId: 23581080`, so the verifier **pins its read to that id** rather than discovering the
+ruleset by name.
 
-**The ruleset control for the website is GREEN.** Two others are not.
+### Two required checks, not one
+
+| Context               | Emitted by                    | Integration | Live on main                                    |
+| --------------------- | ----------------------------- | ----------- | ----------------------------------------------- |
+| `Vercel`              | Vercel app, commit **status** | `8329`      | success                                         |
+| `dependency-security` | **GitHub Actions** check run  | `15368`     | success — run `35264726041`, job `105348912555` |
+
+`dependency-security` arrived with **PR #61**, merged to main on 2026-09-17 at
+`632f5daf6e5981dd610b59199c7230f38b8cd2c0`. It runs `npm ci` then `npm run security:audit`
+(`npm audit --audit-level=high`), so it fails on **any** high or critical advisory across the
+whole lockfile, dev dependencies included. PR #61 brought the repository to **0 critical, 0
+high**. The owner then added the check to ruleset 23581080, which makes the dependency audit
+**branch-blocking rather than advisory**.
+
+The workflow is deliberately **not** path-filtered. A required check that gets skipped for pull
+requests touching unrelated files leaves GitHub waiting on it forever — the same
+dead-required-check failure mode this certification checks for elsewhere.
+
+Both integration ids are pinned. Losing either context, or re-pointing either at a different
+app, is P0-06 drift. The contract is directional, so further required checks may be added
+without failing the record — but these two may never disappear.
+
+**The ruleset control for the website is GREEN, and the dependency-security gate is GREEN and
+branch-required.** Two other controls are not.
 
 ### Visibility — OPEN
 
@@ -347,7 +371,7 @@ Files restored after the battery and verified by SHA-256:
 | `scripts/verify-github-main-protection.mjs`             | `3faa21a04517c55b9dbbc33aac4c238754919a8e211faee60cf3c4bcf5a55a52` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
-| `docs/security/p0-06-main-protection.certified.json`    | `7aea06e5b340448d18c05f703fe4c6a80ebafd9284f6e8a1316d13634cdf92db` |
+| `docs/security/p0-06-main-protection.certified.json`    | `5b29fc30059e3c62d9d3fd964cb4aabebfe70c3c3515274948f2b447b32f73b2` |
 
 ---
 
