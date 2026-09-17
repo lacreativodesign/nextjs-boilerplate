@@ -322,8 +322,8 @@ Files restored after the battery and verified by SHA-256:
 | ------------------------------------------------------- | ------------------------------------------------------------------ |
 | `scripts/verify-github-main-protection.mjs`             | `d88ad89868ee8bd9e6948fc9e5710d6b7f6423beded8804128b3a0dd63cdc4f9` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
-| `.github/workflows/github-protection-certification.yml` | `f23d4e0a5aaca450d0d27f5cb7ee7d70cb41837ab834fbde57194416d6efec52` |
-| `docs/security/p0-06-main-protection.certified.json`    | `c6766f283d11fb364f9adb1431d3e45483a821df9377f52fe5db21c9a8bd5979` |
+| `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
+| `docs/security/p0-06-main-protection.certified.json`    | `6e2ffc886394b7c051da67a2f6030e8848ffdf68f0e06cfbe6b8648bb4efd832` |
 
 ---
 

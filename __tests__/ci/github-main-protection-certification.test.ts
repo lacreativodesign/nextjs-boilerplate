@@ -748,6 +748,42 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     expect(contract).toContain('MUST REMAIN PRIVATE');
   });
 
+  /**
+   * A miss worth a test of its own.
+   *
+   * After the contract was rewritten for a private website, one sentence survived from the
+   * old version: "Both repositories are public, so everything it describes is readable
+   * anonymously, which is why the drift check needs no personal access token." It was wrong
+   * twice over — it assumed the visibility this rewrite exists to forbid, and it justified
+   * the credential model on anonymous reads, which is exactly the bypass false-green.
+   *
+   * Prose does not fail a build on its own, so the assumptions get asserted instead.
+   */
+  it.each([
+    ['both repositories are public', /both repositories are public/i],
+    ['readable anonymously', /readable anonymously/i],
+    ['needs no personal access token', /needs no personal access token/i],
+    ['served anonymously for public', /served anonymously for public/i],
+  ])('no P0-06 artefact still claims %s', (_label, pattern) => {
+    for (const artefact of [
+      CERTIFIED_PATH,
+      'scripts/verify-github-main-protection.mjs',
+      '.github/workflows/github-protection-certification.yml',
+      'docs/security/p0-06-github-main-protection.md',
+    ]) {
+      expect({ artefact, matches: pattern.test(read(artefact)) }).toEqual({
+        artefact,
+        matches: false,
+      });
+    }
+  });
+
+  it('the contract states that an anonymous read cannot certify', () => {
+    const contract = read(CERTIFIED_PATH);
+    expect(contract).toContain('An anonymous read is NOT sufficient to certify');
+    expect(contract).toContain('bypass_actors_unobservable');
+  });
+
   it('the evidence document records the violation rather than erasing it', () => {
     const doc = read('docs/security/p0-06-github-main-protection.md');
     expect(doc).toMatch(/GitHub Pro/);
