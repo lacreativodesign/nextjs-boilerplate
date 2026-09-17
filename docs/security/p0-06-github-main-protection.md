@@ -6,14 +6,15 @@ This document was rewritten after independent review **rejected** the first vers
 certification for two P0 defects. Both are recorded here rather than quietly fixed, because a
 certification that hides its own corrections is not evidence of anything.
 
-|                             |                                                                        |
-| --------------------------- | ---------------------------------------------------------------------- |
-| ERP `main` protection       | verified live, drift-guarded, **certified**                            |
-| ERP approving reviews       | `0` — **open gap**, no independent reviewer exists                     |
-| Website `main` protection   | **not applied**, and cannot be until the account plan changes          |
-| Website visibility          | **must be private** — it was briefly made public; that was a violation |
-| Bypass-actor observability  | **was a false green**; now fails closed                                |
-| Website history secret scan | complete — **no credential exposed**                                   |
+|                             |                                                                       |
+| --------------------------- | --------------------------------------------------------------------- |
+| ERP `main` protection       | verified live, drift-guarded, **certified**                           |
+| ERP approving reviews       | `0` — **open gap**, no independent reviewer exists                    |
+| Website `main` protection   | ✅ **applied and live** — ruleset `23581080`, verified field by field |
+| Website visibility          | ⚠️ **OPEN** — temporarily public so the ruleset could exist on Free   |
+| Website plan                | ⚠️ GitHub **Free**; **Pro or higher** needed for the private posture  |
+| Bypass-actor observability  | **was a false green**; now fails closed                               |
+| Website history secret scan | complete — **no credential exposed**                                  |
 
 ---
 
@@ -165,49 +166,72 @@ paper.
 
 ---
 
-## 3. The marketing website — private, unprotected, and blocked on the plan
+## 3. The marketing website — ruleset LIVE, visibility and review still open
 
-`lacreativodesign/bizosto-website` **must remain private**. It is certified `private`, and the
-verifier fails on any other reading.
+`lacreativodesign/bizosto-website`, default branch `main`.
 
-While private, the API refuses rulesets outright:
+### The ruleset is applied and correct
 
-```
-GET /repos/lacreativodesign/bizosto-website/rulesets
-→ 403 "Upgrade to GitHub Pro or make this repository public to enable this feature."
-```
+The owner created it on 2026-09-17. Read back directly from
+`GET /repos/lacreativodesign/bizosto-website/rulesets/23581080`, authenticated, and verified
+field by field — it is the **only** ruleset on the repository:
 
-This is a **platform/billing limitation, not a code defect and not a misconfiguration.** GitHub
-documents repository rulesets as available on public repositories under Free, and on public and
-private repositories under Pro, Team and Enterprise.
+| Field                                                    | Live value                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `id` / `name`                                            | `23581080` / `Production Main Protection`                                |
+| `target` / `enforcement`                                 | `branch` / `active`                                                      |
+| `ref_name.include` / `.exclude`                          | `["~DEFAULT_BRANCH"]` / `[]`                                             |
+| `bypass_actors`                                          | **present and `[]`**                                                     |
+| `current_user_can_bypass`                                | `never`                                                                  |
+| rules                                                    | `deletion`, `non_fast_forward`, `pull_request`, `required_status_checks` |
+| conversation resolution                                  | `true`                                                                   |
+| merge methods                                            | `["merge"]`                                                              |
+| code-owner review / last-push approval / stale dismissal | `false` / `false` / `false`                                              |
+| extra approval for unattributed changes                  | `false`                                                                  |
+| strict checks / on-create                                | `true` / `false`                                                         |
+| required check                                           | `Vercel`, integration `8329`                                             |
+| approving reviews                                        | **`0` — open gap**                                                       |
 
-**Making the repository public is rejected as the workaround** — see §0. It was done on
-2026-09-17 and is being reverted.
+`GET /branches/main` reports `"protected": true`. The contract now records
+`applied: true` and `rulesetId: 23581080`, so the verifier **pins its read to that id** rather
+than discovering the ruleset by name.
 
-> ### OWNER ACTION 2 — upgrade the plan, then protect the branch
+**The ruleset control for the website is GREEN.** Two others are not.
+
+### Visibility — OPEN
+
+**The repository is currently PUBLIC**, and that is not the target state. It was published so
+the ruleset could be created at all: GitHub Free serves rulesets on public repositories only.
+That is a temporary expedient, not a remedy — the repository holds proprietary marketing source
+and must end up private.
+
+`expectedVisibility` therefore stays `private`, and a live run **fails** with
+`repository.visibility`. That failure is correct and intended, and must not be silenced by
+changing the expectation; the certification suite asserts the expectation is `private` and that
+a public reading fails, so the escape hatch is closed by test rather than by convention.
+
+> ### OWNER ACTION 2 — plan, then privacy, then re-verify
 >
-> 1. **Upgrade the `lacreativodesign` account to GitHub Pro or higher.** Account-level billing;
->    only the owner can do it. It was not attempted here.
-> 2. **Confirm the repository is private**, then create the ruleset (the companion PR in
->    `bizosto-website` carries the exact payload and a workflow that verifies it):
->    - enforcement `active`, target `~DEFAULT_BRANCH`, no exclusions;
->    - deletion blocked; non-fast-forward blocked;
->    - pull request required; review conversation resolution required;
->    - strict required status checks;
->    - required check: **`Vercel` only, and only while that is still the live check this
->      repository produces** — it has no `.github` directory, so no Actions workflows and no
->      check runs. Re-confirm before pinning; never require a check it does not emit;
->    - merge-only unless live evidence justifies another method;
->    - **no bypass actors**;
->    - approving reviews stay at `0` until OWNER ACTION 1 is done for this repository.
+> 1. **Upgrade the account to GitHub Pro or higher.** Only the owner can do this.
+> 2. **Make `bizosto-website` private again.**
+> 3. **Re-verify that ruleset `23581080` survived the change** — read it; do not assume.
+>
+> Order matters: making the repository private while still on Free risks losing the protection,
+> because that plan refuses private-repository rulesets. The plan comes first.
 
-**Cross-repository access is not assumed.** A job token issued to the ERP repository cannot read
-a private `bizosto-website` — GitHub answers 404 — and a read that fails must never be reported
-as a certification. Each repository therefore verifies **itself**, from a workflow running inside
-it under its own job token: the ERP workflow runs `--repo=erp`, the companion workflow runs
-`--repo=website`. Neither holds a credential for the other, and neither can vouch for the other.
+### Independent review — OPEN
 
----
+Approving reviews remain `0` on the website too, for the same reason as §2: one collaborator,
+who authors every pull request. The two repositories share an owner but not an access list —
+**each needs its own second collaborator** before its count can go to `1`.
+
+### Cross-repository access is not assumed
+
+A job token issued to this repository cannot read a private `bizosto-website` — GitHub answers
+404 — and a read that fails must never be reported as a certification. Each repository verifies
+**itself**, from a workflow running inside it under its own job token: this one runs
+`--repo=erp`, the companion in `bizosto-website` runs `--repo=website`. Neither holds a
+credential for the other.
 
 ## 4. Public-exposure security audit
 
@@ -320,10 +344,10 @@ Files restored after the battery and verified by SHA-256:
 
 | File                                                    | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `scripts/verify-github-main-protection.mjs`             | `d88ad89868ee8bd9e6948fc9e5710d6b7f6423beded8804128b3a0dd63cdc4f9` |
+| `scripts/verify-github-main-protection.mjs`             | `3faa21a04517c55b9dbbc33aac4c238754919a8e211faee60cf3c4bcf5a55a52` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
-| `docs/security/p0-06-main-protection.certified.json`    | `6e2ffc886394b7c051da67a2f6030e8848ffdf68f0e06cfbe6b8648bb4efd832` |
+| `docs/security/p0-06-main-protection.certified.json`    | `7aea06e5b340448d18c05f703fe4c6a80ebafd9284f6e8a1316d13634cdf92db` |
 
 ---
 

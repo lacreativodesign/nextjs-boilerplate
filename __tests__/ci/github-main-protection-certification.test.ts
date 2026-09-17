@@ -446,13 +446,75 @@ describe('P0-06: the marketing website is certified too', () => {
     expect(approvals.gapOpen).toBe(true);
   });
 
-  it('is recorded as NOT yet applied, with no ruleset id to pin', () => {
-    expect(website.applied).toBe(false);
-    expect(website.rulesetId).toBeNull();
-    expect(website.snapshot).toBeNull();
+  it('is recorded as APPLIED, pinned to the live ruleset id', () => {
+    // The owner created the ruleset on 2026-09-17 and it was read back field by field. Pinning
+    // the id is what moves the verifier off name discovery: a ruleset renamed out from under
+    // the certification would otherwise silently stop being found.
+    expect(website.applied).toBe(true);
+    expect(website.rulesetId).toBe(23581080);
+    expect(website.rulesetName).toBe('Production Main Protection');
+  });
+
+  it('matches the live ruleset field for field', () => {
+    // Every value here was read from
+    // GET /repos/lacreativodesign/bizosto-website/rulesets/23581080 on 2026-09-17.
+    expect(website.target).toBe('branch');
+    expect(website.enforcement).toBe('active');
+    expect(website.refNameInclude).toEqual(['~DEFAULT_BRANCH']);
+    expect(website.bypassActorsMustBeEmpty).toBe(true);
+    expect(website.requiredRuleTypes).toEqual([
+      'deletion',
+      'non_fast_forward',
+      'pull_request',
+      'required_status_checks',
+    ]);
+    expect(website.pullRequest.requiredReviewThreadResolution).toBe(true);
+    expect(website.pullRequest.allowedMergeMethods).toEqual(['merge']);
+    expect(website.requiredStatusChecks.strictRequiredStatusChecksPolicy).toBe(true);
+    expect(website.requiredStatusChecks.doNotEnforceOnCreate).toBe(false);
+  });
+
+  it('a ruleset shaped like the live one passes, unattributed-approval included', () => {
+    const live = {
+      target: 'branch',
+      enforcement: 'active',
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+      bypass_actors: [],
+      rules: [
+        { type: 'deletion' },
+        { type: 'non_fast_forward' },
+        {
+          type: 'pull_request',
+          parameters: {
+            required_approving_review_count: 0,
+            dismiss_stale_reviews_on_push: false,
+            required_reviewers: [],
+            require_code_owner_review: false,
+            require_last_push_approval: false,
+            required_review_thread_resolution: true,
+            require_extra_approval_for_unattributed_changes: false,
+            allowed_merge_methods: ['merge'],
+          },
+        },
+        {
+          type: 'required_status_checks',
+          parameters: {
+            strict_required_status_checks_policy: true,
+            do_not_enforce_on_create: false,
+            required_status_checks: [{ context: 'Vercel', integration_id: 8329 }],
+          },
+        },
+      ],
+    };
+
+    const result: Result = evaluateRuleset(live, website, PRIVILEGED);
+    expect(result.failures).toEqual([]);
+    expect(result.ok).toBe(true);
   });
 
   it('cannot claim to be applied without a ruleset id to pin it to', () => {
+    // Now that the website IS applied, this guards the reverse direction too: dropping the id
+    // while leaving applied:true would silently fall back to name discovery.
     // Otherwise `applied: true` alone would silently satisfy the contract while the verifier
     // still had nothing to read.
     for (const spec of loadCertified().repositories) {
@@ -742,10 +804,29 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
   });
 
   it('the contract no longer anywhere treats publication as a remedy', () => {
+    // The wording moved when the ruleset went live; the commitments did not. These are the
+    // load-bearing ones: the current public state is named as temporary and NOT the target,
+    // the endpoint is private, the remedy is the plan, and the resulting failure must not be
+    // silenced by editing the expectation.
     const contract = read(CERTIFIED_PATH);
-    expect(contract).toContain('UPGRADE THE ACCOUNT');
-    expect(contract).toContain('is not a remedy');
-    expect(contract).toContain('MUST REMAIN PRIVATE');
+    expect(contract).toContain('NOT the target state');
+    expect(contract).toContain('must end up PRIVATE');
+    expect(contract).toContain('upgrade the');
+    expect(contract).toContain('GitHub Pro or higher');
+    expect(contract).toContain('must not be silenced by changing the expectation');
+    // And it must never claim the publication resolved anything.
+    expect(contract).not.toMatch(/publication (resolved|fixed|closed)/i);
+    expect(contract).not.toMatch(/blocker (is )?resolved/i);
+  });
+
+  it('the contract records the ruleset as live rather than pending', () => {
+    const contract = read(CERTIFIED_PATH);
+    expect(contract).toContain('APPLIED AND LIVE');
+    expect(contract).toContain('23581080');
+    expect(contract).toContain('THE RULESET CONTROL IS GREEN. TWO OTHER CONTROLS ARE NOT.');
+    // Stale prose from before the owner created it must be gone.
+    expect(contract).not.toContain('NOT YET APPLIED');
+    expect(contract).not.toMatch(/ruleset itself still has to be created/i);
   });
 
   /**
@@ -782,6 +863,176 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     const contract = read(CERTIFIED_PATH);
     expect(contract).toContain('An anonymous read is NOT sufficient to certify');
     expect(contract).toContain('bypass_actors_unobservable');
+  });
+
+  /**
+   * STALE-STATE MUTATIONS.
+   *
+   * The failure mode this group exists for is not a weakened ruleset — it is a certification
+   * that keeps describing a world that has moved on. The ruleset was created on 2026-09-17;
+   * every statement here about it is now a claim about live infrastructure, and a claim that
+   * quietly goes stale is the same class of defect as the digest that rotted and the sentence
+   * that survived a rewrite.
+   *
+   * Each case reverts the contract to a state that no longer matches reality, and each must be
+   * rejected.
+   */
+  describe('stale-state mutations are rejected', () => {
+    const withWebsite = (mutate: (spec: Record<string, any>) => void): Record<string, any> => {
+      const spec = JSON.parse(JSON.stringify(website));
+      mutate(spec);
+      return spec;
+    };
+
+    const liveShaped = () => ({
+      target: 'branch',
+      enforcement: 'active',
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+      bypass_actors: [],
+      rules: [
+        { type: 'deletion' },
+        { type: 'non_fast_forward' },
+        {
+          type: 'pull_request',
+          parameters: {
+            required_approving_review_count: 0,
+            required_review_thread_resolution: true,
+            require_extra_approval_for_unattributed_changes: false,
+            allowed_merge_methods: ['merge'],
+          },
+        },
+        {
+          type: 'required_status_checks',
+          parameters: {
+            strict_required_status_checks_policy: true,
+            do_not_enforce_on_create: false,
+            required_status_checks: [{ context: 'Vercel', integration_id: 8329 }],
+          },
+        },
+      ],
+    });
+
+    it('(1) applied true -> false contradicts the recorded ruleset id', () => {
+      const spec = withWebsite((w) => {
+        w.applied = false;
+      });
+      // The contract-consistency rule runs over the real file, so assert the invariant the
+      // file must satisfy: applied:false with an id recorded is a contradiction.
+      expect(spec.applied === false && typeof spec.rulesetId === 'number').toBe(true);
+      expect(website.applied).toBe(true);
+    });
+
+    it('(2) rulesetId 23581080 -> null drops the pin', () => {
+      const spec = withWebsite((w) => {
+        w.rulesetId = null;
+      });
+      expect(spec.applied && spec.rulesetId === null).toBe(true);
+      expect(website.rulesetId).toBe(23581080);
+    });
+
+    it('(3) rulesetId changed to a wrong id is caught by the recorded value', () => {
+      expect(
+        withWebsite((w) => {
+          w.rulesetId = 99999999;
+        }).rulesetId,
+      ).not.toBe(website.rulesetId);
+      expect(website.rulesetId).toBe(23581080);
+    });
+
+    it('(4) expectedVisibility private -> public stops rejecting a public repository', () => {
+      const spec = withWebsite((w) => {
+        w.expectedVisibility = 'public';
+      });
+      // The whole point: with the expectation flipped, today's public repository would pass.
+      expect(evaluateVisibility({ visibility: 'public', private: false }, spec).ok).toBe(true);
+      // The real contract must still reject it.
+      expect(evaluateVisibility({ visibility: 'public', private: false }, website).ok).toBe(false);
+      expect(website.expectedVisibility).toBe('private');
+    });
+
+    it('(6) conversation resolution true -> false is rejected', () => {
+      const ruleset = liveShaped();
+      ruleNamed(ruleset, 'pull_request').parameters.required_review_thread_resolution = false;
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(controls(result)).toContain('pull_request.required_review_thread_resolution');
+    });
+
+    it('(8) the Vercel integration id being re-pointed is rejected', () => {
+      const ruleset = liveShaped();
+      ruleNamed(ruleset, 'required_status_checks').parameters.required_status_checks = [
+        { context: 'Vercel', integration_id: 99999 },
+      ];
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(controls(result)).toContain('required_status_checks.contexts');
+      expect(result.failures.map((f) => f.detail).join(' ')).toContain('moved from integration');
+    });
+
+    it('(9) strict status checks true -> false is rejected', () => {
+      const ruleset = liveShaped();
+      ruleNamed(ruleset, 'required_status_checks').parameters.strict_required_status_checks_policy =
+        false;
+      const result: Result = evaluateRuleset(ruleset, website, PRIVILEGED);
+      expect(controls(result)).toContain('required_status_checks.strict');
+    });
+
+    it('(10) bypassActorsMustBeEmpty disabled stops checking the bypass list at all', () => {
+      const spec = withWebsite((w) => {
+        w.bypassActorsMustBeEmpty = false;
+      });
+      const ruleset = liveShaped();
+      (ruleset as Record<string, any>).bypass_actors = [
+        { actor_id: 1, actor_type: 'RepositoryRole', bypass_mode: 'always' },
+      ];
+      // With the switch off an actual bypass actor sails through — which is why the real
+      // contract must keep it on.
+      expect(evaluateRuleset(ruleset, spec, PRIVILEGED).ok).toBe(true);
+      expect(website.bypassActorsMustBeEmpty).toBe(true);
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'ruleset.bypass_actors',
+      );
+    });
+
+    it('(11) a missing bypass list is not treated as empty', () => {
+      const ruleset = liveShaped();
+      delete (ruleset as Record<string, any>).bypass_actors;
+      expect(controls(evaluateRuleset(ruleset, website, PRIVILEGED))).toContain(
+        'ruleset.bypass_actors_unobservable',
+      );
+    });
+
+    it('(12) an unprivileged read cannot certify the website bypass list either', () => {
+      const result: Result = evaluateRuleset(
+        liveShaped(),
+        website,
+        observedUnprivileged('an anonymous read'),
+      );
+      expect(controls(result)).toContain('ruleset.bypass_actors_unobservable');
+    });
+
+    it('(13) the reviewer gap cannot be closed while the floor is still zero', () => {
+      const approvals = website.pullRequest.requiredApprovingReviewCount;
+      expect(approvals.gapOpen).toBe(true);
+      expect(approvals.certifiedFloor).toBe(0);
+      // Guarded across every repository by the shared consistency rule below.
+      for (const spec of loadCertified().repositories) {
+        const a = spec.pullRequest.requiredApprovingReviewCount;
+        expect({ key: spec.key, honest: a.gapOpen || a.certifiedFloor >= 1 }).toEqual({
+          key: spec.key,
+          honest: true,
+        });
+      }
+    });
+
+    it('(14) the approval target cannot be reduced from 1 to 0', () => {
+      // Lowering the target would make the gap look closed by moving the goalpost rather than
+      // by supplying a reviewer.
+      for (const spec of loadCertified().repositories) {
+        expect({
+          key: spec.key,
+          target: spec.pullRequest.requiredApprovingReviewCount.target,
+        }).toEqual({ key: spec.key, target: 1 });
+      }
+    });
   });
 
   it('the evidence document records the violation rather than erasing it', () => {

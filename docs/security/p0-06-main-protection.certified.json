@@ -110,8 +110,8 @@
     {
       "key": "website",
       "repository": "lacreativodesign/bizosto-website",
-      "applied": false,
-      "rulesetId": null,
+      "applied": true,
+      "rulesetId": 23581080,
       "rulesetName": "Production Main Protection",
       "snapshot": null,
       "snapshotCapturedBy": null,
@@ -135,9 +135,20 @@
           "target": 1,
           "gapOpen": true,
           "$comment": [
-            "Same gap, same single account, same reason as the ERP entry above. The two",
-            "repositories share one owner, so supplying a reviewer for one does not supply one",
-            "for the other - each needs its own collaborator added before its count can go to 1."
+            "STILL OPEN, AND STILL DELIBERATE — the ruleset existing does not close this.",
+            "",
+            "The live ruleset now enforces everything else, but required_approving_review_count is",
+            "0 because this repository has exactly ONE account with any access, and that account",
+            "authors every pull request. GitHub does not let an author approve their own, so raising",
+            "the count to 1 would not add a review - it would stop anything merging.",
+            "",
+            "Closing it is a two-step owner action, in this order, never the second alone:",
+            "  1. grant a second human WRITE access to THIS repository (the ERP repository needs",
+            "     its own separate collaborator; they do not share one);",
+            "  2. set required_approving_review_count to 1 AND set certifiedFloor to 1 here.",
+            "",
+            "gapOpen keeps step 2 honest: the certification suite refuses to let it go false while",
+            "certifiedFloor is still 0, so the gap cannot be closed on paper alone."
           ]
         }
       },
@@ -149,42 +160,45 @@
             "context": "Vercel",
             "integrationId": 8329,
             "$comment": [
-              "The ONLY check this repository produces. It has no .github directory at all, so",
-              "there are no GitHub Actions workflows and no check runs - `Vercel` arrives as a",
-              "commit STATUS, and it was success on main at 83ae0648.",
+              "The only check REQUIRED on this repository, and deliberately so.",
               "",
-              "Requiring anything else here would block every merge forever. Integration id 8329",
-              "is the Vercel app: the same id is pinned on the ERP repository, where PR #1011",
-              "reached mergeable_state 'clean' with it, which is what proves the id is right for",
-              "this owner's Vercel integration rather than merely plausible."
+              "`Vercel` arrives as a commit STATUS rather than a check run, and it is the check this",
+              "repository actually produces for its deployments. The P0-06 certification workflow this",
+              "change adds also reports, but it is NOT required and must not become required: it reads",
+              "the live ruleset, so requiring it would let a broken ruleset block the pull request that",
+              "repairs it.",
+              "",
+              "Integration id 8329 is the Vercel app. The live ruleset was read on 2026-09-17 and",
+              "carries exactly this context and id."
             ]
           }
         ]
       },
       "$comment": [
-        "NOT YET APPLIED, AND THE REASON MATTERS.",
+        "APPLIED AND LIVE as of 2026-09-17: ruleset 23581080, verified by direct authenticated",
+        "read of GET /repos/lacreativodesign/bizosto-website/rulesets/23581080. Every field below",
+        "was confirmed against that response, including bypass_actors being explicitly present and",
+        "empty, and current_user_can_bypass being \"never\". It is the only ruleset on the",
+        "repository.",
         "",
-        "This repository MUST REMAIN PRIVATE. It holds proprietary Bizosto marketing source.",
+        "THE RULESET CONTROL IS GREEN. TWO OTHER CONTROLS ARE NOT.",
         "",
-        "GitHub Free serves rulesets on public repositories only; Pro, Team and Enterprise",
-        "serve them on private repositories too. So on the current plan a private",
-        "bizosto-website cannot carry a ruleset at all, and the API says so:",
-        "  403 \"Upgrade to GitHub Pro or make this repository public to enable this feature.\"",
+        "1. VISIBILITY — OPEN. This repository is currently PUBLIC. It was published so that the",
+        "   ruleset could be created at all: GitHub Free serves rulesets on public repositories",
+        "   only. That is a temporary expedient and NOT the target state. This repository holds",
+        "   proprietary Bizosto marketing source and must end up PRIVATE.",
         "",
-        "That error names two ways out and only ONE of them is acceptable. The correct owner",
-        "action is to UPGRADE THE ACCOUNT to GitHub Pro or higher. Publishing proprietary",
-        "source to obtain a security control is not a remedy, it is a larger exposure than the",
-        "one it closes, and P0-06 rejects it.",
+        "   expectedVisibility therefore stays \"private\", and the verifier reports the current",
+        "   public state as repository.visibility DRIFT. That failure is correct and intended; it",
+        "   must not be silenced by changing the expectation. The owner action is to upgrade the",
+        "   account to GitHub Pro or higher, make the repository private, and then re-verify that",
+        "   the ruleset survived the visibility change.",
         "",
-        "On 2026-09-17 the repository was briefly made public in an attempt to unblock this.",
-        "That was a policy violation, it is being reverted to private, and it is recorded here",
-        "rather than erased. `expectedVisibility` is now a checked control precisely so that a",
-        "repeat reads as DRIFT rather than as progress: see ruleset.visibility in the verifier.",
+        "2. INDEPENDENT REVIEW — OPEN. See requiredApprovingReviewCount above.",
         "",
-        "Because the repository is private, the ERP repository's job-scoped GITHUB_TOKEN cannot",
-        "read it. Its ruleset is therefore verified by a companion workflow running INSIDE",
-        "bizosto-website under its own job token, not from here. A cross-repository read that",
-        "fails must never be reported as a successful certification."
+        "Because rulesetId is now known, the verifier pins the read to that id rather than",
+        "discovering the ruleset by name. Name discovery remains only as the fallback for a",
+        "repository whose id has not been recorded yet."
       ]
     }
   ]

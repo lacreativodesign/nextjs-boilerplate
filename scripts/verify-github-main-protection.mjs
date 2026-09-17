@@ -163,7 +163,7 @@ const describeUnobservable = (present, actors) => {
  * assumed to be the expected one.
  *
  * @param {{ visibility?: string, private?: boolean } | null} repo
- * @param {{ repository: string, expectedVisibility: string, visibilityIsGovernanceFinding?: boolean }} certified
+ * @param {Record<string, any>} certified
  * @returns {{ ok: boolean, failures: Array<{control: string, detail: string}>, notices: Array<{control: string, detail: string}> }}
  */
 export function evaluateVisibility(repo, certified) {
