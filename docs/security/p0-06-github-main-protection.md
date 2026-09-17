@@ -1,13 +1,16 @@
 # P0-06 — GitHub main branch protection, review and required-check certification
 
-**Status: TECHNICALLY CERTIFIED — OWNER PLATFORM ACTION REMAINS**
+**Status: TECHNICALLY CERTIFIED — OWNER ACTION REMAINS**
 
-Two things are true at once and this document keeps them apart on purpose:
+Three things are true at once and this document keeps them apart on purpose:
 
 - every protection that can be enforced on `lacreativodesign/nextjs-boilerplate` today **is**
   enforced, verified live rather than assumed, and is now guarded against silent drift;
-- **independent human review is not enforceable on either repository yet**, and the Bizosto
-  marketing site cannot be protected at all on the current GitHub plan.
+- **`lacreativodesign/bizosto-website` is still unprotected.** The platform blocker that
+  prevented it is gone — the owner made the repository public on 2026-09-17 — but the ruleset
+  itself has not been created yet, and creating it is the one remaining owner action;
+- **independent human review is not enforceable on either repository**, because both are
+  owned by a single account that authors every pull request.
 
 "A pull request is required" and "somebody other than the author reviewed it" are different
 claims. P0-06 asks for both. Only the first is currently true, and nothing in this repository
@@ -116,51 +119,116 @@ both would cause the same lockout if set early:
 
 ---
 
-## 3. The marketing website cannot be protected on the current plan
+## 3. The marketing website — blocker lifted, ruleset still to create
 
-`lacreativodesign/bizosto-website` is **private**, default branch `main`, head `83ae0648`.
+`lacreativodesign/bizosto-website` is now **public**, default branch `main`, head `83ae0648`.
 
-Read live, twice, on two different endpoints:
+### What changed, and what it cost
+
+Until 2026-09-17 this repository was private, and the rulesets API refused outright:
 
 ```
 GET /repos/lacreativodesign/bizosto-website/rulesets
 → HTTP 403
   "Upgrade to GitHub Pro or make this repository public to enable this feature."
-
-GET /repos/lacreativodesign/bizosto-website/branches/main
-→ "protected": false
 ```
 
-This is a **platform/billing limitation, not a code defect and not a misconfiguration.**
-GitHub Free supports rulesets and protected branches on _public_ repositories only, which is
-exactly why the ERP repository can be protected and this one cannot. Nothing in either
-repository can change that.
+GitHub Free serves rulesets on _public_ repositories only, which is why the ERP repository
+could be protected and this one could not. P0-06 originally named two ways out — upgrade the
+account, or make the repository public — and **explicitly rejected the second**, because it
+publishes proprietary marketing source and, more to the point, its entire git history.
 
-**Making the repository public is rejected as a workaround.** Bizosto's marketing site source
-is proprietary, and trading source confidentiality for a branch protection setting is not a
-trade this certification will make. Repository visibility was not altered.
+**The owner chose to make the repository public.** That is their decision and it is recorded
+here rather than glossed over, because it has consequences the certification should not lose:
 
-### OWNER ACTION — website protection
+- the repository has been public since 2026-09-17 and its history dates to 2026-01-08;
+- **every commit ever made to it is now readable by anyone**, including anything credential-shaped
+  that was ever committed and later removed — deleting a secret in a later commit does not
+  remove it from history;
+- GitHub enables secret scanning automatically and free on public repositories. The Security
+  tab should be checked, and **any credential found there must be rotated, not just deleted**.
 
-1. **Upgrade the `lacreativodesign` GitHub account to GitHub Pro or higher.** This is an
-   account-level billing change and only the account owner can make it. It was not attempted.
-2. Once upgraded, protect `bizosto-website` `main` equivalently to its real CI:
-   - pull request required;
-   - deletion blocked;
-   - force pushes blocked;
-   - review conversation resolution required;
-   - required status check: **`Vercel`** — that is the _only_ check that reports on this
-     repository. It has no `.github` directory and therefore no GitHub Actions workflows at
-     all; `Vercel` posts as a commit status and was `success` on `main` at `83ae0648`. Do not
-     require a check this repository does not produce;
-   - approving reviews: `1` **only once an independent reviewer exists**, for the same reason
-     as section 2 — the same single account owns both repositories;
-   - no bypass actors.
+The API now confirms the capability is available:
 
-Until step 1 happens, **P0-06 cannot be fully closed**, and this document should not be edited
-to say otherwise.
+```
+GET /repos/lacreativodesign/bizosto-website/rulesets
+→ HTTP 200
+  []
+```
 
----
+`[]` — the capability exists, and no ruleset has been created yet. `GET /branches/main` still
+reports `"protected": false`.
+
+### Why this was not applied automatically
+
+The session that produced this certification cannot write it. Repository-ruleset writes are
+refused at the agent proxy, before the request reaches GitHub:
+
+```
+POST /repos/lacreativodesign/bizosto-website/rulesets
+→ HTTP 403
+  "Write access to this GitHub API path is not permitted through this proxy."
+  documentation_url: https://docs.anthropic.com/en/docs/claude-code/github-actions
+```
+
+Note the `docs.anthropic.com` URL: this is a sandbox restriction, **not** a GitHub permission
+problem and **not** the plan limit above. The same refusal applies to the ERP repository, which
+is the second reason nothing in §1 was modified.
+
+> ### OWNER ACTION — create the website ruleset
+>
+> One call, with a token carrying `administration: write` on the repository. It mirrors the
+> ERP ruleset exactly, except that it requires only `Vercel`:
+>
+> ```bash
+> curl -X POST \
+>   -H "Authorization: Bearer $GITHUB_TOKEN" \
+>   -H "Accept: application/vnd.github+json" \
+>   -H "Content-Type: application/json" \
+>   -H "X-GitHub-Api-Version: 2022-11-28" \
+>   https://api.github.com/repos/lacreativodesign/bizosto-website/rulesets \
+>   -d '{
+>     "name": "Production Main Protection",
+>     "target": "branch",
+>     "enforcement": "active",
+>     "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+>     "bypass_actors": [],
+>     "rules": [
+>       { "type": "deletion" },
+>       { "type": "non_fast_forward" },
+>       { "type": "pull_request", "parameters": {
+>           "required_approving_review_count": 0,
+>           "dismiss_stale_reviews_on_push": false,
+>           "require_code_owner_review": false,
+>           "require_last_push_approval": false,
+>           "required_review_thread_resolution": true,
+>           "allowed_merge_methods": ["merge"] } },
+>       { "type": "required_status_checks", "parameters": {
+>           "strict_required_status_checks_policy": true,
+>           "do_not_enforce_on_create": false,
+>           "required_status_checks": [{ "context": "Vercel", "integration_id": 8329 }] } }
+>     ]
+>   }'
+> ```
+>
+> Then record it: put the returned `id` into `rulesetId` and set `applied: true` for the
+> `website` entry in
+> [`p0-06-main-protection.certified.json`](./p0-06-main-protection.certified.json). The
+> verifier finds the ruleset by name until then, so protection takes effect immediately and
+> recording it merely pins it.
+
+**`Vercel` is the only check that may be required here.** The repository has **no `.github`
+directory at all** — no Actions workflows, zero check runs. `Vercel` arrives as a commit
+status and was `success` on `main` at `83ae0648`. Requiring anything else would block every
+merge forever.
+
+Integration id `8329` is the Vercel app. The same id is pinned on the ERP repository, where
+PR #1011 reached `mergeable_state: clean` with it — which is what proves the id is right for
+this owner's Vercel integration rather than merely plausible.
+
+**Approving reviews stay at `0` here too.** The two repositories share one owner; granting a
+reviewer on the ERP repository does not grant one here. Each needs its own collaborator added
+before its count can go to 1, for exactly the reason in §2.
 
 ## 4. How this stops drifting silently
 
@@ -172,8 +240,8 @@ Three pieces, split so that detection can never block repair:
 
 | Piece                                                                                          | Runs                   | Blocking?       | What it proves                                     |
 | ---------------------------------------------------------------------------------------------- | ---------------------- | --------------- | -------------------------------------------------- |
-| [`p0-06-main-protection.certified.json`](./p0-06-main-protection.certified.json)               | —                      | —               | the contract: what must remain true, as data       |
-| [`scripts/verify-github-main-protection.mjs`](../../scripts/verify-github-main-protection.mjs) | live + offline         | exit 1 on drift | the live ruleset still satisfies the contract      |
+| [`p0-06-main-protection.certified.json`](./p0-06-main-protection.certified.json)               | —                      | —               | the contract for **both** repositories, as data    |
+| [`scripts/verify-github-main-protection.mjs`](../../scripts/verify-github-main-protection.mjs) | live + offline         | exit 1 on drift | both live rulesets still satisfy the contract      |
 | `__tests__/ci/github-main-protection-certification.test.ts`                                    | `npm test` → `quality` | **yes**         | the evaluator rejects every weakening, by mutation |
 | `.github/workflows/github-protection-certification.yml`                                        | daily + on demand      | no, by design   | the _live_ ruleset, re-read on a schedule          |
 
@@ -195,6 +263,34 @@ personal access token is created, stored or required; a long-lived PAT with
 `administration: read` would be a worse posture than the drift it detects. The token is never
 printed, never interpolated into a URL and never included in an error message, and the
 certification suite asserts all three.
+
+### Both repositories, and what happens before the website ruleset exists
+
+The verifier walks every entry in the contract. The ERP entry pins a ruleset id and is fetched
+directly. The website entry has none yet, so the verifier lists that repository's rulesets and
+looks for a branch ruleset with the certified name — which means the check starts evaluating
+the real thing the moment the owner creates it, with no code change and no redeploy.
+
+Until then it **fails**, naming the repository and saying the certified protection has not been
+applied. That is deliberate and is not softened to a warning: an unprotected production branch
+is the thing P0-06 exists to prevent, and the check that reports it should be red until it is
+fixed. It cannot block anyone, because the live half is not a required check.
+
+So today `node scripts/verify-github-main-protection.mjs` exits **1**, with exactly one failure:
+
+```
+P0-06 main protection — lacreativodesign/nextjs-boilerplate — read from live
+  NOTICE  pull_request.required_approving_review_count: OPEN P0-06 GAP ...
+  OK      every certified invariant still holds.
+P0-06 main protection — lacreativodesign/bizosto-website — read from live
+  FAIL    ruleset.applied: no branch ruleset named "Production Main Protection" exists ...
+```
+
+The offline half (`--snapshot`, the one inside the required `quality` gate) skips the website,
+because there is no snapshot to check it against, and says so rather than reporting a silent
+pass. What it _does_ check offline is that the contract the owner is being asked to satisfy is
+actually satisfiable: a ruleset built to the website spec is run through the evaluator and must
+pass, and a weakened version of it must fail.
 
 ### The mutations that prove it has teeth
 
@@ -274,14 +370,23 @@ the suite green — and a `schedule:` block with no cron entry never fires. The 
 matches the cron expression itself and requires all five fields, which kills both the deletion
 and a corrupted four-field expression.
 
-**33 mutants applied, 33 killed, 0 survivors.** All three files were restored afterwards and
-verified by SHA-256, identical before and after the battery. Measured at commit `95803a3`:
+An eighth group covers the contract, now that it describes two repositories: claiming the
+website is `applied` with no ruleset id to pin it to, requiring a check the website does not
+produce, re-pointing its Vercel integration id, dropping its bypass-actor requirement,
+declaring the ERP approval gap closed while the enforced floor is still zero, and letting
+ruleset discovery accept a tag ruleset in place of a branch one.
+
+**33 mutants applied, 33 killed, 0 survivors** — re-run in full after the contract was
+restructured to cover both repositories. All four files were restored afterwards and verified
+by SHA-256, identical before and after the battery, and the suite now checks these digests
+rather than merely asserting them:
 
 | File                                                    | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `scripts/verify-github-main-protection.mjs`             | `eb97208314787dd45714127f667a342ed41770d86cb9dc12673ee03534529fa2` |
+| `scripts/verify-github-main-protection.mjs`             | `f3b2b3190eef037cca4dffec014527d706f9836f839374087dab917ff52a7b90` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `171b85cf026d9806df45a39dce5287218fa0ec28b02bcd90f7ce97b1de82970d` |
+| `docs/security/p0-06-main-protection.certified.json`    | `b7ce54e64a15397334a1c314b266d5c4f66ca2543d0a5a6f58869f4fb3f98f66` |
 
 ---
 

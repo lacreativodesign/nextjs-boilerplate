@@ -83,6 +83,13 @@ export const readJson = (relative, root = REPO_ROOT) =>
 export const loadCertified = (root = REPO_ROOT) => readJson(CERTIFIED_PATH, root);
 export const loadSnapshot = (root = REPO_ROOT) => readJson(SNAPSHOT_PATH, root);
 
+/** The certified spec for one repository, by its `key` ("erp", "website"). */
+export const certifiedFor = (key, root = REPO_ROOT) => {
+  const spec = loadCertified(root).repositories.find((entry) => entry.key === key);
+  if (!spec) throw new Error(`no certified repository with key "${key}" in ${CERTIFIED_PATH}`);
+  return spec;
+};
+
 const ruleOfType = (ruleset, type) =>
   (Array.isArray(ruleset?.rules) ? ruleset.rules : []).find((rule) => rule?.type === type);
 
@@ -270,15 +277,26 @@ const redactUrl = (repository, rulesetId) =>
  */
 
 /**
- * @param {Record<string, any>} certified
+ * @param {{ repository: string, rulesetId: number | null }} spec
  * @param {{ fetchImpl?: RulesetFetch }} [options]
  * @returns {Promise<Record<string, any>>}
  */
 export async function fetchLiveRuleset(
-  certified,
+  spec,
   { fetchImpl = /** @type {RulesetFetch} */ (globalThis.fetch) } = {},
 ) {
-  const url = redactUrl(certified.repository, certified.rulesetId);
+  return fetchJson(redactUrl(spec.repository, spec.rulesetId), fetchImpl);
+}
+
+/**
+ * One authenticated-then-anonymous GET. The token, if any, reaches an Authorization header
+ * and nowhere else; see the note at the top of this file.
+ *
+ * @param {string} url
+ * @param {RulesetFetch} fetchImpl
+ * @returns {Promise<any>}
+ */
+async function fetchJson(url, fetchImpl) {
   const baseHeaders = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
@@ -315,6 +333,33 @@ export async function fetchLiveRuleset(
   );
 }
 
+/**
+ * Find the certified ruleset on a repository that has none recorded yet.
+ *
+ * A repository with `applied: false` is an open gap, but it is one the owner closes outside
+ * this repository, and the moment they do the check should start evaluating the real thing
+ * rather than continuing to report it missing. So rather than hard-failing on a null
+ * rulesetId, look for a branch ruleset with the certified name and evaluate that.
+ *
+ * @param {{ repository: string, rulesetName: string }} spec
+ * @param {{ fetchImpl?: RulesetFetch }} [options]
+ * @returns {Promise<Record<string, any> | null>}
+ */
+export async function discoverLiveRuleset(
+  spec,
+  { fetchImpl = /** @type {RulesetFetch} */ (globalThis.fetch) } = {},
+) {
+  const listed = await fetchJson(
+    `https://api.github.com/repos/${spec.repository}/rulesets`,
+    fetchImpl,
+  );
+  const match = (Array.isArray(listed) ? listed : []).find(
+    (entry) => entry?.name === spec.rulesetName && entry?.target === 'branch',
+  );
+  if (!match) return null;
+  return fetchLiveRuleset({ repository: spec.repository, rulesetId: match.id }, { fetchImpl });
+}
+
 // ---------------------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------------------
@@ -328,40 +373,113 @@ if (invokedDirectly) {
   const asJson = argv.has('--json');
   const offline = argv.has('--snapshot');
 
-  const certified = loadCertified();
-
   const run = async () => {
-    const ruleset = offline ? loadSnapshot() : await fetchLiveRuleset(certified);
-    const result = evaluateRuleset(ruleset, certified);
+    const results = [];
+
+    for (const spec of loadCertified().repositories) {
+      // Offline mode can only speak for repositories that have a committed snapshot.
+      if (offline && !spec.snapshot) {
+        results.push({
+          repository: spec.repository,
+          source: 'none',
+          ok: true,
+          skipped: 'no snapshot recorded; run without --snapshot to check it live',
+          failures: [],
+          notices: [],
+        });
+        continue;
+      }
+
+      let ruleset = null;
+      let source = offline ? 'snapshot' : 'live';
+      try {
+        if (offline) {
+          ruleset = readJson(spec.snapshot);
+        } else if (spec.rulesetId) {
+          ruleset = await fetchLiveRuleset(spec);
+        } else {
+          // Not recorded yet — look for it anyway, so the day the owner applies it this
+          // starts evaluating the real ruleset instead of reporting it missing forever.
+          ruleset = await discoverLiveRuleset(spec);
+        }
+      } catch (error) {
+        results.push({
+          repository: spec.repository,
+          source,
+          ok: false,
+          failures: [{ control: 'ruleset.read', detail: error.message }],
+          notices: [],
+        });
+        continue;
+      }
+
+      if (!ruleset && !spec.applied) {
+        // The honest reading of an open P0-06 gap: fail, and say exactly what is missing.
+        results.push({
+          repository: spec.repository,
+          source,
+          ok: false,
+          failures: [
+            {
+              control: 'ruleset.applied',
+              detail:
+                `no branch ruleset named "${spec.rulesetName}" exists on this repository. ` +
+                `The certified protection has NOT been applied yet — see the OWNER ACTION in ` +
+                `docs/security/p0-06-github-main-protection.md.`,
+            },
+          ],
+          notices: [],
+        });
+        continue;
+      }
+
+      const result = evaluateRuleset(ruleset, spec);
+      if (ruleset && !spec.applied) {
+        result.notices.push({
+          control: 'ruleset.applied',
+          detail:
+            `the certified ruleset now EXISTS on this repository. Record its id and set ` +
+            `applied:true in ${CERTIFIED_PATH} so it is pinned rather than discovered by name.`,
+        });
+      }
+      results.push({ repository: spec.repository, source, ...result });
+    }
+
+    const ok = results.every((result) => result.ok);
 
     if (asJson) {
-      process.stdout.write(
-        `${JSON.stringify({ source: offline ? 'snapshot' : 'live', ...result }, null, 2)}\n`,
-      );
+      process.stdout.write(`${JSON.stringify({ ok, results }, null, 2)}\n`);
     } else {
-      const source = offline ? `snapshot (${SNAPSHOT_PATH})` : `live GitHub API`;
-      console.log(`P0-06 main protection — ${certified.repository} — read from ${source}`);
-      console.log(`  ruleset ${certified.rulesetId} "${certified.rulesetName}"`);
-      for (const notice of result.notices) {
-        console.log(`  NOTICE  ${notice.control}: ${notice.detail}`);
-      }
-      if (result.ok) {
-        console.log('  OK      every certified invariant still holds.');
-      } else {
-        for (const failure of result.failures) {
-          console.error(`  FAIL    ${failure.control}: ${failure.detail}`);
+      for (const result of results) {
+        console.log(`P0-06 main protection — ${result.repository} — read from ${result.source}`);
+        if (result.skipped) {
+          console.log(`  SKIP    ${result.skipped}`);
+          continue;
         }
+        for (const notice of result.notices) {
+          console.log(`  NOTICE  ${notice.control}: ${notice.detail}`);
+        }
+        if (result.ok) {
+          console.log('  OK      every certified invariant still holds.');
+        } else {
+          for (const failure of result.failures) {
+            console.error(`  FAIL    ${failure.control}: ${failure.detail}`);
+          }
+        }
+      }
+      if (!ok) {
+        const broken = results.filter((result) => !result.ok).length;
         console.error(
-          `\n${result.failures.length} certified P0-06 invariant(s) no longer hold on the live ruleset.`,
+          `\n${broken} of ${results.length} certified repositories no longer guarantee P0-06.`,
         );
       }
     }
 
-    process.exitCode = result.ok ? 0 : 1;
+    process.exitCode = ok ? 0 : 1;
   };
 
   run().catch((error) => {
-    // `error` here can only carry the URL and an HTTP status; see fetchLiveRuleset.
+    // `error` here can only carry a URL and an HTTP status; see fetchJson.
     console.error(`P0-06 verifier could not complete: ${error.message}`);
     process.exitCode = 1;
   });

@@ -62,6 +62,8 @@ import * as path from 'path';
 import {
   CERTIFIED_PATH,
   SNAPSHOT_PATH,
+  certifiedFor,
+  discoverLiveRuleset,
   evaluateRuleset,
   fetchLiveRuleset,
   loadCertified,
@@ -77,7 +79,7 @@ const read = (relative: string): string =>
 const digest = (relative: string): string =>
   createHash('sha256').update(read(relative)).digest('hex');
 
-const certified = loadCertified();
+const certified = certifiedFor('erp');
 
 /** A fresh deep copy for every mutation, so no test can leak into another. */
 const clone = (): Record<string, any> => JSON.parse(JSON.stringify(loadSnapshot()));
@@ -365,7 +367,12 @@ describe('P0-06: the mutations were in memory only', () => {
       'pull_request',
       'required_status_checks',
     ]);
-    expect(JSON.parse(read(CERTIFIED_PATH)).rulesetId).toBe(22866162);
+    const contract = JSON.parse(read(CERTIFIED_PATH));
+    expect(contract.repositories.map((entry: { key: string }) => entry.key)).toEqual([
+      'erp',
+      'website',
+    ]);
+    expect(contract.repositories[0].rulesetId).toBe(22866162);
   });
 });
 
@@ -380,11 +387,189 @@ describe('P0-06: the mutations were in memory only', () => {
  * asserted. Editing any of these three files means re-running the battery and updating the
  * document, which is the intent.
  */
+/**
+ * The marketing site, added once the platform blocker lifted.
+ *
+ * P0-06 always asked for BOTH Bizosto main branches. The website was deferred only because
+ * GitHub Free refuses rulesets on private repositories and the API said so in as many words:
+ * "Upgrade to GitHub Pro or make this repository public to enable this feature." The owner
+ * made the repository public on 2026-09-17, which removed the blocker — so the certification
+ * now covers it, and the remaining gap is that the ruleset has not been created yet.
+ *
+ * That gap is recorded as `applied: false`, and the live verifier FAILS on it. It is not
+ * softened to a warning: an unprotected production branch is the thing P0-06 exists to
+ * prevent, and the check that reports it should be red until it is fixed. It cannot block a
+ * merge, because the live half is not a required check.
+ */
+describe('P0-06: the marketing website is certified too', () => {
+  const website = certifiedFor('website');
+
+  it('is the right repository, targeting its default branch, with no bypass', () => {
+    expect(website.repository).toBe('lacreativodesign/bizosto-website');
+    expect(website.target).toBe('branch');
+    expect(website.enforcement).toBe('active');
+    expect(website.refNameInclude).toEqual(['~DEFAULT_BRANCH']);
+    expect(website.bypassActorsMustBeEmpty).toBe(true);
+  });
+
+  it('requires the same four rules as the ERP repository', () => {
+    expect(website.requiredRuleTypes).toEqual(certified.requiredRuleTypes);
+  });
+
+  it('requires ONLY Vercel, because that is the only check it produces', () => {
+    // The repository has no .github directory at all, so there are no Actions workflows and
+    // no check runs. Requiring anything else would block every merge forever.
+    expect(website.requiredStatusChecks.contexts).toEqual([
+      { context: 'Vercel', integrationId: 8329 },
+    ]);
+    expect(website.requiredStatusChecks.strictRequiredStatusChecksPolicy).toBe(true);
+    expect(website.requiredStatusChecks.doNotEnforceOnCreate).toBe(false);
+  });
+
+  it('carries the same approval gap, because it has the same single owner', () => {
+    // Adding a reviewer to one repository does not add one to the other.
+    const approvals = website.pullRequest.requiredApprovingReviewCount;
+    expect(approvals.certifiedFloor).toBe(0);
+    expect(approvals.target).toBe(1);
+    expect(approvals.gapOpen).toBe(true);
+  });
+
+  it('is recorded as NOT yet applied, with no ruleset id to pin', () => {
+    expect(website.applied).toBe(false);
+    expect(website.rulesetId).toBeNull();
+    expect(website.snapshot).toBeNull();
+  });
+
+  it('cannot claim to be applied without a ruleset id to pin it to', () => {
+    // Otherwise `applied: true` alone would silently satisfy the contract while the verifier
+    // still had nothing to read.
+    for (const spec of loadCertified().repositories) {
+      expect({
+        key: spec.key,
+        consistent: !spec.applied || typeof spec.rulesetId === 'number',
+      }).toEqual({ key: spec.key, consistent: true });
+    }
+  });
+
+  it('the evidence document names the exact owner action that applies it', () => {
+    const doc = read('docs/security/p0-06-github-main-protection.md');
+    expect(doc).toContain('bizosto-website');
+    expect(doc).toContain('OWNER ACTION');
+    expect(doc).toMatch(/rulesets/);
+  });
+
+  it('a ruleset built to this contract would pass the evaluator', () => {
+    // Proves the contract is satisfiable — that what the owner is being asked to create is
+    // actually accepted by the checker, rather than a spec nothing can meet.
+    const proposed = {
+      target: 'branch',
+      enforcement: 'active',
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+      bypass_actors: [],
+      rules: [
+        { type: 'deletion' },
+        { type: 'non_fast_forward' },
+        {
+          type: 'pull_request',
+          parameters: {
+            required_approving_review_count: 0,
+            required_review_thread_resolution: true,
+            allowed_merge_methods: ['merge'],
+          },
+        },
+        {
+          type: 'required_status_checks',
+          parameters: {
+            strict_required_status_checks_policy: true,
+            do_not_enforce_on_create: false,
+            required_status_checks: [{ context: 'Vercel', integration_id: 8329 }],
+          },
+        },
+      ],
+    };
+
+    const result: Result = evaluateRuleset(proposed, website);
+    expect(result.failures).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('a weakened version of that ruleset would not', () => {
+    const weakened = {
+      target: 'branch',
+      enforcement: 'active',
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+      bypass_actors: [{ actor_id: 1, actor_type: 'RepositoryRole', bypass_mode: 'always' }],
+      rules: [
+        { type: 'deletion' },
+        {
+          type: 'pull_request',
+          parameters: {
+            required_approving_review_count: 0,
+            required_review_thread_resolution: false,
+            allowed_merge_methods: ['merge', 'squash'],
+          },
+        },
+      ],
+    };
+
+    const result: Result = evaluateRuleset(weakened, website);
+    expect(result.ok).toBe(false);
+    const failed = result.failures.map((failure) => failure.control);
+    expect(failed).toContain('ruleset.bypass_actors');
+    expect(failed).toContain('ruleset.rules');
+    expect(failed).toContain('pull_request.required_review_thread_resolution');
+    expect(failed).toContain('pull_request.allowed_merge_methods');
+  });
+});
+
+describe('P0-06: an unapplied repository is discovered, not assumed missing forever', () => {
+  const website = certifiedFor('website');
+
+  const listing = (entries: unknown[]) => ({ ok: true, status: 200, json: async () => entries });
+
+  it('returns null while no ruleset with the certified name exists', async () => {
+    const fetchImpl = jest.fn(async () => listing([]));
+    await expect(discoverLiveRuleset(website, { fetchImpl })).resolves.toBeNull();
+  });
+
+  it('ignores a ruleset that merely targets tags', async () => {
+    const fetchImpl = jest.fn(async () =>
+      listing([{ id: 1, name: 'Production Main Protection', target: 'tag' }]),
+    );
+    await expect(discoverLiveRuleset(website, { fetchImpl })).resolves.toBeNull();
+  });
+
+  it('finds and fetches the ruleset once the owner creates it', async () => {
+    const fetchImpl = jest.fn(async (url: string) => {
+      if (url.endsWith('/rulesets')) {
+        return listing([
+          { id: 77, name: 'Someone else', target: 'branch' },
+          { id: 99, name: 'Production Main Protection', target: 'branch' },
+        ]);
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 99, name: 'Production Main Protection' }),
+      };
+    });
+
+    await expect(discoverLiveRuleset(website, { fetchImpl })).resolves.toEqual({
+      id: 99,
+      name: 'Production Main Protection',
+    });
+    // It must fetch the FULL ruleset: the list endpoint carries no rules or bypass actors,
+    // so evaluating the listing entry would certify nothing at all.
+    expect(fetchImpl.mock.calls[1][0]).toContain('/rulesets/99');
+  });
+});
+
 describe('P0-06: the recorded restore digests are still true', () => {
   it.each([
     'scripts/verify-github-main-protection.mjs',
     'docs/security/p0-06-erp-main-ruleset.snapshot.json',
     '.github/workflows/github-protection-certification.yml',
+    'docs/security/p0-06-main-protection.certified.json',
   ])('%s matches the SHA-256 recorded in the evidence document', (relative) => {
     const evidence = read('docs/security/p0-06-github-main-protection.md');
     const row = evidence
@@ -456,7 +641,7 @@ describe('P0-06: the drift check cannot lock main, and cannot leak a token', () 
   });
 
   it('fails closed: a failure sets a non-zero exit code', () => {
-    expect(script).toContain('process.exitCode = result.ok ? 0 : 1;');
+    expect(script).toContain('process.exitCode = ok ? 0 : 1;');
     expect(script).toContain('process.exitCode = 1;');
   });
 
@@ -516,7 +701,7 @@ describe('P0-06: the drift check cannot lock main, and cannot leak a token', () 
  */
 describe('P0-06: the live read handles credentials without leaking them', () => {
   const SECRET = 'ghp_thisIsNotARealTokenAAAAAAAAAAAAAAAAAA';
-  const certified = loadCertified();
+  const certified = certifiedFor('erp');
   const EXPECTED_URL =
     'https://api.github.com/repos/lacreativodesign/nextjs-boilerplate/rulesets/22866162';
 

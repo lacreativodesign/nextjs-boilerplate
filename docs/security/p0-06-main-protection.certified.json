@@ -1,81 +1,163 @@
 {
   "$comment": [
-    "P0-06 — the certified main-branch protection contract for the Bizosto ERP repository.",
+    "P0-06 — the certified main-branch protection contract for BOTH Bizosto repositories.",
     "",
     "This file is the machine-readable half of docs/security/p0-06-github-main-protection.md.",
-    "scripts/verify-github-main-protection.mjs reads it and fails closed when the LIVE GitHub",
+    "scripts/verify-github-main-protection.mjs reads it and fails closed when a LIVE GitHub",
     "ruleset no longer guarantees what is recorded here.",
     "",
     "Every invariant below is DIRECTIONAL: the live configuration may be stronger than the",
     "record, never weaker. That is what makes the record a ratchet rather than a snapshot.",
     "",
-    "It holds no credential. Everything it describes is readable anonymously from the public",
-    "repository, which is why the drift check needs no personal access token."
+    "It holds no credential. Both repositories are public, so everything it describes is",
+    "readable anonymously, which is why the drift check needs no personal access token.",
+    "",
+    "`applied` is the one field that is not an invariant. It records whether the certified",
+    "protection EXISTS on that repository yet. A repository with applied:false is an open",
+    "P0-06 gap and the live verifier fails on it — which is the point. The verifier also",
+    "looks for a matching ruleset anyway, so the day the owner applies it the check starts",
+    "evaluating the real thing instead of just reporting it missing."
   ],
-  "repository": "lacreativodesign/nextjs-boilerplate",
-  "rulesetId": 22866162,
-  "rulesetName": "Production Main Protection",
-  "target": "branch",
-  "enforcement": "active",
-  "refNameInclude": ["~DEFAULT_BRANCH"],
-  "bypassActorsMustBeEmpty": true,
-  "requiredRuleTypes": ["deletion", "non_fast_forward", "pull_request", "required_status_checks"],
-  "pullRequest": {
-    "requiredReviewThreadResolution": true,
-    "allowedMergeMethods": ["merge"],
-    "requiredApprovingReviewCount": {
-      "certifiedFloor": 0,
-      "target": 1,
-      "gapOpen": true,
+  "repositories": [
+    {
+      "key": "erp",
+      "repository": "lacreativodesign/nextjs-boilerplate",
+      "applied": true,
+      "rulesetId": 22866162,
+      "rulesetName": "Production Main Protection",
+      "snapshot": "docs/security/p0-06-erp-main-ruleset.snapshot.json",
+      "target": "branch",
+      "enforcement": "active",
+      "refNameInclude": ["~DEFAULT_BRANCH"],
+      "bypassActorsMustBeEmpty": true,
+      "requiredRuleTypes": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request",
+        "required_status_checks"
+      ],
+      "pullRequest": {
+        "requiredReviewThreadResolution": true,
+        "allowedMergeMethods": ["merge"],
+        "requiredApprovingReviewCount": {
+          "certifiedFloor": 0,
+          "target": 1,
+          "gapOpen": true,
+          "$comment": [
+            "THIS IS AN OPEN P0-06 CONTROL GAP, AND IT IS DELIBERATE.",
+            "",
+            "The floor is the value the live ruleset may not drop below. The target is the value",
+            "P0-06 wants. They differ because the repository has exactly ONE account with any",
+            "access at all - lacreativodesign, the owner, admin - and that account is the author",
+            "of every pull request. GitHub does not let a pull request author approve their own",
+            "pull request, so raising the live count to 1 today would not add a review: it would",
+            "stop anything merging, including the pull request that would undo it.",
+            "",
+            "So the count stays 0 until an independent reviewer exists. Closing the gap is a",
+            "two-step owner action, in this order, never the second alone:",
+            "  1. grant a second human WRITE access to the repository;",
+            "  2. set required_approving_review_count to 1 AND set certifiedFloor to 1 here.",
+            "",
+            "gapOpen is what keeps step 2 honest. The certification test refuses to let gapOpen go",
+            "false while certifiedFloor is still 0, so the gap cannot be closed on paper alone."
+          ]
+        }
+      },
+      "requiredStatusChecks": {
+        "strictRequiredStatusChecksPolicy": true,
+        "doNotEnforceOnCreate": false,
+        "contexts": [
+          {
+            "context": "quality",
+            "integrationId": 15368,
+            "$comment": "GitHub Actions. The `quality` job in .github/workflows/test.yml."
+          },
+          {
+            "context": "SonarCloud Code Analysis",
+            "integrationId": 12526,
+            "$comment": "SonarQube Cloud app. Posts the real Sonar quality gate result."
+          },
+          {
+            "context": "sonar",
+            "integrationId": 15368,
+            "$comment": "GitHub Actions. The `sonar` job in .github/workflows/test.yml."
+          },
+          {
+            "context": "Vercel",
+            "integrationId": 8329,
+            "$comment": "Vercel app. Reports as a commit STATUS, not a check run."
+          }
+        ],
+        "$comment": [
+          "All four were confirmed reporting and green on main at 70a5403 before certification,",
+          "so none is a dead context that would silently block every future merge. Anything added",
+          "here must be verified the same way first."
+        ]
+      }
+    },
+    {
+      "key": "website",
+      "repository": "lacreativodesign/bizosto-website",
+      "applied": false,
+      "rulesetId": null,
+      "rulesetName": "Production Main Protection",
+      "snapshot": null,
+      "target": "branch",
+      "enforcement": "active",
+      "refNameInclude": ["~DEFAULT_BRANCH"],
+      "bypassActorsMustBeEmpty": true,
+      "requiredRuleTypes": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request",
+        "required_status_checks"
+      ],
+      "pullRequest": {
+        "requiredReviewThreadResolution": true,
+        "allowedMergeMethods": ["merge"],
+        "requiredApprovingReviewCount": {
+          "certifiedFloor": 0,
+          "target": 1,
+          "gapOpen": true,
+          "$comment": [
+            "Same gap, same single account, same reason as the ERP entry above. The two",
+            "repositories share one owner, so supplying a reviewer for one does not supply one",
+            "for the other - each needs its own collaborator added before its count can go to 1."
+          ]
+        }
+      },
+      "requiredStatusChecks": {
+        "strictRequiredStatusChecksPolicy": true,
+        "doNotEnforceOnCreate": false,
+        "contexts": [
+          {
+            "context": "Vercel",
+            "integrationId": 8329,
+            "$comment": [
+              "The ONLY check this repository produces. It has no .github directory at all, so",
+              "there are no GitHub Actions workflows and no check runs - `Vercel` arrives as a",
+              "commit STATUS, and it was success on main at 83ae0648.",
+              "",
+              "Requiring anything else here would block every merge forever. Integration id 8329",
+              "is the Vercel app: the same id is pinned on the ERP repository, where PR #1011",
+              "reached mergeable_state 'clean' with it, which is what proves the id is right for",
+              "this owner's Vercel integration rather than merely plausible."
+            ]
+          }
+        ]
+      },
       "$comment": [
-        "THIS IS THE ONE OPEN P0-06 CONTROL GAP, AND IT IS DELIBERATE.",
+        "NOT YET APPLIED. The repository was private until 2026-09-17, and GitHub Free serves",
+        "rulesets on public repositories only, so this protection could not exist. The owner",
+        "made the repository public, which removed that blocker - and note that this was the",
+        "workaround P0-06 had explicitly rejected, because it publishes proprietary marketing",
+        "source and its entire git history. That trade is the owner's to make and it has been",
+        "made; it is recorded here so the certification does not lose it.",
         "",
-        "The floor is the value the live ruleset may not drop below. The target is the value",
-        "P0-06 wants. They differ because on 2026-09-17 the repository had exactly ONE account",
-        "with any access at all - lacreativodesign, the owner, admin - and that account is the",
-        "author of every pull request. GitHub does not let a pull request author approve their",
-        "own pull request, so raising the live count to 1 today would not add a review: it would",
-        "make main permanently unmergeable, including for the pull request that would undo it.",
-        "",
-        "So the count stays 0 until an independent reviewer exists. Closing the gap is a two-step",
-        "owner action, in this order, never the second alone:",
-        "  1. grant a second human WRITE access to lacreativodesign/nextjs-boilerplate;",
-        "  2. set required_approving_review_count to 1 AND set certifiedFloor to 1 here.",
-        "",
-        "gapOpen is what keeps step 2 honest. The certification test refuses to let gapOpen go",
-        "false while certifiedFloor is still 0, so the gap cannot be closed on paper alone."
+        "The ruleset itself still has to be created by the owner: see OWNER ACTION in",
+        "docs/security/p0-06-github-main-protection.md for the exact call. Until then the live",
+        "verifier fails on this repository, which is the correct reading of an open P0-06 gap."
       ]
     }
-  },
-  "requiredStatusChecks": {
-    "strictRequiredStatusChecksPolicy": true,
-    "doNotEnforceOnCreate": false,
-    "contexts": [
-      {
-        "context": "quality",
-        "integrationId": 15368,
-        "$comment": "GitHub Actions. The `quality` job in .github/workflows/test.yml."
-      },
-      {
-        "context": "SonarCloud Code Analysis",
-        "integrationId": 12526,
-        "$comment": "SonarQube Cloud app. Posts the real Sonar quality gate result."
-      },
-      {
-        "context": "sonar",
-        "integrationId": 15368,
-        "$comment": "GitHub Actions. The `sonar` job in .github/workflows/test.yml."
-      },
-      {
-        "context": "Vercel",
-        "integrationId": 8329,
-        "$comment": "Vercel app. Reports as a commit STATUS, not a check run."
-      }
-    ],
-    "$comment": [
-      "All four were confirmed reporting and green on main at 70a5403 before certification, so",
-      "none of them is a dead context that would silently block every future merge. Anything",
-      "added here must be verified the same way first."
-    ]
-  }
+  ]
 }
