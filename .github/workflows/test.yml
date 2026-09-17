@@ -86,6 +86,32 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-bizosto
 
+      # P0-04 — Firebase Security Rules BEHAVIOURAL certification.
+      #
+      # __tests__/config/firestore-rules-guard.test.ts and storage-rules-guard.test.ts
+      # already run in `npm test` above, but both read the rulesets as TEXT. They catch a
+      # dangerous edit; they cannot answer what the ruleset DOES, and in Firebase Security
+      # Rules that is not a property of any single line — every matching `allow` is OR'd,
+      # and five match blocks overlap on every path in this product. So the only way to
+      # know that client-files/** really refuses super_admin, or that notifications really
+      # needs BOTH userId and tenantId to match, is to evaluate the real files.
+      #
+      # This step loads firestore.rules and storage.rules into disposable Firestore and
+      # Storage emulators and runs the full authorization matrix through Firebase's own
+      # rules runtime. It is blocking, has no continue-on-error, and the suites refuse to
+      # skip: without an emulator the harness throws instead of reporting green
+      # (__tests__/rules/helpers/emulator.ts). firebase.emulator.json is a separate,
+      # emulator-only config so the production bucket in firebase.json is never named
+      # here, and the project id is `demo-` prefixed, which makes firebase-tools refuse to
+      # reach any real Google service. No credential is used and nothing in
+      # la-creativo-erp or bizosto-staging is addressable from this job.
+      #
+      # firebase-tools is pinned to the same 13.35.1 as the three emulator steps above and
+      # as the production rules publisher in deploy-rules.yml, so the CLI that certifies
+      # the ruleset is the CLI that ships it.
+      - name: Firebase Security Rules behavioral certification (P0-04)
+        run: npm run test:rules
+
       - name: Build application
         run: npm run build
         env:

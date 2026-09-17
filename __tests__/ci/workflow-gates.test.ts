@@ -89,6 +89,11 @@ describe('DS-33: the workflow is parseable', () => {
       'npm run typecheck',
       'npm test',
       'TZ=Asia/Karachi npm test',
+      // P0-04: the Firebase Security Rules behavioural certification. Listed here as
+      // well as in __tests__/ci/firebase-rules-behavioral-gate.test.ts so that the
+      // repository's own definition of "the full quality gate" includes it, and a
+      // workflow edit that drops it fails more than one test.
+      'npm run test:rules',
       'npm run build',
       'npm run bundle:check',
       'npm run licenses:check',
