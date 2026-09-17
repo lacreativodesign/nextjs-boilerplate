@@ -3,8 +3,9 @@
 **Status: TECHNICALLY CERTIFIED (ERP) — OWNER ACTION REMAINS**
 
 This document was rewritten after independent review **rejected** the first version of this
-certification for two P0 defects. Both are recorded here rather than quietly fixed, because a
-certification that hides its own corrections is not evidence of anything.
+certification for two P0 defects. **Two more of the same class were then found by self-check**,
+one of them after CI had already gone green. All four are recorded here rather than quietly
+fixed, because a certification that hides its own corrections is not evidence of anything.
 
 |                             |                                                                       |
 | --------------------------- | --------------------------------------------------------------------- |
@@ -16,10 +17,12 @@ certification that hides its own corrections is not evidence of anything.
 | Website plan                | ⚠️ GitHub **Free**; **Pro or higher** needed for the private posture  |
 | Bypass-actor observability  | **was a false green**; now fails closed                               |
 | Website history secret scan | complete — **no credential exposed**                                  |
+| Defects recorded            | **4** — 2 rejected by review, 2 found by self-check                   |
+| Stale-prose guards          | asserted in both repositories, mutation-proven                        |
 
 ---
 
-## 0. What independent review rejected, and what changed
+## 0. Every defect found in this certification, and what changed
 
 ### Defect 1 — publishing the website was treated as a solution
 
@@ -80,6 +83,21 @@ actor was found":
 | `[]` with **no stated provenance** (the default) | **FAIL** — unobservable            |
 | one or more actors                               | **FAIL** — `ruleset.bypass_actors` |
 | `[]` from a **privileged authenticated** read    | **PASS**                           |
+
+**Proven on production data, not only on fixtures.** Both live rulesets were fetched and the
+exported `evaluateRuleset` was run over the real bytes, varying only the stated provenance:
+
+| Repository           | Read as                       | Result                                  |
+| -------------------- | ----------------------------- | --------------------------------------- |
+| `nextjs-boilerplate` | privileged authenticated      | **PASS**                                |
+| `nextjs-boilerplate` | **same bytes**, anonymous     | **FAIL** — `bypass_actors_unobservable` |
+| `nextjs-boilerplate` | **same bytes**, no provenance | **FAIL** — `bypass_actors_unobservable` |
+| `bizosto-website`    | privileged authenticated      | **PASS**                                |
+| `bizosto-website`    | **same bytes**, anonymous     | **FAIL** — `bypass_actors_unobservable` |
+
+Identical bytes, opposite verdicts. The invariant is therefore about the **read**, not about the
+payload — which is the whole correction, and it is not provable from a fixture that was written
+to pass.
 
 ### Defects 3 and 4 — the same class, found twice more, by self-check rather than review
 
