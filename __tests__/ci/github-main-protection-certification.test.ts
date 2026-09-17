@@ -910,6 +910,13 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     ['readable anonymously', /readable anonymously/i],
     ['needs no personal access token', /needs no personal access token/i],
     ['served anonymously for public', /served anonymously for public/i],
+    // A FOURTH sentence of the same class, found by diffing this repository's contract
+    // against the website's own copy rather than by review. The ERP contract still said
+    // "bizosto-website is PRIVATE and must stay that way", which asserts the very state
+    // expectedVisibility exists to demand and the verifier is currently FAILING on. The
+    // guard above did not catch it because none of its patterns covered this phrasing.
+    ['the website is already private', /bizosto-website is (currently )?private/i],
+    ['the website only needs to stay private', /is private and must stay that way/i],
   ])('no P0-06 artefact still claims %s', (_label, pattern) => {
     for (const artefact of [
       CERTIFIED_PATH,
@@ -922,6 +929,17 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
         matches: false,
       });
     }
+  });
+
+  it('the contract states the website is public TODAY and that private is the target', () => {
+    const contract = read(CERTIFIED_PATH);
+    // Not just "should be private" — the record has to name the state it is actually in,
+    // otherwise a reader cannot tell a satisfied control from an open one.
+    expect(contract).toContain('CURRENTLY PUBLIC');
+    expect(contract).toContain('certified target is PRIVATE');
+    // And the credential model must not be justified on either visibility, since the whole
+    // design exists so that the check survives the repository going private.
+    expect(contract).toContain('Neither visibility is what makes the drift check');
   });
 
   it('the contract states that an anonymous read cannot certify', () => {

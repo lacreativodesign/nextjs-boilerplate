@@ -81,6 +81,45 @@ actor was found":
 | one or more actors                               | **FAIL** — `ruleset.bypass_actors` |
 | `[]` from a **privileged authenticated** read    | **PASS**                           |
 
+### Defects 3 and 4 — the same class, found twice more, by self-check rather than review
+
+Neither was reported by independent review. Both are prose in a certification artefact that
+asserted a state contrary to live fact, and both are recorded because the pattern matters more
+than either instance: **prose does not fail a build, so a sentence can outlive the world it
+described.**
+
+**Defect 3.** After the contract was rewritten for a private website, one sentence survived from
+the old version. It stated that _both repositories were public_, that everything the contract
+describes was therefore _readable without authentication_, and that this was _the reason no
+personal access token was required_. Wrong three times over: it asserted the visibility the
+rewrite exists to forbid, it justified the credential model on unauthenticated reads — precisely
+the bypass false-green of Defect 2 — and it attributed the credential-light design to the wrong
+cause entirely.
+
+**Defect 4.** Found by diffing this repository's contract against the website's own copy — the
+two are deliberately separate files, and only one had been corrected. The ERP contract still
+asserted that the website **was already private** and merely had to remain so. The website is
+**public today**; `expectedVisibility` is `private` specifically so the verifier **fails** on
+that, and the record was simultaneously claiming the gap was already closed. The guard added for
+Defect 3 did not catch it because none of its patterns covered this phrasing — a guard is only as
+wide as its worst-case phrasing.
+
+**Fixed.** The contract now names the state it is actually in (`CURRENTLY PUBLIC`, with
+`certified target is PRIVATE`), and the credential model is explicitly justified on the
+run-inside-the-repository design rather than on either repository's visibility — so it survives
+the website going private, which is the whole point. Six asserted-absent patterns and one
+positive assertion now cover the class, and three mutants confirm each fires by name.
+
+Both are **described rather than quoted** above, deliberately. The guard scans this document
+too, and reproducing either sentence verbatim makes it fail — which is the guard working, not an
+inconvenience. Excluding this document from its own scan was the alternative and was rejected:
+prose is exactly where stale claims survive.
+
+**Why this keeps happening, and what actually stops it.** Every artefact here makes claims about
+live infrastructure, and live infrastructure moves. The only durable answer found in this work is
+to assert the prose: a claim worth making in a certification is a claim worth failing a build
+over. Where a statement could not be asserted, it was deleted instead.
+
 ---
 
 ## 1. What is actually configured on the ERP repository
@@ -373,6 +412,12 @@ The contract is **directional**, so a mutant adding a _third_ required check mus
 live configuration is allowed to be stronger than the record, never weaker. That case is
 asserted too, otherwise the ratchet would be a snapshot.
 
+**Prose guards** (3), added with Defect 4 and each killed by name rather than by the digest test
+alone: reinstating the claim that the website is already private, deleting the statement that
+private is the _target_, and re-justifying the credential model on repository visibility. All
+three also trip the digest check, so each was confirmed against the guard's own test name — the
+lesson from the mutant that once survived by failing under a neighbouring control's name.
+
 Three mutants survived earlier passes and the suite was strengthened rather than the result
 reported: required-check removal was indistinguishable from re-pointing; deleting the cron line
 left `schedule:` bare; and a recorded digest had already gone stale. Digests are now _checked_
@@ -385,7 +430,7 @@ Files restored after the battery and verified by SHA-256:
 | `scripts/verify-github-main-protection.mjs`             | `3faa21a04517c55b9dbbc33aac4c238754919a8e211faee60cf3c4bcf5a55a52` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
-| `docs/security/p0-06-main-protection.certified.json`    | `5b29fc30059e3c62d9d3fd964cb4aabebfe70c3c3515274948f2b447b32f73b2` |
+| `docs/security/p0-06-main-protection.certified.json`    | `1b6ddfacf38022764808be413c351819b301cb706f87b0efae8e418416b725a6` |
 
 ---
 
