@@ -30,10 +30,16 @@ name: Main Protection Certification
 #
 # CREDENTIALS
 #
-# None beyond the automatic, job-scoped GITHUB_TOKEN, which is used only for its higher rate
-# limit — the data is public either way, and the script retries anonymously if the token is
-# refused. No personal access token is stored or required, which is the point: a long-lived
-# PAT with `administration: read` would be a worse security posture than the drift it detects.
+# None beyond the automatic, job-scoped GITHUB_TOKEN. No personal access token is stored or
+# required: a long-lived `administration: read` PAT would be a worse security posture than the
+# drift it detects.
+#
+# The token is not merely a rate-limit convenience. `bypass_actors` — the field that decides
+# whether any other rule is enforceable — is served by GitHub only to callers with sufficient
+# access to the ruleset, so an anonymous read can come back WITHOUT it, and absent is not
+# empty. The verifier therefore refuses to certify that control from an unprivileged read
+# instead of defaulting it to "none". An earlier version defaulted it, which independent
+# review correctly rejected as a false green.
 
 on:
   schedule:
@@ -69,7 +75,16 @@ jobs:
 
       # No `npm ci`: the verifier is dependency-free on purpose, so the control that proves
       # `main` is protected cannot be broken by an unrelated dependency problem.
+      # `--repo=erp` on purpose. This job's token belongs to THIS repository and cannot read a
+      # private bizosto-website — GitHub answers 404 — and a cross-repository read that fails
+      # must never be reported as a certification. The website verifies itself from a
+      # companion workflow running inside it, under its own job token.
+      #
+      # The token is also what makes the bypass-actor control certifiable at all: GitHub
+      # serves `bypass_actors` only to callers with sufficient access to the ruleset, so the
+      # verifier treats an anonymous read as unable to certify it rather than as proof of
+      # absence. Running unauthenticated here would fail the control, not skip it.
       - name: Verify live main protection (P0-06)
-        run: node scripts/verify-github-main-protection.mjs
+        run: node scripts/verify-github-main-protection.mjs --repo=erp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

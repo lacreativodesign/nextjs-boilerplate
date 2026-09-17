@@ -14,18 +14,36 @@
  * So this script re-reads the LIVE ruleset and fails closed when it no longer guarantees
  * what docs/security/p0-06-main-protection.certified.json records.
  *
- * WHY IT NEEDS NO TOKEN
+ * WHY THIS NEEDS AN AUTHENTICATED, PRIVILEGED READ
  *
- * lacreativodesign/nextjs-boilerplate is public, and GitHub serves
- * `GET /repos/{owner}/{repo}/rulesets/{id}` — including every rule parameter and the bypass
- * actor list — to anonymous callers on public repositories. That was verified against the
- * live API before this script was written. It matters because the alternative was a stored
- * personal access token with `administration: read`, which is precisely the long-lived,
- * over-scoped credential this repository has been removing everywhere else.
+ * Most of the ruleset is public data on a public repository and an anonymous caller can read
+ * it. `bypass_actors` is the exception, and it is the field that matters most: one bypass
+ * actor makes every other rule advisory.
  *
- * A token is used only if one happens to be in the environment, and then only to buy the
- * higher authenticated rate limit. If an authenticated read fails for any reason the script
- * retries anonymously, because the data is public either way.
+ * `GET /repos/{owner}/{repo}/rulesets/{id}` documents bypass_actors as returned only to
+ * callers with sufficient access to the ruleset. So an anonymous or under-scoped read can
+ * come back WITHOUT the field, and an absent field is not an empty one. The first version of
+ * this script wrote `ruleset.bypass_actors ?? []` and fell back to an anonymous read whenever
+ * an authenticated one failed — which meant "I was not allowed to see the bypass list" was
+ * reported as "there is no bypass list". Independent review rejected that, correctly.
+ *
+ * The rule now is: an empty bypass list certifies nothing unless the read that produced it
+ * came from an identity GitHub actually serves that list to. `evaluateRuleset` takes an
+ * `Observation` saying so, it defaults to NOT observable, and an unprivileged read fails the
+ * control with `ruleset.bypass_actors_unobservable` rather than passing it.
+ *
+ * An anonymous read is still performed when there is no credential, because the other
+ * invariants are worth checking — but it is labelled unprivileged and cannot turn the bypass
+ * control green. Degraded information is reported as degraded.
+ *
+ * CREDENTIALS
+ *
+ * The workflow uses only the automatic, job-scoped GITHUB_TOKEN. No personal access token is
+ * created, stored or required: a long-lived `administration: read` PAT would be a worse
+ * posture than the drift it detects. Where the job token is not sufficient to observe the
+ * bypass list — which is the case for any repository this workflow does not run inside — the
+ * control is NOT silently passed. It is reported unobservable and carried as an explicit
+ * owner attestation in the contract instead. See the evidence document.
  *
  * The token is never printed, never interpolated into a URL, never included in an error
  * message, and never echoed back on failure. `redactUrl` below is the only place a request
@@ -49,9 +67,10 @@
  *     without ever being able to block the repair.
  *
  * Usage:
- *   node scripts/verify-github-main-protection.mjs            # live read, fails closed
- *   node scripts/verify-github-main-protection.mjs --snapshot # offline, uses the snapshot
- *   node scripts/verify-github-main-protection.mjs --json     # machine-readable result
+ *   node scripts/verify-github-main-protection.mjs              # every certified repository
+ *   node scripts/verify-github-main-protection.mjs --repo=erp   # just this one
+ *   node scripts/verify-github-main-protection.mjs --snapshot   # offline, uses the snapshot
+ *   node scripts/verify-github-main-protection.mjs --json       # machine-readable result
  */
 
 import * as fs from 'node:fs';
@@ -94,8 +113,111 @@ const ruleOfType = (ruleset, type) =>
   (Array.isArray(ruleset?.rules) ? ruleset.rules : []).find((rule) => rule?.type === type);
 
 /**
+ * How the ruleset in hand was obtained, and therefore what it is allowed to certify.
+ *
+ * `bypassActorsObservable` is the only load-bearing field: it asserts the read came from an
+ * identity GitHub actually serves the bypass list to. It defaults to FALSE so that a caller
+ * that forgets to say cannot accidentally certify the control — the default is the safe
+ * answer, not the convenient one.
+ *
+ * @typedef {{ source: string, bypassActorsObservable: boolean }} Observation
+ */
+/** @type {Observation} */
+export const DEFAULT_OBSERVATION = Object.freeze({
+  source: 'an unspecified read',
+  bypassActorsObservable: false,
+});
+
+/**
+ * An authenticated read by an identity with access to the ruleset.
+ * @param {string} source
+ * @returns {Observation}
+ */
+export const observedPrivileged = (source) => ({ source, bypassActorsObservable: true });
+
+/**
+ * Anything else: anonymous, under-scoped, or unknown. Cannot certify bypass actors.
+ * @param {string} source
+ * @returns {Observation}
+ */
+export const observedUnprivileged = (source) => ({ source, bypassActorsObservable: false });
+
+/** Says precisely HOW the field was unobservable, so the diagnostic is not guesswork. */
+const describeUnobservable = (present, actors) => {
+  if (!present) return 'the property was absent from the API response';
+  if (actors === undefined) return 'the property was undefined';
+  if (actors === null) return 'the property was null';
+  return `the property was ${typeof actors}, not an array`;
+};
+
+/**
+ * Repository visibility, as a certified control in its own right.
+ *
+ * P0-06 forbids trading source confidentiality for a branch-protection setting. On
+ * 2026-09-17 bizosto-website was made public to get past a plan restriction, which is exactly
+ * that trade, and independent review rejected it. Publication is therefore not a remedy and
+ * not a neutral fact — for a repository certified `private`, it is DRIFT, and this reports it
+ * as a failure rather than as the blocker being "resolved".
+ *
+ * It fails closed the same way the bypass check does: a visibility that cannot be read is not
+ * assumed to be the expected one.
+ *
+ * @param {{ visibility?: string, private?: boolean } | null} repo
+ * @param {{ repository: string, expectedVisibility: string, visibilityIsGovernanceFinding?: boolean }} certified
+ * @returns {{ ok: boolean, failures: Array<{control: string, detail: string}>, notices: Array<{control: string, detail: string}> }}
+ */
+export function evaluateVisibility(repo, certified) {
+  const failures = [];
+  const notices = [];
+  const expected = certified.expectedVisibility;
+
+  if (!repo || typeof repo !== 'object' || typeof repo.visibility !== 'string') {
+    failures.push({
+      control: 'repository.visibility_unobservable',
+      detail:
+        `could not read the visibility of ${certified.repository}. An unreadable repository ` +
+        `is not assumed to be correctly configured.`,
+    });
+    return { ok: false, failures, notices };
+  }
+
+  if (repo.visibility !== expected) {
+    if (expected === 'private' && repo.visibility === 'public') {
+      failures.push({
+        control: 'repository.visibility',
+        detail:
+          `${certified.repository} is PUBLIC but is certified private. Publishing proprietary ` +
+          `source is not an acceptable substitute for branch protection — the correct owner ` +
+          `action is a GitHub Pro (or higher) plan, which serves rulesets on private ` +
+          `repositories. Restore this repository to private.`,
+      });
+    } else {
+      failures.push({
+        control: 'repository.visibility',
+        detail: `expected "${expected}", found "${repo.visibility}"`,
+      });
+    }
+  } else if (certified.visibilityIsGovernanceFinding) {
+    // Recorded, not endorsed: "public" here describes what IS, not what was approved.
+    notices.push({
+      control: 'repository.visibility',
+      detail:
+        `${certified.repository} is ${repo.visibility}. This predates P0-06 and is recorded ` +
+        `as a repository-visibility governance finding for owner review, not as an approval. ` +
+        `Do not read "certified" here as "someone decided this should be public".`,
+    });
+  }
+
+  return { ok: failures.length === 0, failures, notices };
+}
+
+/**
  * The whole judgement, as a pure function, so the mutation tests can drive it without a
  * network and without a process exit.
+ *
+ * @param {Record<string, any> | null} ruleset
+ * @param {Record<string, any>} certified
+ * @param {Observation} [observation]
  *
  * Returns `{ ok, failures, notices }`. `failures` is non-empty exactly when the live
  * ruleset no longer guarantees a certified invariant — that is the fail-closed condition.
@@ -103,7 +225,7 @@ const ruleOfType = (ruleset, type) =>
  * configuration which is STRONGER than the record is reported without being treated as a
  * fault.
  */
-export function evaluateRuleset(ruleset, certified) {
+export function evaluateRuleset(ruleset, certified, observation = DEFAULT_OBSERVATION) {
   const failures = [];
   const notices = [];
   const fail = (control, detail) => failures.push({ control, detail });
@@ -145,9 +267,43 @@ export function evaluateRuleset(ruleset, certified) {
   }
 
   // --- nobody may step around it ------------------------------------------------------
+  //
+  // This is the control the whole ruleset rests on: a single bypass actor makes every other
+  // rule advisory. It is also the one field GitHub may decline to return.
+  //
+  // `GET /repos/{owner}/{repo}/rulesets/{id}` documents bypass_actors as included only for
+  // callers with sufficient access to the ruleset. An under-privileged or anonymous read can
+  // therefore come back with the field ABSENT — and absent is not empty. The first version of
+  // this verifier wrote `ruleset.bypass_actors ?? []`, which silently turned "I was not
+  // allowed to see the bypass list" into "there is no bypass list", i.e. into a PASS. That is
+  // a false green on the most important invariant in the file, and independent review was
+  // right to reject it.
+  //
+  // So: only an explicitly observable empty array satisfies this. Absent, undefined, null,
+  // and any non-array all fail as UNOBSERVABLE, with their own diagnostic so the failure
+  // cannot be misread as "a bypass actor was found". And an unprivileged read cannot satisfy
+  // it at all, however empty the array looks — see `observation` below.
   if (certified.bypassActorsMustBeEmpty) {
-    const actors = ruleset.bypass_actors ?? [];
-    if (actors.length > 0) {
+    const present = Object.prototype.hasOwnProperty.call(ruleset, 'bypass_actors');
+    const actors = ruleset.bypass_actors;
+
+    if (!present || actors === undefined || actors === null || !Array.isArray(actors)) {
+      fail(
+        'ruleset.bypass_actors_unobservable',
+        `bypass_actors was not observable (${describeUnobservable(present, actors)}). GitHub ` +
+          `returns this field only to callers with sufficient access to the ruleset, so an ` +
+          `absent value means "not allowed to look", never "there are none". This cannot be ` +
+          `certified without a privileged authenticated read.`,
+      );
+    } else if (!observation.bypassActorsObservable) {
+      fail(
+        'ruleset.bypass_actors_unobservable',
+        `bypass_actors came back as an empty array, but from ${observation.source}, which is ` +
+          `not an identity GitHub guarantees the bypass list to. An empty array from such a ` +
+          `read is indistinguishable from a withheld one, so it cannot certify absence of ` +
+          `bypass actors.`,
+      );
+    } else if (actors.length > 0) {
       fail(
         'ruleset.bypass_actors',
         `expected none, found ${actors.length}: ${JSON.stringify(actors)}`,
@@ -289,6 +445,25 @@ export async function fetchLiveRuleset(
 }
 
 /**
+ * As `fetchLiveRuleset`, but returns the `Observation` as well, which is what the CLI needs
+ * in order to decide whether the bypass list it just read is allowed to certify anything.
+ *
+ * @param {{ repository: string, rulesetId: number | null }} spec
+ * @param {{ fetchImpl?: RulesetFetch }} [options]
+ * @returns {Promise<{ ruleset: Record<string, any>, observation: Observation }>}
+ */
+export async function fetchLiveRulesetObserved(
+  spec,
+  { fetchImpl = /** @type {RulesetFetch} */ (globalThis.fetch) } = {},
+) {
+  const { body, observation } = await fetchWithObservation(
+    redactUrl(spec.repository, spec.rulesetId),
+    fetchImpl,
+  );
+  return { ruleset: body, observation };
+}
+
+/**
  * One authenticated-then-anonymous GET. The token, if any, reaches an Authorization header
  * and nowhere else; see the note at the top of this file.
  *
@@ -297,28 +472,52 @@ export async function fetchLiveRuleset(
  * @returns {Promise<any>}
  */
 async function fetchJson(url, fetchImpl) {
+  return (await fetchWithObservation(url, fetchImpl)).body;
+}
+
+/**
+ * The same request, but it also reports HOW the answer was obtained.
+ *
+ * This is what stops an anonymous fallback from laundering itself into a certification: the
+ * caller gets an `Observation` it must pass to `evaluateRuleset`, and only the authenticated
+ * branch produces one where `bypassActorsObservable` is true.
+ *
+ * @param {string} url
+ * @param {RulesetFetch} fetchImpl
+ * @returns {Promise<{ body: any, observation: Observation }>}
+ */
+async function fetchWithObservation(url, fetchImpl) {
   const baseHeaders = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'bizosto-p0-06-protection-verifier',
   };
 
-  // A token, if present, buys rate limit and nothing else: the resource is public. It is
-  // read straight into the header object and never stored, logged or returned.
+  // The token is read straight into the header object and never stored, logged or returned.
   const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? '';
   const attempts = token
-    ? [{ ...baseHeaders, Authorization: `Bearer ${token}` }, baseHeaders]
-    : [baseHeaders];
+    ? [
+        { headers: { ...baseHeaders, Authorization: `Bearer ${token}` }, privileged: true },
+        { headers: baseHeaders, privileged: false },
+      ]
+    : [{ headers: baseHeaders, privileged: false }];
 
   const statuses = [];
-  for (const headers of attempts) {
+  for (const { headers, privileged } of attempts) {
     const response = await fetchImpl(url, { headers });
-    if (response.ok) return response.json();
+    if (response.ok) {
+      return {
+        body: await response.json(),
+        observation: privileged
+          ? observedPrivileged('an authenticated read')
+          : observedUnprivileged('an anonymous read'),
+      };
+    }
     statuses.push(
       `${headers.Authorization ? 'authenticated' : 'anonymous'}=HTTP ${response.status}`,
     );
-    // Fall through to the anonymous attempt: a scoped Actions token can legitimately be
-    // refused on this path even though the same data is public.
+    // An anonymous retry still happens, because the other invariants are worth checking —
+    // but it comes back labelled unprivileged, so it cannot certify the bypass list.
   }
 
   // Anonymous GitHub API calls are limited to 60/hour PER IP, and CI runners share egress
@@ -327,9 +526,10 @@ async function fetchJson(url, fetchImpl) {
   // from going looking for a permissions problem that is not there — and is the reason
   // this check is not allowed to gate merges.
   throw new Error(
-    `could not read the live ruleset from ${url} (${statuses.join(', ')}). ` +
-      `The resource is public, so this is an API, rate-limit or network fault, not a ` +
-      `credential fault. Re-run with GITHUB_TOKEN set for the higher authenticated limit.`,
+    `could not read the ruleset from ${url} (${statuses.join(', ')}). ` +
+      `This is an access, rate-limit or network fault. A private repository returns 404 to ` +
+      `an identity without access, and anonymous GitHub reads are capped at 60/hour per IP ` +
+      `on a shared runner address — which is why this check never gates a merge.`,
   );
 }
 
@@ -360,6 +560,20 @@ export async function discoverLiveRuleset(
   return fetchLiveRuleset({ repository: spec.repository, rulesetId: match.id }, { fetchImpl });
 }
 
+/**
+ * Repository metadata, for the visibility control.
+ *
+ * @param {{ repository: string }} spec
+ * @param {{ fetchImpl?: RulesetFetch }} [options]
+ * @returns {Promise<Record<string, any> | null>}
+ */
+export async function fetchRepository(
+  spec,
+  { fetchImpl = /** @type {RulesetFetch} */ (globalThis.fetch) } = {},
+) {
+  return fetchJson(`https://api.github.com/repos/${spec.repository}`, fetchImpl);
+}
+
 // ---------------------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------------------
@@ -369,14 +583,33 @@ const invokedDirectly = process.argv[1]
   : false;
 
 if (invokedDirectly) {
-  const argv = new Set(process.argv.slice(2));
-  const asJson = argv.has('--json');
-  const offline = argv.has('--snapshot');
+  const argv = process.argv.slice(2);
+  const flags = new Set(argv);
+  const asJson = flags.has('--json');
+  const offline = flags.has('--snapshot');
+
+  // `--repo=<key>` scopes the run to one certified repository.
+  //
+  // This is what makes the private website verifiable at all. A job token issued to the ERP
+  // repository cannot read a PRIVATE bizosto-website — GitHub answers 404 — and a
+  // cross-repository read that fails must never be reported as a certification. So each
+  // repository verifies ITSELF, from a workflow running inside it, under its own job token:
+  // the ERP workflow runs `--repo=erp`, and the companion workflow in bizosto-website runs
+  // `--repo=website`. Neither needs a credential for the other, and neither can silently
+  // vouch for the other.
+  const only = (argv.find((arg) => arg.startsWith('--repo=')) || '').split('=')[1] || null;
 
   const run = async () => {
     const results = [];
+    const selected = loadCertified().repositories.filter((spec) => !only || spec.key === only);
 
-    for (const spec of loadCertified().repositories) {
+    if (only && selected.length === 0) {
+      console.error(`P0-06 verifier: no certified repository with key "${only}".`);
+      process.exitCode = 1;
+      return;
+    }
+
+    for (const spec of selected) {
       // Offline mode can only speak for repositories that have a committed snapshot.
       if (offline && !spec.snapshot) {
         results.push({
@@ -391,49 +624,87 @@ if (invokedDirectly) {
       }
 
       let ruleset = null;
-      let source = offline ? 'snapshot' : 'live';
+      let observation = DEFAULT_OBSERVATION;
+      const source = offline ? 'snapshot' : 'live';
+      const preFailures = [];
+      const preNotices = [];
+
+      // Visibility is only checkable live: it is a property of the repository rather than of
+      // the ruleset, so a snapshot has nothing to check it against.
+      if (!offline) {
+        try {
+          const repo = await fetchRepository(spec);
+          const visibility = evaluateVisibility(repo, spec);
+          preFailures.push(...visibility.failures);
+          preNotices.push(...visibility.notices);
+        } catch (error) {
+          // A private repository returns 404 to an identity without access. That is a failure
+          // to OBSERVE, and it must never be reported as a repository that checked out fine.
+          preFailures.push({
+            control: 'repository.visibility_unobservable',
+            detail:
+              `could not read ${spec.repository}: ${error.message} ` +
+              `A cross-repository read this identity cannot perform is not a certification.`,
+          });
+        }
+      }
+
       try {
         if (offline) {
           ruleset = readJson(spec.snapshot);
+          // The snapshot is a RECORDED observation, not a live one. It is treated as
+          // privileged only because the contract states which identity captured it, and the
+          // certification suite asserts that statement is present. It certifies the record;
+          // the live workflow certifies the current state.
+          observation = spec.snapshotCapturedBy
+            ? observedPrivileged(`the recorded snapshot (captured by ${spec.snapshotCapturedBy})`)
+            : observedUnprivileged('a snapshot with no recorded capture identity');
         } else if (spec.rulesetId) {
-          ruleset = await fetchLiveRuleset(spec);
+          ({ ruleset, observation } = await fetchLiveRulesetObserved(spec));
         } else {
           // Not recorded yet — look for it anyway, so the day the owner applies it this
           // starts evaluating the real ruleset instead of reporting it missing forever.
           ruleset = await discoverLiveRuleset(spec);
+          observation = observedUnprivileged('a discovery read');
+          if (ruleset) {
+            ({ ruleset, observation } = await fetchLiveRulesetObserved({
+              repository: spec.repository,
+              rulesetId: ruleset.id,
+            }));
+          }
         }
       } catch (error) {
         results.push({
           repository: spec.repository,
           source,
           ok: false,
-          failures: [{ control: 'ruleset.read', detail: error.message }],
-          notices: [],
+          failures: [...preFailures, { control: 'ruleset.read', detail: error.message }],
+          notices: preNotices,
         });
         continue;
       }
 
       if (!ruleset && !spec.applied) {
-        // The honest reading of an open P0-06 gap: fail, and say exactly what is missing.
         results.push({
           repository: spec.repository,
           source,
           ok: false,
           failures: [
+            ...preFailures,
             {
               control: 'ruleset.applied',
               detail:
-                `no branch ruleset named "${spec.rulesetName}" exists on this repository. ` +
-                `The certified protection has NOT been applied yet — see the OWNER ACTION in ` +
-                `docs/security/p0-06-github-main-protection.md.`,
+                `no branch ruleset named "${spec.rulesetName}" exists on this repository, or ` +
+                `this identity cannot see it. The certified protection is NOT confirmed — see ` +
+                `the OWNER ACTION in docs/security/p0-06-github-main-protection.md.`,
             },
           ],
-          notices: [],
+          notices: preNotices,
         });
         continue;
       }
 
-      const result = evaluateRuleset(ruleset, spec);
+      const result = evaluateRuleset(ruleset, spec, observation);
       if (ruleset && !spec.applied) {
         result.notices.push({
           control: 'ruleset.applied',
@@ -442,7 +713,10 @@ if (invokedDirectly) {
             `applied:true in ${CERTIFIED_PATH} so it is pinned rather than discovered by name.`,
         });
       }
-      results.push({ repository: spec.repository, source, ...result });
+      result.failures.unshift(...preFailures);
+      result.notices.unshift(...preNotices);
+      result.ok = result.failures.length === 0;
+      results.push({ repository: spec.repository, source, observation, ...result });
     }
 
     const ok = results.every((result) => result.ok);
@@ -455,6 +729,12 @@ if (invokedDirectly) {
         if (result.skipped) {
           console.log(`  SKIP    ${result.skipped}`);
           continue;
+        }
+        if (result.observation) {
+          console.log(
+            `  VIA     ${result.observation.source} ` +
+              `(bypass list ${result.observation.bypassActorsObservable ? 'observable' : 'NOT observable'})`,
+          );
         }
         for (const notice of result.notices) {
           console.log(`  NOTICE  ${notice.control}: ${notice.detail}`);
@@ -479,7 +759,7 @@ if (invokedDirectly) {
   };
 
   run().catch((error) => {
-    // `error` here can only carry a URL and an HTTP status; see fetchJson.
+    // `error` here can only carry a URL and an HTTP status; see fetchWithObservation.
     console.error(`P0-06 verifier could not complete: ${error.message}`);
     process.exitCode = 1;
   });

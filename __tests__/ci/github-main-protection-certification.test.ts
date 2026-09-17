@@ -61,13 +61,17 @@ import * as path from 'path';
 
 import {
   CERTIFIED_PATH,
+  DEFAULT_OBSERVATION,
   SNAPSHOT_PATH,
   certifiedFor,
   discoverLiveRuleset,
   evaluateRuleset,
+  evaluateVisibility,
   fetchLiveRuleset,
   loadCertified,
   loadSnapshot,
+  observedPrivileged,
+  observedUnprivileged,
 } from '@/scripts/verify-github-main-protection.mjs';
 
 type Failure = { control: string; detail: string };
@@ -80,6 +84,14 @@ const digest = (relative: string): string =>
   createHash('sha256').update(read(relative)).digest('hex');
 
 const certified = certifiedFor('erp');
+
+/**
+ * The positive cases have to say how the ruleset was observed, because `evaluateRuleset`
+ * now defaults to NOT being able to certify the bypass list. That default is the fix for the
+ * defect independent review found: a caller that forgets to state its provenance gets the
+ * safe answer, not the convenient one.
+ */
+const PRIVILEGED = observedPrivileged('an authenticated read');
 
 /** A fresh deep copy for every mutation, so no test can leak into another. */
 const clone = (): Record<string, any> => JSON.parse(JSON.stringify(loadSnapshot()));
@@ -98,7 +110,7 @@ const controls = (result: Result): string[] => result.failures.map((failure) => 
 
 describe('P0-06: the certified ruleset is what is actually configured', () => {
   it('the recorded snapshot satisfies every certified invariant', () => {
-    const result: Result = evaluateRuleset(loadSnapshot(), certified);
+    const result: Result = evaluateRuleset(loadSnapshot(), certified, PRIVILEGED);
     // Print the failures rather than just a count — a bare `toBe(true)` here would tell the
     // next person nothing about which control moved.
     expect(result.failures).toEqual([]);
@@ -156,7 +168,7 @@ describe('P0-06: the open control gap is recorded rather than rounded up', () =>
   });
 
   it('reports the gap as a loud notice on an otherwise passing run', () => {
-    const result: Result = evaluateRuleset(loadSnapshot(), certified);
+    const result: Result = evaluateRuleset(loadSnapshot(), certified, PRIVILEGED);
     expect(result.ok).toBe(true);
     const gap = result.notices.find(
       (notice) => notice.control === 'pull_request.required_approving_review_count',
@@ -192,7 +204,7 @@ describe('P0-06 mutation proof: every weakening is rejected', () => {
   const rejects = (mutate: (ruleset: Record<string, any>) => void, control: string): Result => {
     const ruleset = clone();
     mutate(ruleset);
-    const result: Result = evaluateRuleset(ruleset, certified);
+    const result: Result = evaluateRuleset(ruleset, certified, PRIVILEGED);
     expect(result.ok).toBe(false);
     expect(controls(result)).toContain(control);
     return result;
@@ -205,7 +217,7 @@ describe('P0-06 mutation proof: every weakening is rejected', () => {
     raised.pullRequest.requiredApprovingReviewCount.certifiedFloor = 1;
     const ruleset = clone();
     ruleNamed(ruleset, 'pull_request').parameters.required_approving_review_count = 0;
-    const result: Result = evaluateRuleset(ruleset, raised);
+    const result: Result = evaluateRuleset(ruleset, raised, PRIVILEGED);
     expect(result.ok).toBe(false);
     expect(controls(result)).toContain('pull_request.required_approving_review_count');
   });
@@ -341,7 +353,7 @@ describe('P0-06 mutation proof: every weakening is rejected', () => {
   });
 
   it('rejects an empty response where a ruleset should be', () => {
-    const result: Result = evaluateRuleset(null, certified);
+    const result: Result = evaluateRuleset(null, certified, PRIVILEGED);
     expect(result.ok).toBe(false);
     expect(controls(result)).toContain('ruleset.present');
   });
@@ -488,7 +500,7 @@ describe('P0-06: the marketing website is certified too', () => {
       ],
     };
 
-    const result: Result = evaluateRuleset(proposed, website);
+    const result: Result = evaluateRuleset(proposed, website, PRIVILEGED);
     expect(result.failures).toEqual([]);
     expect(result.ok).toBe(true);
   });
@@ -512,7 +524,7 @@ describe('P0-06: the marketing website is certified too', () => {
       ],
     };
 
-    const result: Result = evaluateRuleset(weakened, website);
+    const result: Result = evaluateRuleset(weakened, website, PRIVILEGED);
     expect(result.ok).toBe(false);
     const failed = result.failures.map((failure) => failure.control);
     expect(failed).toContain('ruleset.bypass_actors');
@@ -561,6 +573,185 @@ describe('P0-06: an unapplied repository is discovered, not assumed missing fore
     // It must fetch the FULL ruleset: the list endpoint carries no rules or bypass actors,
     // so evaluating the listing entry would certify nothing at all.
     expect(fetchImpl.mock.calls[1][0]).toContain('/rulesets/99');
+  });
+});
+
+/**
+ * DEFECT FOUND BY INDEPENDENT REVIEW — the bypass-actor false green.
+ *
+ * The first version of the evaluator wrote `ruleset.bypass_actors ?? []`. GitHub documents
+ * bypass_actors as returned only to callers with sufficient access to the ruleset, so an
+ * unprivileged read can come back with the field ABSENT — and `?? []` turned "I was not
+ * allowed to see the bypass list" into "there is no bypass list", i.e. into a PASS.
+ *
+ * That is a false green on the control everything else rests on: one bypass actor makes every
+ * other rule advisory. It was not caught by the original mutation battery because every
+ * mutation there ADDED an actor; none of them removed the ability to look.
+ *
+ * These cases pin the fixed behaviour. Only an explicitly observable empty array, from a read
+ * that GitHub actually serves the bypass list to, may satisfy the invariant.
+ */
+describe('P0-06: an unobservable bypass list is a failure, never a pass', () => {
+  const withBypass = (mutate: (ruleset: Record<string, any>) => void): Result => {
+    const ruleset = clone();
+    mutate(ruleset);
+    return evaluateRuleset(ruleset, certified, PRIVILEGED);
+  };
+
+  const expectUnobservable = (result: Result) => {
+    expect(result.ok).toBe(false);
+    expect(controls(result)).toContain('ruleset.bypass_actors_unobservable');
+    // The diagnosis must not read as "we looked and found an actor" — those are different
+    // facts and they lead to different remediation.
+    expect(controls(result)).not.toContain('ruleset.bypass_actors');
+  };
+
+  it('(1) fails when the bypass_actors property is absent entirely', () => {
+    const result = withBypass((ruleset) => {
+      delete ruleset.bypass_actors;
+    });
+    expectUnobservable(result);
+    expect(result.failures[0].detail).toContain('absent from the API response');
+  });
+
+  it('(2) fails when bypass_actors is undefined', () => {
+    const result = withBypass((ruleset) => {
+      ruleset.bypass_actors = undefined;
+    });
+    expectUnobservable(result);
+  });
+
+  it('(3) fails when bypass_actors is null', () => {
+    const result = withBypass((ruleset) => {
+      ruleset.bypass_actors = null;
+    });
+    expectUnobservable(result);
+    expect(result.failures[0].detail).toContain('null');
+  });
+
+  it.each([
+    ['a string', 'none'],
+    ['a number', 0],
+    ['an object', {}],
+    ['a boolean', false],
+  ])('(4) fails when bypass_actors is %s rather than an array', (_label, value) => {
+    expectUnobservable(
+      withBypass((ruleset) => {
+        ruleset.bypass_actors = value;
+      }),
+    );
+  });
+
+  it('(5) fails when bypass_actors contains one or more entries', () => {
+    const result = withBypass((ruleset) => {
+      ruleset.bypass_actors = [
+        { actor_id: 1, actor_type: 'RepositoryRole', bypass_mode: 'always' },
+      ];
+    });
+    expect(result.ok).toBe(false);
+    // This one IS "we looked and found an actor", so it gets the other control.
+    expect(controls(result)).toContain('ruleset.bypass_actors');
+    expect(controls(result)).not.toContain('ruleset.bypass_actors_unobservable');
+  });
+
+  it('(6) fails when an authenticated read cannot observe the bypass list', () => {
+    // Authenticated but under-scoped: GitHub withholds the field rather than erroring.
+    const ruleset = clone();
+    delete ruleset.bypass_actors;
+    expectUnobservable(evaluateRuleset(ruleset, certified, PRIVILEGED));
+  });
+
+  it('(7) an anonymous read cannot turn an empty bypass list into a PASS', () => {
+    // The whole point. The array is present and empty, and it still must not certify,
+    // because an empty array from an unprivileged read is indistinguishable from a
+    // withheld one.
+    const ruleset = clone();
+    expect(ruleset.bypass_actors).toEqual([]);
+
+    const anonymous: Result = evaluateRuleset(
+      ruleset,
+      certified,
+      observedUnprivileged('an anonymous read'),
+    );
+    expect(anonymous.ok).toBe(false);
+    expect(controls(anonymous)).toContain('ruleset.bypass_actors_unobservable');
+    expect(anonymous.failures.map((f) => f.detail).join(' ')).toContain('anonymous read');
+
+    // ...while the identical ruleset from a privileged read does certify.
+    expect(evaluateRuleset(ruleset, certified, PRIVILEGED).ok).toBe(true);
+  });
+
+  it('defaults to unobservable when the caller states no provenance at all', () => {
+    // A caller that forgets must get the safe answer, not the convenient one.
+    expect(DEFAULT_OBSERVATION.bypassActorsObservable).toBe(false);
+    expectUnobservable(evaluateRuleset(clone(), certified, DEFAULT_OBSERVATION));
+    expectUnobservable(evaluateRuleset(clone(), certified));
+  });
+});
+
+/**
+ * DEFECT FOUND BY INDEPENDENT REVIEW — publishing the website was treated as a fix.
+ *
+ * bizosto-website was made public on 2026-09-17 to get past a plan restriction that blocks
+ * rulesets on private repositories under GitHub Free. P0-06 explicitly forbids that trade:
+ * publishing proprietary source is a larger exposure than the control it buys. The correct
+ * owner action is a GitHub Pro (or higher) plan, which serves rulesets on private repos.
+ *
+ * So visibility is now a certified control, and for the website a public reading is DRIFT.
+ */
+describe('P0-06: the website must be private, and publishing it is drift', () => {
+  const website = certifiedFor('website');
+
+  it('(8) the contract certifies the website as PRIVATE', () => {
+    expect(website.expectedVisibility).toBe('private');
+  });
+
+  it('(9) a public website is a failure, not a resolved blocker', () => {
+    const result = evaluateVisibility({ visibility: 'public', private: false }, website);
+    expect(result.ok).toBe(false);
+    expect(result.failures.map((f: Failure) => f.control)).toContain('repository.visibility');
+    const detail = result.failures.map((f: Failure) => f.detail).join(' ');
+    expect(detail).toContain('GitHub Pro');
+    expect(detail).toContain('not an acceptable substitute');
+  });
+
+  it('a private website satisfies the visibility control', () => {
+    expect(evaluateVisibility({ visibility: 'private', private: true }, website).ok).toBe(true);
+  });
+
+  it('(10) an unreadable repository is never reported as certified', () => {
+    // A private repository returns 404 to an identity without access. Failing to observe is
+    // not the same as observing something correct, and must not be recorded as success.
+    for (const unreadable of [null, undefined, {}, { message: 'Not Found' }]) {
+      const result = evaluateVisibility(unreadable as never, website);
+      expect(result.ok).toBe(false);
+      expect(result.failures.map((f: Failure) => f.control)).toContain(
+        'repository.visibility_unobservable',
+      );
+    }
+  });
+
+  it('records the ERP repository being public as a governance finding, not an approval', () => {
+    // It predates P0-06 and this PR does not change it — but "certified" must not be read as
+    // "someone decided this should be public".
+    const result = evaluateVisibility({ visibility: 'public', private: false }, certified);
+    expect(result.ok).toBe(true);
+    const detail = result.notices.map((n: Failure) => n.detail).join(' ');
+    expect(detail).toContain('governance finding');
+    expect(detail).toContain('not as an approval');
+  });
+
+  it('the contract no longer anywhere treats publication as a remedy', () => {
+    const contract = read(CERTIFIED_PATH);
+    expect(contract).toContain('UPGRADE THE ACCOUNT');
+    expect(contract).toContain('is not a remedy');
+    expect(contract).toContain('MUST REMAIN PRIVATE');
+  });
+
+  it('the evidence document records the violation rather than erasing it', () => {
+    const doc = read('docs/security/p0-06-github-main-protection.md');
+    expect(doc).toMatch(/GitHub Pro/);
+    expect(doc).toMatch(/private/i);
   });
 });
 
@@ -700,7 +891,12 @@ describe('P0-06: the drift check cannot lock main, and cannot leak a token', () 
  * without a network.
  */
 describe('P0-06: the live read handles credentials without leaking them', () => {
-  const SECRET = 'ghp_thisIsNotARealTokenAAAAAAAAAAAAAAAAAA';
+  // Deliberately NOT token-shaped. An earlier version used a `ghp_`-prefixed literal, and a
+  // full-history scan of this repository flagged it: GitHub's own secret scanning and every
+  // third-party scanner match that prefix, so a realistic-looking fake in a public repository
+  // manufactures alerts and teaches people to ignore them. The value only needs to be a
+  // distinctive string this suite can look for.
+  const SECRET = 'not-a-real-credential-fixture-for-p0-06-tests';
   const certified = certifiedFor('erp');
   const EXPECTED_URL =
     'https://api.github.com/repos/lacreativodesign/nextjs-boilerplate/rulesets/22866162';
@@ -796,7 +992,7 @@ describe('P0-06: the live read handles credentials without leaking them', () => 
     expect(message).not.toContain(SECRET);
     expect(message).not.toContain('Bearer');
     expect(message).toContain(EXPECTED_URL);
-    expect(message).toContain('not a credential fault');
+    expect(message).toContain('access, rate-limit or network fault');
   });
 
   it('reports a notice, not a failure, when protection is stronger than the record', () => {
@@ -806,7 +1002,7 @@ describe('P0-06: the live read handles credentials without leaking them', () => 
     const pr = ruleset.rules.find((rule: { type: string }) => rule.type === 'pull_request');
     pr.parameters.required_approving_review_count = 2;
 
-    const result: Result = evaluateRuleset(ruleset, certified);
+    const result: Result = evaluateRuleset(ruleset, certified, PRIVILEGED);
 
     expect(result.ok).toBe(true);
     expect(result.failures).toEqual([]);
