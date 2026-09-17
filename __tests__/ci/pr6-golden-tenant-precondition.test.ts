@@ -340,11 +340,62 @@ describe('PR6: the certification workflows are wired to the same secret', () => 
    * P0-01 split the two rebuild paths by credential, not by convention. `Seed Golden
    * Tenant` is the deliberate, by-hand production path and keeps the production account;
    * the automated gate gets a staging account that cannot reach production at all.
+   *
+   * P0-02 added a second job to that workflow — the demo Auth certification, which must be
+   * able to target staging as well — so this can no longer be stated as "the file never
+   * mentions the staging key". It is asserted PER JOB instead, which is the property that
+   * was always meant: the SEED job is production-only, the automated gate is staging-only,
+   * and the certification job holds exactly one of the two at a time, never both.
    */
   it('keeps the by-hand production reseed and the automated gate on different credentials', () => {
-    expect(seed).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
-    expect(seed).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
+    const seedJob = seed.slice(seed.indexOf('\n  seed:'), seed.indexOf('\n  certify:'));
+    expect(seedJob).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(seedJob).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
     expect(smoke).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}');
+  });
+
+  /**
+   * P0-02 — the certification job may reach production OR staging, never both at once.
+   *
+   * Each credential is bound to an expression that yields the empty string unless the
+   * operator chose that environment, so a staging run does not have the production secret
+   * in its environment at all. That is what makes "staging failed, let me give it the key
+   * that works" impossible rather than merely discouraged: there is nothing for a fallback
+   * to fall back to, and `assertCredentialProject` rejects a crossed pair as well.
+   */
+  it('gives the certification job exactly one credential at a time', () => {
+    const certifyJob = seed.slice(seed.indexOf('\n  certify:'));
+    expect(certifyJob).toContain(
+      "FIREBASE_ADMIN_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_ADMIN_KEY || '' }}",
+    );
+    expect(certifyJob).toContain(
+      "FIREBASE_ADMIN_KEY_STAGING: ${{ inputs.credential == 'staging' && " +
+        "secrets.FIREBASE_ADMIN_KEY_STAGING || '' }}",
+    );
+    // Neither credential is ever handed over unconditionally.
+    expect(certifyJob).not.toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(certifyJob).not.toContain(
+      'FIREBASE_ADMIN_KEY_STAGING: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}',
+    );
+    // The credential is scoped to the step that certifies, so `npm ci` never sees it.
+    expect(certifyJob.indexOf('npm ci')).toBeLessThan(certifyJob.indexOf('FIREBASE_ADMIN_KEY:'));
+  });
+
+  /**
+   * P0-02 has to be provable BEFORE merge, and a brand-new workflow cannot be dispatched
+   * against a feature ref until it exists on the default branch. This workflow already
+   * does, so it carries the certification actions that make a live pre-merge run possible.
+   * If these disappear, pre-merge certification quietly becomes "merge and hope".
+   */
+  it('can certify the demo Auth surface from a dispatched feature ref', () => {
+    expect(seed).toContain('certify-audit');
+    expect(seed).toContain('certify-remediate');
+    expect(seed).toContain('scripts/certify-demo-auth.ts');
+    // Full history: the published historical demo password is recovered from this
+    // repository's own object database, and a shallow clone cannot see it.
+    const certifyJob = seed.slice(seed.indexOf('\n  certify:'));
+    expect(certifyJob).toContain('fetch-depth: 0');
+    expect(certifyJob).toContain('--prove-historical-rejected');
   });
 
   it('makes the seed dispatch-only and forces the operator to name the project', () => {
