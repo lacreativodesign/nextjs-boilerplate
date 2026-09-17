@@ -357,7 +357,21 @@ briefly opening `main`.
 path** (4) · **workflow** (4, including the DS-33 defect, a stored PAT, `continue-on-error` and
 `permissions: write`) · **contract** (6) · **bypass observability** (the defect above, in every
 form: absent, undefined, null, four non-array types, populated, anonymous, and no stated
-provenance) · **visibility** (public website, unreadable repository).
+provenance) · **visibility** (public website, unreadable repository) ·
+**`dependency-security`** (15).
+
+That last group is this pass's addition and exists because the check only became branch-blocking
+after PR #61. Each case removes or weakens the second required website check and must be caught:
+the context dropped entirely, re-pointed from integration `15368` to another app, renamed to a
+plausible impostor (`dependency-security-report`, `Dependency Security`, `dependency_security`,
+`security`), reordered, reduced to a single required check, and the contract's own record of it
+deleted. A removal and a re-pointing must produce **different** diagnoses — asserting only that
+"something failed" let an earlier mutant live, because a removed context has no integration id
+left to compare and failed under the next guard's name instead.
+
+The contract is **directional**, so a mutant adding a _third_ required check must NOT fail: the
+live configuration is allowed to be stronger than the record, never weaker. That case is
+asserted too, otherwise the ratchet would be a snapshot.
 
 Three mutants survived earlier passes and the suite was strengthened rather than the result
 reported: required-check removal was indistinguishable from re-pointing; deleting the cron line
