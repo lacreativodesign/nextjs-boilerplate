@@ -1,0 +1,81 @@
+{
+  "$comment": [
+    "P0-06 — the certified main-branch protection contract for the Bizosto ERP repository.",
+    "",
+    "This file is the machine-readable half of docs/security/p0-06-github-main-protection.md.",
+    "scripts/verify-github-main-protection.mjs reads it and fails closed when the LIVE GitHub",
+    "ruleset no longer guarantees what is recorded here.",
+    "",
+    "Every invariant below is DIRECTIONAL: the live configuration may be stronger than the",
+    "record, never weaker. That is what makes the record a ratchet rather than a snapshot.",
+    "",
+    "It holds no credential. Everything it describes is readable anonymously from the public",
+    "repository, which is why the drift check needs no personal access token."
+  ],
+  "repository": "lacreativodesign/nextjs-boilerplate",
+  "rulesetId": 22866162,
+  "rulesetName": "Production Main Protection",
+  "target": "branch",
+  "enforcement": "active",
+  "refNameInclude": ["~DEFAULT_BRANCH"],
+  "bypassActorsMustBeEmpty": true,
+  "requiredRuleTypes": ["deletion", "non_fast_forward", "pull_request", "required_status_checks"],
+  "pullRequest": {
+    "requiredReviewThreadResolution": true,
+    "allowedMergeMethods": ["merge"],
+    "requiredApprovingReviewCount": {
+      "certifiedFloor": 0,
+      "target": 1,
+      "gapOpen": true,
+      "$comment": [
+        "THIS IS THE ONE OPEN P0-06 CONTROL GAP, AND IT IS DELIBERATE.",
+        "",
+        "The floor is the value the live ruleset may not drop below. The target is the value",
+        "P0-06 wants. They differ because on 2026-09-17 the repository had exactly ONE account",
+        "with any access at all - lacreativodesign, the owner, admin - and that account is the",
+        "author of every pull request. GitHub does not let a pull request author approve their",
+        "own pull request, so raising the live count to 1 today would not add a review: it would",
+        "make main permanently unmergeable, including for the pull request that would undo it.",
+        "",
+        "So the count stays 0 until an independent reviewer exists. Closing the gap is a two-step",
+        "owner action, in this order, never the second alone:",
+        "  1. grant a second human WRITE access to lacreativodesign/nextjs-boilerplate;",
+        "  2. set required_approving_review_count to 1 AND set certifiedFloor to 1 here.",
+        "",
+        "gapOpen is what keeps step 2 honest. The certification test refuses to let gapOpen go",
+        "false while certifiedFloor is still 0, so the gap cannot be closed on paper alone."
+      ]
+    }
+  },
+  "requiredStatusChecks": {
+    "strictRequiredStatusChecksPolicy": true,
+    "doNotEnforceOnCreate": false,
+    "contexts": [
+      {
+        "context": "quality",
+        "integrationId": 15368,
+        "$comment": "GitHub Actions. The `quality` job in .github/workflows/test.yml."
+      },
+      {
+        "context": "SonarCloud Code Analysis",
+        "integrationId": 12526,
+        "$comment": "SonarQube Cloud app. Posts the real Sonar quality gate result."
+      },
+      {
+        "context": "sonar",
+        "integrationId": 15368,
+        "$comment": "GitHub Actions. The `sonar` job in .github/workflows/test.yml."
+      },
+      {
+        "context": "Vercel",
+        "integrationId": 8329,
+        "$comment": "Vercel app. Reports as a commit STATUS, not a check run."
+      }
+    ],
+    "$comment": [
+      "All four were confirmed reporting and green on main at 70a5403 before certification, so",
+      "none of them is a dead context that would silently block every future merge. Anything",
+      "added here must be verified the same way first."
+    ]
+  }
+}

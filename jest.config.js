@@ -259,6 +259,10 @@ const customJestConfig = {
     // the routes above this is for the local gate only: `scripts/` is outside
     // sonar.sources, so Sonar neither sees the file nor scores it.
     'scripts/verify-golden-tenant-signin.mjs',
+    // P0-06, on the same rule: this one decides whether `main` is still protected, and
+    // __tests__/ci/github-main-protection-certification drives every branch of its evaluator
+    // by mutation. Also local-gate only — `scripts/` is outside sonar.sources.
+    'scripts/verify-github-main-protection.mjs',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
