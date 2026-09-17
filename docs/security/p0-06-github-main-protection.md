@@ -268,12 +268,18 @@ validation time and every run completed with **zero jobs**, with nothing going r
 | path filter removed (would burn rate limit on every merge) | 1 failed |
 | the verifier step replaced with a no-op                    | 1 failed |
 
-**32 mutants applied, 32 killed, 0 survivors.** Both files were restored afterwards and
-verified by SHA-256, identical before and after:
+**A second mutant survived the first battery and the suite was strengthened again.** The
+schedule assertion was `toContain('schedule:')`, so deleting the cron line beneath it left
+the suite green — and a `schedule:` block with no cron entry never fires. The assertion now
+matches the cron expression itself and requires all five fields, which kills both the deletion
+and a corrupted four-field expression.
+
+**33 mutants applied, 33 killed, 0 survivors.** All three files were restored afterwards and
+verified by SHA-256, identical before and after the battery. Measured at commit `95803a3`:
 
 | File                                                    | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `scripts/verify-github-main-protection.mjs`             | `dde29e608e61b1d808c86e0713c5a8269ab1516a6752a57d2f0c7e41ae522eed` |
+| `scripts/verify-github-main-protection.mjs`             | `eb97208314787dd45714127f667a342ed41770d86cb9dc12673ee03534529fa2` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `171b85cf026d9806df45a39dce5287218fa0ec28b02bcd90f7ce97b1de82970d` |
 

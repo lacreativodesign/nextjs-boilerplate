@@ -369,6 +369,33 @@ describe('P0-06: the mutations were in memory only', () => {
   });
 });
 
+/**
+ * The evidence document records a SHA-256 for each file the mutation battery touched, as the
+ * proof that every mutant was reverted. A hash is only evidence while it is true, and a
+ * recorded hash that has quietly gone stale is worse than none — it invites a reader to
+ * check, find a mismatch, and stop trusting the rest of the document.
+ *
+ * This happened once already while writing this: the script was edited after the battery ran
+ * and the recorded digest was left behind. So the digests are now checked rather than
+ * asserted. Editing any of these three files means re-running the battery and updating the
+ * document, which is the intent.
+ */
+describe('P0-06: the recorded restore digests are still true', () => {
+  it.each([
+    'scripts/verify-github-main-protection.mjs',
+    'docs/security/p0-06-erp-main-ruleset.snapshot.json',
+    '.github/workflows/github-protection-certification.yml',
+  ])('%s matches the SHA-256 recorded in the evidence document', (relative) => {
+    const evidence = read('docs/security/p0-06-github-main-protection.md');
+    const row = evidence
+      .split('\n')
+      .find((line) => line.includes(`\`${relative}\``) && /`[0-9a-f]{64}`/.test(line));
+
+    expect(row).toBeDefined();
+    expect(row).toContain(digest(relative));
+  });
+});
+
 describe('P0-06: the drift check cannot lock main, and cannot leak a token', () => {
   const WORKFLOW = '.github/workflows/github-protection-certification.yml';
   const workflow = read(WORKFLOW);
@@ -382,8 +409,11 @@ describe('P0-06: the drift check cannot lock main, and cannot leak a token', () 
   });
 
   it('runs on a schedule and on demand so drift is found without a push', () => {
-    expect(workflow).toContain('schedule:');
     expect(workflow).toContain('workflow_dispatch:');
+    // `schedule:` on its own is not a schedule. A block with no cron entry under it never
+    // fires, so assert the cron expression itself — this is the difference between a drift
+    // check that runs daily and one that only looks like it does.
+    expect(workflow).toMatch(/^ {2}schedule:\n(?: *#.*\n)* *- cron: '(\S+ \S+ \S+ \S+ \S+)'$/m);
   });
 
   it('asks for no more than read access to repository contents', () => {
