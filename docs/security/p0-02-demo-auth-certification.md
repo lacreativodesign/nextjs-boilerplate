@@ -25,9 +25,11 @@ is not a proof that passed.** Both of those rules were earned; see
 [the fail-open the first runs exposed](#the-fail-open-those-runs-exposed-and-the-fix).
 
 Every figure above came out of a dispatched workflow run against a real Firebase project.
-The certifying runs were dispatched against commit `713f5ab8` — the last commit that changed
-the certification tool — and the runs that preceded it, including the two that got the
-verdict wrong, are linked alongside rather than quietly dropped.
+The certifying runs were dispatched against commit `6785c67c`, the last commit on this
+branch that changes any code — the only commit after it is this document. Each project was
+re-certified after every code change rather than once at the start, and the runs that
+preceded them, including the two that got the verdict wrong, are linked alongside rather
+than quietly dropped.
 
 One owner action remains, and it is a hardening recommendation rather than an open defect:
 see [Unresolved owner actions](#unresolved-owner-actions).
@@ -226,12 +228,13 @@ Live evidence, dispatched against this PR's ref with the production Admin creden
 | Current-password sign-ins                | **10 / 10**                                |
 | Published historical password accepted   | **0** (1 candidate tested against all ten) |
 
-Certifying run on the final head `713f5ab8`:
-[remediate 35291599056](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35291599056).
-Earlier runs on the same branch, kept because they are part of the record:
+Certifying run: [remediate 35292887357](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35292887357),
+on `6785c67c`. Earlier runs on the same branch, kept because they are part of the record:
 [audit 35288757593](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288757593)
 · [audit after the fail-open fix 35289453869](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289453869)
-· [remediate 35289587921](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289587921).
+· [remediate 35289587921](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289587921)
+· [remediate 35291599056](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35291599056)
+· [remediate 35291903896](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35291903896).
 
 ## Staging result
 
@@ -253,10 +256,12 @@ Same tool, same day, staging credential — and at no point the production one.
 | Current-password sign-ins              | **10 / 10**           |
 | Published historical password accepted | **0**                 |
 
-Certifying run on the final head `713f5ab8`:
-[remediate 35291709914](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35291709914).
-Earlier runs: [audit 35288764089](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288764089)
-· [remediate 35289746586](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289746586).
+Certifying run: [remediate 35292995466](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35292995466),
+on `6785c67c`. Earlier runs:
+[audit 35288764089](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288764089)
+· [remediate 35289746586](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289746586)
+· [remediate 35291709914](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35291709914)
+· [remediate 35292015320](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35292015320).
 
 Staging holds exactly the ten canonical identities and nothing else. The isolation P0-01
 established is visible in the numbers: 10 identities in staging against 14 in production,
