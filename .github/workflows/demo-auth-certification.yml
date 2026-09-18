@@ -146,8 +146,11 @@ jobs:
           # a fallback to fall back TO.
           FIREBASE_ADMIN_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_ADMIN_KEY || '' }}
           FIREBASE_ADMIN_KEY_STAGING: ${{ inputs.credential == 'staging' && secrets.FIREBASE_ADMIN_KEY_STAGING || '' }}
-          # A Firebase Web API key is a public identifier — it ships in every browser — but
-          # it is held as a secret so the two environments cannot be confused for each other.
+          # OPTIONAL. A Firebase Web API key is a public identifier — it ships in every
+          # browser — but it is held as a secret so the two environments cannot be confused
+          # for each other. When it is absent the tool resolves the key from the Firebase
+          # Management API using the Admin credential it already verified, so sign-in proof
+          # needs no new secret; if neither works the run FAILS rather than certifying.
           FIREBASE_WEB_API_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_WEB_API_KEY || secrets.FIREBASE_WEB_API_KEY_STAGING }}
           E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
           PROJECT: ${{ inputs.firebase_project_id }}

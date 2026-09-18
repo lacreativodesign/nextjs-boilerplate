@@ -479,11 +479,15 @@ describe('P0-02 (18-19): a run that could not look cannot pass', () => {
     mode: 'audit',
     projectId: PRODUCTION_FIREBASE_PROJECT_ID,
     inventoryComplete: true,
+    signInProofAttempted: true,
+    historicalProofRequested: true,
     counts: {
       ...emptyCounts(),
       totalAuthUsersInspected: 1200,
       authPagesInspected: 2,
       canonicalFound: 10,
+      currentPasswordSignIns: 10,
+      historicalCandidatesTested: 1,
     },
     findings: [],
     ...over,
@@ -533,13 +537,74 @@ describe('P0-02 (18-19): a run that could not look cannot pass', () => {
 
     remediated.counts.passwordRotations = 10;
     remediated.counts.refreshTokenRevocations = 10;
-    remediated.counts.currentPasswordSignIns = 10;
     expect(certificationVerdict(remediated).certified).toBe(true);
 
     remediated.counts.refreshTokenRevocations = 9;
     expect(certificationVerdict(remediated).reasons.join(' ')).toMatch(
       /Revoked refresh tokens for 9 canonical identities/,
     );
+  });
+
+  /**
+   * The bug the FIRST live run of this tool actually had.
+   *
+   * It inventoried both projects correctly — ten canonical identities, zero legacy ones in
+   * each — and printed "P0-02 CERTIFIED" while `currentPasswordSignIns` was 0 and
+   * `historicalCandidatesTested` was 0, because no Web API key had been resolved and the
+   * sign-in block returned early. Both counters read zero, and zero is what a perfect run
+   * reports too.
+   *
+   * That is the same fail-open as "no access to Firebase is not zero legacy users", one
+   * level down: a proof that was never attempted is not a proof that passed. The report now
+   * states separately that it TRIED, and these keep it stating it.
+   */
+  it('FAILS when no sign-in was attempted, however clean the inventory is', () => {
+    const verdict = certificationVerdict(baseReport({ signInProofAttempted: false }));
+    expect(verdict.certified).toBe(false);
+    expect(verdict.reasons.join(' ')).toMatch(/No sign-in was attempted/);
+  });
+
+  it('distinguishes "nobody signed in" from "sign-in is broken"', () => {
+    // Attempted, only nine passed -> reported as a sign-in failure.
+    const partial = baseReport();
+    partial.counts.currentPasswordSignIns = 9;
+    expect(certificationVerdict(partial).reasons.join(' ')).toMatch(
+      /9 of 10 canonical identities signed in/,
+    );
+
+    // Never attempted -> NOT reported as a sign-in failure, because it is not one.
+    const unattempted = baseReport({ signInProofAttempted: false });
+    unattempted.counts.currentPasswordSignIns = 0;
+    expect(certificationVerdict(unattempted).reasons.join(' ')).not.toMatch(
+      /0 of 10 canonical identities signed in/,
+    );
+  });
+
+  it('FAILS when the published historical password was asked for but never tested', () => {
+    const report = baseReport();
+    report.counts.historicalCandidatesTested = 0;
+    const verdict = certificationVerdict(report);
+    expect(verdict.certified).toBe(false);
+    expect(verdict.reasons.join(' ')).toMatch(/certifies nothing that matters/);
+  });
+
+  it('does not demand a historical test that was never requested', () => {
+    const report = baseReport({ historicalProofRequested: false });
+    report.counts.historicalCandidatesTested = 0;
+    expect(certificationVerdict(report).certified).toBe(true);
+  });
+
+  it('resolves the Web API key rather than requiring a new secret, and never prints it', () => {
+    const script = read(CERT_SCRIPT);
+    expect(script).toContain('async function resolveWebApiKey');
+    // Explicit configuration wins; otherwise it is read with the credential already held.
+    expect(script).toContain('process.env.FIREBASE_WEB_API_KEY');
+    expect(script).toContain('firebase.googleapis.com/v1beta1/projects/');
+    expect(script).toContain('credential?.getAccessToken()');
+    // Returns null rather than throwing: the verdict refuses the run instead.
+    expect(script).toContain('Promise<string | null>');
+    expect(script).not.toMatch(/console\.(log|error)\([^)]*apiKey/);
+    expect(script).not.toMatch(/console\.(log|error)\([^)]*accessToken/);
   });
 
   it('pages through the whole Auth population rather than reading the first page', () => {

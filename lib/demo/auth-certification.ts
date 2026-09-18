@@ -544,6 +544,17 @@ export type CertificationReport = {
   projectId: string;
   /** False whenever the run could not complete a full inventory, for ANY reason. */
   inventoryComplete: boolean;
+  /**
+   * Whether a real sign-in was ATTEMPTED at all — not whether one succeeded.
+   *
+   * Without this the verdict cannot tell "the ten identities authenticate" from "nobody
+   * asked them to", because both leave `currentPasswordSignIns` at zero. The first live
+   * run of this tool certified both projects while proving neither, which is the exact
+   * fail-open the rest of this file exists to prevent.
+   */
+  signInProofAttempted: boolean;
+  /** Whether --prove-historical-rejected was requested. If so, testing nothing is a FAILURE. */
+  historicalProofRequested: boolean;
   counts: CertificationCounts;
   findings: string[];
 };
@@ -679,6 +690,31 @@ export function certificationVerdict(report: CertificationReport): {
     );
   }
 
+  // A proof that was never attempted is not a proof that passed. Both of these leave their
+  // counters at zero, which is indistinguishable from a clean result unless the run states
+  // separately that it tried — so it does, and a run that did not try cannot certify.
+  if (!report.signInProofAttempted) {
+    reasons.push(
+      'No sign-in was attempted, so this run does not establish that the canonical ' +
+        'identities can authenticate with the configured password. Zero successful ' +
+        'sign-ins because nobody signed in is not zero because sign-in is broken, and a ' +
+        'verdict that cannot tell them apart is worth nothing.',
+    );
+  } else if (c.currentPasswordSignIns !== expected) {
+    reasons.push(
+      `${c.currentPasswordSignIns} of ${expected} canonical identities signed in with the ` +
+        'configured password.',
+    );
+  }
+
+  if (report.historicalProofRequested && c.historicalCandidatesTested === 0) {
+    reasons.push(
+      'The published historical demo password was not tested, so this run does not ' +
+        'establish that it is refused. That credential is the reason P0-02 exists; a ' +
+        'certification that skips it certifies nothing that matters.',
+    );
+  }
+
   if (report.mode === 'remediate') {
     if (c.passwordRotations !== expected) {
       reasons.push(`Rotated ${c.passwordRotations} canonical passwords; expected ${expected}.`);
@@ -687,12 +723,6 @@ export function certificationVerdict(report: CertificationReport): {
       reasons.push(
         `Revoked refresh tokens for ${c.refreshTokenRevocations} canonical identities; ` +
           `expected ${expected}.`,
-      );
-    }
-    if (c.currentPasswordSignIns !== expected) {
-      reasons.push(
-        `${c.currentPasswordSignIns} of ${expected} canonical identities signed in with the ` +
-          'configured password.',
       );
     }
   }

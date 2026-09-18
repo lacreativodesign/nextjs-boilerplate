@@ -168,6 +168,46 @@ function readTokenClaims(idToken: string): Record<string, unknown> {
   }
 }
 
+/**
+ * The project's public Firebase Web API key.
+ *
+ * Password sign-in goes through Identity Platform's REST endpoint, which needs the WEB api
+ * key — the Admin SDK cannot verify a password. That key is a PUBLIC identifier: it ships
+ * in every browser's Firebase config and grants nothing on its own, because access is
+ * decided by Security Rules and Auth. It is still not something to guess, so it is either
+ * configured explicitly or read from the Firebase Management API using the Admin
+ * credential this run already holds and already verified.
+ *
+ * Reading it removes the last reason a certification run would have to say "I could not
+ * prove the ten identities authenticate". An operator does not have to add a secret whose
+ * value the deployment already publishes.
+ *
+ * Returns null rather than throwing: the caller reports the failure to prove, and the
+ * verdict refuses to certify a run that proved nothing. It is never printed.
+ */
+async function resolveWebApiKey(app: admin.app.App, projectId: string): Promise<string | null> {
+  const configured = String(process.env.FIREBASE_WEB_API_KEY || '').trim();
+  if (configured) return configured;
+
+  try {
+    const token = await app.options.credential?.getAccessToken();
+    const accessToken = token?.access_token;
+    if (!accessToken) return null;
+
+    const response = await fetch(
+      `https://firebase.googleapis.com/v1beta1/projects/${encodeURIComponent(projectId)}/webApps/-/config`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as { apiKey?: unknown };
+    const apiKey = String(body.apiKey || '').trim();
+    return apiKey || null;
+  } catch {
+    return null;
+  }
+}
+
 type SignInOutcome =
   { ok: true; audience: string; role: unknown; tenantId: unknown } | { ok: false; code: string };
 
@@ -306,12 +346,14 @@ async function run(): Promise<void> {
     console.log('\nAudit mode: no write was performed.');
   }
 
-  await proveSignIns({ args, projectId, classified, counts });
+  const signInProofAttempted = await proveSignIns({ app, args, projectId, counts });
 
   const report: CertificationReport = {
     mode: args.mode,
     projectId,
     inventoryComplete,
+    signInProofAttempted,
+    historicalProofRequested: args.proveHistoricalRejected,
     counts,
     findings,
   };
@@ -443,21 +485,23 @@ async function remediate(input: {
 }
 
 async function proveSignIns(input: {
+  app: admin.app.App;
   args: ReturnType<typeof parseCertificationArgs>;
   projectId: string;
-  classified: readonly ClassifiedIdentity[];
   counts: ReturnType<typeof emptyCounts>;
-}): Promise<void> {
-  const { args, projectId, classified, counts } = input;
-  const apiKey = String(process.env.FIREBASE_WEB_API_KEY || '').trim();
+}): Promise<boolean> {
+  const { app, args, projectId, counts } = input;
+  const apiKey = await resolveWebApiKey(app, projectId);
 
   if (!apiKey) {
     note(
-      'FIREBASE_WEB_API_KEY is not set, so no sign-in could be attempted. A Firebase Web API ' +
-        'key is a public identifier, not a secret; without it this run cannot prove the ten ' +
-        'identities authenticate and must not claim that they do.',
+      'No Firebase Web API key could be resolved for this project, so NO SIGN-IN WAS ' +
+        'ATTEMPTED. Set FIREBASE_WEB_API_KEY (a public identifier — it ships in every ' +
+        "browser's Firebase config), or grant the service account read access to the " +
+        'Firebase Management API. This run cannot prove the ten identities authenticate, ' +
+        'cannot prove the published historical password is refused, and must not certify.',
     );
-    return;
+    return false;
   }
 
   const password = requireDemoPassword();
@@ -481,7 +525,7 @@ async function proveSignIns(input: {
     console.log(`  ok ${user.email} (role=${user.role}, tenant=${DEMO_TENANT_ID})`);
   }
 
-  if (!args.proveHistoricalRejected) return;
+  if (!args.proveHistoricalRejected) return true;
 
   console.log('\nHistorical credential proof:');
   const candidates = recoverHistoricalCandidates();
@@ -493,7 +537,7 @@ async function proveSignIns(input: {
         'checkout (a shallow clone cannot see it). Nothing was tested, and this run therefore ' +
         'does NOT prove the published credential is refused.',
     );
-    return;
+    return true;
   }
 
   for (const candidate of candidates) {
@@ -510,6 +554,7 @@ async function proveSignIns(input: {
     );
   }
   console.log(`  historical credentials accepted: ${counts.historicalPasswordAccepted}`);
+  return true;
 }
 
 run().catch((error) => {
