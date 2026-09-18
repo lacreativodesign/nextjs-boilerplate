@@ -121,7 +121,24 @@ export type ClassifiedIdentity = {
   firestoreMismatch: boolean;
 };
 
-const text = (value: unknown): string => String(value ?? '').trim();
+/**
+ * A trimmed string for anything, without `[object Object]` ever standing in for a value.
+ *
+ * Every field this module reads comes off a live Firebase record or a Firestore document,
+ * so "a string" is an expectation rather than a guarantee. Coercing an object through
+ * `String()` would turn a structurally wrong claim into the plausible-looking literal
+ * `[object Object]`, which then compares unequal to everything and reports as ordinary
+ * drift instead of as the malformed record it is.
+ */
+const text = (value: unknown): string => {
+  if (typeof value === 'string') return value.trim();
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') return '';
+  return String(value).trim();
+};
+
+/** Orders keys the way a reader expects, rather than by UTF-16 code unit. */
+const byName = (a: string, b: string) => a.localeCompare(b);
 
 /**
  * A stable, non-reversible label for a UID.
@@ -139,7 +156,7 @@ export function fingerprintUid(uid: string): string {
   let hash = 0x811c9dc5;
   const value = text(uid);
   for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
+    hash ^= value.codePointAt(index) ?? 0;
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return `uid:${hash.toString(16).padStart(8, '0')}`;
@@ -164,8 +181,8 @@ export function claimsAreExact(claims: ClaimRecord | null | undefined, email: st
   const expected = expectedClaims(email);
   if (!expected) return false;
   const actual = claims ?? {};
-  const keys = Object.keys(actual).sort();
-  const wanted = [...CANONICAL_CLAIM_KEYS].sort();
+  const keys = Object.keys(actual).sort(byName);
+  const wanted = [...CANONICAL_CLAIM_KEYS].sort(byName);
   if (keys.length !== wanted.length) return false;
   if (keys.some((key, index) => key !== wanted[index])) return false;
   return actual.role === expected.role && actual.tenantId === expected.tenantId;
@@ -176,7 +193,7 @@ export function unexpectedClaimKeys(claims: ClaimRecord | null | undefined): str
   const allowed = new Set<string>(CANONICAL_CLAIM_KEYS);
   return Object.keys(claims ?? {})
     .filter((key) => !allowed.has(key))
-    .sort();
+    .sort(byName);
 }
 
 /**
@@ -202,7 +219,7 @@ export function collectEvidence(
   if (firestoreUser && text(firestoreUser.tenantId) === DEMO_TENANT_ID) {
     evidence.push('firestore-tenant');
   }
-  if (firestoreUser && firestoreUser.isDemo === true) evidence.push('firestore-is-demo');
+  if (firestoreUser?.isDemo === true) evidence.push('firestore-is-demo');
 
   return evidence;
 }
@@ -595,40 +612,27 @@ export function countInventory(
   | 'disabledLegacyDemo'
   | 'suspectedDemoReported'
 > {
-  let canonicalFound = 0;
-  let canonicalDisabled = 0;
-  let canonicalUnverifiedEmail = 0;
-  let canonicalClaimDrift = 0;
-  let canonicalFirestoreMismatch = 0;
-  let enabledLegacyDemo = 0;
-  let disabledLegacyDemo = 0;
-  let suspectedDemoReported = 0;
+  const isDisabled = (identity: ClassifiedIdentity) => disabledByUid.get(identity.uid) === true;
+  const ofKind = (kind: IdentityKind) => identities.filter((entry) => entry.kind === kind);
+  const tally = (
+    list: readonly ClassifiedIdentity[],
+    predicate: (entry: ClassifiedIdentity) => boolean,
+  ) => list.filter(predicate).length;
 
-  for (const identity of identities) {
-    const disabled = disabledByUid.get(identity.uid) === true;
-    if (identity.kind === 'canonical') {
-      canonicalFound += 1;
-      if (disabled) canonicalDisabled += 1;
-      if (identity.drift.includes('email is not verified')) canonicalUnverifiedEmail += 1;
-      if (identity.claimDrift) canonicalClaimDrift += 1;
-      if (identity.firestoreMismatch) canonicalFirestoreMismatch += 1;
-    } else if (identity.kind === 'legacy-demo') {
-      if (disabled) disabledLegacyDemo += 1;
-      else enabledLegacyDemo += 1;
-    } else if (identity.kind === 'suspected-demo') {
-      suspectedDemoReported += 1;
-    }
-  }
+  const canonical = ofKind('canonical');
+  const legacy = ofKind('legacy-demo');
 
   return {
-    canonicalFound,
-    canonicalDisabled,
-    canonicalUnverifiedEmail,
-    canonicalClaimDrift,
-    canonicalFirestoreMismatch,
-    enabledLegacyDemo,
-    disabledLegacyDemo,
-    suspectedDemoReported,
+    canonicalFound: canonical.length,
+    canonicalDisabled: tally(canonical, isDisabled),
+    canonicalUnverifiedEmail: tally(canonical, (entry) =>
+      entry.drift.includes('email is not verified'),
+    ),
+    canonicalClaimDrift: tally(canonical, (entry) => entry.claimDrift),
+    canonicalFirestoreMismatch: tally(canonical, (entry) => entry.firestoreMismatch),
+    enabledLegacyDemo: tally(legacy, (entry) => !isDisabled(entry)),
+    disabledLegacyDemo: tally(legacy, isDisabled),
+    suspectedDemoReported: ofKind('suspected-demo').length,
   };
 }
 
@@ -650,82 +654,89 @@ export function certificationVerdict(report: CertificationReport): {
   certified: boolean;
   reasons: string[];
 } {
-  const reasons: string[] = [];
   const c = report.counts;
   const expected = DEMO_USERS.length;
+  const remediating = report.mode === 'remediate';
+  const reasons: string[] = [];
+  const failIf = (failing: boolean, reason: string) => {
+    if (failing) reasons.push(reason);
+  };
 
-  if (!report.inventoryComplete) {
-    reasons.push(
-      'The Auth inventory did not complete, so this run proves nothing about legacy demo ' +
-        'identities. No access to Firebase is not the same as zero legacy users.',
-    );
-  }
-  if (c.authPagesInspected < 1) {
-    reasons.push('No Auth page was inspected.');
-  }
-  if (c.canonicalFound !== expected) {
-    reasons.push(`Found ${c.canonicalFound} canonical demo identities; expected ${expected}.`);
-  }
-  if (c.enabledLegacyDemo !== 0) {
-    reasons.push(`${c.enabledLegacyDemo} noncanonical demo identities are still enabled.`);
-  }
-  if (c.canonicalDisabled !== 0)
-    reasons.push(`${c.canonicalDisabled} canonical identities are disabled.`);
-  if (c.canonicalUnverifiedEmail !== 0) {
-    reasons.push(`${c.canonicalUnverifiedEmail} canonical identities have an unverified email.`);
-  }
-  if (c.canonicalClaimDrift !== 0) {
-    reasons.push(`${c.canonicalClaimDrift} canonical identities carry drifted custom claims.`);
-  }
-  if (c.canonicalFirestoreMismatch !== 0) {
-    reasons.push(`${c.canonicalFirestoreMismatch} canonical identities disagree with Firestore.`);
-  }
-  if (c.orphanFirestoreDemoUsers !== 0) {
-    reasons.push(`${c.orphanFirestoreDemoUsers} orphan bizosto-demo Firestore user records.`);
-  }
-  if (c.historicalPasswordAccepted !== 0) {
-    reasons.push(
-      `${c.historicalPasswordAccepted} canonical identities still accept a demo password ` +
-        'that was published in git history.',
-    );
-  }
+  // The first rule is the one the whole P0 turns on, and it is checked before anything is
+  // counted: a run that did not complete its inventory fails with zero findings of its own.
+  failIf(
+    !report.inventoryComplete,
+    'The Auth inventory did not complete, so this run proves nothing about legacy demo ' +
+      'identities. No access to Firebase is not the same as zero legacy users.',
+  );
+  failIf(c.authPagesInspected < 1, 'No Auth page was inspected.');
+
+  failIf(
+    c.canonicalFound !== expected,
+    `Found ${c.canonicalFound} canonical demo identities; expected ${expected}.`,
+  );
+  failIf(
+    c.enabledLegacyDemo !== 0,
+    `${c.enabledLegacyDemo} noncanonical demo identities are still enabled.`,
+  );
+  failIf(c.canonicalDisabled !== 0, `${c.canonicalDisabled} canonical identities are disabled.`);
+  failIf(
+    c.canonicalUnverifiedEmail !== 0,
+    `${c.canonicalUnverifiedEmail} canonical identities have an unverified email.`,
+  );
+  failIf(
+    c.canonicalClaimDrift !== 0,
+    `${c.canonicalClaimDrift} canonical identities carry drifted custom claims.`,
+  );
+  failIf(
+    c.canonicalFirestoreMismatch !== 0,
+    `${c.canonicalFirestoreMismatch} canonical identities disagree with Firestore.`,
+  );
+  failIf(
+    c.orphanFirestoreDemoUsers !== 0,
+    `${c.orphanFirestoreDemoUsers} orphan bizosto-demo Firestore user records.`,
+  );
+  failIf(
+    c.historicalPasswordAccepted !== 0,
+    `${c.historicalPasswordAccepted} canonical identities still accept a demo password that ` +
+      'was published in git history.',
+  );
 
   // A proof that was never attempted is not a proof that passed. Both of these leave their
   // counters at zero, which is indistinguishable from a clean result unless the run states
-  // separately that it tried — so it does, and a run that did not try cannot certify.
-  if (!report.signInProofAttempted) {
-    reasons.push(
-      'No sign-in was attempted, so this run does not establish that the canonical ' +
-        'identities can authenticate with the configured password. Zero successful ' +
-        'sign-ins because nobody signed in is not zero because sign-in is broken, and a ' +
-        'verdict that cannot tell them apart is worth nothing.',
-    );
-  } else if (c.currentPasswordSignIns !== expected) {
-    reasons.push(
-      `${c.currentPasswordSignIns} of ${expected} canonical identities signed in with the ` +
-        'configured password.',
-    );
-  }
+  // separately that it TRIED — so it does, and a run that did not try cannot certify. The
+  // two sign-in clauses are mutually exclusive on purpose: "nobody signed in" and "sign-in
+  // is broken" are different facts and get different reasons.
+  failIf(
+    !report.signInProofAttempted,
+    'No sign-in was attempted, so this run does not establish that the canonical identities ' +
+      'can authenticate with the configured password. Zero successful sign-ins because ' +
+      'nobody signed in is not zero because sign-in is broken, and a verdict that cannot ' +
+      'tell them apart is worth nothing.',
+  );
+  failIf(
+    report.signInProofAttempted && c.currentPasswordSignIns !== expected,
+    `${c.currentPasswordSignIns} of ${expected} canonical identities signed in with the ` +
+      'configured password.',
+  );
+  failIf(
+    report.historicalProofRequested && c.historicalCandidatesTested === 0,
+    'The published historical demo password was not tested, so this run does not establish ' +
+      'that it is refused. That credential is the reason P0-02 exists; a certification that ' +
+      'skips it certifies nothing that matters.',
+  );
 
-  if (report.historicalProofRequested && c.historicalCandidatesTested === 0) {
-    reasons.push(
-      'The published historical demo password was not tested, so this run does not ' +
-        'establish that it is refused. That credential is the reason P0-02 exists; a ' +
-        'certification that skips it certifies nothing that matters.',
-    );
-  }
-
-  if (report.mode === 'remediate') {
-    if (c.passwordRotations !== expected) {
-      reasons.push(`Rotated ${c.passwordRotations} canonical passwords; expected ${expected}.`);
-    }
-    if (c.refreshTokenRevocations !== expected) {
-      reasons.push(
-        `Revoked refresh tokens for ${c.refreshTokenRevocations} canonical identities; ` +
-          `expected ${expected}.`,
-      );
-    }
-  }
+  // `--mode=audit` is read-only, so it certifies the STATE and is never asked to have
+  // rotated anything. Only a remediating run must also show the writes.
+  failIf(
+    remediating && c.passwordRotations !== expected,
+    `Rotated ${c.passwordRotations} canonical passwords; expected ${expected}.`,
+  );
+  failIf(
+    remediating && c.refreshTokenRevocations !== expected,
+    `Revoked refresh tokens for ${c.refreshTokenRevocations} canonical identities; ` +
+      `expected ${expected}.`,
+  );
 
   return { certified: reasons.length === 0, reasons };
 }
