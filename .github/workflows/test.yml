@@ -50,6 +50,12 @@ jobs:
       - name: Type check the certification suite
         run: npm run typecheck:e2e
 
+      # `scripts/` is outside the Next.js program too, and P0-02 added a TypeScript
+      # certification tool there that talks to live Firebase Auth. Unchecked, a type error
+      # in it would first appear part-way through a production run against real accounts.
+      - name: Type check the certification tool
+        run: npm run typecheck:scripts
+
       - name: Run tests with coverage threshold
         run: npm test
 

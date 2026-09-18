@@ -1,7 +1,8 @@
 name: Seed Golden Tenant
 
 # Rebuilds the `bizosto-demo` fixture and rotates its ten demo Auth accounts to the
-# password THIS repository holds.
+# password THIS repository holds — and, since P0-02, also certifies the demo Auth surface
+# those accounts live on.
 #
 # WHY IT IS A WORKFLOW AND NOT A BUTTON
 #
@@ -15,6 +16,15 @@ name: Seed Golden Tenant
 # documenting it: there is now one copy of the password that decides the outcome, and it
 # is the one the tests use.
 #
+# WHY P0-02 CERTIFICATION LIVES HERE TOO
+#
+# A dedicated workflow cannot be dispatched against a feature ref until it exists on the
+# default branch, and P0-02 has to be provable BEFORE it is merged, not after. This
+# workflow is already on main and already holds the relevant secret contract, so the
+# `certify-*` actions below make a live pre-merge run possible against the PR's own ref.
+# `.github/workflows/demo-auth-certification.yml` is the permanent home and takes over
+# once this PR is on main; both drive the same `scripts/certify-demo-auth.ts`.
+#
 # SAFETY
 #
 # `--reset` deletes every `bizosto-demo` document in nine collections. The demo tenant
@@ -22,20 +32,42 @@ name: Seed Golden Tenant
 #
 #   - the tenant is fixed to `bizosto-demo` inside lib/demo/seed.ts, not passed in;
 #   - the operator must name the Firebase project, and the run aborts before touching
-#     anything if `FIREBASE_ADMIN_KEY` points at a different one.
+#     anything if the credential points at a different one.
+#
+# The certification actions add a third: production and staging credentials are routed by
+# input and are mutually exclusive, so a staging run never has the production secret in
+# scope and there is nothing for a fallback to fall back to.
 #
 # Dispatch requires write access to the repository. No secret value is printed: the seeder
-# reports accounts and counts, never the password.
+# reports accounts and counts, the certifier reports counts and fingerprints, never the
+# password.
 
 on:
   workflow_dispatch:
     inputs:
+      action:
+        description: 'seed = rebuild the fixture. certify-audit = read-only P0-02 inventory. certify-remediate = rotate + revoke + disable legacy.'
+        required: true
+        default: seed
+        type: choice
+        options:
+          - seed
+          - certify-audit
+          - certify-remediate
       firebase_project_id:
-        description: 'Firebase project this seed may write to (must match FIREBASE_ADMIN_KEY)'
+        description: 'Firebase project this run may touch (must match the credential below)'
         required: true
         type: string
+      credential:
+        description: 'certify-* only: which Admin credential to use. production = FIREBASE_ADMIN_KEY, staging = FIREBASE_ADMIN_KEY_STAGING. The seed action is always the production path.'
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - staging
       reset:
-        description: 'Delete the bizosto-demo fixture before re-seeding it'
+        description: 'seed only: delete the bizosto-demo fixture before re-seeding it'
         required: true
         default: true
         type: boolean
@@ -44,16 +76,22 @@ permissions:
   contents: read
 
 # One rebuild at a time. Two concurrent resets would race each other's deletes and
-# re-seeds and could leave the fixture half-built.
+# re-seeds and could leave the fixture half-built; two concurrent remediating runs would
+# rotate the same ten accounts against each other. The group is deliberately shared by
+# both actions, so a seed and a certification cannot overlap either.
 concurrency:
   group: seed-golden-tenant
   cancel-in-progress: false
 
 jobs:
   seed:
+    if: inputs.action == 'seed'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
+      # UNCHANGED from before P0-02: `Seed Golden Tenant` is the deliberate, by-hand
+      # PRODUCTION reseed path and keeps the production account. P0-01 split the two rebuild
+      # paths by credential, and the `certify` job below does not move this one.
       FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
       E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
       DEMO_FIREBASE_PROJECT_ID: ${{ inputs.firebase_project_id }}
@@ -86,3 +124,93 @@ jobs:
 
       - name: Rebuild the golden tenant
         run: npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts ${{ inputs.reset && '--reset' || '' }}
+
+  certify:
+    # P0-02. Read-only in `certify-audit`; in `certify-remediate` it rotates the ten
+    # canonical passwords, revokes their refresh tokens, restores exact claims and disables
+    # proven legacy demo identities. It never deletes an Auth user.
+    if: inputs.action == 'certify-audit' || inputs.action == 'certify-remediate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PRODUCTION_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY != '' }}
+      STAGING_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING != '' }}
+      DEMO_PASSWORD_CONFIGURED: ${{ secrets.E2E_DEMO_PASSWORD != '' }}
+
+    steps:
+      - name: Verify the requested pairing can be satisfied
+        shell: bash
+        env:
+          PROJECT: ${{ inputs.firebase_project_id }}
+          CREDENTIAL: ${{ inputs.credential }}
+        run: |
+          set -euo pipefail
+          case "$PROJECT:$CREDENTIAL" in
+            la-creativo-erp:production|bizosto-staging:staging) ;;
+            *)
+              echo "::error::Refusing to run: project '$PROJECT' must not be certified with the"
+              echo "::error::'$CREDENTIAL' credential. Production uses FIREBASE_ADMIN_KEY; staging"
+              echo "::error::uses FIREBASE_ADMIN_KEY_STAGING. There is no fallback in either direction."
+              exit 1
+              ;;
+          esac
+          if [ "$CREDENTIAL" = "production" ] && [ "$PRODUCTION_KEY_CONFIGURED" != "true" ]; then
+            echo "::error::FIREBASE_ADMIN_KEY is not configured. P0-02 fails closed: a run that"
+            echo "::error::cannot reach Firebase Auth proves nothing and must not report clean."
+            exit 1
+          fi
+          if [ "$CREDENTIAL" = "staging" ] && [ "$STAGING_KEY_CONFIGURED" != "true" ]; then
+            echo "::error::FIREBASE_ADMIN_KEY_STAGING is not configured. Add the STAGING service"
+            echo "::error::account. Do NOT supply the production key: the tool rejects it."
+            exit 1
+          fi
+          if [ "$DEMO_PASSWORD_CONFIGURED" != "true" ]; then
+            echo "::error::E2E_DEMO_PASSWORD is required: it is the credential the canonical"
+            echo "::error::accounts are rotated to and signed in with."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          # The published historical demo password is recovered from this repository's own
+          # object database, so the proof that it is now refused needs the full history.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Certify the demo Auth surface
+        shell: bash
+        env:
+          # Scoped to this step, and mutually exclusive: a staging run does not have the
+          # production key in its environment at all.
+          FIREBASE_ADMIN_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_ADMIN_KEY || '' }}
+          FIREBASE_ADMIN_KEY_STAGING: ${{ inputs.credential == 'staging' && secrets.FIREBASE_ADMIN_KEY_STAGING || '' }}
+          # OPTIONAL. A Firebase Web API key is a public identifier — it ships in every
+          # browser — but it is held as a secret so the two environments cannot be confused
+          # for each other. When it is absent the tool resolves the key from the Firebase
+          # Management API using the Admin credential it already verified, so sign-in proof
+          # needs no new secret; if neither works the run FAILS rather than certifying.
+          FIREBASE_WEB_API_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_WEB_API_KEY || secrets.FIREBASE_WEB_API_KEY_STAGING }}
+          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+          PROJECT: ${{ inputs.firebase_project_id }}
+          ACTION: ${{ inputs.action }}
+          CREDENTIAL: ${{ inputs.credential }}
+        run: |
+          set -euo pipefail
+          if [ "$CREDENTIAL" = "production" ]; then
+            CREDENTIAL_ENV=FIREBASE_ADMIN_KEY
+          else
+            CREDENTIAL_ENV=FIREBASE_ADMIN_KEY_STAGING
+          fi
+          MODE="${ACTION#certify-}"
+          npx --yes tsx@4.19.2 scripts/certify-demo-auth.ts \
+            --mode="$MODE" \
+            --project="$PROJECT" \
+            --credential-env="$CREDENTIAL_ENV" \
+            --prove-historical-rejected
