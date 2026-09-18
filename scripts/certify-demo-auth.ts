@@ -254,9 +254,13 @@ function recoverHistoricalCandidates(): Array<{ value: string; sha256: string }>
   const recorded = new Set<string>(HISTORICAL_DEMO_PASSWORD_SHA256);
   const found = new Map<string, string>();
 
+  // `rev-list --objects` lists commits and trees alongside the blobs, and asking
+  // `cat-file blob` for a commit prints "bad file" to stderr for every one of them. The
+  // type filter keeps that noise out of a certification log, where an operator reading
+  // fatal: lines has to work out whether the proof actually ran.
   let blobs: string[] = [];
   try {
-    blobs = execFileSync(
+    const objects = execFileSync(
       'git',
       ['rev-list', '--objects', '--all', '--', 'lib/demo/seed.ts', 'app/super_admin/demo/page.tsx'],
       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
@@ -264,6 +268,19 @@ function recoverHistoricalCandidates(): Array<{ value: string; sha256: string }>
       .split('\n')
       .map((line) => line.split(' ')[0])
       .filter(Boolean);
+
+    if (!objects.length) return [];
+
+    const types = execFileSync('git', ['cat-file', '--batch-check=%(objectname) %(objecttype)'], {
+      input: `${objects.join('\n')}\n`,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+
+    blobs = types
+      .split('\n')
+      .filter((line) => line.endsWith(' blob'))
+      .map((line) => line.split(' ')[0]);
   } catch {
     return [];
   }

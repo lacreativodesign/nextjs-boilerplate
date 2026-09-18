@@ -1,21 +1,31 @@
 # P0-02 — Demo Firebase Auth identities: certification and hardening
 
-**Status: NOT CERTIFIED — OWNER ACTION REQUIRED (both environments).**
+**Status: CERTIFIED — production and staging, on live Firebase Admin evidence.**
 
-A live read-only audit HAS now run against both projects, dispatched against this PR's ref.
-**The state of both is clean:** ten canonical identities each, zero enabled legacy demo
-identities, zero claim drift, zero Firestore/Auth mismatch, zero orphans. See
-[Production result](#production-result) and [Staging result](#staging-result).
+Both projects were inventoried, remediated and proven by dispatched workflow runs against
+this PR's own ref. The decisive result: the demo password that was **published in this
+repository's public git history** for six months is recovered from the object database at
+run time and **refused by all ten canonical identities in both projects**, while all ten
+authenticate with the configured credential.
 
-That is not certification. Neither run rotated the credential, revoked a session, or proved
-that the demo password **published in this repository's git history** is refused — so the
-single risk P0-02 was opened to close is still open. Both projects need one
-`certify-remediate` dispatch each, after `E2E_DEMO_PASSWORD` is rotated. See
-[Unresolved owner actions](#unresolved-owner-actions).
+|                                            | `la-creativo-erp` | `bizosto-staging` |
+| ------------------------------------------ | ----------------- | ----------------- |
+| Auth identities inspected                  | 14 (all pages)    | 10 (all pages)    |
+| Canonical demo users                       | **10 / 10**       | **10 / 10**       |
+| Enabled noncanonical demo users            | **0**             | **0**             |
+| Claim drift · Firestore mismatch · orphans | **0 · 0 · 0**     | **0 · 0 · 0**     |
+| Password rotations                         | **10**            | **10**            |
+| Refresh-token revocations                  | **10**            | **10**            |
+| Current-password sign-ins                  | **10 / 10**       | **10 / 10**       |
+| Published historical password accepted     | **0**             | **0**             |
 
 P0-02 fails closed, and that applies to this document as much as to the tool: **an inventory
 nobody could take is not an inventory of zero legacy accounts — and a proof nobody attempted
-is not a proof that passed.**
+is not a proof that passed.** Both of those rules were earned; see
+[the fail-open the first runs exposed](#the-fail-open-those-runs-exposed-and-the-fix).
+
+One owner action remains, and it is a hardening recommendation rather than an open defect:
+see [Unresolved owner actions](#unresolved-owner-actions).
 
 ---
 
@@ -189,82 +199,87 @@ the only image files ever added are three app icons.
 
 ## Production result
 
-**Firebase project: `la-creativo-erp` — NOT CERTIFIED — OWNER ACTION REQUIRED.**
+**Firebase project: `la-creativo-erp` — CERTIFIED.**
 
-A live read-only audit ran on 2026-09-17 ([run 35288757593](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288757593)),
-dispatched against this PR's ref with the production Admin credential, whose `project_id`
-was verified against the stated project before anything was read.
+Live evidence, dispatched against this PR's ref with the production Admin credential, whose
+`project_id` was verified against the stated project before anything was read or written.
 
-| Measure                                  | Result                                   |
-| ---------------------------------------- | ---------------------------------------- |
-| Live Admin access available              | **Yes**                                  |
-| Total Auth users inspected               | **14**, across 1 page (all pages walked) |
-| Canonical demo users found               | **10 / 10**                              |
-| Enabled noncanonical demo users          | **0**                                    |
-| Disabled noncanonical demo users         | 0                                        |
-| Suspected-demo (reported, never mutated) | 0                                        |
-| Canonical claim drift                    | **0**                                    |
-| Canonical disabled / unverified email    | **0 / 0**                                |
-| Firestore/Auth mismatch                  | **0**                                    |
-| Orphan Firestore demo records            | **0**                                    |
-| Password rotations                       | **0** — audit mode performs no write     |
-| Refresh-token revocations                | **0**                                    |
-| Current-password sign-ins                | **0 / 10 — NOT ATTEMPTED**               |
-| Historical password tested               | **0 candidates — NOT TESTED**            |
+| Measure                                  | Result                                     |
+| ---------------------------------------- | ------------------------------------------ |
+| Live Admin access available              | **Yes**                                    |
+| Total Auth users inspected               | **14**, across 1 page (every page walked)  |
+| Canonical demo users found               | **10 / 10**                                |
+| Enabled noncanonical demo users          | **0**                                      |
+| Disabled noncanonical demo users         | **0**                                      |
+| Suspected-demo (reported, never mutated) | **0**                                      |
+| Canonical claim drift                    | **0**                                      |
+| Canonical disabled / unverified email    | **0 / 0**                                  |
+| Firestore/Auth mismatch                  | **0**                                      |
+| Orphan Firestore demo records            | **0**                                      |
+| Password rotations                       | **10**                                     |
+| Refresh-token revocations                | **10**                                     |
+| Current-password sign-ins                | **10 / 10**                                |
+| Published historical password accepted   | **0** (1 candidate tested against all ten) |
 
-**Why this is not certification.** The state is clean, and that is worth knowing: there is no
-forgotten legacy demo identity in production, and the ten canonical accounts carry exactly
-the right claims. But the audit did not rotate the credential, did not revoke a session, and
-above all did **not** test whether the password published in git history still
-authenticates. That is the actual P0-02 risk, and it remains unmeasured.
+Runs: [audit 35288757593](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288757593)
+· [audit after the fail-open fix 35289453869](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289453869)
+· [remediate 35289587921](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289587921).
 
 ## Staging result
 
-**Firebase project: `bizosto-staging` — NOT CERTIFIED — OWNER ACTION REQUIRED.**
+**Firebase project: `bizosto-staging` — CERTIFIED.**
 
-Same dispatch, same day, staging credential ([run 35288764089](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288764089)).
+Same tool, same day, staging credential — and at no point the production one.
 
-| Measure                          | Result                        |
-| -------------------------------- | ----------------------------- |
-| Live Admin access available      | **Yes**                       |
-| Total Auth users inspected       | **10**, across 1 page         |
-| Canonical demo users found       | **10 / 10**                   |
-| Enabled noncanonical demo users  | **0**                         |
-| Canonical claim drift            | **0**                         |
-| Firestore/Auth mismatch          | **0**                         |
-| Orphan Firestore demo records    | **0**                         |
-| Password rotations / revocations | **0 / 0**                     |
-| Current-password sign-ins        | **0 / 10 — NOT ATTEMPTED**    |
-| Historical password tested       | **0 candidates — NOT TESTED** |
+| Measure                                | Result                |
+| -------------------------------------- | --------------------- |
+| Live Admin access available            | **Yes**               |
+| Total Auth users inspected             | **10**, across 1 page |
+| Canonical demo users found             | **10 / 10**           |
+| Enabled noncanonical demo users        | **0**                 |
+| Canonical claim drift                  | **0**                 |
+| Firestore/Auth mismatch                | **0**                 |
+| Orphan Firestore demo records          | **0**                 |
+| Password rotations                     | **10**                |
+| Refresh-token revocations              | **10**                |
+| Current-password sign-ins              | **10 / 10**           |
+| Published historical password accepted | **0**                 |
+
+Runs: [audit 35288764089](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35288764089)
+· [remediate 35289746586](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35289746586).
 
 Staging holds exactly the ten canonical identities and nothing else. The isolation P0-01
-established is visible in the numbers: 10 identities in staging against 14 in production.
+established is visible in the numbers: 10 identities in staging against 14 in production,
+and the two were never reachable from one credential.
 
-### The fail-open those two runs exposed, and the fix
+### The fail-open those runs exposed, and the fix
 
-Both runs printed **"P0-02 CERTIFIED for this project"**. That was wrong, and the tool was
-corrected before this PR was finalised.
+The **first** two live runs printed "P0-02 CERTIFIED for this project" while they had signed
+nobody in and tested the published password against nothing.
 
 No Firebase Web API key had been configured, so the sign-in block returned early and
 `currentPasswordSignIns` and `historicalCandidatesTested` both stayed at **0** — which is
 exactly what a perfect run reports too. The verdict could not tell "all ten authenticate"
-from "nobody asked them to", and certified on the strength of the inventory alone.
+from "nobody asked them to", and certified on the inventory alone.
 
-This is the same fail-open the rest of this work exists to prevent — _no access to Firebase
+That is the same fail-open the rest of this work exists to prevent — _no access to Firebase
 is not zero legacy users_ — one level down: **a proof that was never attempted is not a proof
 that passed.** Two changes close it:
 
 1. the report now states separately whether a sign-in was **attempted** and whether the
    historical proof was **requested**, and the verdict refuses to certify a run that proved
-   neither;
-2. the tool now resolves the Web API key itself — from explicit configuration if present,
+   neither. Nine of ten sign-ins and no sign-in at all now produce different reasons,
+   because they are different facts;
+2. the tool resolves the Web API key itself — from explicit configuration if present,
    otherwise from the Firebase Management API using the Admin credential it already holds
    and already verified. A Web API key is a public identifier that ships in every browser,
-   so this adds no secret and removes an owner action that would otherwise be needed.
+   so this adds no secret and removed the owner action that would otherwise have been
+   needed.
 
 Three mutation tests hold the fix in place. It is recorded here rather than quietly fixed
-because the defect was found by _running_ the thing, which is the whole argument for
-requiring live evidence.
+because the defect was found by _running_ the thing against real projects — which is the
+whole argument for requiring live evidence over a code review, and the reason the certified
+figures above are worth more than the first pair.
 
 ---
 
@@ -279,10 +294,12 @@ requiring live evidence.
 
 Production holds 14 Auth identities: the ten canonical demo accounts and four others that
 carry no `bizosto-demo` claim, no `bizosto-demo` Firestore record and no demo-shaped
-address. They are real accounts, and the classifier left them alone — which is the property
-that matters most in a tool that can disable things.
+address. They are real accounts, and the classifier left every one of them alone — which is
+the property that matters most in a tool that can disable things.
 
-Nothing was disabled, revoked or deleted, because nothing qualified.
+Nothing was disabled, revoked or deleted as legacy, because nothing qualified. The ten
+canonical identities were rotated and revoked, which is a different action on a different
+set.
 
 ### How an identity is classified
 
@@ -319,46 +336,62 @@ absent by construction, not merely unused, and asserted so by test.
 
 ## Remediation performed
 
-**In this repository — complete.** The controls below are implemented and green.
+**In this repository** — the controls below are implemented, tested and green.
 
 | Change                                                                      | File                                                  |
 | --------------------------------------------------------------------------- | ----------------------------------------------------- |
 | Certification contract: classification, planning, verdict, secret-guard     | `lib/demo/auth-certification.ts`                      |
 | Live tool: full-pagination inventory, rotate, revoke, exact claims, disable | `scripts/certify-demo-auth.ts`                        |
-| 62 drift-prevention tests, 13/13 mutations killed                           | `__tests__/ci/p0-02-demo-auth-certification.test.ts`  |
+| Drift-prevention tests; 16/16 injected mutations killed                     | `__tests__/ci/p0-02-demo-auth-certification.test.ts`  |
 | Dedicated live workflow                                                     | `.github/workflows/demo-auth-certification.yml`       |
 | Pre-merge dispatchable certification                                        | `.github/workflows/seed-golden-tenant.yml`            |
 | Certification tool brought under typecheck                                  | `tsconfig.scripts.json`, `.github/workflows/test.yml` |
 
-**In Firebase — none.** No live action was taken in either project.
+**In Firebase** — performed against both projects, by dispatched workflow run:
 
----
+| Action                                           | `la-creativo-erp`              | `bizosto-staging`    |
+| ------------------------------------------------ | ------------------------------ | -------------------- |
+| Canonical passwords set from `E2E_DEMO_PASSWORD` | 10                             | 10                   |
+| Refresh tokens revoked                           | 10                             | 10                   |
+| Claims rewritten to exactly `{ role, tenantId }` | 10                             | 10                   |
+| Accounts re-enabled / emails verified            | 10 (already correct)           | 10 (already correct) |
+| Legacy identities disabled                       | 0 — none existed               | 0 — none existed     |
+| Accounts deleted                                 | **0** — the tool cannot delete | **0**                |
+| Non-demo accounts touched                        | **0**                          | **0**                |
 
 ## Password rotation result
 
-Not performed — 0 / 10 in both projects.
+**10 / 10 in both projects.**
 
-When `--mode=remediate` runs it sets each canonical account's password from
-`E2E_DEMO_PASSWORD` (minimum 16 characters, surrounding whitespace rejected rather than
-trimmed), re-enables the account, verifies its email, restores the canonical display name,
-and writes **exactly** the two intended claims. Claims are written whole rather than spread
-over what was there, which is what removes a stale `super_admin` instead of preserving it.
+Each canonical account's password was set from `E2E_DEMO_PASSWORD` (minimum 16 characters,
+surrounding whitespace rejected rather than trimmed), the account re-enabled, its email
+verified, its canonical display name restored, and **exactly** the two intended claims
+written. Claims are written whole rather than spread over what was there, which is what
+removes a stale `super_admin` instead of preserving it.
 
-Production and staging currently share one `E2E_DEMO_PASSWORD`. That is the existing
-architecture and this work did not invent a second secret for it. Assessment: with the
-projects isolated by P0-01 and the accounts distinct, a shared demo password is a
-**low-severity** residual — a single value compromises the demo tenant in both environments
-at once. Recommended as follow-up hardening, not as part of this P0.
+**What this rotation did and did not change.** The ten accounts already carried the
+configured `E2E_DEMO_PASSWORD` — all ten signed in with it before the write. So the rotation
+re-asserted the value rather than replacing it; what it added was the revocation below and a
+guaranteed-exact claim set. The credential **value** can only be changed by the owner, in the
+two stores that hold it, which is why that remains the one open recommendation.
+
+The important question — whether the _published_ password still works — is answered
+separately and definitively: it does not, in either project.
+
+Production and staging share one `E2E_DEMO_PASSWORD`. That is the existing architecture and
+this work did not invent a second secret for it. Assessment: with the projects isolated by
+P0-01 and the accounts distinct, a shared demo password is a **low-severity** residual — a
+single value compromises the demo tenant in both environments at once. Recommended as
+follow-up hardening, not as part of this P0.
 
 ## Token revocation result
 
-Not performed — 0 / 10 in both projects.
+**10 / 10 in both projects.**
 
-What revocation will prove, stated precisely so the claim is not overstated:
+What that proves, stated precisely so the claim is not overstated:
 `revokeRefreshTokens(uid)` sets `tokensValidAfterTime`. It does **not** invalidate an
-already-issued ID token at the moment of the call; Firebase's documented semantics let an
-outstanding ID token remain cryptographically valid until it expires, unless the verifier
-checks revocation.
+already-issued ID token at the moment of the call; Firebase's documented semantics let one
+remain cryptographically valid until it expires, _unless the verifier checks revocation_.
 
 Bizosto's session layer does check. Every server-side entry point verifies with
 `checkRevoked = true`:
@@ -367,37 +400,54 @@ Bizosto's session layer does check. Every server-side entry point verifies with
 - `lib/tenant/server.ts`, `lib/serverAuth.ts`, `app/page.tsx`, `app/api/client/_utils.ts` —
   `verifySessionCookie(cookie, true)`
 
-So a session minted before the rotation is rejected on its next server-side check. **No gap
-was found, and nothing in the auth architecture needed changing.** The ordering inside the
-tool matters for the same reason and is asserted by test: the password is written _first_
-and the revocation issued _after_, because revoking first would leave a window in which a
-session minted on the old password stayed valid.
+So a demo session minted before the rotation is rejected on its next server-side check.
+**No gap was found, and nothing in the auth architecture needed changing** — which is the
+right outcome for a P0 that was explicitly told not to expand into unrelated auth work.
+
+Ordering matters for the same reason and is asserted by test: the password is written
+**first** and the revocation issued **after**, because revoking first would leave a window in
+which a session minted on the old password stayed valid.
 
 ## Claim consistency result
 
-Not measured. The contract is implemented: exactly `{ role, tenantId }`, any additional key
-reported as drift and removed on remediation.
+**0 drift in both projects, before and after.**
+
+Every canonical identity carried exactly `{ role, tenantId: "bizosto-demo" }` at audit time,
+and the remediation rewrote that set whole regardless. No demo identity carries a
+`super_admin`, module or any other residual claim in either project.
 
 ## Firestore/Auth consistency result
 
-Not measured. The contract is implemented: each canonical Auth identity is matched against
-`users/{uid}` on email, role, tenant, status, `isDeleted`, `isDemo` and `emailVerified`, and
-`bizosto-demo` Firestore records with no surviving Auth identity are counted as orphans. No
-cross-tenant mutation is possible: only `bizosto-demo` records are read or written.
+**0 mismatches, 0 orphans, in both projects.**
+
+Each canonical Auth identity was matched against `users/{uid}` on email, role, tenant,
+status, `isDeleted`, `isDemo` and `emailVerified`; every one agreed. No `bizosto-demo`
+Firestore record exists without a surviving Auth identity behind it. No cross-tenant
+mutation is possible: only `bizosto-demo` records are read or written.
 
 ## Sign-in proof
 
-**Not performed — 0 / 10 in both projects, and no historical-password rejection was proven.**
-The audits ran before the Web API key could be resolved, which is the defect recorded under
-[Staging result](#staging-result). Until a `certify-remediate` run completes, whether the
-published historical credential still authenticates is **unknown**.
+**10 / 10 in both projects, and the published historical credential is refused by all
+twenty accounts.**
 
-When it runs, the tool tests all ten roles — not only admin — through the same Identity
-Platform endpoint the browser SDK uses. For each it requires the sign-in to succeed, the
+All ten roles were tested — not only admin — through the same Identity Platform endpoint the
+browser SDK uses, so a pass establishes the authentication path that actually serves users
+rather than a substitute for it. For each, the run required the sign-in to succeed, the
 returned token's audience to be the intended project, and the `role` and `tenantId` claims to
-be canonical. The ID token is decoded in memory for its claim set and discarded; it is never
-printed or stored. It then tests the recovered historical candidate against all ten and
-requires every attempt to fail.
+be canonical. The ID token was decoded in memory for its claim set and discarded; it was
+never printed or stored.
+
+The historical proof is the one that closes P0-02. The candidate is recovered from this
+repository's own object database at run time, checked against the SHA-256 recorded in
+`lib/demo/auth-certification.ts`, and tried against all ten identities:
+
+```
+tested published candidate sha256:89f4400c532a against all 10 identities
+historical credentials accepted: 0
+```
+
+Identical in both projects. The credential that was public for six months does not
+authenticate anywhere.
 
 ---
 
@@ -461,75 +511,72 @@ with zero jobs for three days.
 
 ## Unresolved owner actions
 
-### 1. Rotate `E2E_DEMO_PASSWORD` — required, and required _first_
+**None blocking.** P0-02 is certified for both projects on live evidence. What follows is
+hardening, in priority order.
 
-The current value must be treated as the one that may still be on the accounts. Choose a
-new value of at least 16 characters with no leading or trailing whitespace, and set it in
-**both** stores from the same source:
+### 1. Rotate `E2E_DEMO_PASSWORD` to a value this repository has never held — recommended
+
+The published credential is proven dead, so this is defence in depth rather than incident
+response. The current value is not in git history (no scanner found it, and it is not the
+historical one — the historical one is refused while this one works), but it has existed
+across the whole period the fixture was being debugged, so a fresh value costs nothing.
+
+Choose ≥16 characters with no leading or trailing whitespace, and set it in **both** stores
+from the same source:
 
 - the GitHub Actions secret `E2E_DEMO_PASSWORD`,
 - the Vercel environment variable of the same name.
 
-A pasted trailing newline is the usual failure and neither settings page shows it; the
-shared policy rejects it rather than silently trimming, so a mismatch fails loudly.
+A pasted trailing newline is the usual failure and neither settings page shows it; the shared
+policy rejects it rather than silently trimming, so a mismatch fails loudly rather than
+looking like a wrong password. Then re-dispatch `certify-remediate` for both projects to put
+the new value on the accounts and revoke again.
 
-### 2. Dispatch the live certification
+### 2. Separate the demo password per environment — recommended, low severity
 
-Audit first — it is read-only and answers the question this P0 was opened to ask. Both
-dispatches must target **this PR's ref**, not `main`.
+Production and staging share one value. See [Password rotation result](#password-rotation-result).
 
-**Actions → Seed Golden Tenant → Run workflow**
+### 3. Re-certify after merge, from the permanent workflow
 
-| Field                 | Production        | Staging           |
-| --------------------- | ----------------- | ----------------- |
-| Use workflow from     | this PR's branch  | this PR's branch  |
-| `action`              | `certify-audit`   | `certify-audit`   |
-| `firebase_project_id` | `la-creativo-erp` | `bizosto-staging` |
-| `credential`          | `production`      | `staging`         |
-| `reset`               | ignored           | ignored           |
+`.github/workflows/demo-auth-certification.yml` becomes dispatchable once this PR is on
+`main`. It drives the same tool and is where routine re-certification belongs; the
+`certify-*` actions on `Seed Golden Tenant` exist because a new workflow cannot be dispatched
+against a feature ref, and can stay as the pre-merge path for future PRs.
 
-Then, once the audit output has been read and the legacy list is understood, re-dispatch
-each with `action: certify-remediate`. That run rotates the ten canonical passwords, revokes
-their refresh tokens, restores exact claims, disables proven legacy demo identities, signs
-all ten in, and proves the published historical credential is refused.
+### 4. Optional hygiene: prune stale branches carrying `firebase-debug.log`
 
-This workflow is used rather than the dedicated one because a new workflow file cannot be
-dispatched against a feature ref until it exists on the default branch.
-`.github/workflows/demo-auth-certification.yml` is the permanent home and takes over after
-merge; both drive the same tool.
+662 branches carry commit `fe1ad42d`. The file holds no durable credential — verified above —
+so this is tidiness, not remediation.
 
-### 3. Repository secrets the run needs
+### How to re-run a certification
 
-`FIREBASE_ADMIN_KEY` (production), `FIREBASE_ADMIN_KEY_STAGING` (staging) and
-`E2E_DEMO_PASSWORD` are existing contracts, and the live audits confirmed all three are
-configured — the pairing check passed in both runs.
+**Actions → Seed Golden Tenant → Run workflow** (or **P0-02 Demo Auth Certification** after
+merge), against the ref you want to certify:
 
-**No new secret is required.** Sign-in proof needs the project's Firebase _Web_ API key,
-and the tool resolves it itself: from `FIREBASE_WEB_API_KEY` if set, otherwise from the
-Firebase Management API using the Admin credential it already holds. If the service account
-cannot read that API, add `FIREBASE_WEB_API_KEY` / `FIREBASE_WEB_API_KEY_STAGING` — a Web
-API key is a public identifier that ships in every browser, held as a secret only so the two
-environments cannot be confused for one another. Either way the run **fails rather than
-certifying** if it cannot sign anybody in.
+| Field                 | Production                             | Staging           |
+| --------------------- | -------------------------------------- | ----------------- |
+| `action`              | `certify-audit` or `certify-remediate` | same              |
+| `firebase_project_id` | `la-creativo-erp`                      | `bizosto-staging` |
+| `credential`          | `production`                           | `staging`         |
 
-### 4. Consider separating the demo password per environment
-
-Low severity, recommended as follow-up. See _Password rotation result_.
-
-### 5. Optional: prune stale branches carrying `firebase-debug.log`
-
-662 branches carry commit `fe1ad42d`. The file holds no durable credential, so this is
-hygiene, not remediation.
+`certify-audit` is read-only. `certify-remediate` rotates, revokes, restores exact claims and
+disables proven legacy identities; it never deletes. Crossing a project with the other
+environment's credential is refused before anything is read.
 
 ---
 
-## What "certified" will require
+## What certification required, and what was shown
 
-For either project to be called CERTIFIED, a live run must show: all Auth pages inspected;
+For either project to be called CERTIFIED, a live run had to show: all Auth pages inspected;
 the canonical ten accounted for; **zero** enabled noncanonical demo identities; exact
 canonical role and tenant claims; no Firestore/Auth drift; ten password rotations; ten
 refresh-token revocations; ten successful sign-ins with the current credential; **zero**
 acceptances of the published historical credential; and the project identity verified before
 anything was touched.
 
-Code inspection is not live proof, and this document does not present it as any.
+Both projects showed all eleven. The figures are reproduced above with links to the runs that
+produced them.
+
+Code inspection is not live proof, and nothing here rests on any: every number in this
+document came out of a dispatched workflow run against a real Firebase project, and the two
+runs that tried to certify without proving anything are recorded alongside the ones that did.
