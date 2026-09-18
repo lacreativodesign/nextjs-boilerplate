@@ -129,12 +129,19 @@ export type ClassifiedIdentity = {
  * `String()` would turn a structurally wrong claim into the plausible-looking literal
  * `[object Object]`, which then compares unequal to everything and reports as ordinary
  * drift instead of as the malformed record it is.
+ *
+ * The types are listed rather than left to a fall-through, because the fall-through had a
+ * throw in it: `String(Symbol())` raises a TypeError. Nothing Firestore can store is a
+ * symbol, so it was unreachable — but an unreachable throw inside the helper that every
+ * comparison in this file goes through is not something to leave to an argument about
+ * reachability.
  */
 const text = (value: unknown): string => {
   if (typeof value === 'string') return value.trim();
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'object') return '';
-  return String(value).trim();
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  return '';
 };
 
 /** Orders keys the way a reader expects, rather than by UTF-16 code unit. */
