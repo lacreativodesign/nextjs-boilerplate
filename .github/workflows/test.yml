@@ -128,6 +128,11 @@ jobs:
       # the ruleset is the CLI that ships it.
       - name: Firebase Security Rules behavioral certification (P0-04)
         run: npm run test:rules
+        env:
+          # Same reasoning as the steps above. This one has not been observed failing, but
+          # it is a jest run of comparable size on the same runner, and leaving it as the
+          # only unprotected full-suite step would just make it the next to go.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Build application
         run: npm run build
@@ -180,6 +185,17 @@ jobs:
 
       - name: Test coverage
         run: npm test
+        env:
+          # The same full suite as the `quality` job, so the same ceiling. This job is why
+          # the first attempt at this fix was incomplete: `quality` was patched and `sonar`
+          # was not, and `sonar` failed on the very next run with the identical
+          # `RangeError` from __tests__/lib/support/storage.test.ts.
+          #
+          # It had passed one commit earlier on the same code, which is the tell that this
+          # is marginal rather than deterministic: whichever job lands on a slightly
+          # tighter runner loses. Every step that runs the full suite needs the headroom,
+          # not just the one observed failing.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: SonarQube Scan and Quality Gate
         uses: SonarSource/sonarqube-scan-action@v8.2.1
