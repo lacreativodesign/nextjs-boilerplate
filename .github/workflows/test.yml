@@ -52,11 +52,28 @@ jobs:
 
       - name: Run tests with coverage threshold
         run: npm test
+        env:
+          # Same ceiling, and the same reason, as the `next build` step below (DS-33): the
+          # runner's default V8 old-space is ~2083MB. The full suite runs 3976 tests with
+          # coverage instrumentation in one process, and on 2026-09-21 it began failing there
+          # — `parseScreenshotDataUrl` threw `RangeError` from its ~3.93MB base64 allocation
+          # instead of reaching its own size check, which is what an allocation giving up
+          # looks like. Nothing in the tree changed: the repository went private that day,
+          # onto a smaller hosted-runner class, and the same commit had passed before.
+          #
+          # This buys headroom; it is NOT the root-cause fix. That belongs in
+          # lib/support/storage.ts, which should reject an oversized payload on length
+          # BEFORE running the regex and allocating — see nextjs-boilerplate#1011 for the
+          # proposed patch. Raising the ceiling only moves the cliff.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Run tests under a non-UTC timezone (QUAL-02 regression guard)
         run: TZ=Asia/Karachi npm test
         env:
           TZ: Asia/Karachi
+          # Same full suite, same coverage instrumentation, so the same ceiling as the step
+          # above. Without it this step is simply the next one to fail.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Payment engine Firestore emulator invariants
         run: >-
