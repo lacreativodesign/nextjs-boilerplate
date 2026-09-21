@@ -41,6 +41,38 @@ describe('parseScreenshotDataUrl', () => {
     expect(() => parseScreenshotDataUrl('not-a-data-url')).toThrow(/PNG, JPEG, or WebP/i);
   });
 
+  it('rejects an oversized payload on length, before decoding it', () => {
+    // The ceiling is enforced on the data-URL string itself, so nothing multi-megabyte is
+    // ever allocated. That is what makes the rejection independent of how much memory the
+    // process happens to have: a CI runner once failed this very assertion with `RangeError`
+    // because the allocation lost before the size check could run.
+    const overLimit = 'data:image/png;base64,' + 'A'.repeat(5 * 1024 * 1024);
+    const started = Date.now();
+    expect(() => parseScreenshotDataUrl(overLimit)).toThrow(/too large/i);
+    // Rejecting on length is O(1); decoding first was ~4MB of work. Generous bound — the
+    // point is that it cannot be doing the expensive path.
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('rejects an oversized NON-image on size rather than on format', () => {
+    // Deliberate behaviour change: the length guard runs before the format check, so a huge
+    // payload is "too large" even when it is not an image at all. Pinned so the ordering is
+    // not silently reversed back.
+    let caught: unknown;
+    try {
+      parseScreenshotDataUrl('x'.repeat(5 * 1024 * 1024));
+    } catch (err) {
+      caught = err;
+    }
+    expect((caught as Error).name).toBe('ScreenshotTooLarge');
+  });
+
+  it('still accepts a payload just under the ceiling', () => {
+    // The guard must not reject legitimate images. A 2MB decoded PNG is well inside 3MB.
+    const body = 'A'.repeat(Math.floor((2 * 1024 * 1024) / 3) * 4);
+    expect(() => parseScreenshotDataUrl(`data:image/png;base64,${body}`)).not.toThrow();
+  });
+
   it('rejects an oversized payload with a ScreenshotTooLarge error', () => {
     // ~5MB of base64 -> decodes to ~3.75MB, clearly above the 3MB ceiling.
     const huge = 'A'.repeat(5 * 1024 * 1024);
