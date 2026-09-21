@@ -811,30 +811,64 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     }
   });
 
-  it('records the ERP repository being public as a governance finding, not an approval', () => {
-    // It predates P0-06 and this PR does not change it — but "certified" must not be read as
-    // "someone decided this should be public".
-    const result = evaluateVisibility({ visibility: 'public', private: false }, certified);
-    expect(result.ok).toBe(true);
-    const detail = result.notices.map((n: Failure) => n.detail).join(' ');
-    expect(detail).toContain('governance finding');
-    expect(detail).toContain('not as an approval');
+  it('the ERP governance finding is RESOLVED, because that repository is private too', () => {
+    // It was recorded as an open finding for as long as nextjs-boilerplate was public, and
+    // never as an approval. The owner made it private on 2026-09-21, so the record now
+    // certifies private and the finding flag is off. This is a change of FACT — the finding
+    // was closed by the owner acting, not by the expectation being relaxed.
+    expect(certified.expectedVisibility).toBe('private');
+    expect(certified.visibilityIsGovernanceFinding).toBe(false);
+    expect(evaluateVisibility({ visibility: 'private', private: true }, certified).ok).toBe(true);
   });
 
-  it('the contract no longer anywhere treats publication as a remedy', () => {
-    // The wording moved when the ruleset went live; the commitments did not. These are the
-    // load-bearing ones: the current public state is named as temporary and NOT the target,
-    // the endpoint is private, the remedy is the plan, and the resulting failure must not be
-    // silenced by editing the expectation.
+  it('the ERP repository going public again would now FAIL, not merely be noticed', () => {
+    // The ratchet only tightens. While it was a recorded finding, public produced a NOTICE
+    // and passed; now that private is certified, public is drift and must fail outright.
+    const result = evaluateVisibility({ visibility: 'public', private: false }, certified);
+    expect(result.ok).toBe(false);
+    expect(result.failures.map((f: Failure) => f.control)).toContain('repository.visibility');
+    expect(result.failures.map((f: Failure) => f.detail).join(' ')).toContain(
+      'not an acceptable substitute',
+    );
+  });
+
+  it('the contract never treats publication as a remedy, even now that the gap is closed', () => {
+    // The endpoint was reached, so the prose about reaching it is gone. What must NOT go is
+    // the principle: publishing proprietary source was never the fix, and the record must
+    // not retroactively read as though it were.
     const contract = read(CERTIFIED_PATH);
-    expect(contract).toContain('NOT');
-    expect(contract).toContain('the target state');
-    expect(contract).toContain('must end up PRIVATE');
-    expect(contract).toContain('GitHub Pro or higher');
-    expect(contract).toContain('must not be silenced by changing the expectation');
-    // And it must never claim the publication resolved anything.
     expect(contract).not.toMatch(/publication (resolved|fixed|closed)/i);
     expect(contract).not.toMatch(/blocker (is )?resolved/i);
+    expect(contract).not.toMatch(/publishing[^.]{0,40}(was|is) (the )?(right|correct|acceptable)/i);
+    // The durable guarantee lives in the evaluator, not in prose: a public website still
+    // fails, with the same diagnosis, whatever the contract's narrative now says.
+    const result = evaluateVisibility({ visibility: 'public', private: false }, website);
+    expect(result.ok).toBe(false);
+    expect(result.failures.map((f: Failure) => f.detail).join(' ')).toContain(
+      'not an acceptable substitute',
+    );
+  });
+
+  it('the contract records HOW the gap closed: owner action, not a relaxed expectation', () => {
+    // The failure mode worth guarding is a future reader concluding the check was simply
+    // edited until it passed. The record has to say which of the two happened.
+    const contract = read(CERTIFIED_PATH);
+    expect(contract).toContain('VISIBILITY - CLOSED');
+    expect(contract).toContain('PRIVATE again');
+    expect(contract).toMatch(
+      /WITHOUT the record being touched|never a change to the\s+"?\s*expectation/i,
+    );
+  });
+
+  it('the contract proves the ruleset SURVIVED going private, rather than assuming it', () => {
+    // A ruleset can sit on a plan that does not serve it: configured, listed by the API, and
+    // enforcing nothing. Reading the ruleset back is not evidence it still applies — only
+    // the rules-for-this-branch endpoint is.
+    const contract = read(CERTIFIED_PATH);
+    expect(contract).toContain('rules/branches/main');
+    expect(contract).toContain('SURVIVED');
+    expect(contract).toMatch(/still ENFORCES|still applies/i);
+    expect(contract).toMatch(/configured[- ]but[- ]inert|configured but inert/i);
   });
 
   it('the contract records the ruleset as live rather than pending', () => {
@@ -910,13 +944,20 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     ['readable anonymously', /readable anonymously/i],
     ['needs no personal access token', /needs no personal access token/i],
     ['served anonymously for public', /served anonymously for public/i],
-    // A FOURTH sentence of the same class, found by diffing this repository's contract
-    // against the website's own copy rather than by review. The ERP contract still said
-    // "bizosto-website is PRIVATE and must stay that way", which asserts the very state
-    // expectedVisibility exists to demand and the verifier is currently FAILING on. The
-    // guard above did not catch it because none of its patterns covered this phrasing.
-    ['the website is already private', /bizosto-website is (currently )?private/i],
-    ['the website only needs to stay private', /is private and must stay that way/i],
+    // Defect 4 was the mirror image of these: the ERP contract claimed the website was
+    // already private while it was public and the verifier was FAILING on exactly that. On
+    // 2026-09-21 the owner made it private, that claim became true, and its two guards were
+    // retired. The same defect class now points the other way — prose still describing the
+    // repository as public, or the gap as open, is the stale kind.
+    //
+    // Retiring a guard because the world caught up with it is legitimate. Silently keeping
+    // one that can no longer fail is not: a guard that cannot fail reads as coverage while
+    // providing none.
+    ['the website is still public', /(bizosto-website|this repository) is (currently )?public/i],
+    ['the website is only temporarily private', /temporar(y|ily)[^.]{0,30}privat/i],
+    ['visibility is still an open gap', /visibility\s*[-\u2013\u2014]\s*open/i],
+    ['the repository must still end up private', /must end up PRIVATE/i],
+    ['the owner still cannot upgrade', /cannot upgrade right now/i],
   ])('no P0-06 artefact still claims %s', (_label, pattern) => {
     for (const artefact of [
       CERTIFIED_PATH,
@@ -931,15 +972,28 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
     }
   });
 
-  it('the contract states the website is public TODAY and that private is the target', () => {
+  it('the contract names the state both repositories are actually in: PRIVATE', () => {
     const contract = read(CERTIFIED_PATH);
-    // Not just "should be private" — the record has to name the state it is actually in,
-    // otherwise a reader cannot tell a satisfied control from an open one.
-    expect(contract).toContain('CURRENTLY PUBLIC');
-    expect(contract).toContain('certified target is PRIVATE');
-    // And the credential model must not be justified on either visibility, since the whole
-    // design exists so that the check survives the repository going private.
+    // The record has to name the state it is actually in, otherwise a reader cannot tell a
+    // satisfied control from an open one. That requirement did not change when the answer
+    // did — only the expected answer did.
+    expect(contract).toContain('BOTH repositories are now PRIVATE');
+    expect(contract).toMatch(/expectedVisibility is .{0,3}private.{0,3} for both/i);
+    // And the credential model still must not be justified on either visibility. That is
+    // the sentence which replaced defect 3, and it is precisely why nothing about the
+    // check had to change when the website actually went private.
     expect(contract).toContain('Neither visibility is what makes the drift check');
+  });
+
+  it('both repositories are certified private, with no governance-finding escape hatch', () => {
+    // visibilityIsGovernanceFinding downgrades a mismatch to a notice. With both repos at
+    // their certified posture neither needs it, and leaving it set on either would mean a
+    // future regression to public passes with a shrug instead of failing.
+    for (const key of ['erp', 'website']) {
+      const spec = certifiedFor(key);
+      expect({ key, visibility: spec.expectedVisibility }).toEqual({ key, visibility: 'private' });
+      expect({ key, finding: spec.visibilityIsGovernanceFinding }).toEqual({ key, finding: false });
+    }
   });
 
   it('the contract states that an anonymous read cannot certify', () => {

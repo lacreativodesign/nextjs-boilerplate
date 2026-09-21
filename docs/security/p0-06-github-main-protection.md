@@ -1,24 +1,24 @@
 # P0-06 — GitHub main branch protection, review and required-check certification
 
-**Status: TECHNICALLY CERTIFIED (ERP) — OWNER ACTION REMAINS**
+**Status: TECHNICALLY CERTIFIED (BOTH REPOSITORIES) — ONE OWNER ACTION REMAINS**
 
 This document was rewritten after independent review **rejected** the first version of this
 certification for two P0 defects. **Two more of the same class were then found by self-check**,
 one of them after CI had already gone green. All four are recorded here rather than quietly
 fixed, because a certification that hides its own corrections is not evidence of anything.
 
-|                             |                                                                       |
-| --------------------------- | --------------------------------------------------------------------- |
-| ERP `main` protection       | verified live, drift-guarded, **certified**                           |
-| ERP approving reviews       | `0` — **open gap**, no independent reviewer exists                    |
-| Website `main` protection   | ✅ **applied and live** — ruleset `23581080`, **two** required checks |
-| Website dependency gate     | ✅ **`dependency-security` live and branch-required** (PR #61 merged) |
-| Website visibility          | ⚠️ **OPEN** — temporarily public so the ruleset could exist on Free   |
-| Website plan                | ⚠️ GitHub **Free**; **Pro or higher** needed for the private posture  |
-| Bypass-actor observability  | **was a false green**; now fails closed                               |
-| Website history secret scan | complete — **no credential exposed**                                  |
-| Defects recorded            | **4** — 2 rejected by review, 2 found by self-check                   |
-| Stale-prose guards          | asserted in both repositories, mutation-proven                        |
+|                             |                                                                        |
+| --------------------------- | ---------------------------------------------------------------------- |
+| ERP `main` protection       | verified live, drift-guarded, **certified**                            |
+| ERP approving reviews       | `0` — **open gap**, no independent reviewer exists                     |
+| Website `main` protection   | ✅ **applied and live** — ruleset `23581080`, **two** required checks  |
+| Website dependency gate     | ✅ **`dependency-security` live and branch-required** (PR #61 merged)  |
+| Repository visibility       | ✅ **CLOSED** — both repositories PRIVATE, rulesets verified surviving |
+| ERP visibility finding      | ✅ **RESOLVED** — was public, now private; finding flag off            |
+| Bypass-actor observability  | **was a false green**; now fails closed                                |
+| Website history secret scan | complete — **no credential exposed**                                   |
+| Defects recorded            | **4** — 2 rejected by review, 2 found by self-check                    |
+| Stale-prose guards          | asserted in both repositories, mutation-proven                         |
 
 ---
 
@@ -142,13 +142,14 @@ over. Where a statement could not be asserted, it was deleted instead.
 
 ## 1. What is actually configured on the ERP repository
 
-`lacreativodesign/nextjs-boilerplate` is **public**, owner `lacreativodesign` (a user account,
-not an organisation), default branch `main`.
+`lacreativodesign/nextjs-boilerplate` is **private** as of 2026-09-21, owner `lacreativodesign`
+(a user account, not an organisation), default branch `main`.
 
-> **Repository-visibility governance finding.** This repository being public predates P0-06 and
-> **was not changed by this work**. It is recorded for owner review, not endorsed: "certified"
-> here describes what _is_, not what anyone approved. No visibility change was made to it, and
-> none should be made without explicit owner authorisation.
+> **The repository-visibility governance finding is RESOLVED.** This repository was public, which
+> predated P0-06 and was **not** changed by this work — it was recorded for owner review and
+> explicitly not endorsed, because "certified" describes what _is_, not what anyone approved. The
+> owner has since made it private. The record now certifies `private` and the finding flag is
+> **off**, so a regression to public fails outright instead of being downgraded to a notice.
 
 Protection comes from one repository ruleset, read live from
 `GET /repos/lacreativodesign/nextjs-boilerplate/rulesets/22866162` and committed verbatim to
@@ -277,28 +278,42 @@ app, is P0-06 drift. The contract is directional, so further required checks may
 without failing the record — but these two may never disappear.
 
 **The ruleset control for the website is GREEN, and the dependency-security gate is GREEN and
-branch-required.** Two other controls are not.
+branch-required.** As of 2026-09-21 the visibility control is green too. One control is not.
 
-### Visibility — OPEN
+### Visibility — CLOSED on 2026-09-21
 
-**The repository is currently PUBLIC**, and that is not the target state. It was published so
-the ruleset could be created at all: GitHub Free serves rulesets on public repositories only.
-That is a temporary expedient, not a remedy — the repository holds proprietary marketing source
-and must end up private.
+**Both repositories are now PRIVATE.** `bizosto-website` had been temporarily published so
+ruleset `23581080` could exist at all, and `nextjs-boilerplate` being public was a separate,
+older governance finding. The owner closed both.
 
-`expectedVisibility` therefore stays `private`, and a live run **fails** with
-`repository.visibility`. That failure is correct and intended, and must not be silenced by
-changing the expectation; the certification suite asserts the expectation is `private` and that
-a public reading fails, so the escape hatch is closed by test rather than by convention.
+What matters for reading this document years from now is _how_ it closed. The record never
+accepted the public state: `expectedVisibility` stayed `private` throughout and the verifier
+**failed** on `repository.visibility` for the entire time the repository was public. Nobody
+edited the expectation to make the red go away. The owner acted, and the control went green on
+its own.
 
-> ### OWNER ACTION 2 — plan, then privacy, then re-verify
->
-> 1. **Upgrade the account to GitHub Pro or higher.** Only the owner can do this.
-> 2. **Make `bizosto-website` private again.**
-> 3. **Re-verify that ruleset `23581080` survived the change** — read it; do not assume.
->
-> Order matters: making the repository private while still on Free risks losing the protection,
-> because that plan refuses private-repository rulesets. The plan comes first.
+That is the whole point of writing the record as a ratchet rather than a snapshot of whatever
+is currently true.
+
+Both contracts now certify `private` for both repositories, and `visibilityIsGovernanceFinding`
+is `false` on both — so a future regression to public **fails** rather than being downgraded to
+a notice. The suite asserts that, because a finding flag left switched on is exactly how a
+closed gap quietly reopens.
+
+#### The ruleset survived, and that was checked rather than assumed
+
+A ruleset can sit on a plan that does not serve it: still listed by the rulesets API, still
+reading back field-for-field, and enforcing nothing. Reading the ruleset back is therefore
+**not** evidence that it still applies. The authoritative question is a different endpoint —
+`GET /repos/{owner}/{repo}/rules/branches/main`, which returns the rules actually in force on
+the branch:
+
+| Repository           | Rules in force on `main`       | Enforced parameters                                                     |
+| -------------------- | ------------------------------ | ----------------------------------------------------------------------- |
+| `nextjs-boilerplate` | 4, all from ruleset `22866162` | strict checks; `quality`, `SonarCloud Code Analysis`, `sonar`, `Vercel` |
+| `bizosto-website`    | 4, all from ruleset `23581080` | strict checks; `Vercel`/8329, `dependency-security`/15368               |
+
+Both came back complete. The protection survived the visibility change on both repositories.
 
 ### Independent review — OPEN
 
@@ -430,6 +445,26 @@ The contract is **directional**, so a mutant adding a _third_ required check mus
 live configuration is allowed to be stronger than the record, never weaker. That case is
 asserted too, otherwise the ratchet would be a snapshot.
 
+**Visibility transition** (10), added on 2026-09-21 when both repositories went private. Three
+here — reopening the closed finding by setting the ERP expectation back to `public`, and turning
+the `visibilityIsGovernanceFinding` escape hatch back on for each repository, which would
+downgrade a future regression to public from a failure to a shrug. Seven against the website's
+workflow guard: flipping the record's visibility heading back to the open state, citing the
+ruleset endpoint instead of the rules-in-force one, deleting the statement that the repository
+is private again, reintroducing a stale claim that it is still public — once in the contract and
+once in the verifier — resurfacing the demand that it be made private, and weakening the
+recorded audit gate.
+
+Those mutants are **described rather than quoted**, for the same reason as the defect record
+above: this document is scanned too, and reproducing the phrases verbatim fails the build.
+
+One of those ten earned its place immediately. The mutant that injected a stale public claim into
+the _verifier_ SURVIVED — and the cause was not a weak guard but a **half-applied edit**: the
+script rewriting the workflow had asserted on a second anchor and aborted _after_ editing in
+memory, so it never wrote. The guard was correct; the new phrases simply were not in the file
+yet. Without that mutant the flip would have shipped looking complete and scanning for the old,
+now-unreachable phrases. A guard that cannot fail reads as coverage while providing none.
+
 **Prose guards** (3), added with Defect 4 and each killed by name rather than by the digest test
 alone: reinstating the claim that the website is already private, deleting the statement that
 private is the _target_, and re-justifying the credential model on repository visibility. All
@@ -448,7 +483,7 @@ Files restored after the battery and verified by SHA-256:
 | `scripts/verify-github-main-protection.mjs`             | `3faa21a04517c55b9dbbc33aac4c238754919a8e211faee60cf3c4bcf5a55a52` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
-| `docs/security/p0-06-main-protection.certified.json`    | `1b6ddfacf38022764808be413c351819b301cb706f87b0efae8e418416b725a6` |
+| `docs/security/p0-06-main-protection.certified.json`    | `3f3f231fd6456597de752669e0d64ae3a0af5695d32bf336624925f5b717b49a` |
 
 ---
 
