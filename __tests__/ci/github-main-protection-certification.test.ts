@@ -56,7 +56,9 @@
  * test in the file proves the on-disk snapshot is byte-identical afterwards.
  */
 import { createHash } from 'crypto';
+import { spawnSync } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import {
@@ -994,6 +996,114 @@ describe('P0-06: the website must be private, and publishing it is drift', () =>
       expect({ key, visibility: spec.expectedVisibility }).toEqual({ key, visibility: 'private' });
       expect({ key, finding: spec.visibilityIsGovernanceFinding }).toEqual({ key, finding: false });
     }
+  });
+
+  /**
+   * DEFECT 5 — the live pull request BODIES had gone stale.
+   *
+   * Found by independent review, not here, and the sting is that the committed artefacts were
+   * already clean: every guard passed while the descriptions a reviewer actually reads claimed
+   * the ERP repository was public, that seven files changed, that nothing under lib/ changed,
+   * and that visibility was still open. The record was right; its shop window was not.
+   *
+   * A pull request body lives in GitHub, not in the repository, so CI cannot read it without a
+   * credential this project deliberately refuses — each repository is certified from inside
+   * itself under its own job token, and adding a PAT would trade a documentation defect for a
+   * standing secret. The body therefore stays EXTERNAL EVIDENCE audited as a manual step, and
+   * scripts/check-certification-prose.mjs is what makes that step deterministic.
+   *
+   * What CI *can* do is guarantee the checker itself works, and that the committed artefacts
+   * pass it. That is what these tests do.
+   */
+  describe('the stale-prose checker has teeth', () => {
+    const CHECKER = 'scripts/check-certification-prose.mjs';
+
+    /** The smallest body that satisfies the structured CURRENT STATE requirements. */
+    const MINIMAL_STATE = [
+      '### CURRENT STATE',
+      '',
+      '| Control | State |',
+      '| --- | --- |',
+      '| **WEBSITE RULESET** | GREEN |',
+      '| **WEBSITE VISIBILITY** | PRIVATE \u2014 CLOSED |',
+      '| **DEPENDENCY SECURITY** | GREEN |',
+      '| **INDEPENDENT REVIEW** | OPEN |',
+      '| **P0-06** | NOT FULLY CLOSED |',
+    ].join('\n');
+
+    /** Run the checker over a temporary body file. */
+    const runOnBody = (body: string, repo: string, alreadyFramed = false) => {
+      const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'p0-06-')), 'body.md');
+      fs.writeFileSync(file, alreadyFramed ? body : `${MINIMAL_STATE}\n\n${body}\n`);
+      return spawnSync('node', [CHECKER, `--body=${file}`, `--repo=${repo}`], {
+        encoding: 'utf8',
+      });
+    };
+
+    it('exists and is dependency-free', () => {
+      const src = read(CHECKER);
+      expect(src).toContain('scanProse');
+      expect(src).toContain('scanCurrentState');
+      expect(src).toContain('scanContract');
+      // Only node: builtins. A drift checker that can be broken by an unrelated dependency
+      // problem is not a control.
+      const imports = [...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
+      expect(imports.every((i) => i.startsWith('node:'))).toBe(true);
+    });
+
+    it('passes on the committed artefacts', () => {
+      const out = spawnSync('node', [CHECKER], { encoding: 'utf8' });
+      expect({ status: out.status, stderr: out.stderr }).toEqual({ status: 0, stderr: '' });
+    });
+
+    it('rejects a body claiming the ERP repository is public', () => {
+      expect(runOnBody('nextjs-boilerplate is public.', 'erp').status).toBe(1);
+    });
+
+    it('rejects a body claiming seven files changed', () => {
+      expect(runOnBody('Only seven files changed.', 'erp').status).toBe(1);
+    });
+
+    it('rejects a body claiming nothing under lib/ changed', () => {
+      expect(runOnBody('No change under `app/`, `lib/`, `hooks/`.', 'erp').status).toBe(1);
+    });
+
+    it('rejects a body claiming visibility is still open', () => {
+      expect(runOnBody('visibility and independent review remain open', 'erp').status).toBe(1);
+    });
+
+    it('rejects a body with no CURRENT STATE heading', () => {
+      // Passed unframed on purpose: the point is a body that merely mentions the words
+      // somewhere, with no heading. An earlier version matched the phrase anywhere and a
+      // mutant renaming the section survived.
+      const out = runOnBody('Some prose mentioning current state in passing.', 'erp', true);
+      expect(out.status).toBe(1);
+      expect(out.stderr).toContain('CURRENT STATE heading');
+    });
+
+    it('ALLOWS a truthful historical statement', () => {
+      // The whole point of the marker mechanism: a certification may say what WAS true.
+      // Forbidding the word outright would make the record less honest, not more.
+      const body = `${MINIMAL_STATE}\n_(Historical: the repository was public earlier.)_\n`;
+      expect(runOnBody(body, 'erp', true).status).toBe(0);
+    });
+
+    it('does not apply the ERP lib/ rule to the website body', () => {
+      // The website pull request genuinely changes nothing under lib/. An unscoped rule
+      // flagged that TRUE sentence, and a guard that cries wolf on accurate prose gets
+      // ignored — which is how the real defect survived.
+      const body = `${MINIMAL_STATE}\nNothing under \`app/\`, \`components/\`, \`lib/\` or \`public/\`.\n`;
+      expect(runOnBody(body, 'website', true).status).toBe(0);
+      expect(runOnBody(body, 'erp', true).status).toBe(1);
+    });
+
+    it('rejects a contract that reopens the governance-finding escape hatch', () => {
+      const contract = JSON.parse(read(CERTIFIED_PATH));
+      for (const spec of contract.repositories) {
+        expect(spec.expectedVisibility).toBe('private');
+        expect(spec.visibilityIsGovernanceFinding).toBe(false);
+      }
+    });
   });
 
   it('the contract states that an anonymous read cannot certify', () => {

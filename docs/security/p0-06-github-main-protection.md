@@ -4,8 +4,10 @@
 
 This document was rewritten after independent review **rejected** the first version of this
 certification for two P0 defects. **Two more of the same class were then found by self-check**,
-one of them after CI had already gone green. All four are recorded here rather than quietly
-fixed, because a certification that hides its own corrections is not evidence of anything.
+one of them after CI had already gone green, and **a fifth was found by a later independent
+review in the live pull request bodies** — a surface no committed guard could reach. All five
+are recorded here rather than quietly fixed, because a certification that hides its own
+corrections is not evidence of anything.
 
 |                             |                                                                        |
 | --------------------------- | ---------------------------------------------------------------------- |
@@ -132,6 +134,31 @@ Both are **described rather than quoted** above, deliberately. The guard scans t
 too, and reproducing either sentence verbatim makes it fail — which is the guard working, not an
 inconvenience. Excluding this document from its own scan was the alternative and was rejected:
 prose is exactly where stale claims survive.
+
+### Defect 5 — the live pull request bodies had gone stale
+
+Found by **independent review**, and it is the most instructive of the five.
+
+Every committed artefact passed every guard. The contract was right, the evidence document was
+right, the verifier was right, the prose guards were green in both repositories. And the
+descriptions a reviewer actually opens still described the ERP repository with its old
+visibility, understated the changed-file count, denied a change that had been made under
+`lib/`, and presented the visibility control as outstanding. One of them contradicted itself
+outright — its file-list section and its scope section gave different counts.
+
+Those claims are **described rather than reproduced**, deliberately: this document is scanned
+too, and writing them out verbatim fails the build. That is the same constraint the defect-3 and
+defect-4 records operate under, and it is a feature.
+
+**The record was correct. Its shop window was not.** Every guard built so far scanned files in
+the repository, and a pull request body is not one.
+
+There is also a reason the bodies rotted while the files did not: the bodies were **patched
+incrementally**, revision after revision, while the committed artefacts were rewritten whole
+whenever the facts moved. Incremental patching preserves whatever you forget to look at. The
+correction rewrote both bodies from live facts rather than patching them again.
+
+**Fixed**, and the surface is now covered as far as it honestly can be — see §5a.
 
 **Why this keeps happening, and what actually stops it.** Every artefact here makes claims about
 live infrastructure, and live infrastructure moves. The only durable answer found in this work is
@@ -484,6 +511,50 @@ Files restored after the battery and verified by SHA-256:
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
 | `docs/security/p0-06-main-protection.certified.json`    | `3f3f231fd6456597de752669e0d64ae3a0af5695d32bf336624925f5b717b49a` |
+
+## 5a. The pull request body is external evidence, audited manually
+
+A pull request body lives in GitHub, not in this repository, so no workflow here can read it
+without an API call — and reading the _other_ repository's pull request would need a credential
+this design deliberately refuses. Each repository is certified by a workflow running inside it
+under its own automatic job token, precisely so that neither holds a credential for the other.
+**Adding a personal access token to close this gap would trade a documentation defect for a
+standing secret, and that trade is refused.**
+
+So the body stays **external evidence**, audited as a **manual certification step**. What makes
+that step deterministic rather than a careful read is `scripts/check-certification-prose.mjs`:
+
+```bash
+# committed artefacts only (this runs in CI, inside the required `quality` check)
+node scripts/check-certification-prose.mjs
+
+# plus a supplied pull request body, for the manual step
+gh pr view 1011 --json body -q .body > /tmp/pr.md   # or paste it by hand
+node scripts/check-certification-prose.mjs --body=/tmp/pr.md --repo=erp \
+  --expect-head=<current head sha>
+```
+
+It enforces three things: forbidden **current-state** claims are absent, a structured
+`CURRENT STATE` heading and table assert what the contract asserts, and the reference table
+names the current head with no superseded 40-hex SHA presented as current.
+
+**It is built not to cry wolf.** A certification should be able to say _"the repository was
+public earlier"_ — forbidding the word outright would make the record less honest, not more. So
+a forbidden phrase is only a violation on a line carrying no historical marker, and a few rules
+are scoped per repository because the website pull request genuinely changes nothing under
+`lib/`. An unscoped version of that rule flagged a **true** sentence, which is how guards get
+ignored.
+
+Two rules were tried and removed for the same reason: matching the words _"governance finding"_
+flagged both a finding correctly described as closed and the verifier's own conditional notice
+string. That invariant now lives where it belongs — as an assertion on the structured field
+`visibilityIsGovernanceFinding`, which is the actual control.
+
+**Mutation-proven: 11 body mutants and 4 contract mutants, all killed.** Four survived the first
+pass and each exposed a real flaw — historical markers too broad to catch a false closing
+sentence, a head check satisfied by the SHA appearing anywhere, a section check satisfied by the
+phrase appearing anywhere, and a superseded SHA smuggled into a line that merely _discussed_
+historical marking. A control test confirms properly-marked history is still allowed.
 
 ---
 
