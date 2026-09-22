@@ -1067,4 +1067,309 @@ describe('P0-02 (Phase 10-11): the certification workflows are safe and dispatch
     expect(source).toContain('--credential-env=FIREBASE_ADMIN_KEY');
     expect(source).toContain('--credential-env=FIREBASE_ADMIN_KEY_STAGING');
   });
+
+  /**
+   * DEFECT 4 — the consumer nobody looked for.
+   *
+   * Defect 1 was repaired in the two workflows the audit named. `.github/workflows/smoke.yml`
+   * holds the SAME staging Admin credential, plus `E2E_DEMO_PASSWORD` and
+   * `VERCEL_AUTOMATION_BYPASS_SECRET`, from repository secrets, on `workflow_dispatch`, with
+   * no environment gate. Every word of Defect 1 applied to it unchanged.
+   *
+   * It was worse than an omission. The owner was told to DELETE the repository-level
+   * `FIREBASE_ADMIN_KEY_STAGING`, which would have broken the P0-01 Golden Tenant gate — so
+   * the predictable outcome was the owner keeping the repository copy, and Defect 1 staying
+   * open while the documentation called it closed. An owner action that quietly cannot be
+   * taken is not a fix.
+   *
+   * The root cause is method: the migration was scoped to the workflows the audit named
+   * rather than to every consumer of the credential. So the tests below do not hard-code a
+   * list of workflows. Tests 12, 14 and 15 RE-DERIVE the consumer set from
+   * `.github/workflows/` on every run, and a fifth consumer added later fails the build
+   * instead of waiting for the next audit.
+   */
+  describe('DEFECT 4: every consumer of a guarded secret is inside the boundary', () => {
+    const SMOKE_WORKFLOW = '.github/workflows/smoke.yml';
+    const P0_02_DOC = 'docs/security/p0-02-demo-auth-certification.md';
+    const GOLDEN_RUNBOOK = 'docs/runbooks/golden-tenant-e2e.md';
+
+    /** The four names P0-02 is answerable for. */
+    const GUARDED_SECRETS = [
+      'FIREBASE_ADMIN_KEY',
+      'FIREBASE_ADMIN_KEY_STAGING',
+      'E2E_DEMO_PASSWORD',
+      'VERCEL_AUTOMATION_BYPASS_SECRET',
+    ] as const;
+
+    /** The subset that is a Firebase service account. */
+    const ADMIN_SECRETS = ['FIREBASE_ADMIN_KEY', 'FIREBASE_ADMIN_KEY_STAGING'] as const;
+
+    /**
+     * `FIREBASE_ADMIN_KEY` is a prefix of `FIREBASE_ADMIN_KEY_STAGING`, so a naive match on
+     * the shorter name can never fail. Every lookup in this block goes through here.
+     */
+    const reads = (text: string, secret: string) =>
+      new RegExp(`secrets\\.${secret}(?![A-Z0-9_])`).test(text);
+
+    const workflowFiles = () =>
+      fs
+        .readdirSync(path.join(process.cwd(), '.github/workflows'))
+        .filter((file) => /\.ya?ml$/.test(file))
+        .map((file) => `.github/workflows/${file}`);
+
+    /**
+     * Every executable line that reads the `secrets` context, attributed to the job it sits
+     * in and to that job's environment. Comment lines are prose and are excluded — this
+     * repository explains its secrets at length, and a comment cannot leak one.
+     */
+    const secretReads = (rel: string) => {
+      const doc = parse(rel);
+      const lines = read(rel).split('\n');
+      const jobsAt = lines.findIndex((line) => /^jobs:\s*$/.test(line));
+      const found: { job: string; line: string; environment?: string }[] = [];
+      let current = '';
+
+      lines.forEach((line, index) => {
+        if (jobsAt > -1 && index > jobsAt) {
+          const key = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(line);
+          if (key && doc.jobs[key[1]]) current = key[1];
+        }
+        if (/^\s*#/.test(line)) return;
+        if (!/\$\{\{[^}]*secrets\./.test(line)) return;
+        found.push({
+          job: current,
+          line: line.trim(),
+          environment: doc.jobs[current]?.environment,
+        });
+      });
+
+      return found;
+    };
+
+    const adminReads = (rel: string) =>
+      secretReads(rel).filter(({ line }) => ADMIN_SECRETS.some((name) => reads(line, name)));
+
+    const smokeJob = () => parse(SMOKE_WORKFLOW).jobs['smoke'];
+
+    it('1. puts the smoke job on the firebase-staging environment', () => {
+      const doc = parse(SMOKE_WORKFLOW);
+      expect(Object.keys(doc.jobs)).toContain('smoke');
+      expect(doc.jobs['smoke']?.environment).toBe('firebase-staging');
+    });
+
+    it('2. records in the file that the environment is unverified owner configuration', () => {
+      const NOTICE = 'OWNER CONFIGURATION — MUST BE VERIFIED LIVE';
+      const lines = read(SMOKE_WORKFLOW).split('\n');
+
+      // A file-wide `toContain` is not enough, and a mutation proved it: the notice appears
+      // in the header AND on the job, so deleting the one that matters — the one a reader
+      // meets beside `environment:` — left the assertion green. It has to be asserted where
+      // it is load-bearing.
+      const at = lines.findIndex((line) => /^\s*environment: firebase-staging\s*$/.test(line));
+      expect(at).toBeGreaterThan(-1);
+
+      const commentBlock: string[] = [];
+      for (let i = at - 1; i >= 0 && /^\s*#/.test(lines[i]); i -= 1) commentBlock.unshift(lines[i]);
+      expect(commentBlock.join(' ')).toContain(NOTICE);
+
+      // And the header must carry it too, for a reader who never reaches the job.
+      expect(lines.slice(0, at).join('\n').split(NOTICE)).toHaveLength(3);
+    });
+
+    it('3. states the external contract: firebase-staging is restricted to main', () => {
+      // Comment prose wraps, so read the sentence rather than the line it landed on.
+      const prose = read(SMOKE_WORKFLOW)
+        .split('\n')
+        .map((line) => line.replace(/^\s*#\s?/, ''))
+        .join(' ')
+        .replace(/\s+/g, ' ');
+      expect(prose).toMatch(/deployment branches are restricted to `main`/i);
+
+      // And the document a reviewer actually reads carries the same row.
+      const doc = read(P0_02_DOC);
+      expect(doc).toMatch(
+        /\|\s*`firebase-staging`\s*\|[^|]*`FIREBASE_ADMIN_KEY_STAGING`[^|]*\|\s*\*\*`main` only\*\*/,
+      );
+    });
+
+    it('4. never names the production Admin secret in the smoke gate', () => {
+      const live = read(SMOKE_WORKFLOW)
+        .split('\n')
+        .filter((line) => !/^\s*#/.test(line))
+        .join('\n');
+      expect(reads(live, 'FIREBASE_ADMIN_KEY')).toBe(false);
+      expect(reads(live, 'FIREBASE_ADMIN_KEY_STAGING')).toBe(true);
+      expect(smokeJob()?.environment).not.toBe('firebase-production');
+    });
+
+    it('5. carries no staging → production credential fallback', () => {
+      const source = read(SMOKE_WORKFLOW);
+      // The `a && b || c` shape is what let an empty value select the other environment's.
+      expect(source).not.toMatch(/secrets\.[A-Z_]+\s*\|\|\s*secrets\./);
+      expect(source).not.toMatch(/&&\s*secrets\./);
+      // One `||` remains in the file. It selects a deployment URL, never a credential.
+      for (const match of source.matchAll(/^.*\|\|.*secrets\..*$/gm)) {
+        expect(match[0]).toContain('E2E_BASE_URL');
+      }
+    });
+
+    it('6. gives the staging Admin credential to one step — the one that proves and seeds', () => {
+      const job = smokeJob();
+      const carriers = (job?.steps ?? []).filter((step) =>
+        Object.values(step.env ?? {}).some((value) =>
+          reads(String(value), 'FIREBASE_ADMIN_KEY_STAGING'),
+        ),
+      );
+
+      expect(carriers).toHaveLength(1);
+      expect(String(carriers[0]?.run)).toContain('--assert-staging-target');
+      expect(String(carriers[0]?.run)).toContain('scripts/seedDemoTenant.ts --reset');
+
+      // At job scope the name may appear only as an existence check, never as the value.
+      const atJobScope = Object.values(job?.env ?? {})
+        .map(String)
+        .filter((value) => reads(value, 'FIREBASE_ADMIN_KEY_STAGING'));
+      expect(atJobScope).toEqual([expect.stringContaining("!= ''")]);
+    });
+
+    it.each([
+      [
+        '7. actions/checkout',
+        (step: WorkflowStep) => String(step.uses ?? '').includes('actions/checkout'),
+      ],
+      [
+        '8. actions/setup-node',
+        (step: WorkflowStep) => String(step.uses ?? '').includes('actions/setup-node'),
+      ],
+      [
+        '9. npm ci',
+        (step: WorkflowStep) =>
+          String(step.run ?? '')
+            .trim()
+            .startsWith('npm ci'),
+      ],
+      ['10. Playwright', (step: WorkflowStep) => String(step.run ?? '').includes('playwright')],
+    ])('%s never receives the staging Admin credential', (_label, matches) => {
+      const steps = (smokeJob()?.steps ?? []).filter(matches as (step: WorkflowStep) => boolean);
+
+      // If the step ever disappears the assertion below passes vacuously, which is the
+      // failure mode this whole PR is about.
+      expect(steps.length).toBeGreaterThan(0);
+      for (const step of steps) {
+        expect(JSON.stringify(step.env ?? {})).not.toContain('FIREBASE_ADMIN_KEY');
+      }
+    });
+
+    it('11. types the same demo password it reseeds with', () => {
+      const job = smokeJob();
+      // Job scope is deliberate here, and is the one place this PR does not tighten: the
+      // reseed, the sign-in preflight and the browser suite must use ONE value. Their
+      // disagreeing is the drift the gate exists to remove.
+      expect(String(job?.env?.['E2E_DEMO_PASSWORD'])).toBe('${{ secrets.E2E_DEMO_PASSWORD }}');
+
+      const runs = (job?.steps ?? []).map((step) => String(step.run ?? ''));
+      expect(runs.some((run) => run.includes('scripts/seedDemoTenant.ts --reset'))).toBe(true);
+      expect(runs.some((run) => run.includes('npx playwright test e2e/golden e2e/smoke'))).toBe(
+        true,
+      );
+
+      // No step may shadow it with a second source — that is exactly how the two copies
+      // drifted before.
+      for (const step of job?.steps ?? []) {
+        const shadow = step.env?.['E2E_DEMO_PASSWORD'];
+        if (shadow !== undefined) {
+          expect(String(shadow)).toBe('${{ secrets.E2E_DEMO_PASSWORD }}');
+        }
+      }
+      expect(read(SEED_WORKFLOW)).toContain('E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}');
+    });
+
+    it('12. survives deletion of the repository-level Admin keys', () => {
+      // A job that declares an `environment:` resolves `secrets.X` from that environment,
+      // so removing the repository copy leaves the committed expression valid. The property
+      // that has to hold is therefore: no job reads an Admin secret without an environment.
+      // Derived across every workflow, so a new file cannot opt out of it.
+      const offenders = workflowFiles().flatMap((rel) =>
+        adminReads(rel)
+          .filter(({ environment }) => !environment)
+          .map(({ job }) => `${rel} · ${job}`),
+      );
+
+      expect(offenders).toEqual([]);
+      // And nothing may go on telling the owner to store it at repository scope.
+      expect(read(SMOKE_WORKFLOW)).not.toMatch(/Add it as an Actions secret/);
+      expect(workflowFiles().flatMap(adminReads).length).toBeGreaterThan(0);
+    });
+
+    it('13. tells the owner to delete the repository-scoped password and bypass secret too', () => {
+      const doc = read(P0_02_DOC);
+      const start = doc.indexOf('**DELETE the repository-level copies**');
+      expect(start).toBeGreaterThan(-1);
+
+      const block = doc.slice(start, doc.indexOf('Leave `E2E_BASE_URL`', start));
+      expect(block).toBeTruthy();
+      for (const secret of GUARDED_SECRETS) {
+        expect(block).toContain(secret);
+      }
+      // The deletion has to be checked afterwards, not assumed.
+      expect(doc).toContain('**Verify the deletion.**');
+    });
+
+    it('14. inventories every workflow consumer of the four guarded secrets', () => {
+      const doc = read(P0_02_DOC);
+      const found = workflowFiles().flatMap((rel) =>
+        secretReads(rel).flatMap(({ job, line, environment }) =>
+          GUARDED_SECRETS.filter((secret) => reads(line, secret)).map((secret) => ({
+            secret,
+            workflow: path.basename(rel),
+            job,
+            environment,
+          })),
+        ),
+      );
+
+      // Vacuity guard: if the scan finds nothing, every assertion below is free.
+      expect(found.length).toBeGreaterThanOrEqual(12);
+
+      for (const entry of found) {
+        // Classified: every consumer sits behind a main-only environment...
+        expect(entry).toEqual({
+          ...entry,
+          environment: expect.stringMatching(/^firebase-(production|staging)$/),
+        });
+        // ...and the published inventory names that exact consumer.
+        expect(doc).toContain(`| \`${entry.secret}\``);
+        expect(doc).toContain(`\`${entry.workflow}\` · \`${entry.job}\``);
+      }
+
+      expect([...new Set(found.map((entry) => entry.secret))].sort()).toEqual(
+        [...GUARDED_SECRETS].sort(),
+      );
+    });
+
+    it('15. never presents a feature ref as a supported path to an Admin credential', () => {
+      for (const rel of workflowFiles()) {
+        if (adminReads(rel).length === 0) continue;
+        const source = read(rel);
+        expect({ rel, guarded: source.includes('refs/heads/main') }).toEqual({
+          rel,
+          guarded: true,
+        });
+        expect({ rel, labelled: source.includes('DEFENCE IN DEPTH, NOT THE BOUNDARY') }).toEqual({
+          rel,
+          labelled: true,
+        });
+      }
+
+      // The claim this gate itself used to make, withdrawn by name so it cannot come back.
+      const smoke = read(SMOKE_WORKFLOW);
+      expect(smoke).not.toMatch(/can be dispatched against a PR ref before merge/i);
+      expect(smoke).not.toMatch(/no branch and no fork can reach an Admin credential/i);
+
+      // And the runbook must no longer send a reader to dispatch it at a PR branch.
+      const runbook = read(GOLDEN_RUNBOOK);
+      expect(runbook).not.toMatch(/workflow against the PR6 branch/);
+      expect(runbook).toMatch(/from `main`/);
+    });
+  });
 });

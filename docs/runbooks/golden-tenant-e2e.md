@@ -2,24 +2,45 @@
 
 PR6 certifies Bizosto against the dedicated `bizosto-demo` tenant using real browser login and deployment-backed APIs.
 
-## Required secrets
+## Required secrets, and exactly where each one lives
 
-All of these live in GitHub repository Actions secrets, and the demo password is seeded
-from the same one the browser suite types — see "Prepare the fixture" for why that
-matters:
+**Scope is the control here, so "Actions secret" is never used on its own below.** P0-02
+moved this gate's credentials out of repository-level Actions secrets and into the GitHub
+**`firebase-staging` Environment**, whose deployment branches are restricted to `main`.
+GitHub refuses to start the job on any other ref, before a step runs. See
+[the P0-02 environment contract](../security/p0-02-demo-auth-certification.md#github-environment-branch-boundary-contract).
 
-- `E2E_DEMO_PASSWORD` — shared password for the ten `demo_*` accounts (16 characters minimum)
-- `E2E_BASE_URL` — the HTTPS deployment URL being certified. It must be the deployment
-  built from the commit under test, not a pinned older preview and not the production
-  alias; for a PR this is the branch preview URL Vercel comments on the pull request. The
-  gate checks this rather than trusting it, and stops before sending any credential if the
-  URL is serving a different commit.
-- `VERCEL_AUTOMATION_BYPASS_SECRET` — only while the target is a protected preview
+**OWNER CONFIGURATION — MUST BE VERIFIED LIVE.** No file in this repository can create that
+environment, and no test can prove it exists.
+
+### In the GitHub `firebase-staging` Environment
+
 - `FIREBASE_ADMIN_KEY_STAGING` — the **staging** service account JSON, so the gate can
   rotate the demo Auth accounts to the password it is about to type. Required: without it
   the run stops before checkout. There is no fall-back to the production
   `FIREBASE_ADMIN_KEY`, and supplying the production account here is rejected by the
   preflight rather than silently used.
+- `E2E_DEMO_PASSWORD` — shared password for the ten `demo_*` accounts (16 characters
+  minimum). The demo password is seeded from the same value the browser suite types — see
+  "Prepare the fixture" for why that matters. The same value also belongs in
+  `firebase-production`, for the certification and seed workflows.
+- `VERCEL_AUTOMATION_BYPASS_SECRET` — only while the target is a protected preview. This
+  gate is its only consumer.
+
+### At GitHub repository scope
+
+- `E2E_BASE_URL` — the HTTPS deployment URL being certified. It must be the deployment
+  built from the commit under test, not a pinned older preview and not the production
+  alias. The gate checks this rather than trusting it, and stops before sending any
+  credential if the URL is serving a different commit. It is a URL, not credential
+  material, which is why it may stay at repository scope; a job that declares an
+  `environment:` reads repository secrets too, so nothing breaks either way.
+
+### Not here at all
+
+The Vercel **Preview environment variables** the deployed app itself reads are a separate
+store with separate values. A GitHub job never reads them, and they are not what this
+section configures.
 
 Never commit or print the password. The Super Admin demo page intentionally does not display it.
 
@@ -59,7 +80,9 @@ Configure Vercel's supported bypass:
 
 1. Vercel → Project → Settings → Deployment Protection → **Protection Bypass for
    Automation** → generate the secret.
-2. Add it as the GitHub Actions secret `VERCEL_AUTOMATION_BYPASS_SECRET`.
+2. Add it as `VERCEL_AUTOMATION_BYPASS_SECRET` in the GitHub **`firebase-staging`
+   Environment** — not as a repository-level Actions secret. It is a real credential, and a
+   repository-level secret is readable by workflow code on any ref someone selects.
 
 The suite sends that secret once, to the deployment origin only, and exchanges it for
 a scoped bypass cookie. It is never sent as a blanket request header, which would leak
@@ -117,14 +140,24 @@ shares the project with real tenants, so that tenant filter is the only isolatio
 not rely on it: it runs in a separate Firebase project with a credential that cannot reach
 production.
 
-## Run the pre-merge gate
+## Run the gate — from `main` only
 
-Dispatch the existing `.github/workflows/smoke.yml` workflow against the PR6 branch. It is
-the only golden tenant gate: PR6 briefly carried a second, identical `golden-e2e.yml`, and
-two dispatchable copies meant every guard had to be added twice.
+Dispatch `.github/workflows/smoke.yml`. It is the only golden tenant gate: PR6 briefly
+carried a second, identical `golden-e2e.yml`, and two dispatchable copies meant every guard
+had to be added twice.
 
-The workflow fails before checkout if either required GitHub secret is missing or if
-`E2E_BASE_URL` is not HTTPS. It then rebuilds the fixture (see above) and signs one demo
+**This is no longer a pre-merge gate, and that is deliberate.** It used to be dispatched at
+a PR ref to certify that PR's Preview. Dispatching a secret-bearing workflow at a chosen ref
+runs the workflow file _from that ref_, which is how branch-selected code reached a staging
+Admin credential — Defect 4 of the P0-02 audit. The `firebase-staging` environment now
+restricts this job to `main`, and `EXPECTED_COMMIT_SHA` is `main`'s commit, so a Preview
+built from an unmerged branch cannot satisfy the exact-SHA proof.
+
+To certify a change: merge it, then dispatch from `main` with `target_url` set to the
+staging Preview for that commit.
+
+The workflow fails before checkout if the dispatch is not from `main`, if either required
+credential is missing from the environment, or if `E2E_BASE_URL` is not HTTPS. It then rebuilds the fixture (see above) and signs one demo
 account in against the deployment before the browser suite starts:
 
 ```bash

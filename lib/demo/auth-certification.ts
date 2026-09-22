@@ -694,9 +694,13 @@ export function countInventory(
  * its healthiest. So `inventoryComplete` is checked before anything is counted, and an
  * audit that never reached a page fails with zero findings of its own.
  *
- * `--mode=audit` is read-only, so it is never asked to have rotated anything; it certifies
- * the STATE. Only `--mode=remediate` must also show ten rotations, ten revocations, ten
- * sign-ins and zero historical-password acceptances.
+ * The second rule is the one an independent audit had to correct twice, so it is written
+ * here in the same words the code uses: `--mode=audit` DOES NOT CERTIFY P0-02. It is a
+ * read-only inventory — it reports population and drift and nothing more. It performs no
+ * Admin mutation and no sign-in, so it cannot know whether the ten identities still
+ * authenticate, and it never tests the credential published in git history. Only
+ * `--mode=remediate` is eligible for a CERTIFIED verdict, and only by showing ten
+ * rotations, ten revocations, ten sign-ins and zero historical-password acceptances.
  */
 export function certificationVerdict(report: CertificationReport): {
   certified: boolean;

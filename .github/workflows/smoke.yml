@@ -1,8 +1,7 @@
 name: E2E Smoke (per-role + golden tenant)
 
-# Manual deployment certification suite. This workflow already exists on main,
-# so it can be dispatched against a PR ref before merge. Missing credentials are
-# a hard failure: skipped authenticated tests must never be launch evidence.
+# Manual deployment certification suite. Missing credentials are a hard failure:
+# skipped authenticated tests must never be launch evidence.
 #
 # P0-01 — THIS GATE IS STAGING-ONLY, BY CONSTRUCTION
 #
@@ -25,6 +24,40 @@ name: E2E Smoke (per-role + golden tenant)
 # A run dispatched at the production URL therefore fails, which is the point. Rebuilding
 # the production demo fixture is still available, deliberately and by hand, through
 # `Actions -> Seed Golden Tenant`.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# P0-02 — WHERE THE SECRET BOUNDARY IS, AND WHAT IT COST
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# P0-02 moved the Admin credentials of `demo-auth-certification.yml` and
+# `seed-golden-tenant.yml` behind main-restricted GitHub environments. An independent
+# re-audit then found THIS file still outside that boundary, holding the same credential:
+# `FIREBASE_ADMIN_KEY_STAGING`, alongside `E2E_DEMO_PASSWORD` and
+# `VERCEL_AUTOMATION_BYPASS_SECRET`, read from REPOSITORY secrets by a `workflow_dispatch`
+# workflow. `workflow_dispatch` lets anyone with write access choose the ref, and the
+# workflow file that runs is the one on the CHOSEN ref — so a guard written in this file
+# cannot defend against a branch that edits this file. Leaving the staging key at
+# repository scope so this gate kept working would have left P0-02's central finding open.
+#
+# THE BOUNDARY IS THE `firebase-staging` ENVIRONMENT named on the job below. Its secrets
+# are not repository secrets, and its deployment branches are restricted to `main`, which
+# GitHub enforces BEFORE any step of this job runs. The `github.ref` check in the first
+# step is defence in depth only — it catches an environment created without its branch
+# rule and explains the refusal. It is NOT the boundary.
+#
+# OWNER CONFIGURATION — MUST BE VERIFIED LIVE. See the runbook in
+# docs/security/p0-02-demo-auth-certification.md, including deleting the repository-level
+# copies; an environment copy alongside a repository copy closes nothing.
+#
+# WHAT THIS CHANGED OPERATIONALLY — READ THIS
+#
+# This gate used to be dispatchable at a PR ref to certify that PR's Preview before merge.
+# That capability IS the hole: it handed branch-selected workflow code a staging Admin
+# credential. It is gone. Certification runs from `main`, and `EXPECTED_COMMIT_SHA` is
+# main's commit, so a Preview built from an unmerged branch cannot satisfy the exact-SHA
+# proof — and must not be certified by pretending it can. The replacement is: merge, then
+# dispatch from `main` against the staging Preview for that commit. `E2E_BASE_URL` and the
+# `target_url` input are unchanged and still choose WHICH deployment is certified.
 on:
   workflow_dispatch:
     inputs:
@@ -44,14 +77,27 @@ jobs:
     # the job before it could report. The gate must be able to report a failure,
     # not only time out.
     timeout-minutes: 30
+    # THE BOUNDARY — P0-02. Restricted to `main` in GitHub settings; the staging Admin
+    # credential, the demo password and the Vercel bypass secret live in this environment,
+    # not on the repository. GitHub refuses to start this job on any other ref, before a
+    # step runs. OWNER CONFIGURATION — MUST BE VERIFIED LIVE.
+    environment: firebase-staging
     env:
-      # PR certification should pin the exact preview URL. The repository secret remains
-      # the backwards-compatible default for production-like/manual runs that do not need
-      # an override.
+      # `target_url` pins the exact deployment. `E2E_BASE_URL` is the fallback default for
+      # manual runs that need no override. It is a URL, not credential material, so it is
+      # the one value here that may legitimately stay a repository-level secret — a job
+      # with an `environment:` still reads repository secrets, it is the branch rule that
+      # does the work. Moving it into the environment is optional tidiness, not security.
       BASE_URL: ${{ inputs.target_url || secrets.E2E_BASE_URL }}
+      # From the firebase-staging environment. Job scope, deliberately: the reseed, the
+      # sign-in preflight and the Playwright suite must all type the SAME password, which
+      # is the drift this gate exists to remove. That does mean `npm ci` sees it; the
+      # Admin credential, which does not need to be shared, is step-scoped below.
       E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
-      # Only needed while the target sits behind Vercel Deployment Protection.
-      # A custom-domain target is exempt and needs no bypass.
+      # Only needed while the target sits behind Vercel Deployment Protection. A
+      # custom-domain target is exempt and needs no bypass. Also from the firebase-staging
+      # environment: it is a real credential, and every repository-scoped secret is
+      # reachable by workflow code on a ref someone else selected.
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       # Certification names an exact SHA, and E2E_BASE_URL or target_url may be an alias
       # that re-points at whatever deployed last. The deployment is asked which commit it
@@ -67,8 +113,23 @@ jobs:
     steps:
       - name: Verify E2E configuration
         shell: bash
+        env:
+          REF: ${{ github.ref }}
         run: |
           set -euo pipefail
+          # DEFENCE IN DEPTH, NOT THE BOUNDARY — see the header. The `firebase-staging`
+          # environment's deployment-branch rule is what actually stops a feature ref, and
+          # GitHub applies it before this step exists. This check ships on the branch, so a
+          # branch can delete it; it is here to catch an environment created without its
+          # branch rule, and to say plainly why a feature-ref dispatch is refused.
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::The staging Golden Tenant gate runs from main only. This dispatch"
+            echo "::error::selected '$REF'. The firebase-staging environment restricts its"
+            echo "::error::deployments to main, so a feature ref cannot be granted the staging"
+            echo "::error::Admin credential. Merge first, then dispatch from main and point"
+            echo "::error::target_url at the staging Preview for that commit."
+            exit 1
+          fi
           test -n "$BASE_URL" || { echo "E2E_BASE_URL or target_url is required"; exit 1; }
           test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
           # The password is used exactly as configured, so surrounding whitespace is a
@@ -95,8 +156,9 @@ jobs:
           if [ "$STAGING_ADMIN_KEY_CONFIGURED" != "true" ]; then
             echo "FIREBASE_ADMIN_KEY_STAGING is required. This gate rebuilds the golden"
             echo "tenant, so it runs only against the isolated STAGING Firebase project and"
-            echo "only with that project's own service account. Add it as an Actions secret"
-            echo "(see docs/runbooks/golden-tenant-e2e.md). Do NOT supply the production"
+            echo "only with that project's own service account. Add it to the firebase-staging"
+            echo "GitHub ENVIRONMENT, not to repository secrets (see"
+            echo "docs/runbooks/golden-tenant-e2e.md). Do NOT supply the production"
             echo "FIREBASE_ADMIN_KEY: a production credential is rejected by the preflight."
             exit 1
           fi
@@ -132,10 +194,11 @@ jobs:
       - name: Prove the staging environment and rebuild the golden tenant fixture
         shell: bash
         env:
-          # Scoped to this step rather than the job: it is the only step that needs
-          # Firebase admin rights, and `npm ci`, the browser install and the Playwright
-          # run have no business seeing a service account key. It is the STAGING account —
-          # it cannot reach the production project even if every check above were removed.
+          # From the firebase-staging environment, and scoped to this step rather than the
+          # job: it is the only step that needs Firebase admin rights, and `npm ci`, the
+          # browser install and the Playwright run have no business seeing a service
+          # account key. It is the STAGING account — it cannot reach the production
+          # project even if every check above were removed.
           FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}
         run: |
           set -euo pipefail

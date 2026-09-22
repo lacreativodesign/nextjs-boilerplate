@@ -63,9 +63,16 @@ isolated staging environment it belongs to, or it fails closed at boot:
   `la-creativo-erp.firebasestorage.app`, and must equal
   `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`.
 
-Both are public identifiers rather than secrets, and both are scoped to the Preview
-environment only. The GitHub Actions secret `FIREBASE_ADMIN_KEY_STAGING` is the matching
-staging service account used by the golden tenant gate.
+Both are public identifiers rather than secrets, and both are scoped to the **Vercel
+Preview** environment — they configure the deployed app, and no GitHub job reads them.
+
+The matching staging service account used by the golden tenant gate,
+`FIREBASE_ADMIN_KEY_STAGING`, is a different store again: it lives in the GitHub
+**`firebase-staging` Environment**, restricted to the `main` branch, together with
+`E2E_DEMO_PASSWORD` and `VERCEL_AUTOMATION_BYPASS_SECRET`. It is deliberately **not** a
+repository-level Actions secret — a repository secret is readable by workflow code running
+on any ref a dispatcher selects, which is the finding P0-02 exists to close. Production's
+`FIREBASE_ADMIN_KEY` sits the same way in `firebase-production`.
 
 Full setup, including what has to be created in Firebase, Vercel and GitHub, is in
 `docs/runbooks/firebase-environment-isolation.md`.

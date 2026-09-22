@@ -68,8 +68,10 @@ Out of scope: the product's authorization model, the P0-01 environment-isolation
 
 ## Independent audit findings
 
-Three defects, all accepted. They are recorded rather than quietly fixed, because two of
-them were false claims this document itself made.
+Four defects, all accepted. They are recorded rather than quietly fixed, because two of
+them were false claims this document itself made, and the fourth is the first one's
+incomplete repair: Defect 1 was fixed in the two workflows it was reported against, and a
+third workflow holding the same credential was not looked for.
 
 ### DEFECT 1 — a secret-bearing workflow could run arbitrary branch code (merge-blocking)
 
@@ -114,13 +116,47 @@ contract this work is built on, and it was never needed: neither key was ever co
 live runs resolved one from the Firebase Management API using the already-verified Admin
 credential.
 
+### DEFECT 4 — the staging smoke gate was left outside the boundary (merge-blocking)
+
+Defect 1 was repaired in `demo-auth-certification.yml` and `seed-golden-tenant.yml`. It was
+not repaired in `.github/workflows/smoke.yml`, which was never inventoried, and which holds
+**the same staging Admin credential**:
+
+```
+STAGING_ADMIN_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING != '' }}
+FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}
+```
+
+plus `E2E_DEMO_PASSWORD` and `VERCEL_AUTOMATION_BYPASS_SECRET`, all from **repository**
+secrets, in a `workflow_dispatch` workflow with no environment gate. Every word of Defect 1
+applies to it unchanged.
+
+The consequence was worse than an omission. This document instructed the owner to **delete**
+the repository-level `FIREBASE_ADMIN_KEY_STAGING` at step 7, which would have broken the
+P0-01 Golden Tenant gate — so the predictable outcome was the owner keeping the repository
+copy to keep that gate working, and **Defect 1 staying open while this document called it
+closed**. An owner action that quietly cannot be taken is not a fix.
+
+The root cause is method, not oversight: the migration was scoped to the workflows the audit
+named instead of to every consumer of the credential. The repair is therefore an exhaustive
+inventory (below) that a test re-derives from the filesystem on every run, so a fourth
+consumer added later fails the build rather than waiting for the next audit.
+
+**What it cost.** `smoke.yml` used to be dispatchable at a PR ref to certify that PR's
+Preview before merge. That capability _is_ the hole — it is the act of handing
+branch-selected workflow code a staging Admin credential — so it is gone, not narrowed.
+Certification now runs from `main`, and `EXPECTED_COMMIT_SHA` is `main`'s commit, so a
+Preview built from an unmerged branch cannot satisfy the exact-SHA proof. The replacement is
+to merge, then dispatch from `main` against the staging Preview for that commit.
+
 ### What changed
 
-| Defect | Fix                                                                                                                                                                                                |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1      | Secret-bearing jobs moved onto GitHub Environments restricted to `main`; the pre-merge certify path deleted; Admin credentials moved off job scope onto the single consuming step                  |
-| 2      | Audit returns before any sign-in exists, prints `AUDIT COMPLETE — THIS IS NOT P0-02 LIVE CERTIFICATION`, and `certificationVerdict` refuses an audit report structurally, before counting anything |
-| 3      | The Web API key removed from both workflows entirely; the tool resolves it from the Management API using the credential whose project it has already verified                                      |
+| Defect | Fix                                                                                                                                                                                                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | Secret-bearing jobs moved onto GitHub Environments restricted to `main`; the pre-merge certify path deleted; Admin credentials moved off job scope onto the single consuming step                                                                                                 |
+| 2      | Audit returns before any sign-in exists, prints `AUDIT COMPLETE — THIS IS NOT P0-02 LIVE CERTIFICATION`, and `certificationVerdict` refuses an audit report structurally, before counting anything                                                                                |
+| 3      | The Web API key removed from both workflows entirely; the tool resolves it from the Management API using the credential whose project it has already verified                                                                                                                     |
+| 4      | `smoke.yml` moved onto `firebase-staging`; `E2E_DEMO_PASSWORD` and `VERCEL_AUTOMATION_BYPASS_SECRET` added to the migration and deletion lists; pre-merge feature-ref dispatch of that gate removed; a test now re-derives the whole consumer inventory from `.github/workflows/` |
 
 ---
 
@@ -130,10 +166,10 @@ credential.
 GitHub settings. No file in this repository can create it, and no test here can prove it.
 Until someone has checked it in the GitHub UI, treat it as _required_, not as _done_.
 
-| Environment           | Holds                                             | Allowed deployment branch |
-| --------------------- | ------------------------------------------------- | ------------------------- |
-| `firebase-production` | `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`         | **`main` only**           |
-| `firebase-staging`    | `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD` | **`main` only**           |
+| Environment           | Holds                                                                                | Allowed deployment branch |
+| --------------------- | ------------------------------------------------------------------------------------ | ------------------------- |
+| `firebase-production` | `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`                                            | **`main` only**           |
+| `firebase-staging`    | `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD`, `VERCEL_AUTOMATION_BYPASS_SECRET` | **`main` only**           |
 
 Add a production or staging Web API key to the matching environment **only if** the Firebase
 Management API lookup turns out not to work for the service account; it is not needed today
@@ -147,6 +183,58 @@ Jobs and their environments:
 | `demo-auth-certification.yml` · `certify-production` | `firebase-production`                                    |
 | `demo-auth-certification.yml` · `certify-staging`    | `firebase-staging`                                       |
 | `seed-golden-tenant.yml` · `seed`                    | `firebase-production`                                    |
+| `smoke.yml` · `smoke`                                | `firebase-staging`                                       |
+
+### Secret consumer inventory
+
+Exhaustive over `.github/workflows/*.yml`, and re-derived from the filesystem by
+`__tests__/ci/p0-02-demo-auth-certification.test.ts` on every run, so a consumer added later
+fails the build. A **scope** of `environment` means the only jobs naming that secret declare
+an `environment:`; after the repository-level copy is deleted the name resolves from the
+environment and the workflow expression is unchanged.
+
+| Secret                            | Workflow · job                                       | Scope after this PR   |
+| --------------------------------- | ---------------------------------------------------- | --------------------- |
+| `FIREBASE_ADMIN_KEY`              | `seed-golden-tenant.yml` · `seed`                    | `firebase-production` |
+| `FIREBASE_ADMIN_KEY`              | `demo-auth-certification.yml` · `certify-production` | `firebase-production` |
+| `FIREBASE_ADMIN_KEY_STAGING`      | `demo-auth-certification.yml` · `certify-staging`    | `firebase-staging`    |
+| `FIREBASE_ADMIN_KEY_STAGING`      | `smoke.yml` · `smoke`                                | `firebase-staging`    |
+| `E2E_DEMO_PASSWORD`               | `seed-golden-tenant.yml` · `seed`                    | `firebase-production` |
+| `E2E_DEMO_PASSWORD`               | `demo-auth-certification.yml` · `certify-production` | `firebase-production` |
+| `E2E_DEMO_PASSWORD`               | `demo-auth-certification.yml` · `certify-staging`    | `firebase-staging`    |
+| `E2E_DEMO_PASSWORD`               | `smoke.yml` · `smoke`                                | `firebase-staging`    |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | `smoke.yml` · `smoke` — **its only consumer**        | `firebase-staging`    |
+
+`smoke.yml` names the variable `FIREBASE_ADMIN_KEY` but assigns it from
+`secrets.FIREBASE_ADMIN_KEY_STAGING`. It is a staging consumer; it has never read the
+production secret, and a test asserts it cannot start to.
+
+**Not credential material, and deliberately left at repository scope:**
+
+| Value          | Consumer              | Why it stays                                                                                                                                                                                                                                                                    |
+| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E2E_BASE_URL` | `smoke.yml` · `smoke` | A deployment URL, not a credential. A job that declares an `environment:` still reads repository secrets — it is the branch rule that does the work — so nothing breaks either way. Moving it into `firebase-staging` is optional tidiness and is not claimed here as security. |
+
+**Outside P0-02's four names, for completeness**, and unchanged by this PR:
+`SONAR_TOKEN` (`test.yml`, repository scope — it runs on every `pull_request`, so an
+environment gate would disable code analysis on PRs and it is not a Firebase or demo
+credential); `LOAD_TEST_*` (`load-test.yml`, already on the `staging` environment);
+`FIREBASE_TOKEN` (`deploy-rules.yml` — appears in a comment only; that workflow authenticates
+with keyless Workload Identity Federation and reads no such secret). `deploy-rules.yml` and
+`deploy-indexes.yml` already gate their deploy jobs on `firebase-rules-production` and
+`firestore-indexes-production`.
+
+### Where each kind of value lives
+
+The word "Actions secret" is ambiguous where scope is the entire control, so it is not used
+below.
+
+| Store                                        | What it is                                                                           | Reachable from a feature ref?                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| **GitHub `firebase-production` Environment** | `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`                                            | **No** — deployment branches restricted to `main`              |
+| **GitHub `firebase-staging` Environment**    | `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD`, `VERCEL_AUTOMATION_BYPASS_SECRET` | **No** — deployment branches restricted to `main`              |
+| **GitHub repository Actions secrets**        | `SONAR_TOKEN`, `E2E_BASE_URL`                                                        | **Yes** — by any workflow code on any selected ref             |
+| **Vercel Preview environment variables**     | the deployment's own `FIREBASE_ADMIN_KEY` and demo password, read by the running app | n/a — a deployment, not a workflow; never read by a GitHub job |
 
 **The deletion is the control.** An environment copy of a credential _alongside_ a
 repository copy closes nothing, because branch code can still read the repository copy. The
@@ -653,15 +741,28 @@ a refusal clearly; they do not survive an edit to the file they live in.
 - No secret echoed, no artefact uploaded, no credential written to a file in the workspace,
   no `continue-on-error`. No new PAT and no new long-lived credential.
 
+**`smoke.yml` is held to the same contract, with two stated differences.** It is the P0-01
+staging Golden Tenant gate and it now runs on `firebase-staging`. The staging Admin
+credential is on its single seeding step, exactly as elsewhere. But `E2E_DEMO_PASSWORD` and
+`VERCEL_AUTOMATION_BYPASS_SECRET` remain at **job** scope there, because three steps — the
+reseed, the sign-in preflight and the Playwright suite — must use the same value, and making
+them agree is the drift this gate exists to remove. That does mean `npm ci` sees both. It is
+stated rather than hidden: the Admin credential, which nothing needs to share, is step-scoped.
+`smoke.yml` also has no `concurrency` block; that predates this PR and is out of its scope.
+
+**A capability was removed, not narrowed.** `smoke.yml` could previously be dispatched at a
+PR ref to certify that PR's Preview before merge. See
+[DEFECT 4](#defect-4--the-staging-smoke-gate-was-left-outside-the-boundary-merge-blocking).
+
 DS-33 is the precedent for parsing rather than grepping: a job-level `if:` reading the
 `secrets` context once made GitHub reject an entire workflow file, and every run completed
 with zero jobs for three days.
 
 ## Unresolved owner actions
 
-**Two of these are merge-blocking.** Until steps 1–4 and 7 are done, a repository-level
-Firebase Admin credential is still readable by any workflow code selected by ref, which is
-exactly Defect 1.
+**Steps 1–5 and 8 are merge-blocking.** Until they are done, a repository-level Firebase
+Admin credential is still readable by any workflow code selected by ref, which is exactly
+Defect 1 — and step 8, the deletion, is the one that actually closes it.
 
 **Status: UNVERIFIED.** No part of this repository can create GitHub Environment settings,
 and the `/repos/{owner}/{repo}/environments` API is not reachable from the environment this
@@ -681,38 +782,62 @@ Nothing below asks anyone to reveal a secret value.
    (Deployment branches and tags → Selected branches and tags → add `main`).
 3. **Create `firebase-staging`** the same way.
 4. **Restrict its deployment branches to `main` only.**
-5. **Copy the secrets into the matching environment:**
+5. **Copy the secrets into the matching environment.** Copy — do not move yet; the
+   repository copies keep the existing gates working until step 7 proves the new ones do.
    - `firebase-production` ← `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`
-   - `firebase-staging` ← `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD`
-6. **Prove the hardened workflow works** — after merge, dispatch
-   **P0-02 Demo Auth Certification** from `main` with `mode: audit` for each project. Audit
-   is read-only: no Admin write, no sign-in. If a job sits waiting for environment approval
-   or is refused, the branch rule is working; if it runs from a feature ref, it is not.
-7. **DELETE the repository-level copies of `FIREBASE_ADMIN_KEY` and
-   `FIREBASE_ADMIN_KEY_STAGING`** (Settings → Secrets and variables → Actions).
+   - `firebase-staging` ← `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD`,
+     `VERCEL_AUTOMATION_BYPASS_SECRET`
+
+   `E2E_DEMO_PASSWORD` goes in **both**, with the same value, from the same source. Nothing
+   here asks anyone to reveal a value.
+
+6. **Prove the read-only paths work** — after merge, dispatch **P0-02 Demo Auth
+   Certification** from `main` with `mode: audit`, once for `la-creativo-erp` /
+   `production` and once for `bizosto-staging` / `staging`. Audit is read-only: no Admin
+   write, no sign-in. If a job sits waiting for environment approval or is refused, the
+   branch rule is working; if it runs from a feature ref, it is **not**, and the rest of
+   this list is unsafe to continue.
+7. **Prove the staging E2E gate still works** — dispatch **E2E Smoke (per-role + golden
+   tenant)** from `main`, with `target_url` set to the staging Preview for that commit. This
+   is the step Defect 4 existed to protect: it is the only consumer of
+   `VERCEL_AUTOMATION_BYPASS_SECRET`, and it must be seen passing from the environment copies
+   **before** the repository copies are deleted.
+8. **DELETE the repository-level copies** (Settings → Secrets and variables → Actions):
+   - `FIREBASE_ADMIN_KEY`
+   - `FIREBASE_ADMIN_KEY_STAGING`
+   - `E2E_DEMO_PASSWORD`
+   - `VERCEL_AUTOMATION_BYPASS_SECRET`
+
    **This step is the one that closes the defect.** While a repository-level copy exists,
    branch code can still read it and the environment restriction protects nothing. Do it only
-   after step 6 shows the environment copies working.
+   after steps 6 and 7 show the environment copies working.
+
+   Leave `E2E_BASE_URL` and `SONAR_TOKEN` at repository scope — see the inventory above for
+   why each is not credential material or cannot be gated.
+
+9. **Verify the deletion.** Settings → Secrets and variables → Actions must list none of the
+   four names at repository scope. An environment copy alongside a repository copy closes
+   nothing, so this check is not optional bookkeeping — it is the evidence.
 
 ### After merge — recertification
 
-8. Dispatch **P0-02 Demo Auth Certification** from `main`:
-   `firebase_project_id: la-creativo-erp`, `credential: production`, `mode: remediate`.
-9. Dispatch it again from `main`:
-   `firebase_project_id: bizosto-staging`, `credential: staging`, `mode: remediate`.
-10. **Independently verify both runs.** Expect, per project: 10 canonical identities,
+10. Dispatch **P0-02 Demo Auth Certification** from `main`:
+    `firebase_project_id: la-creativo-erp`, `credential: production`, `mode: remediate`.
+11. Dispatch it again from `main`:
+    `firebase_project_id: bizosto-staging`, `credential: staging`, `mode: remediate`.
+12. **Independently verify both runs.** Expect, per project: 10 canonical identities,
     0 enabled legacy, 0 claim drift, 0 Firestore mismatch, 10 rotations, 10 revocations,
     10/10 sign-ins, and **0 acceptances of the published historical credential**.
 
 ### Hardening, not blocking
 
-11. **Rotate `E2E_DEMO_PASSWORD` to a value this repository has never held.** The published
+13. **Rotate `E2E_DEMO_PASSWORD` to a value this repository has never held.** The published
     credential is proven dead, so this is defence in depth. Set it in both stores from the
     same source — now the two _environments_ plus the deployment environment — ≥16 characters,
-    no surrounding whitespace. Then re-run steps 8–9.
-12. **Separate the demo password per environment.** Production and staging share one value;
+    no surrounding whitespace. Then re-run steps 10–11.
+14. **Separate the demo password per environment.** Production and staging share one value;
     with P0-01 isolation and distinct accounts this is a low-severity residual.
-13. **Optional hygiene:** 662 stale branches carry `firebase-debug.log` (`fe1ad42d`) — an
+15. **Optional hygiene:** 662 stale branches carry `firebase-debug.log` (`fe1ad42d`) — an
     incomplete `firebase login` device flow with no durable credential in it.
 
 ### How to run a certification
