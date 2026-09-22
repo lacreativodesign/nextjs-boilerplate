@@ -1,12 +1,23 @@
 # P0-02 — Demo Firebase Auth identities: certification and hardening
 
-**Status: CERTIFIED — production and staging, on live Firebase Admin evidence.**
+**Status: the live demo-identity state is CERTIFIED. The mechanism that produced it was
+NOT safe, has been rebuilt, and must be re-exercised from `main` before it can be trusted
+again.**
 
-Both projects were inventoried, remediated and proven by dispatched workflow runs against
-this PR's own ref. The decisive result: the demo password that was **published in this
-repository's public git history** for six months is recovered from the object database at
-run time and **refused by all ten canonical identities in both projects**, while all ten
-authenticate with the configured credential.
+An independent audit accepted the Firebase evidence and rejected the machinery around it.
+Both verdicts stand, and they are different things:
+
+- **What was measured is real.** Production run
+  [35292887357](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35292887357)
+  and staging run
+  [35292995466](https://github.com/lacreativodesign/nextjs-boilerplate/actions/runs/35292995466),
+  both at executable SHA `6785c67c`, were independently log-verified: ten canonical
+  identities per project, zero enabled legacy demo identities, zero claim drift, zero
+  Firestore mismatch, ten rotations, ten revocations, ten sign-ins, and **zero acceptances
+  of the demo password published in this repository's git history**. Nothing here discards
+  that.
+- **How it was obtained was unsafe**, and one finding was merge-blocking. See
+  [Independent audit findings](#independent-audit-findings).
 
 |                                            | `la-creativo-erp` | `bizosto-staging` |
 | ------------------------------------------ | ----------------- | ----------------- |
@@ -19,20 +30,16 @@ authenticate with the configured credential.
 | Current-password sign-ins                  | **10 / 10**       | **10 / 10**       |
 | Published historical password accepted     | **0**             | **0**             |
 
+**POST-MERGE LIVE RECERTIFICATION REQUIRED.** The correction changes
+`scripts/certify-demo-auth.ts` and `lib/demo/auth-certification.ts`. The remediation path is
+intended to behave identically, but "intended" is not evidence: the executable that produced
+the table above is not the executable this PR ships, so the run must be repeated from `main`
+through the rebuilt workflow. It is deliberately **not** repeated before merge, because the
+only way to do that today is the repository-wide-secret path the audit told us to remove.
+
 P0-02 fails closed, and that applies to this document as much as to the tool: **an inventory
-nobody could take is not an inventory of zero legacy accounts — and a proof nobody attempted
-is not a proof that passed.** Both of those rules were earned; see
-[the fail-open the first runs exposed](#the-fail-open-those-runs-exposed-and-the-fix).
-
-Every figure above came out of a dispatched workflow run against a real Firebase project.
-The certifying runs were dispatched against commit `6785c67c`, the last commit on this
-branch that changes any code — the only commit after it is this document. Each project was
-re-certified after every code change rather than once at the start, and the runs that
-preceded them, including the two that got the verdict wrong, are linked alongside rather
-than quietly dropped.
-
-One owner action remains, and it is a hardening recommendation rather than an open defect:
-see [Unresolved owner actions](#unresolved-owner-actions).
+nobody could take is not an inventory of zero legacy accounts; a proof nobody attempted is
+not a proof that passed; and evidence from a different build is not evidence about this one.**
 
 ---
 
@@ -56,6 +63,113 @@ In scope: Firebase Auth identities, their custom claims, their Firestore `users`
 the demo credential and its rotation, and the git history that published it.
 Out of scope: the product's authorization model, the P0-01 environment-isolation contract
 (depended on, not modified), and PRs #1011 and #60, which are untouched.
+
+---
+
+## Independent audit findings
+
+Three defects, all accepted. They are recorded rather than quietly fixed, because two of
+them were false claims this document itself made.
+
+### DEFECT 1 — a secret-bearing workflow could run arbitrary branch code (merge-blocking)
+
+`workflow_dispatch` lets anyone with write access choose the ref. For that event
+`GITHUB_REF` is the chosen ref, `actions/checkout` fetches the chosen ref, and **the workflow
+file that executes is the one on the chosen ref**. The workflows held repository-level
+secrets and checked out without any gate, so a future collaborator could push a branch
+carrying an altered `scripts/certify-demo-auth.ts`, dispatch at that branch, and be handed a
+Firebase Admin service account.
+
+The previous version of this PR asserted that "no branch and no fork can reach an Admin
+credential by opening a PR". That is true of _opening a PR_ and irrelevant: the exposure is
+_dispatching_ one. Only the owner has write access today, but P0-06 exists precisely to add a
+second collaborator, so "nobody else can push" is a fact about this week, not an
+architecture.
+
+Crucially, this cannot be fixed inside the workflow. `if: github.actor == …` and
+`if: github.ref == 'refs/heads/main'` both ship on the branch being defended against, so the
+branch edits the guard. **The boundary has to live outside branch-controlled source.**
+
+### DEFECT 2 — "audit is read-only" was false
+
+The tool printed `Audit mode: no write was performed` and then, four lines later, called
+`accounts:signInWithPassword` ten times — plus ten more with the published historical
+credential. A successful sign-in updates the account's sign-in metadata; a failed one counts
+toward Identity Platform's throttle. **Audit mode was making twenty authentication attempts
+per run against live production accounts** while reporting that it had written nothing.
+
+### DEFECT 3 — the Web API key could fall back across environments
+
+The workflows carried:
+
+```
+FIREBASE_WEB_API_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_WEB_API_KEY || secrets.FIREBASE_WEB_API_KEY_STAGING }}
+```
+
+GitHub's `&&`/`||` is value-selecting, not boolean: an unset production key makes the left
+side falsy, so **a production run takes the staging key**. A Web API key is a public
+identifier and token-audience checking would reject the mismatch rather than cross-mutate
+anything, so the practical risk was low — but it directly contradicts the no-cross-environment
+contract this work is built on, and it was never needed: neither key was ever configured. The
+live runs resolved one from the Firebase Management API using the already-verified Admin
+credential.
+
+### What changed
+
+| Defect | Fix                                                                                                                                                                                                |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | Secret-bearing jobs moved onto GitHub Environments restricted to `main`; the pre-merge certify path deleted; Admin credentials moved off job scope onto the single consuming step                  |
+| 2      | Audit returns before any sign-in exists, prints `AUDIT COMPLETE — THIS IS NOT P0-02 LIVE CERTIFICATION`, and `certificationVerdict` refuses an audit report structurally, before counting anything |
+| 3      | The Web API key removed from both workflows entirely; the tool resolves it from the Management API using the credential whose project it has already verified                                      |
+
+---
+
+## GitHub Environment branch-boundary contract
+
+**OWNER CONFIGURATION — MUST BE VERIFIED LIVE.** Everything in this section is external
+GitHub settings. No file in this repository can create it, and no test here can prove it.
+Until someone has checked it in the GitHub UI, treat it as _required_, not as _done_.
+
+| Environment           | Holds                                             | Allowed deployment branch |
+| --------------------- | ------------------------------------------------- | ------------------------- |
+| `firebase-production` | `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`         | **`main` only**           |
+| `firebase-staging`    | `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD` | **`main` only**           |
+
+Add a production or staging Web API key to the matching environment **only if** the Firebase
+Management API lookup turns out not to work for the service account; it is not needed today
+and must never be added to both.
+
+Jobs and their environments:
+
+| Workflow · job                                       | Environment                                              |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| `demo-auth-certification.yml` · `guard`              | none — it holds no secret, so a bad ref fails in seconds |
+| `demo-auth-certification.yml` · `certify-production` | `firebase-production`                                    |
+| `demo-auth-certification.yml` · `certify-staging`    | `firebase-staging`                                       |
+| `seed-golden-tenant.yml` · `seed`                    | `firebase-production`                                    |
+
+**The deletion is the control.** An environment copy of a credential _alongside_ a
+repository copy closes nothing, because branch code can still read the repository copy. The
+hole is closed at step 7 of the owner actions — removing the repository-level Admin
+credentials — and not before.
+
+The `github.ref != 'refs/heads/main'` checks in both workflows are **defence in depth and
+are not the boundary**; they ship on the branch and a branch can remove them. They exist to
+catch an environment created without its branch rule, and to explain a refusal clearly.
+
+### Secret scope
+
+| Step                             | Sees an Admin credential |
+| -------------------------------- | ------------------------ |
+| `actions/checkout`               | **No**                   |
+| `actions/setup-node`             | **No**                   |
+| `npm ci`                         | **No**                   |
+| the seed step / the certify step | **Yes — only here**      |
+
+Early validation uses non-secret `*_CONFIGURED` booleans (`secrets.X != ''`), which is a
+valid job-level `env:` expression and keeps the value itself out of scope. This matters
+beyond tidiness: `npm ci` executes install scripts from hundreds of packages, and it used to
+run with a production service account in its environment.
 
 ---
 
@@ -206,7 +320,7 @@ the only image files ever added are three app icons.
 
 ## Production result
 
-**Firebase project: `la-creativo-erp` — CERTIFIED.**
+**Firebase project: `la-creativo-erp` — identity state CERTIFIED at `6785c67c`; recertification required from `main` after merge.**
 
 Live evidence, dispatched against this PR's ref with the production Admin credential, whose
 `project_id` was verified against the stated project before anything was read or written.
@@ -238,7 +352,7 @@ on `6785c67c`. Earlier runs on the same branch, kept because they are part of th
 
 ## Staging result
 
-**Firebase project: `bizosto-staging` — CERTIFIED.**
+**Firebase project: `bizosto-staging` — identity state CERTIFIED at `6785c67c`; recertification required from `main` after merge.**
 
 Same tool, same day, staging credential — and at no point the production one.
 
@@ -526,57 +640,71 @@ with zero jobs for three days.
 
 ## Unresolved owner actions
 
-**None blocking.** P0-02 is certified for both projects on live evidence. What follows is
-hardening, in priority order.
+**Two of these are merge-blocking.** Until steps 1–4 and 7 are done, a repository-level
+Firebase Admin credential is still readable by any workflow code selected by ref, which is
+exactly Defect 1.
 
-### 1. Rotate `E2E_DEMO_PASSWORD` to a value this repository has never held — recommended
+Nothing below asks anyone to reveal a secret value, and none of it has been done — no part of
+this repository can create or verify GitHub Environment settings.
 
-The published credential is proven dead, so this is defence in depth rather than incident
-response. The current value is not in git history (no scanner found it, and it is not the
-historical one — the historical one is refused while this one works), but it has existed
-across the whole period the fixture was being debugged, so a fresh value costs nothing.
+### Before merge — the secret boundary
 
-Choose ≥16 characters with no leading or trailing whitespace, and set it in **both** stores
-from the same source:
+1. **Create the GitHub Environment `firebase-production`**
+   (Settings → Environments → New environment).
+2. **Restrict its deployment branches to `main` only**
+   (Deployment branches and tags → Selected branches and tags → add `main`).
+3. **Create `firebase-staging`** the same way.
+4. **Restrict its deployment branches to `main` only.**
+5. **Copy the secrets into the matching environment:**
+   - `firebase-production` ← `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`
+   - `firebase-staging` ← `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD`
+6. **Prove the hardened workflow works** — after merge, dispatch
+   **P0-02 Demo Auth Certification** from `main` with `mode: audit` for each project. Audit
+   is read-only: no Admin write, no sign-in. If a job sits waiting for environment approval
+   or is refused, the branch rule is working; if it runs from a feature ref, it is not.
+7. **DELETE the repository-level copies of `FIREBASE_ADMIN_KEY` and
+   `FIREBASE_ADMIN_KEY_STAGING`** (Settings → Secrets and variables → Actions).
+   **This step is the one that closes the defect.** While a repository-level copy exists,
+   branch code can still read it and the environment restriction protects nothing. Do it only
+   after step 6 shows the environment copies working.
 
-- the GitHub Actions secret `E2E_DEMO_PASSWORD`,
-- the Vercel environment variable of the same name.
+### After merge — recertification
 
-A pasted trailing newline is the usual failure and neither settings page shows it; the shared
-policy rejects it rather than silently trimming, so a mismatch fails loudly rather than
-looking like a wrong password. Then re-dispatch `certify-remediate` for both projects to put
-the new value on the accounts and revoke again.
+8. Dispatch **P0-02 Demo Auth Certification** from `main`:
+   `firebase_project_id: la-creativo-erp`, `credential: production`, `mode: remediate`.
+9. Dispatch it again from `main`:
+   `firebase_project_id: bizosto-staging`, `credential: staging`, `mode: remediate`.
+10. **Independently verify both runs.** Expect, per project: 10 canonical identities,
+    0 enabled legacy, 0 claim drift, 0 Firestore mismatch, 10 rotations, 10 revocations,
+    10/10 sign-ins, and **0 acceptances of the published historical credential**.
 
-### 2. Separate the demo password per environment — recommended, low severity
+### Hardening, not blocking
 
-Production and staging share one value. See [Password rotation result](#password-rotation-result).
+11. **Rotate `E2E_DEMO_PASSWORD` to a value this repository has never held.** The published
+    credential is proven dead, so this is defence in depth. Set it in both stores from the
+    same source — now the two _environments_ plus the deployment environment — ≥16 characters,
+    no surrounding whitespace. Then re-run steps 8–9.
+12. **Separate the demo password per environment.** Production and staging share one value;
+    with P0-01 isolation and distinct accounts this is a low-severity residual.
+13. **Optional hygiene:** 662 stale branches carry `firebase-debug.log` (`fe1ad42d`) — an
+    incomplete `firebase login` device flow with no durable credential in it.
 
-### 3. Re-certify after merge, from the permanent workflow
+### How to run a certification
 
-`.github/workflows/demo-auth-certification.yml` becomes dispatchable once this PR is on
-`main`. It drives the same tool and is where routine re-certification belongs; the
-`certify-*` actions on `Seed Golden Tenant` exist because a new workflow cannot be dispatched
-against a feature ref, and can stay as the pre-merge path for future PRs.
+**Actions → P0-02 Demo Auth Certification → Run workflow**, from `main`:
 
-### 4. Optional hygiene: prune stale branches carrying `firebase-debug.log`
+| Field                 | Production             | Staging                |
+| --------------------- | ---------------------- | ---------------------- |
+| `firebase_project_id` | `la-creativo-erp`      | `bizosto-staging`      |
+| `credential`          | `production`           | `staging`              |
+| `mode`                | `audit` or `remediate` | `audit` or `remediate` |
 
-662 branches carry commit `fe1ad42d`. The file holds no durable credential — verified above —
-so this is tidiness, not remediation.
+`audit` reads: full Auth pagination plus the golden tenant's Firestore records, no Admin
+write and no sign-in. It reports population and drift and **cannot** certify. `remediate`
+rotates, revokes, restores exact claims, disables proven legacy identities, then proves the
+ten sign in and that the published credential is refused. It never deletes an Auth user.
 
-### How to re-run a certification
-
-**Actions → Seed Golden Tenant → Run workflow** (or **P0-02 Demo Auth Certification** after
-merge), against the ref you want to certify:
-
-| Field                 | Production                             | Staging           |
-| --------------------- | -------------------------------------- | ----------------- |
-| `action`              | `certify-audit` or `certify-remediate` | same              |
-| `firebase_project_id` | `la-creativo-erp`                      | `bizosto-staging` |
-| `credential`          | `production`                           | `staging`         |
-
-`certify-audit` is read-only. `certify-remediate` rotates, revokes, restores exact claims and
-disables proven legacy identities; it never deletes. Crossing a project with the other
-environment's credential is refused before anything is read.
+`Seed Golden Tenant` is the production fixture rebuild and no longer certifies anything.
 
 ---
 
@@ -589,9 +717,15 @@ refresh-token revocations; ten successful sign-ins with the current credential; 
 acceptances of the published historical credential; and the project identity verified before
 anything was touched.
 
-Both projects showed all eleven. The figures are reproduced above with links to the runs that
-produced them.
+Both projects showed all eleven, at executable SHA `6785c67c`, and an independent auditor
+verified the logs rather than taking this document's word for it.
 
-Code inspection is not live proof, and nothing here rests on any: every number in this
-document came out of a dispatched workflow run against a real Firebase project, and the two
-runs that tried to certify without proving anything are recorded alongside the ones that did.
+**That is a statement about Firebase on that day, through that build.** This correction
+changes the certification executable, so the same eleven must be shown again from `main`
+through the rebuilt workflow before the mechanism itself can be called trustworthy — see
+[Unresolved owner actions](#unresolved-owner-actions) steps 8–10.
+
+Code inspection is not live proof, and nothing here rests on any. Every number in this
+document came out of a dispatched workflow run against a real Firebase project — including
+the two runs that tried to certify while proving nothing, which are linked alongside the ones
+that did.

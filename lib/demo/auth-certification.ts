@@ -468,8 +468,26 @@ export function parseCertificationArgs(argv: readonly string[]): CertificationAr
   if (!credentialEnv) {
     throw new Error('--credential-env must name the variable carrying the service account.');
   }
+  if (mode === 'audit' && proveHistoricalRejected) {
+    throw new Error(
+      '--prove-historical-rejected cannot be combined with --mode=audit. Testing the published ' +
+        'credential means ten real authentication attempts against live accounts, which is a ' +
+        'write to sign-in metadata and is throttleable. Audit reads; remediate proves.',
+    );
+  }
 
-  return { mode, project, credentialEnv, proveHistoricalRejected, json };
+  // Remediate ALWAYS proves the published credential is refused — it is not opt-in, because
+  // a rotation nobody checked is not a rotation anyone can rely on. Making it a flag meant a
+  // run could mutate all ten accounts and only then fail for want of an argument, which
+  // wastes the write and teaches the operator to pass flags they do not read. The flag stays
+  // accepted so an existing invocation is not an error; it just no longer decides anything.
+  return {
+    mode,
+    project,
+    credentialEnv,
+    proveHistoricalRejected: mode === 'remediate',
+    json,
+  };
 }
 
 /**
@@ -663,11 +681,27 @@ export function certificationVerdict(report: CertificationReport): {
 } {
   const c = report.counts;
   const expected = DEMO_USERS.length;
-  const remediating = report.mode === 'remediate';
   const reasons: string[] = [];
   const failIf = (failing: boolean, reason: string) => {
     if (failing) reasons.push(reason);
   };
+
+  // AUDIT CANNOT CERTIFY. Not "does not today" — cannot, before any count is read.
+  //
+  // An audit performs no sign-in, so it cannot know whether the ten identities still
+  // authenticate, and it never tests the credential published in git history. A clean
+  // population inventory is a real and useful result; it is not the P0-02 question, and a
+  // run that answers a smaller question must not emit the larger answer.
+  if (report.mode !== 'remediate') {
+    return {
+      certified: false,
+      reasons: [
+        'Audit mode does not certify. It inventories the Auth population and reports drift; ' +
+          'it performs no sign-in and never tests the published historical credential, so it ' +
+          'cannot establish either. Run --mode=remediate for P0-02 certification.',
+      ],
+    };
+  }
 
   // The first rule is the one the whole P0 turns on, and it is checked before anything is
   // counted: a run that did not complete its inventory fails with zero findings of its own.
@@ -733,16 +767,23 @@ export function certificationVerdict(report: CertificationReport): {
       'skips it certifies nothing that matters.',
   );
 
-  // `--mode=audit` is read-only, so it certifies the STATE and is never asked to have
-  // rotated anything. Only a remediating run must also show the writes.
+  // Only a remediating run reaches here, so the writes are unconditional.
   failIf(
-    remediating && c.passwordRotations !== expected,
+    c.passwordRotations !== expected,
     `Rotated ${c.passwordRotations} canonical passwords; expected ${expected}.`,
   );
   failIf(
-    remediating && c.refreshTokenRevocations !== expected,
+    c.refreshTokenRevocations !== expected,
     `Revoked refresh tokens for ${c.refreshTokenRevocations} canonical identities; ` +
       `expected ${expected}.`,
+  );
+  // A remediating run is REQUIRED to prove the published credential is refused. It is not
+  // an opt-in flag any more: the rotation is only meaningful if the thing it rotates away
+  // from is then shown not to work.
+  failIf(
+    !report.historicalProofRequested,
+    'The published historical credential was not tested. A remediating run must prove it is ' +
+      'refused; that is the whole point of rotating away from it.',
   );
 
   return { certified: reasons.length === 0, reasons };

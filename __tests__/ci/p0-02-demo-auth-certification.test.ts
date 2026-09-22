@@ -451,21 +451,104 @@ describe('P0-02 (12, 16): canonical claims are exact, and rotation revokes', () 
   });
 });
 
-describe('P0-02 (17): audit mode is read-only', () => {
+describe('P0-02 (11-13, 17): audit is read-only in the literal sense, and cannot certify', () => {
   const script = read(CERT_SCRIPT);
+  const lib = read(CERT_LIB);
 
-  it('performs every mutation inside the remediate branch only', () => {
+  /**
+   * The independent audit's second finding, and it was correct.
+   *
+   * The tool printed "Audit mode: no write was performed" and then, four lines later, ran
+   * `accounts:signInWithPassword` ten times — plus ten more with the published historical
+   * credential when that flag was passed. A successful sign-in updates the account's
+   * sign-in metadata, and a failed one counts toward Identity Platform's throttle. Twenty
+   * authentication attempts against live production accounts is not a read by any
+   * reasonable definition, and calling it one in the log made it invisible.
+   *
+   * The fix is structural, not editorial: audit returns before the sign-in block exists.
+   */
+  it('returns from the audit path before any sign-in can happen', () => {
+    const auditBranch = script.slice(
+      script.indexOf("if (args.mode === 'audit') {"),
+      script.indexOf('await remediate({'),
+    );
+    expect(auditBranch).toBeTruthy();
+    expect(auditBranch).toContain('return;');
+    // The sign-in proof is invoked once, and it is after the audit branch has returned.
+    expect(script.indexOf('await proveSignIns(')).toBeGreaterThan(
+      script.indexOf("if (args.mode === 'audit') {"),
+    );
+    expect(script.split('await proveSignIns(').length - 1).toBe(1);
+  });
+
+  it('never calls trySignIn outside the sign-in proof, which audit never reaches', () => {
+    // trySignIn is defined once and called only from proveSignIns.
+    const proof = script.slice(script.indexOf('async function proveSignIns('));
+    const calls = script.split('trySignIn(').length - 1;
+    const definition = 1;
+    const inProof = proof.split('trySignIn(').length - 1;
+    expect(calls - definition).toBe(inProof);
+    expect(inProof).toBeGreaterThan(0);
+  });
+
+  it('performs every mutation inside the remediate function only', () => {
     const remediateFn = script.slice(script.indexOf('async function remediate('));
     for (const mutation of ['updateUser(', 'setCustomUserClaims(', 'revokeRefreshTokens(']) {
-      const everywhere = script.split(mutation).length - 1;
-      const inRemediate = remediateFn.split(mutation).length - 1;
-      expect(everywhere).toBe(inRemediate);
+      expect(script.split(mutation).length - 1).toBe(remediateFn.split(mutation).length - 1);
     }
   });
 
-  it('gates the remediate call on the mode, and says so when it writes nothing', () => {
-    expect(script).toMatch(/if \(args\.mode === 'remediate'\)/);
-    expect(script).toMatch(/Audit mode: no write was performed/);
+  it('says plainly that an audit is not a certification', () => {
+    expect(script).toContain('AUDIT COMPLETE — THIS IS NOT P0-02 LIVE CERTIFICATION');
+    expect(script).toContain('No Admin write and no sign-in was performed.');
+  });
+
+  it('CANNOT print P0-02 CERTIFIED from the audit path', () => {
+    const auditBranch = script.slice(
+      script.indexOf("if (args.mode === 'audit') {"),
+      script.indexOf('await remediate({'),
+    );
+    expect(auditBranch).not.toContain('P0-02 CERTIFIED');
+  });
+
+  it('refuses to certify an audit report, before it counts anything', () => {
+    // Structural, not arithmetic: a perfect audit report is still not certified.
+    const perfect: CertificationReport = {
+      mode: 'audit',
+      projectId: PRODUCTION_FIREBASE_PROJECT_ID,
+      inventoryComplete: true,
+      signInProofAttempted: true,
+      historicalProofRequested: true,
+      counts: {
+        ...emptyCounts(),
+        authPagesInspected: 2,
+        canonicalFound: 10,
+        passwordRotations: 10,
+        refreshTokenRevocations: 10,
+        currentPasswordSignIns: 10,
+        historicalCandidatesTested: 1,
+      },
+      findings: [],
+    };
+    const verdict = certificationVerdict(perfect);
+    expect(verdict.certified).toBe(false);
+    expect(verdict.reasons.join(' ')).toMatch(/Audit mode does not certify/);
+  });
+
+  it('refuses --prove-historical-rejected in audit mode', () => {
+    expect(() =>
+      parseCertificationArgs(['--mode=audit', '--project=x', '--prove-historical-rejected']),
+    ).toThrow(/Audit reads; remediate proves/);
+    expect(parseCertificationArgs(['--mode=audit', '--project=x']).proveHistoricalRejected).toBe(
+      false,
+    );
+  });
+
+  it('no longer claims anywhere that a sign-in is a read', () => {
+    for (const source of [script, lib]) {
+      expect(source).not.toMatch(/audit[^\n]*performs no write of any kind/i);
+      expect(source).not.toMatch(/Audit mode: no write was performed/);
+    }
   });
 
   it('never deletes anything, in either mode', () => {
@@ -476,7 +559,8 @@ describe('P0-02 (17): audit mode is read-only', () => {
 
 describe('P0-02 (18-19): a run that could not look cannot pass', () => {
   const baseReport = (over: Partial<CertificationReport> = {}): CertificationReport => ({
-    mode: 'audit',
+    // Remediate, because audit cannot certify at all any more — see the audit block below.
+    mode: 'remediate',
     projectId: PRODUCTION_FIREBASE_PROJECT_ID,
     inventoryComplete: true,
     signInProofAttempted: true,
@@ -486,6 +570,8 @@ describe('P0-02 (18-19): a run that could not look cannot pass', () => {
       totalAuthUsersInspected: 1200,
       authPagesInspected: 2,
       canonicalFound: 10,
+      passwordRotations: 10,
+      refreshTokenRevocations: 10,
       currentPasswordSignIns: 10,
       historicalCandidatesTested: 1,
     },
@@ -532,15 +618,17 @@ describe('P0-02 (18-19): a run that could not look cannot pass', () => {
   });
 
   it('requires ten rotations, ten revocations and ten sign-ins in remediate mode', () => {
-    const remediated = baseReport({ mode: 'remediate' });
-    expect(certificationVerdict(remediated).certified).toBe(false);
-
-    remediated.counts.passwordRotations = 10;
-    remediated.counts.refreshTokenRevocations = 10;
+    const remediated = baseReport();
     expect(certificationVerdict(remediated).certified).toBe(true);
 
-    remediated.counts.refreshTokenRevocations = 9;
+    remediated.counts.passwordRotations = 9;
     expect(certificationVerdict(remediated).reasons.join(' ')).toMatch(
+      /Rotated 9 canonical passwords/,
+    );
+
+    const short = baseReport();
+    short.counts.refreshTokenRevocations = 9;
+    expect(certificationVerdict(short).reasons.join(' ')).toMatch(
       /Revoked refresh tokens for 9 canonical identities/,
     );
   });
@@ -588,10 +676,34 @@ describe('P0-02 (18-19): a run that could not look cannot pass', () => {
     expect(verdict.reasons.join(' ')).toMatch(/certifies nothing that matters/);
   });
 
-  it('does not demand a historical test that was never requested', () => {
+  /**
+   * Reversed by the independent audit. It used to be legitimate to remediate without
+   * testing the published credential, because the proof was an opt-in flag.
+   *
+   * It is not legitimate. Rotating away from a credential and never checking that the old
+   * one stopped working is the half of the job that produces the certificate without the
+   * half that earns it — and as a FLAG it could be forgotten after the ten accounts had
+   * already been mutated. Remediate now always proves, and a report claiming otherwise is
+   * refused.
+   */
+  it('refuses a remediation that skipped the historical proof', () => {
     const report = baseReport({ historicalProofRequested: false });
     report.counts.historicalCandidatesTested = 0;
-    expect(certificationVerdict(report).certified).toBe(true);
+    const verdict = certificationVerdict(report);
+    expect(verdict.certified).toBe(false);
+    expect(verdict.reasons.join(' ')).toMatch(/that is the whole point of rotating away from it/);
+  });
+
+  it('cannot be asked to skip the proof from the command line either', () => {
+    // The flag is accepted so an existing invocation is not an error, but remediate always
+    // proves regardless of whether it was passed.
+    expect(
+      parseCertificationArgs(['--mode=remediate', '--project=x']).proveHistoricalRejected,
+    ).toBe(true);
+    expect(
+      parseCertificationArgs(['--mode=remediate', '--project=x', '--prove-historical-rejected'])
+        .proveHistoricalRejected,
+    ).toBe(true);
   });
 
   it('resolves the Web API key rather than requiring a new secret, and never prints it', () => {
@@ -695,22 +807,37 @@ describe('P0-02 (Phase 10-11): the certification workflows are safe and dispatch
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const yaml = require('js-yaml') as { load: (input: string) => unknown };
 
+  /** The shape of a workflow step this suite reasons about. */
+  type WorkflowStep = {
+    name?: string;
+    uses?: string;
+    run?: string;
+    env?: Record<string, unknown>;
+  };
+
+  type WorkflowJob = {
+    if?: string;
+    'timeout-minutes'?: number;
+    environment?: string;
+    env?: Record<string, unknown>;
+    steps?: WorkflowStep[];
+  };
+
   const parse = (rel: string) =>
     yaml.load(read(rel)) as {
       on?: Record<string, unknown>;
       true?: Record<string, unknown>;
       permissions?: Record<string, string>;
       concurrency?: { group?: string; 'cancel-in-progress'?: boolean };
-      jobs: Record<string, { if?: string; 'timeout-minutes'?: number; steps?: unknown[] }>;
+      jobs: Record<string, WorkflowJob>;
     };
 
   // YAML 1.1 folds a bare `on:` key to the boolean true, which is why this is not `.on`.
   const triggersOf = (doc: ReturnType<typeof parse>) => doc.true ?? doc.on ?? {};
 
-  const WORKFLOWS = [
-    '.github/workflows/demo-auth-certification.yml',
-    '.github/workflows/seed-golden-tenant.yml',
-  ];
+  const CERT_WORKFLOW = '.github/workflows/demo-auth-certification.yml';
+  const SEED_WORKFLOW = '.github/workflows/seed-golden-tenant.yml';
+  const WORKFLOWS = [CERT_WORKFLOW, SEED_WORKFLOW];
 
   it.each(WORKFLOWS)('%s is valid YAML with at least one job', (rel) => {
     const doc = parse(rel);
@@ -761,43 +888,151 @@ describe('P0-02 (Phase 10-11): the certification workflows are safe and dispatch
     expect(source).not.toMatch(/>\s*[\w./-]*(service-account|admin-key|credentials)[\w.]*\.json/);
   });
 
-  it('routes production and staging credentials so only one is ever in scope', () => {
+  /**
+   * DEFECT 1, the merge-blocker the independent audit found.
+   *
+   * `workflow_dispatch` lets anyone with write access choose the ref. For that event the
+   * checked-out code AND the workflow file itself come from the chosen ref. So the previous
+   * design — repository-level secrets, `actions/checkout` with no environment gate — meant a
+   * future collaborator could push a branch carrying an altered `certify-demo-auth.ts`,
+   * dispatch at it, and receive a Firebase Admin service account. "Only the owner has write
+   * access today" is not an architecture, and P0-06 exists specifically to add a second
+   * collaborator.
+   *
+   * A guard written inside the workflow cannot fix it, because the branch edits the guard.
+   * The boundary has to sit outside branch-controlled source: a GitHub Environment whose
+   * deployment branches are restricted to `main`, holding the secrets itself.
+   *
+   * These tests pin the half that lives in the repository. The environments, their branch
+   * rules and the secret migration are EXTERNAL configuration that no test here can prove —
+   * they are owner actions, and the documentation says so.
+   */
+  it('routes each credential through its own main-only environment', () => {
+    const doc = parse(CERT_WORKFLOW);
+    expect(doc.jobs['certify-production']?.environment).toBe('firebase-production');
+    expect(doc.jobs['certify-staging']?.environment).toBe('firebase-staging');
+
+    const seedDoc = parse(SEED_WORKFLOW);
+    expect(seedDoc.jobs['seed']?.environment).toBe('firebase-production');
+  });
+
+  it('gives each environment job only its own credential, with no fallback expression', () => {
+    const source = read(CERT_WORKFLOW);
+    const prod = source.slice(
+      source.indexOf('  certify-production:'),
+      source.indexOf('  certify-staging:'),
+    );
+    const staging = source.slice(source.indexOf('  certify-staging:'));
+
+    expect(prod).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(prod).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
+
+    expect(staging).toContain(
+      'FIREBASE_ADMIN_KEY_STAGING: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}',
+    );
+    expect(staging).not.toContain('secrets.FIREBASE_ADMIN_KEY }}');
+
+    // No `a && b || c` credential expression anywhere: that shape is what let an empty
+    // production value fall through to the staging one.
+    expect(source).not.toMatch(/secrets\.[A-Z_]+\s*\|\|\s*secrets\./);
+  });
+
+  /**
+   * DEFECT 3. The Web API key carried exactly the fallback the contract forbids:
+   * `inputs.credential == 'production' && secrets.FIREBASE_WEB_API_KEY || secrets.FIREBASE_WEB_API_KEY_STAGING`.
+   * An unset production key makes the `&&` falsy, so a production run took the STAGING key.
+   *
+   * Neither key was ever configured — the live runs resolved it from the Firebase Management
+   * API using the already-verified Admin credential — so the simplest safe design is not to
+   * carry it in the workflow at all.
+   */
+  it('carries no Web API key, in either direction', () => {
     for (const rel of WORKFLOWS) {
+      expect(read(rel)).not.toContain('FIREBASE_WEB_API_KEY');
+    }
+    // The tool still resolves one, from the credential whose project it has already verified.
+    expect(read(CERT_SCRIPT)).toContain('async function resolveWebApiKey');
+  });
+
+  it('keeps every Admin credential off job scope and away from checkout and npm ci', () => {
+    for (const rel of WORKFLOWS) {
+      const doc = parse(rel);
       const source = read(rel);
-      expect(source).toContain(
-        "FIREBASE_ADMIN_KEY: ${{ inputs.credential == 'production' && secrets.FIREBASE_ADMIN_KEY || '' }}",
-      );
-      expect(source).toContain(
-        "FIREBASE_ADMIN_KEY_STAGING: ${{ inputs.credential == 'staging' && " +
-          "secrets.FIREBASE_ADMIN_KEY_STAGING || '' }}",
-      );
-      // The pairing is also refused up front, before a checkout costs anything.
-      expect(source).toContain('la-creativo-erp:production|bizosto-staging:staging');
-      expect(source).toMatch(/There is no fallback/);
+
+      for (const [name, job] of Object.entries(doc.jobs)) {
+        // A job-level env may name a secret only to test whether it EXISTS.
+        for (const [key, value] of Object.entries(job.env ?? {})) {
+          const text = String(value);
+          if (!text.includes('secrets.')) continue;
+          expect({ job: name, key, existenceCheckOnly: text.includes("!= ''") }).toEqual({
+            job: name,
+            key,
+            existenceCheckOnly: true,
+          });
+        }
+
+        // And no step that installs or fetches may carry one.
+        for (const step of job.steps ?? []) {
+          const uses = String(step.uses ?? '');
+          const run = String(step.run ?? '');
+          const installing =
+            uses.includes('actions/checkout') ||
+            uses.includes('actions/setup-node') ||
+            run.trim().startsWith('npm ci');
+          if (!installing) continue;
+          const env = Object.keys(step.env ?? {});
+          expect({ job: name, step: uses || run.slice(0, 20), env }).toEqual({
+            job: name,
+            step: uses || run.slice(0, 20),
+            env: [],
+          });
+        }
+      }
+
+      // The credential-consuming step comes last, after the install steps.
+      const firstSecret = source.search(/^\s+FIREBASE_ADMIN_KEY(_STAGING)?: \$\{\{ secrets\./m);
+      if (firstSecret > -1) {
+        expect(source.indexOf('npm ci')).toBeLessThan(firstSecret);
+        expect(source.indexOf('actions/checkout')).toBeLessThan(firstSecret);
+      }
+    }
+  });
+
+  it('does not present workflow_dispatch as the protection', () => {
+    const source = read(CERT_WORKFLOW);
+    // The file must say where the boundary actually is, and that the in-file ref check is not it.
+    expect(source).toMatch(/DEFENCE IN DEPTH, NOT THE BOUNDARY/);
+    expect(source).toMatch(/OWNER CONFIGURATION — MUST BE VERIFIED LIVE/);
+    // Comment prose wraps, so compare the sentence rather than the line it happens to sit on.
+    const prose = source
+      .split('\n')
+      .map((line) => line.replace(/^\s*#\s?/, ''))
+      .join(' ')
+      .replace(/\s+/g, ' ');
+    expect(prose).toMatch(/the workflow file that runs is the one on the CHOSEN ref/i);
+    // And it must not repeat the claim the audit rejected.
+    expect(source).not.toMatch(/no branch and no fork can reach an Admin credential/i);
+  });
+
+  it('refuses a non-main ref in code as well, as defence in depth', () => {
+    for (const rel of WORKFLOWS) {
+      expect(read(rel)).toContain('refs/heads/main');
     }
   });
 
   it('fails closed when the credential it needs is absent', () => {
     for (const rel of WORKFLOWS) {
       const source = read(rel);
-      expect(source).toContain(
-        "PRODUCTION_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY != '' }}",
-      );
-      expect(source).toContain(
-        "STAGING_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING != '' }}",
-      );
-      expect(source).toMatch(/fails closed/);
-      // Each guard exits rather than continuing without the credential.
+      expect(source).toMatch(/is not present in the firebase-(production|staging)/);
       expect(source).not.toMatch(/continue-on-error/);
     }
   });
 
   it('states the project on every certification invocation', () => {
-    for (const rel of WORKFLOWS) {
-      const source = read(rel);
-      expect(source).toContain('scripts/certify-demo-auth.ts');
-      expect(source).toContain('--project="$PROJECT"');
-      expect(source).toContain('--credential-env="$CREDENTIAL_ENV"');
-    }
+    const source = read(CERT_WORKFLOW);
+    expect(source).toContain('scripts/certify-demo-auth.ts');
+    expect(source).toContain('--project="$PROJECT"');
+    expect(source).toContain('--credential-env=FIREBASE_ADMIN_KEY');
+    expect(source).toContain('--credential-env=FIREBASE_ADMIN_KEY_STAGING');
   });
 });

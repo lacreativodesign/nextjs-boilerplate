@@ -12,10 +12,17 @@
  *
  * This walks the WHOLE Auth population, page by page, and says what is actually there.
  *
- *   --mode=audit      read-only. Performs no write of any kind.
+ *   --mode=audit      READ-ONLY, and now literally so. Firebase Admin inventory of the
+ *                     whole Auth population plus the golden tenant's Firestore records.
+ *                     No Admin mutation, and NO SIGN-IN — a sign-in writes the account's
+ *                     sign-in metadata and counts toward Identity Platform's throttle, so
+ *                     it is not a read. Audit reports population and drift; it cannot and
+ *                     does not emit a P0-02 CERTIFIED verdict.
  *   --mode=remediate  rotates the ten canonical passwords, revokes their refresh tokens,
  *                     restores exact claims, and disables + revokes proven legacy demo
- *                     identities. It never deletes: see planRemediation.
+ *                     identities. It never deletes: see planRemediation. It then proves the
+ *                     ten sign in with the configured credential and that the credential
+ *                     published in git history is refused. Only this mode certifies.
  *
  *   --project=<id>            REQUIRED. The project this run is FOR, stated by the
  *                             operator and verified against the credential.
@@ -23,10 +30,11 @@
  *                             Defaults to FIREBASE_ADMIN_KEY; staging must pass
  *                             FIREBASE_ADMIN_KEY_STAGING, and the two may not be crossed.
  *   --prove-historical-rejected
- *                             also prove the demo password published in git history is
- *                             refused. The candidate is recovered from this repository's
- *                             own object database at run time, matched against a recorded
- *                             SHA-256, and never written to disk or a log.
+ *                             accepted but no longer decides anything: remediate always
+ *                             proves it, and audit refuses the flag. The candidate is
+ *                             recovered from this repository's own object database at run
+ *                             time, matched against a recorded SHA-256, and never written
+ *                             to disk or a log.
  *   --json                    emit the machine-readable report as well.
  *
  * FAIL-CLOSED
@@ -357,12 +365,52 @@ async function run(): Promise<void> {
 
   reportPopulation(classified, disabledByUid, counts.orphanFirestoreDemoUsers);
 
-  if (args.mode === 'remediate') {
-    await remediate({ auth, classified, counts });
-  } else {
-    console.log('\nAudit mode: no write was performed.');
+  // AUDIT STOPS HERE. It has read the whole Auth population and the Firestore records and
+  // has written nothing — no Admin mutation, and no sign-in either.
+  //
+  // A sign-in is not a read. `accounts:signInWithPassword` updates the account's sign-in
+  // metadata on success and counts toward Identity Platform's throttle on failure, so the
+  // ten current-password probes and the ten published-credential probes are twenty writes
+  // against live accounts. This tool used to run all twenty in audit mode and print
+  // "no write was performed" above them. They belong to remediate, which is already
+  // mutating, and nowhere else.
+  if (args.mode === 'audit') {
+    const report: CertificationReport = {
+      mode: 'audit',
+      projectId,
+      inventoryComplete,
+      signInProofAttempted: false,
+      historicalProofRequested: false,
+      counts,
+      findings,
+    };
+    assertReportCarriesNoSecrets(report);
+
+    console.log('\n================ P0-02 AUDIT ================');
+    console.log(`project: ${projectId}   mode: audit (read-only)`);
+    printCounts(report);
+    if (args.json) console.log(`\nJSON ${JSON.stringify(report)}`);
+
+    console.log('\nNo Admin write and no sign-in was performed.');
+    console.log('AUDIT COMPLETE — THIS IS NOT P0-02 LIVE CERTIFICATION.');
+    console.log(
+      'It reports the population and its drift. It does not establish that the ten ' +
+        'identities authenticate, and it does not test the credential published in git ' +
+        'history. Run --mode=remediate for that.',
+    );
+
+    // An audit that completed its inventory succeeded at the job it has. Drift it found is
+    // reported above and in `findings`; it is a finding for an operator, not a failed run.
+    if (!inventoryComplete || counts.authPagesInspected < 1) {
+      console.error('\nThe Auth inventory did not complete, so this audit establishes nothing.');
+      process.exitCode = 1;
+    }
+    return;
   }
 
+  await remediate({ auth, classified, counts });
+
+  // Only now, with the rotation already written, do the proofs run.
   const signInProofAttempted = await proveSignIns({ app, args, projectId, counts });
 
   const report: CertificationReport = {
@@ -381,9 +429,7 @@ async function run(): Promise<void> {
   const verdict = certificationVerdict(report);
   console.log('\n================ P0-02 RESULT ================');
   console.log(`project: ${projectId}   mode: ${args.mode}`);
-  for (const [key, value] of Object.entries(report.counts)) {
-    console.log(`  ${key}: ${value}`);
-  }
+  printCounts(report);
   if (args.json) console.log(`\nJSON ${JSON.stringify(report)}`);
 
   if (!verdict.certified) {
@@ -393,6 +439,13 @@ async function run(): Promise<void> {
     return;
   }
   console.log('\nP0-02 CERTIFIED for this project.');
+}
+
+/** The counts, one per line. Shared so audit and remediate cannot drift in how they report. */
+function printCounts(report: CertificationReport): void {
+  for (const [key, value] of Object.entries(report.counts)) {
+    console.log(`  ${key}: ${value}`);
+  }
 }
 
 /**
