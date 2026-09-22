@@ -760,9 +760,18 @@ with zero jobs for three days.
 
 ## Unresolved owner actions
 
-**Steps 1–5 and 8 are merge-blocking.** Until they are done, a repository-level Firebase
-Admin credential is still readable by any workflow code selected by ref, which is exactly
-Defect 1 — and step 8, the deletion, is the one that actually closes it.
+**Steps 1–5 are merge-blocking. Step 8, the deletion, is what actually closes Defect 1 — and
+it cannot happen until after the merge.** That ordering is forced, not chosen, and the
+consequence has to be said plainly: **merging does not close the hole.** Until step 8, a
+repository-level Firebase Admin credential is still readable by workflow code on any selected
+ref.
+
+Why the order is forced: `demo-auth-certification.yml` does not exist on `main` today — it
+arrives with this PR — and the corrected `smoke.yml` is likewise on the branch. A
+`workflow_dispatch` from `main` runs the file that is on `main`, so **the verification
+dispatches (6–7) are only possible once this is merged**. Listing them as "before merge" would
+be describing something nobody can do. Steps 6–9 are therefore the first thing after merge,
+ahead of the recertification runs.
 
 **Status: UNVERIFIED.** No part of this repository can create GitHub Environment settings,
 and the `/repos/{owner}/{repo}/environments` API is not reachable from the environment this
@@ -774,7 +783,7 @@ exists to correct.
 
 Nothing below asks anyone to reveal a secret value.
 
-### Before merge — the secret boundary
+### Before merge — create the boundary (steps 1–5)
 
 1. **Create the GitHub Environment `firebase-production`**
    (Settings → Environments → New environment).
@@ -783,7 +792,8 @@ Nothing below asks anyone to reveal a secret value.
 3. **Create `firebase-staging`** the same way.
 4. **Restrict its deployment branches to `main` only.**
 5. **Copy the secrets into the matching environment.** Copy — do not move yet; the
-   repository copies keep the existing gates working until step 7 proves the new ones do.
+   repository copies keep the existing gates working — including the `smoke.yml` currently on
+   `main`, which is still repository-scoped — until step 7 proves the new ones do.
    - `firebase-production` ← `FIREBASE_ADMIN_KEY`, `E2E_DEMO_PASSWORD`
    - `firebase-staging` ← `FIREBASE_ADMIN_KEY_STAGING`, `E2E_DEMO_PASSWORD`,
      `VERCEL_AUTOMATION_BYPASS_SECRET`
@@ -791,7 +801,12 @@ Nothing below asks anyone to reveal a secret value.
    `E2E_DEMO_PASSWORD` goes in **both**, with the same value, from the same source. Nothing
    here asks anyone to reveal a value.
 
-6. **Prove the read-only paths work** — after merge, dispatch **P0-02 Demo Auth
+### Immediately after merge — prove, then delete (steps 6–9)
+
+**Do these before the recertification runs below.** Until step 8 is done and step 9 confirms
+it, Defect 1 is open.
+
+6. **Prove the read-only paths work** — dispatch **P0-02 Demo Auth
    Certification** from `main` with `mode: audit`, once for `la-creativo-erp` /
    `production` and once for `bizosto-staging` / `staging`. Audit is read-only: no Admin
    write, no sign-in. If a job sits waiting for environment approval or is refused, the

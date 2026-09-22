@@ -99,10 +99,12 @@ dispatching the gate proves the deployment under test is the isolated staging en
 rebuilds the `bizosto-demo` fixture into that project, and rotates the ten demo accounts to
 the same `E2E_DEMO_PASSWORD` the browser is about to type. Neither copy of the secret nor
 the project can be the odd one out, so the drift below has nowhere to happen. Skip to
-"Run the pre-merge gate".
+"Run the gate — from `main` only".
 
 To rebuild the fixture on its own — refreshing demo data, or repairing it outside a
-certification run — dispatch **Actions → Seed Golden Tenant** against the PR branch:
+certification run — dispatch **Actions → Seed Golden Tenant** **from `main`**. That workflow
+runs on the `firebase-production` environment, which is restricted to `main`, so a feature-ref
+dispatch is refused before any step runs:
 
 - `firebase_project_id` — the Firebase project the deployment serves. Read it from the
   deployment itself rather than from memory: `GET <deployment>/api/public/firebase-config`
