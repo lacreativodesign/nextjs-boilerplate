@@ -428,12 +428,28 @@ export const DEFAULT_CREDENTIAL_ENV = 'FIREBASE_ADMIN_KEY';
  * credential states the fact, and `assertCredentialProject` refuses when they differ —
  * which is the only arrangement in which a wrong secret is caught rather than obeyed.
  */
-export function parseCertificationArgs(argv: readonly string[]): CertificationArgs {
+/**
+ * What the command line SAID, before anything asks whether it makes sense.
+ *
+ * Split out so reading an argument and judging a combination of arguments are two jobs
+ * rather than one long one — the scan rejects a flag it does not recognise, and nothing
+ * else. `--mode` is validated here only because an unparseable value has no meaning to
+ * carry forward.
+ */
+function scanCertificationArgs(argv: readonly string[]): {
+  mode: CertificationMode | null;
+  project: string;
+  credentialEnv: string;
+  proveHistoricalRejected: boolean;
+  json: boolean;
+} {
   let mode: CertificationMode | null = null;
   let project = '';
   let credentialEnv = DEFAULT_CREDENTIAL_ENV;
   let proveHistoricalRejected = false;
   let json = false;
+
+  const valueOf = (arg: string, flag: string) => arg.slice(flag.length).trim();
 
   for (const arg of argv) {
     if (arg === '--json') {
@@ -441,19 +457,26 @@ export function parseCertificationArgs(argv: readonly string[]): CertificationAr
     } else if (arg === '--prove-historical-rejected') {
       proveHistoricalRejected = true;
     } else if (arg.startsWith('--mode=')) {
-      const value = arg.slice('--mode='.length).trim();
+      const value = valueOf(arg, '--mode=');
       if (value !== 'audit' && value !== 'remediate') {
         throw new Error(`--mode must be "audit" or "remediate", not "${value}".`);
       }
       mode = value;
     } else if (arg.startsWith('--project=')) {
-      project = arg.slice('--project='.length).trim();
+      project = valueOf(arg, '--project=');
     } else if (arg.startsWith('--credential-env=')) {
-      credentialEnv = arg.slice('--credential-env='.length).trim();
+      credentialEnv = valueOf(arg, '--credential-env=');
     } else {
       throw new Error(`Unrecognised argument "${arg}".`);
     }
   }
+
+  return { mode, project, credentialEnv, proveHistoricalRejected, json };
+}
+
+export function parseCertificationArgs(argv: readonly string[]): CertificationArgs {
+  const { mode, project, credentialEnv, proveHistoricalRejected, json } =
+    scanCertificationArgs(argv);
 
   if (!mode) {
     throw new Error('--mode=audit or --mode=remediate is required.');
