@@ -844,7 +844,7 @@ describe('P0-02 (Phase 10-11): the certification workflows are safe and dispatch
     expect(Object.keys(doc.jobs).length).toBeGreaterThan(0);
   });
 
-  it.each(WORKFLOWS)('%s is workflow_dispatch only — no PR or push can reach a secret', (rel) => {
+  it.each(WORKFLOWS)('%s is workflow_dispatch only — necessary, not sufficient', (rel) => {
     const triggers = Object.keys(triggersOf(parse(rel)));
     expect(triggers).toEqual(['workflow_dispatch']);
     expect(triggers).not.toContain('pull_request');
@@ -996,6 +996,38 @@ describe('P0-02 (Phase 10-11): the certification workflows are safe and dispatch
         expect(source.indexOf('actions/checkout')).toBeLessThan(firstSecret);
       }
     }
+  });
+
+  /**
+   * A standing guard against the defect class that produced two of the three audit findings:
+   * a claim that was true when written, surviving the change that made it false.
+   *
+   * Prose does not fail a build, so the withdrawn claims are asserted ABSENT from the live
+   * files by name. The evidence document is deliberately in scope too — it is where a stale
+   * claim is most likely to survive, and it is the artefact a reviewer trusts most. Where it
+   * QUOTES a withdrawn claim it does so inside the findings section that exists to record it,
+   * which is why the assertions below target the workflows and the tool rather than every
+   * occurrence of the words.
+   */
+  it('cannot quietly re-acquire a claim the audit withdrew', () => {
+    const live = [...WORKFLOWS, CERT_SCRIPT, CERT_LIB].map(read).join('\n');
+
+    // Defect 1: dispatch-only was never the protection.
+    expect(live).not.toMatch(/no branch and no fork can reach an Admin credential/i);
+    // Defect 2: a sign-in is not a read.
+    expect(live).not.toMatch(/audit[^\n]*performs no write of any kind/i);
+    expect(live).not.toMatch(/Audit mode: no write was performed/);
+    // Defect 3: no cross-environment credential selection.
+    expect(live).not.toMatch(/secrets\.[A-Z_]+\s*\|\|\s*secrets\./);
+
+    // And the documentation must still carry the record of all three, so a future reader
+    // meets the reasoning rather than only the result.
+    const doc = read('docs/security/p0-02-demo-auth-certification.md');
+    expect(doc).toMatch(/DEFECT 1 —/);
+    expect(doc).toMatch(/DEFECT 2 —/);
+    expect(doc).toMatch(/DEFECT 3 —/);
+    expect(doc).toMatch(/POST-MERGE LIVE RECERTIFICATION REQUIRED/);
+    expect(doc).toMatch(/OWNER CONFIGURATION — MUST BE VERIFIED LIVE/);
   });
 
   it('does not present workflow_dispatch as the protection', () => {

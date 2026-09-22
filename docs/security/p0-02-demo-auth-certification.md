@@ -603,40 +603,59 @@ kind; every mutation lives in the remediate branch, asserted by test.
 
 ## Project-isolation proof
 
-Three independent bounds, all fail-closed:
+Three bounds on _which project_ a live action lands in, all fail-closed:
 
-1. **The operator states the project.** `--project` has no default and is never derived
-   from the credential. A run that asks the service account where it is pointed can only
-   ever agree with itself.
+1. **The operator states the project.** `--project` has no default and is never derived from
+   the credential. A run that asks the service account where it is pointed can only ever
+   agree with itself.
 2. **The credential must confirm it.** The tool parses `project_id` — and no other field —
    and aborts before any read or write if it differs from the stated project.
-3. **The two credentials may not be crossed.** Staging may not be certified with
-   `FIREBASE_ADMIN_KEY`; production may not be certified with `FIREBASE_ADMIN_KEY_STAGING`.
-   In the workflows each credential is bound to an expression that yields the empty string
-   unless the operator chose that environment, so a staging run does not have the production
-   secret in its environment at all — there is nothing for a fallback to fall back to.
+3. **The two credentials may not be crossed.** Staging cannot be certified with
+   `FIREBASE_ADMIN_KEY`; production cannot be certified with `FIREBASE_ADMIN_KEY_STAGING`.
+   Each certification job now draws from its own environment, so the other environment's
+   credential is not merely unused — it is absent from the job.
 
-P0-01 is depended upon and unmodified. The `seed` job of `Seed Golden Tenant` keeps the
-production credential it has always had; the automated smoke gate keeps its staging-only
-credential. That invariant was previously asserted as "the file never mentions the staging
-key", which the new certification job made untrue; it is now asserted **per job**, which is
-the property that was always meant and is strictly stronger.
+P0-01 is depended on and unmodified. `Seed Golden Tenant` is still the deliberate, by-hand
+PRODUCTION rebuild path with the production account; the automated smoke gate still holds a
+staging-only credential that cannot reach production.
+
+That invariant was once asserted as "the file never mentions the staging key". The P0-02
+certification job made that untrue, so it was restated **per job** — and now that the
+certification job has moved out of this workflow entirely, the seed workflow mentions no
+staging credential at all. The per-job assertion is kept anyway: it states the property that
+was always meant, and it survives the next person adding a second job.
 
 ## Workflow security
 
-`workflow_dispatch` only — no `push`, `pull_request` or `pull_request_target` trigger, so
-no branch and no fork can reach an Admin credential by opening a PR. `permissions:
-contents: read`. Explicit `timeout-minutes` on every job. `concurrency` with
-`cancel-in-progress: false`, because cancelling a half-finished rotation would leave
-accounts on mixed passwords. Credentials scoped to the single step that needs them, so
-`npm ci` never sees one. No secret is echoed, no artefact is uploaded, no credential is
-written to a file in the workspace, and no `continue-on-error` is used. No new PAT and no
-new long-lived credential were introduced. All of this is asserted against a real YAML
-parse rather than a text match — DS-33 is the precedent: a job-level `if:` reading the
+**Where the boundary is.** `workflow_dispatch` is a _trigger_, not a protection. It lets
+anyone with write access choose the ref, and the workflow file that executes comes from that
+ref — so nothing written inside these files defends against a branch that edits them. The
+boundary is the GitHub Environment named by each secret-bearing job, restricted to `main`,
+holding the secrets itself. See
+[GitHub Environment branch-boundary contract](#github-environment-branch-boundary-contract).
+
+The in-file `github.ref != 'refs/heads/main'` checks are **defence in depth and are labelled
+as such in the files**. They catch an environment created without its branch rule and explain
+a refusal clearly; they do not survive an edit to the file they live in.
+
+**What the workflows do hold, and what is asserted by test against a real YAML parse:**
+
+- `workflow_dispatch` only — no `push`, `pull_request` or `pull_request_target`, so no PR and
+  no fork triggers them at all. This is necessary and _not_ sufficient, which is the whole
+  point of the paragraph above.
+- `permissions: contents: read`; explicit `timeout-minutes` on every job.
+- `concurrency` with `cancel-in-progress: false`, because cancelling a half-finished rotation
+  would leave accounts on mixed passwords.
+- **Admin credentials appear only on the single consuming step**, never at job scope, and
+  never on `actions/checkout`, `actions/setup-node` or `npm ci`. Early validation compares
+  non-secret `*_CONFIGURED` booleans instead.
+- No credential-selecting `a && b || c` expression anywhere, in either direction.
+- No secret echoed, no artefact uploaded, no credential written to a file in the workspace,
+  no `continue-on-error`. No new PAT and no new long-lived credential.
+
+DS-33 is the precedent for parsing rather than grepping: a job-level `if:` reading the
 `secrets` context once made GitHub reject an entire workflow file, and every run completed
 with zero jobs for three days.
-
----
 
 ## Unresolved owner actions
 
