@@ -141,8 +141,9 @@ jobs:
           trimmed="${leading_stripped%"${leading_stripped##*[![:space:]]}"}"
           if [ "$E2E_DEMO_PASSWORD" != "$trimmed" ]; then
             echo "E2E_DEMO_PASSWORD has leading or trailing whitespace. Re-enter it with no"
-            echo "surrounding spaces and no trailing newline, in the GitHub Actions secret"
-            echo "and in the deployment environment, from the same source."
+            echo "surrounding spaces and no trailing newline, in the firebase-staging"
+            echo "GitHub environment and in the Vercel deployment environment, from the"
+            echo "same source."
             exit 1
           fi
           case "$BASE_URL" in
