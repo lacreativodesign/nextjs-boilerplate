@@ -25,6 +25,9 @@
  *   node scripts/check-certification-prose.mjs --body=/tmp/pr.md --repo=erp     --expect-head=<sha>
  *   node scripts/check-certification-prose.mjs --body=/tmp/pr.md --repo=website --expect-head=<sha>
  *
+ * `--expect-head` is repeatable, for a handoff document that covers both repositories and so
+ * legitimately names both current heads.
+ *
  * `--repo` matters: a few rules are true of one repository only. The website pull request
  * genuinely changes nothing under lib/, so applying the ERP's rule there would flag an
  * accurate sentence, and a guard that cries wolf on accurate prose gets ignored.
@@ -203,7 +206,11 @@ const COMMITTED = [
 
 function main(argv) {
   const bodyArg = argv.find((a) => a.startsWith('--body='));
-  const headArg = argv.find((a) => a.startsWith('--expect-head='));
+  // Repeatable. The cross-repository handoff package legitimately names BOTH current heads,
+  // and forcing it to name one would make the document wrong in order to satisfy the checker.
+  const heads = argv
+    .filter((a) => a.startsWith('--expect-head='))
+    .map((a) => a.slice('--expect-head='.length));
   const repoArg = argv.find((a) => a.startsWith('--repo='));
   const repo = repoArg ? repoArg.slice('--repo='.length) : 'erp';
   if (!['erp', 'website'].includes(repo)) {
@@ -242,16 +249,17 @@ function main(argv) {
     const body = readFileSync(path, 'utf8');
     problems.push(...scanProse(body, path, repo));
     problems.push(...scanCurrentState(body, path));
-    if (headArg) {
-      const sha = headArg.slice('--expect-head='.length);
-      // The head must appear in the REFERENCE TABLE, not merely somewhere in the prose. A body
-      // that mentions the right SHA in passing while its summary names an older one is exactly
-      // the failure this whole exercise is about.
-      const row = new RegExp(`\\|[^|\\n]*head[^|\\n]*\\|[^|\\n]*${sha}`, 'i');
-      if (!row.test(body)) {
-        problems.push(
-          `${path}  has no reference row naming the current head ${sha} — a body whose summary names an older head is stale by definition`,
-        );
+    if (heads.length) {
+      for (const sha of heads) {
+        // The head must appear in a REFERENCE ROW, not merely somewhere in the prose. A body
+        // that mentions the right SHA in passing while its summary names an older one is
+        // exactly the failure this whole exercise is about.
+        const row = new RegExp(`\\|[^|\\n]*head[^|\\n]*\\|[^|\\n]*${sha}`, 'i');
+        if (!row.test(body)) {
+          problems.push(
+            `${path}  has no reference row naming the current head ${sha} — a body whose summary names an older head is stale by definition`,
+          );
+        }
       }
       // Any OTHER 40-hex SHA presented without a historical marker is a stale current claim.
       //
@@ -262,9 +270,9 @@ function main(argv) {
       body.split('\n').forEach((line, i) => {
         if (SHA_HISTORY.test(line)) return;
         for (const m of line.matchAll(/\b[0-9a-f]{40}\b/g)) {
-          if (m[0] !== sha && !KNOWN_PERMANENT_SHAS.has(m[0])) {
+          if (!heads.includes(m[0]) && !KNOWN_PERMANENT_SHAS.has(m[0])) {
             problems.push(
-              `${path}:${i + 1}  names SHA ${m[0]} with no historical marker, but the current head is ${sha}`,
+              `${path}:${i + 1}  names SHA ${m[0]} with no historical marker, but the current head(s) are ${heads.join(', ')}`,
             );
           }
         }
