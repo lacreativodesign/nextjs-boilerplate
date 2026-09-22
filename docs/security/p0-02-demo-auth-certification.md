@@ -663,8 +663,15 @@ with zero jobs for three days.
 Firebase Admin credential is still readable by any workflow code selected by ref, which is
 exactly Defect 1.
 
-Nothing below asks anyone to reveal a secret value, and none of it has been done — no part of
-this repository can create or verify GitHub Environment settings.
+**Status: UNVERIFIED.** No part of this repository can create GitHub Environment settings,
+and the `/repos/{owner}/{repo}/environments` API is not reachable from the environment this
+work was done in — it answers `403 Access to this GitHub API path is not permitted through
+this proxy`. So this document does not claim these steps are outstanding _or_ complete; it
+states what must be true, and someone with repository settings access has to confirm it in
+the GitHub UI. Treating an unverifiable control as satisfied is the mistake this whole PR
+exists to correct.
+
+Nothing below asks anyone to reveal a secret value.
 
 ### Before merge — the secret boundary
 
