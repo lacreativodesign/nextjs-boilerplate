@@ -16,9 +16,9 @@
  *
  * WHY THIS NEEDS AN AUTHENTICATED, PRIVILEGED READ
  *
- * Most of the ruleset is public data on a public repository and an anonymous caller can read
- * it. `bypass_actors` is the exception, and it is the field that matters most: one bypass
- * actor makes every other rule advisory.
+ * Both certified repositories are private now, so live ruleset reads require authenticated
+ * repository access. `bypass_actors` additionally requires sufficient access to the ruleset,
+ * and it is the field that matters most: one bypass actor makes every other rule advisory.
  *
  * `GET /repos/{owner}/{repo}/rulesets/{id}` documents bypass_actors as returned only to
  * callers with sufficient access to the ruleset. So an anonymous or under-scoped read can

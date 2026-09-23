@@ -121,18 +121,19 @@ the bypass false-green of Defect 2 — and it attributed the credential-light de
 cause entirely.
 
 **Defect 4.** Found by diffing this repository's contract against the website's own copy — the
-two are deliberately separate files, and only one had been corrected. The ERP contract still
-asserted that the website **was already private** and merely had to remain so. The website is
-**public today**; `expectedVisibility` is `private` specifically so the verifier **fails** on
-that, and the record was simultaneously claiming the gap was already closed. The guard added for
-Defect 3 did not catch it because none of its patterns covered this phrasing — a guard is only as
-wide as its worst-case phrasing.
+two are deliberately separate files, and only one had been corrected. At the time of that
+finding, the ERP contract asserted that the website **was already private** even though the
+website was still public. `expectedVisibility` correctly remained `private`, so the verifier
+failed while the prose simultaneously implied the gap was closed. The guard added for Defect 3
+did not catch that phrasing — a guard is only as wide as its worst-case wording.
 
-**Fixed.** The contract now names the state it is actually in (`CURRENTLY PUBLIC`, with
-`certified target is PRIVATE`), and the credential model is explicitly justified on the
-run-inside-the-repository design rather than on either repository's visibility — so it survives
-the website going private, which is the whole point. Six asserted-absent patterns and one
-positive assertion now cover the class, and three mutants confirm each fires by name.
+**Fixed.** The contract was corrected to describe that then-current public state without changing
+the certified target of `PRIVATE`. On 2026-09-21 the owner made the website private; the current
+contract now certifies **PRIVATE**, and the visibility control is **CLOSED**. The credential model
+is justified on the run-inside-the-repository design rather than on either repository's
+visibility, so the security model did not need to change when visibility changed. Six
+asserted-absent patterns and one positive assertion cover this defect class, and three mutants
+confirm each fires by name.
 
 Both are **described rather than quoted** above, deliberately. The guard scans this document
 too, and reproducing either sentence verbatim makes it fail — which is the guard working, not an
@@ -329,7 +330,7 @@ paper.
 
 ---
 
-## 3. The marketing website — ruleset LIVE, visibility and review still open
+## 3. The marketing website — ruleset LIVE, visibility CLOSED, review still open
 
 `lacreativodesign/bizosto-website`, default branch `main`.
 
@@ -598,7 +599,7 @@ Files restored after the battery and verified by SHA-256:
 
 | File                                                    | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `scripts/verify-github-main-protection.mjs`             | `dcc1d1d0a8c22a0415853b34245538e1f8e78b9d25ea56c195e82bee20445515` |
+| `scripts/verify-github-main-protection.mjs`             | `e1d2eed181b46262b7251812d25891fb7d7b637683f92e3fc32e2ac35f34d1fd` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
 | `.github/workflows/github-protection-certification.yml` | `baebb70268edf9de1c28d1b441a4379c7afc205d1210bdaa012de633998175fe` |
 | `docs/security/p0-06-main-protection.certified.json`    | `ff998adbe68c9f0d1c3e31d0903d99ebef03ea48a32a73218ddaf8b0642229b1` |
