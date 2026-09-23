@@ -70,6 +70,7 @@ import {
   evaluateRuleset,
   evaluateVisibility,
   fetchLiveRuleset,
+  fetchLiveRulesetObserved,
   loadCertified,
   loadSnapshot,
   observedPrivileged,
@@ -1654,6 +1655,20 @@ describe('P0-06: the live read handles credentials without leaking them', () => 
     expect(calls[0].url).toBe(EXPECTED_URL);
     expect(calls[0].url).not.toContain(SECRET);
     expect(calls[0].headers.Authorization).toBe(`Bearer ${SECRET}`);
+  });
+
+  it('marks an authenticated ruleset read privileged only when bypass_actors is actually observable', async () => {
+    process.env.GITHUB_TOKEN = SECRET;
+    const withBypass = jest.fn(async () => ok({ id: 22866162, bypass_actors: [] }));
+    const withoutBypass = jest.fn(async () => ok({ id: 22866162 }));
+
+    const privileged = await fetchLiveRulesetObserved(certified, { fetchImpl: withBypass });
+    const underScoped = await fetchLiveRulesetObserved(certified, { fetchImpl: withoutBypass });
+
+    expect(privileged.observation.bypassActorsObservable).toBe(true);
+    expect(privileged.observation.source).toContain('bypass_actors visibility');
+    expect(underScoped.observation.bypassActorsObservable).toBe(false);
+    expect(underScoped.observation.source).toContain('without ruleset-write visibility');
   });
 
   it('retries anonymously when the token is refused, because the data is public', async () => {
