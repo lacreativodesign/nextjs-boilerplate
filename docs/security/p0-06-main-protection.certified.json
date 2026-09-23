@@ -1,49 +1,21 @@
 {
   "$comment": [
-    "P0-06 — the certified main-branch protection contract for BOTH Bizosto repositories.",
+    "P0-06 — certified main-branch protection contract for both Bizosto repositories.",
     "",
-    "This file is the machine-readable half of docs/security/p0-06-github-main-protection.md.",
-    "scripts/verify-github-main-protection.mjs reads it and fails closed when a LIVE GitHub",
-    "ruleset no longer guarantees what is recorded here.",
+    "Current live state was re-verified with privileged owner reads on 2026-09-23.",
+    "Both repositories are private. ERP ruleset 22866162 and website ruleset 23581080",
+    "are active. Both privileged reads returned bypass_actors=[] and current_user_can_bypass=never.",
     "",
-    "Every invariant below is DIRECTIONAL: the live configuration may be stronger than the",
-    "record, never weaker. That is what makes the record a ratchet rather than a snapshot.",
+    "The automatic GitHub Actions token can read its own private repository and ruleset but",
+    "is not guaranteed ruleset-write visibility, so GitHub may omit bypass_actors. The verifier",
+    "remains fail-closed. Scheduled workflows treat only that unobservable field as an explicit",
+    "automation warning while every other live drift remains a hard failure.",
     "",
-    "It holds no credential, and it does not assume one is unnecessary.",
+    "Full bypass-actor absence requires a privileged owner read. No long-lived administration",
+    "token is stored solely for the scheduled monitor.",
     "",
-    "BOTH repositories are now PRIVATE, verified live on 2026-09-21. Both visibility controls",
-    "are therefore CLOSED, and expectedVisibility is \"private\" for both.",
-    "",
-    "That is a change of fact, not a relaxation of the record. The website was temporarily",
-    "published so ruleset 23581080 could exist at all; the record kept demanding \"private\" and",
-    "kept FAILING the whole time. The owner restored it, and the check went green on its own -",
-    "which is what a ratchet is for. nextjs-boilerplate being public was a separate pre-existing",
-    "governance finding; it is now private too, so that finding is RESOLVED rather than waived.",
-    "",
-    "CRITICALLY, both rulesets SURVIVED the change and are still ENFORCING. This was verified",
-    "against GET /repos/{owner}/{repo}/rules/branches/main - the rules that actually apply to",
-    "the branch, not merely the rules that are configured - which returns all four rule types",
-    "from ruleset 22866162 and 23581080 respectively, with the full required-check lists. That",
-    "distinction matters: a ruleset can exist on a plan that does not serve it, which would be",
-    "a configured-but-inert control, and exactly the false green this certification exists to",
-    "catch.",
-    "",
-    "Neither visibility is what makes the drift check credential-light, and that is the whole",
-    "point of the design: each repository is verified by a workflow running INSIDE it, under",
-    "that repository's own automatic job token, so no personal access token is needed and no",
-    "repository holds a credential for the other. The design was built for exactly this moment",
-    "- a cross-repository read would now answer 404, and a failed read must never be reported",
-    "as a successful certification. The check keeps working unchanged.",
-    "",
-    "An anonymous read is NOT sufficient to certify. GitHub serves bypass_actors only to callers",
-    "with sufficient access to the ruleset, so an unprivileged read cannot tell an empty bypass",
-    "list from a withheld one - see ruleset.bypass_actors_unobservable in the verifier.",
-    "",
-    "`applied` is the one field that is not an invariant. It records whether the certified",
-    "protection EXISTS on that repository yet. A repository with applied:false is an open",
-    "P0-06 gap and the live verifier fails on it — which is the point. The verifier also",
-    "looks for a matching ruleset anyway, so the day the owner applies it the check starts",
-    "evaluating the real thing instead of just reporting it missing."
+    "The remaining configuration gap is independent human review: required approvals remain 0",
+    "until a genuine second human collaborator exists in each repository."
   ],
   "repositories": [
     {
@@ -58,7 +30,9 @@
       "visibilityIsGovernanceFinding": false,
       "target": "branch",
       "enforcement": "active",
-      "refNameInclude": ["~DEFAULT_BRANCH"],
+      "refNameInclude": [
+        "~DEFAULT_BRANCH"
+      ],
       "bypassActorsMustBeEmpty": true,
       "requiredRuleTypes": [
         "deletion",
@@ -68,7 +42,9 @@
       ],
       "pullRequest": {
         "requiredReviewThreadResolution": true,
-        "allowedMergeMethods": ["merge"],
+        "allowedMergeMethods": [
+          "merge"
+        ],
         "requiredApprovingReviewCount": {
           "certifiedFloor": 0,
           "target": 1,
@@ -123,7 +99,18 @@
           "so none is a dead context that would silently block every future merge. Anything added",
           "here must be verified the same way first."
         ]
-      }
+      },
+      "$comment": [
+        "ERP protection is applied and live.",
+        "Latest privileged owner read on 2026-09-23 confirmed bypass_actors=[] and current_user_can_bypass=never.",
+        "",
+        "The scheduled Actions job verifies every field the automatic token can observe. If GitHub",
+        "withholds bypass_actors, that one field remains a privileged-read attestation rather than",
+        "an automated green claim.",
+        "",
+        "Independent review remains open. The live approval requirement stays 0 until a genuine",
+        "second human reviewer has write access; raising it earlier would deadlock merges."
+      ]
     },
     {
       "key": "website",
@@ -137,7 +124,9 @@
       "visibilityIsGovernanceFinding": false,
       "target": "branch",
       "enforcement": "active",
-      "refNameInclude": ["~DEFAULT_BRANCH"],
+      "refNameInclude": [
+        "~DEFAULT_BRANCH"
+      ],
       "bypassActorsMustBeEmpty": true,
       "requiredRuleTypes": [
         "deletion",
@@ -147,7 +136,9 @@
       ],
       "pullRequest": {
         "requiredReviewThreadResolution": true,
-        "allowedMergeMethods": ["merge"],
+        "allowedMergeMethods": [
+          "merge"
+        ],
         "requiredApprovingReviewCount": {
           "certifiedFloor": 0,
           "target": 1,
@@ -219,42 +210,15 @@
         ]
       },
       "$comment": [
-        "APPLIED AND LIVE as of 2026-09-17: ruleset 23581080, read back by direct authenticated",
-        "GET and verified field by field, including bypass_actors being explicitly present and",
-        "empty and current_user_can_bypass being \"never\". It is the only ruleset on the",
-        "repository.",
+        "website protection is applied and live.",
+        "Latest privileged owner read on 2026-09-23 confirmed bypass_actors=[] and current_user_can_bypass=never.",
         "",
-        "THE RULESET CONTROL IS GREEN, IT CARRIES TWO REQUIRED CHECKS, AND IT SURVIVED THE",
-        "REPOSITORY GOING PRIVATE.",
+        "The scheduled Actions job verifies every field the automatic token can observe. If GitHub",
+        "withholds bypass_actors, that one field remains a privileged-read attestation rather than",
+        "an automated green claim.",
         "",
-        "Vercel/8329 and dependency-security/15368. The second arrived with PR #61, which was",
-        "merged to main on 2026-09-17 (632f5daf6e5981dd610b59199c7230f38b8cd2c0) and brought the",
-        "repository to 0 critical and 0 high advisories. The owner then added it to the ruleset,",
-        "so the dependency audit is branch-blocking rather than advisory.",
-        "",
-        "1. VISIBILITY - CLOSED as of 2026-09-21. This repository is PRIVATE again.",
-        "",
-        "   It had been temporarily published so ruleset 23581080 could exist at all, and the",
-        "   record NEVER accepted that: expectedVisibility stayed \"private\" and the verifier",
-        "   FAILED on repository.visibility for as long as the repository was public. The owner",
-        "   restored it, and the control went green WITHOUT the record being touched. That is the",
-        "   ratchet doing its job - the fix was the owner action, never a change to the",
-        "   expectation.",
-        "",
-        "   The ruleset SURVIVED the change and still ENFORCES. Verified against",
-        "   GET /repos/lacreativodesign/bizosto-website/rules/branches/main, which returns the",
-        "   rules actually applied to the branch rather than merely those configured: all four",
-        "   rule types from ruleset 23581080, strict checks on, and both required contexts. That",
-        "   distinction is the point - a ruleset can sit on a plan that does not serve it, which",
-        "   is a configured-but-inert control and precisely the false green worth catching.",
-        "",
-        "2. INDEPENDENT REVIEW - STILL OPEN. See requiredApprovingReviewCount above. Another",
-        "   account the owner personally controls does not close this: P0-06 asks for INDEPENDENT",
-        "   review, and an account under the same control is not independent. This is now the",
-        "   LAST open P0-06 control on this repository.",
-        "",
-        "Because rulesetId is recorded, the verifier pins the read to that id rather than",
-        "discovering the ruleset by name."
+        "Independent review remains open. The live approval requirement stays 0 until a genuine",
+        "second human reviewer has write access; raising it earlier would deadlock merges."
       ]
     }
   ]
