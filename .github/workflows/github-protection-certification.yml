@@ -1,0 +1,101 @@
+name: Main Protection Drift Check
+
+# P0-06 live drift detection for the Bizosto ERP repository.
+#
+# The automatic Actions GITHUB_TOKEN can authenticate a ruleset read without receiving
+# bypass_actors. The verifier remains fail-closed. This scheduled job fails on every real drift,
+# read failure, or observed bypass actor, and treats only an unobservable bypass list as an
+# explicit automation warning.
+#
+# Full bypass-actor certification is performed with a privileged owner read. No long-lived
+# administration token is stored solely to make a scheduled monitor appear fully privileged.
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/security/p0-06-main-protection.certified.json'
+      - 'docs/security/p0-06-erp-main-ruleset.snapshot.json'
+      - 'docs/security/p0-06-github-main-protection.md'
+      - 'scripts/verify-github-main-protection.mjs'
+      - '.github/workflows/github-protection-certification.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  main-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify observable live protection and classify bypass visibility
+        shell: bash
+        env:
+          # The automatic, job-scoped token. GitHub does not place it in the environment on
+          # its own, and without it the verifier reads this PRIVATE repository anonymously,
+          # fails ruleset.read on every run, and the drift job goes permanently red for a
+          # reason that has nothing to do with drift.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/verify-github-main-protection.mjs --repo=erp --json > p0-06-result.json || true
+
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync('p0-06-result.json', 'utf8'));
+          } catch (error) {
+            console.error('P0-06 drift check could not parse verifier output:', error.message);
+            process.exit(1);
+          }
+
+          const softControl = 'ruleset.bypass_actors_unobservable';
+          const hard = [];
+          const soft = [];
+
+          for (const result of report.results ?? []) {
+            for (const failure of result.failures ?? []) {
+              const item = { repository: result.repository, ...failure };
+              if (failure.control === softControl) soft.push(item);
+              else hard.push(item);
+            }
+          }
+
+          for (const failure of hard) {
+            console.error(`FAIL  ${failure.repository}  ${failure.control}: ${failure.detail}`);
+          }
+
+          for (const warning of soft) {
+            console.log(
+              `::warning::${warning.repository}: bypass_actors is not observable to the automatic Actions token. ` +
+              'This run does not certify that one field; a privileged owner read is required.'
+            );
+          }
+
+          if (hard.length > 0) process.exit(1);
+
+          if (soft.length > 0) {
+            console.log(
+              'P0-06 observable drift check passed. Bypass-actor absence remains a privileged-read attestation.'
+            );
+          } else {
+            console.log('P0-06 live protection check passed with bypass_actors observable.');
+          }
+          NODE
+
+      - name: Assert the certification record still states current facts
+        shell: bash
+        run: node scripts/check-certification-prose.mjs

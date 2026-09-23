@@ -1,0 +1,64 @@
+{
+  "bypass_actors": [],
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": ["~DEFAULT_BRANCH"]
+    }
+  },
+  "created_at": "2026-09-10T20:38:04.703-07:00",
+  "enforcement": "active",
+  "id": 22866162,
+  "name": "Production Main Protection",
+  "node_id": "RRS_lACqUmVwb3NpdG9yec5A0gyRzgFc6PI",
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "parameters": {
+        "allowed_merge_methods": ["merge"],
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_extra_approval_for_unattributed_changes": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0,
+        "required_review_thread_resolution": true,
+        "required_reviewers": []
+      },
+      "type": "pull_request"
+    },
+    {
+      "parameters": {
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "quality",
+            "integration_id": 15368
+          },
+          {
+            "context": "SonarCloud Code Analysis",
+            "integration_id": 12526
+          },
+          {
+            "context": "sonar",
+            "integration_id": 15368
+          },
+          {
+            "context": "Vercel",
+            "integration_id": 8329
+          }
+        ],
+        "strict_required_status_checks_policy": true
+      },
+      "type": "required_status_checks"
+    }
+  ],
+  "source": "lacreativodesign/nextjs-boilerplate",
+  "source_type": "Repository",
+  "target": "branch",
+  "updated_at": "2026-09-10T20:38:04.820-07:00"
+}
