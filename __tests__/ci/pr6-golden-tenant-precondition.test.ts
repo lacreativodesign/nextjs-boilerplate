@@ -340,10 +340,100 @@ describe('PR6: the certification workflows are wired to the same secret', () => 
    * P0-01 split the two rebuild paths by credential, not by convention. `Seed Golden
    * Tenant` is the deliberate, by-hand production path and keeps the production account;
    * the automated gate gets a staging account that cannot reach production at all.
+   *
+   * P0-02 added a second job to that workflow — the demo Auth certification, which must be
+   * able to target staging as well — so this can no longer be stated as "the file never
+   * mentions the staging key". It is asserted PER JOB instead, which is the property that
+   * was always meant: the SEED job is production-only, the automated gate is staging-only,
+   * and the certification job holds exactly one of the two at a time, never both.
    */
   it('keeps the by-hand production reseed and the automated gate on different credentials', () => {
-    expect(seed).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
-    expect(seed).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
+    const seedJob = seed.slice(seed.indexOf('\n  seed:'));
+    expect(seedJob).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(seedJob).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
+    expect(smoke).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}');
+  });
+
+  /**
+   * P0-02, corrected after independent audit — the seed job no longer carries its secrets
+   * where `npm ci` can see them.
+   *
+   * `FIREBASE_ADMIN_KEY` and `E2E_DEMO_PASSWORD` used to sit in the job's `env:`, so
+   * `actions/checkout`, `actions/setup-node` and `npm ci` all ran with a production service
+   * account in their environment — and `npm ci` alone executes install scripts from hundreds
+   * of packages. Nothing exploited it. It was simply a far larger blast radius than seeding
+   * needs, and it is the kind of thing that is only ever noticed by someone reading for it.
+   *
+   * Early validation still fails fast, on NON-SECRET booleans rather than on the secrets.
+   */
+  it('keeps Admin credentials off the job scope, and off checkout and npm ci', () => {
+    const seedJob = seed.slice(seed.indexOf('\n  seed:'));
+    const jobEnv = seedJob.slice(seedJob.indexOf('    env:'), seedJob.indexOf('    steps:'));
+
+    // The job-level env carries only booleans and a project id — nothing secret.
+    expect(jobEnv).toContain("ADMIN_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY != '' }}");
+    expect(jobEnv).toContain("DEMO_PASSWORD_CONFIGURED: ${{ secrets.E2E_DEMO_PASSWORD != '' }}");
+    expect(jobEnv).not.toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(jobEnv).not.toContain('E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}');
+
+    // The credential appears exactly once, on the step that actually seeds, which is after
+    // checkout, setup-node and npm ci.
+    const consuming = seedJob.indexOf('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}');
+    expect(consuming).toBeGreaterThan(-1);
+    expect(seedJob.indexOf('npm ci')).toBeLessThan(consuming);
+    expect(seedJob.indexOf('actions/checkout')).toBeLessThan(consuming);
+    expect(seedJob.indexOf('actions/setup-node')).toBeLessThan(consuming);
+    expect(seedJob.split('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}').length - 1).toBe(
+      1,
+    );
+  });
+
+  /**
+   * The authoritative boundary is the environment, not anything written in this file.
+   *
+   * `workflow_dispatch` lets a write collaborator choose the ref, and the workflow file that
+   * runs comes from that ref — so a guard written here defends against nothing, because the
+   * branch can edit the guard. `environment: firebase-production` is enforced by GitHub
+   * before any step runs, and its deployment-branch rule is repository settings rather than
+   * branch content.
+   */
+  it('draws the production credential from a main-only environment', () => {
+    const seedJob = seed.slice(seed.indexOf('\n  seed:'));
+    expect(seedJob).toContain('environment: firebase-production');
+    expect(seed).toContain('OWNER CONFIGURATION — MUST BE VERIFIED LIVE');
+    // The ref check is present, and is labelled as defence in depth rather than the boundary.
+    expect(seed).toContain('refs/heads/main');
+    expect(seed).toMatch(/DEFENCE IN DEPTH, NOT THE BOUNDARY/);
+  });
+
+  /**
+   * The pre-merge certification path is GONE, and must stay gone.
+   *
+   * `certify-audit` / `certify-remediate` were added to this workflow because a new workflow
+   * cannot be dispatched against a feature ref until it is on the default branch, and P0-02
+   * had to be provable before merge. That worked and the evidence is recorded. Keeping it
+   * would leave a permanent mechanism whose only purpose is handing a Firebase Admin
+   * credential to code chosen by ref — the exact hole the environment closes.
+   */
+  it('no longer offers a feature-ref path to an Admin credential', () => {
+    // Asserted against the LIVE lines, not the file text. The header comment explains at
+    // length why `certify-*` was removed, and a plain substring match cannot tell that
+    // explanation apart from the thing it describes — the same comment-vs-code weakness a
+    // mutation run already caught once in this suite.
+    const live = seed
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('#'))
+      .join('\n');
+
+    expect(live).not.toContain('certify-audit');
+    expect(live).not.toContain('certify-remediate');
+    expect(live).not.toContain('scripts/certify-demo-auth.ts');
+    expect(live).not.toContain('FIREBASE_ADMIN_KEY_STAGING');
+
+    // The explanation itself must survive: it is the record of why this path is gone.
+    expect(seed).toMatch(/They are removed now/);
+
+    // And the smoke gate still holds its own staging-only credential, untouched by P0-02.
     expect(smoke).toContain('FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}');
   });
 

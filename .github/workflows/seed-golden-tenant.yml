@@ -15,6 +15,44 @@ name: Seed Golden Tenant
 # documenting it: there is now one copy of the password that decides the outcome, and it
 # is the one the tests use.
 #
+# ─────────────────────────────────────────────────────────────────────────────
+# TWO THINGS AN INDEPENDENT AUDIT CHANGED HERE
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# 1. THE SECRETS WERE AT JOB SCOPE.
+#
+#    `FIREBASE_ADMIN_KEY` and `E2E_DEMO_PASSWORD` were declared in the job's `env:`, so
+#    `actions/checkout`, `actions/setup-node` and `npm ci` all ran with a production
+#    service account in their environment. `npm ci` alone executes install scripts from
+#    hundreds of packages. Nothing exploited it; it was simply a larger blast radius than
+#    the job needs. The credential now appears on the single step that seeds, and the
+#    early validation above it compares NON-SECRET "is it configured" booleans instead.
+#
+# 2. THIS WORKFLOW BRIEFLY CARRIED P0-02 CERTIFICATION, AND NO LONGER DOES.
+#
+#    `certify-audit` / `certify-remediate` actions were added here because a brand-new
+#    workflow cannot be dispatched against a feature ref until it exists on the default
+#    branch, and P0-02 had to be provable before merge. That worked, and the evidence it
+#    produced is recorded in docs/security/p0-02-demo-auth-certification.md.
+#
+#    They are removed now. Keeping them would leave a permanent mechanism whose whole
+#    purpose is handing a Firebase Admin credential to code selected by ref, which is
+#    exactly the hole the environment boundary below exists to close. Certification lives
+#    in `.github/workflows/demo-auth-certification.yml` and runs from `main`.
+#
+# WHERE THE SECRET BOUNDARY IS
+#
+# `workflow_dispatch` lets anyone with write access choose the ref, and the workflow file
+# that runs comes from that ref — so a guard written in this file cannot defend against a
+# branch that edits this file. The boundary is the `firebase-production` GitHub
+# environment named below: its secrets are not repository secrets, and its deployment
+# branches are restricted to `main`, which GitHub enforces before any step runs.
+#
+# OWNER CONFIGURATION — MUST BE VERIFIED LIVE. See the runbook in
+# docs/security/p0-02-demo-auth-certification.md, including deleting the repository-level
+# copies of the Admin credentials; an environment copy alongside a repository copy closes
+# nothing.
+#
 # SAFETY
 #
 # `--reset` deletes every `bizosto-demo` document in nine collections. The demo tenant
@@ -22,16 +60,15 @@ name: Seed Golden Tenant
 #
 #   - the tenant is fixed to `bizosto-demo` inside lib/demo/seed.ts, not passed in;
 #   - the operator must name the Firebase project, and the run aborts before touching
-#     anything if `FIREBASE_ADMIN_KEY` points at a different one.
+#     anything if the credential points at a different one.
 #
-# Dispatch requires write access to the repository. No secret value is printed: the seeder
-# reports accounts and counts, never the password.
+# No secret value is printed: the seeder reports accounts and counts, never the password.
 
 on:
   workflow_dispatch:
     inputs:
       firebase_project_id:
-        description: 'Firebase project this seed may write to (must match FIREBASE_ADMIN_KEY)'
+        description: 'Firebase project this seed may write to (must match the environment credential)'
         required: true
         type: string
       reset:
@@ -53,26 +90,45 @@ jobs:
   seed:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # THE BOUNDARY. `Seed Golden Tenant` is the deliberate, by-hand PRODUCTION rebuild path
+    # and keeps the production account — P0-01 split the two rebuild paths by credential and
+    # that is unchanged. What is new is that the credential now comes from an environment
+    # restricted to `main`, rather than from a repository secret any branch could reach.
+    # OWNER CONFIGURATION — MUST BE VERIFIED LIVE.
+    environment: firebase-production
     env:
-      FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
-      E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+      # Whether the secrets EXIST, not the secrets. `secrets` is a valid context in a
+      # job-level `env:` (only a job-level `if:` rejects it — DS-33), so the run can fail in
+      # seconds on a missing credential without that credential being in scope for checkout,
+      # the toolchain or `npm ci`.
+      ADMIN_KEY_CONFIGURED: ${{ secrets.FIREBASE_ADMIN_KEY != '' }}
+      DEMO_PASSWORD_CONFIGURED: ${{ secrets.E2E_DEMO_PASSWORD != '' }}
       DEMO_FIREBASE_PROJECT_ID: ${{ inputs.firebase_project_id }}
 
     steps:
       - name: Verify seed configuration
         shell: bash
+        env:
+          REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          test -n "$FIREBASE_ADMIN_KEY" || {
-            echo "FIREBASE_ADMIN_KEY is required. Add the same service account the deployment uses."
+          if [ "$ADMIN_KEY_CONFIGURED" != "true" ]; then
+            echo "::error::FIREBASE_ADMIN_KEY is not present in the firebase-production"
+            echo "::error::environment. Add the same service account the deployment uses."
             exit 1
-          }
-          test -n "$E2E_DEMO_PASSWORD" || { echo "E2E_DEMO_PASSWORD is required"; exit 1; }
-          # The seeder rejects anything shorter; say so here rather than after a checkout.
-          test "${#E2E_DEMO_PASSWORD}" -ge 16 || {
-            echo "E2E_DEMO_PASSWORD must be at least 16 characters"
+          fi
+          if [ "$DEMO_PASSWORD_CONFIGURED" != "true" ]; then
+            echo "::error::E2E_DEMO_PASSWORD is not present in the firebase-production environment."
             exit 1
-          }
+          fi
+          # DEFENCE IN DEPTH, NOT THE BOUNDARY — see the header. The environment's
+          # deployment-branch rule is what actually stops a feature ref; this only explains it.
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::The production seed runs from main only. This dispatch selected '$REF'."
+            echo "::error::The firebase-production environment restricts deployments to main, so a"
+            echo "::error::feature ref cannot be granted the credential."
+            exit 1
+          fi
 
       - uses: actions/checkout@v4
 
@@ -84,5 +140,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The ONLY step that sees a credential.
       - name: Rebuild the golden tenant
-        run: npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts ${{ inputs.reset && '--reset' || '' }}
+        shell: bash
+        env:
+          FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
+          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+          RESET: ${{ inputs.reset }}
+        run: |
+          set -euo pipefail
+          # The seeder rejects anything shorter; the length is compared, never printed.
+          test "${#E2E_DEMO_PASSWORD}" -ge 16 || {
+            echo "::error::E2E_DEMO_PASSWORD must be at least 16 characters"
+            exit 1
+          }
+          if [ "$RESET" = "true" ]; then
+            npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts --reset
+          else
+            npx --yes tsx@4.19.2 scripts/seedDemoTenant.ts
+          fi

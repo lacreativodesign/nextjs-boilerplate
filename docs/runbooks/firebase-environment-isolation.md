@@ -194,10 +194,11 @@ so pointing Preview at a different staging project is a configuration change and
 code change. The test fixtures deliberately use a made-up `example-staging-project` for
 the same reason: the rules must hold for any declared staging project, not just this one.
 
-Steps 1-3 below are therefore done. **Step 4, the GitHub Actions secret, still has to be
-confirmed** — it lives outside Vercel and nothing observable from here can establish it.
-Until it exists, `.github/workflows/smoke.yml` stops before checkout, which is the correct
-fail-closed result.
+Steps 1-3 below are therefore done. **Step 4, the GitHub `firebase-staging` Environment,
+still has to be confirmed** — it lives outside Vercel and nothing observable from here can
+establish it. Until the environment exists and holds the credential,
+`.github/workflows/smoke.yml` stops before checkout, which is the correct fail-closed
+result.
 
 **If a Preview ever refuses to boot again, that is the contract working.** Before the
 Vercel side was configured, every Preview on this branch answered HTTP 500 and served no
@@ -256,14 +257,32 @@ Also confirm Production still holds `la-creativo-erp`,
 neither `STAGING_FIREBASE_*` variable is set on Production. Environment variable changes
 take effect on the next deployment, so redeploy the Preview afterwards.
 
-### 4. GitHub → Settings → Secrets and variables → Actions
+### 4. GitHub → Settings → Environments → `firebase-staging`
 
-| Secret                       | Value                                             |
-| ---------------------------- | ------------------------------------------------- |
-| `FIREBASE_ADMIN_KEY_STAGING` | the **staging** service-account JSON, single line |
+**Not repository Actions secrets.** P0-02 moved every Firebase Admin credential behind a
+GitHub **Environment** whose deployment branches are restricted to `main`. That branch rule
+is the security boundary: GitHub refuses to start a job on any other ref before a step runs,
+which is what a `workflow_dispatch` workflow needs, because the workflow file that executes
+comes from whichever ref the dispatcher chose. A guard written inside the workflow cannot do
+this — the branch edits the guard.
 
-Leave the existing `FIREBASE_ADMIN_KEY` as the production account: `Seed Golden Tenant`
-still uses it for the deliberate by-hand production reseed. **Never** set
+| Environment           | Deployment branches | Secret                            | Value                                                    |
+| --------------------- | ------------------- | --------------------------------- | -------------------------------------------------------- |
+| `firebase-staging`    | **`main` only**     | `FIREBASE_ADMIN_KEY_STAGING`      | the **staging** service-account JSON, single line        |
+| `firebase-staging`    | **`main` only**     | `E2E_DEMO_PASSWORD`               | the shared demo password                                 |
+| `firebase-staging`    | **`main` only**     | `VERCEL_AUTOMATION_BYPASS_SECRET` | the Vercel automation bypass, while Preview is protected |
+| `firebase-production` | **`main` only**     | `FIREBASE_ADMIN_KEY`              | the **production** service-account JSON                  |
+| `firebase-production` | **`main` only**     | `E2E_DEMO_PASSWORD`               | the same shared demo password                            |
+
+**OWNER CONFIGURATION — MUST BE VERIFIED LIVE.** Nothing in this repository can create these
+environments and no test can prove they exist. The repository-level copies of all four secret
+names must then be **deleted**; an environment copy alongside a repository copy closes
+nothing. The full sequence, including the order that keeps the gates working while you
+migrate, is in
+[the P0-02 owner actions](../security/p0-02-demo-auth-certification.md#unresolved-owner-actions).
+
+`FIREBASE_ADMIN_KEY` stays the production account: `Seed Golden Tenant` still uses it for the
+deliberate by-hand production reseed, now from `firebase-production`. **Never** set
 `FIREBASE_ADMIN_KEY_STAGING` to the production key — the preflight rejects a production
 credential by `project_id`, so the run would fail rather than silently target production.
 
@@ -280,5 +299,7 @@ and `firebase.adminProjectId` both `bizosto-staging`, and `firebase.violations: 
 Add `-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"` while the
 deployment is protected.
 
-Then dispatch `Actions -> E2E Smoke (per-role + golden tenant)` with `target_url` set to
-that exact Preview URL.
+Then dispatch `Actions -> E2E Smoke (per-role + golden tenant)` **from `main`**, with
+`target_url` set to that exact Preview URL. The gate no longer runs from a feature ref: the
+`firebase-staging` environment restricts it to `main`, and its exact-SHA proof is `main`'s
+commit.

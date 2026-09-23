@@ -1,0 +1,247 @@
+name: P0-02 Demo Auth Certification
+
+# Walks the WHOLE Firebase Auth population of one project and says what can actually log in
+# to the `bizosto-demo` golden tenant.
+#
+# WHY IT IS SEPARATE FROM "Seed Golden Tenant"
+#
+# The seeder makes the ten canonical identities correct. It cannot make the demo auth
+# SURFACE correct, because it only ever looks up the ten emails it already knows: anything
+# else — an identity from an earlier roster, a renamed alias, an account still carrying
+# `tenantId: bizosto-demo` — is invisible to it, and an invisible enabled account is an
+# authentication path nobody is watching.
+#
+# WHY IT MATTERS THAT THIS RAN
+#
+# A 16-character demo password was hard-coded in `lib/demo/seed.ts` AND in
+# `app/super_admin/demo/page.tsx` — the client bundle, so it shipped to every browser —
+# from 2026-02-27 until `ae1c63de` removed it on 2026-09-06, in a PUBLIC repository.
+# Deleting it from HEAD did not un-publish it. `remediate` rotates the ten canonical
+# passwords, revokes their refresh tokens, and proves that published credential is refused.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHERE THE SECRET BOUNDARY ACTUALLY IS, AND WHY IT IS NOT IN THIS FILE
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# An independent audit rejected the first version of this workflow, and it was right.
+#
+# `workflow_dispatch` lets anyone with write access choose the ref. For that event
+# GITHUB_REF is the CHOSEN ref, `actions/checkout` fetches the CHOSEN ref, and the workflow
+# file that runs is the one on the CHOSEN ref. So a future collaborator could push a branch
+# carrying an altered `scripts/certify-demo-auth.ts`, dispatch this workflow at it, and be
+# handed a Firebase Admin service account. "Only the owner has write access today" is not an
+# architecture; P0-06 exists precisely to add a second collaborator.
+#
+# A guard inside this file cannot fix that, because the attacker edits this file too. Neither
+# `if: github.actor == ...` nor `if: github.ref == 'refs/heads/main'` is a boundary when the
+# condition ships on the branch being defended against.
+#
+# The boundary therefore lives OUTSIDE branch-controlled source, in GitHub's own
+# configuration: each secret-bearing job names a GitHub ENVIRONMENT, the secrets live on
+# that environment rather than on the repository, and the environment's deployment-branch
+# rule permits `main` only. A dispatch at a feature ref then cannot obtain the credential no
+# matter what the branch's workflow file says, because GitHub refuses to release the
+# environment to that ref before any step runs.
+#
+#   firebase-production   -> FIREBASE_ADMIN_KEY,          deployment branch: main ONLY
+#   firebase-staging      -> FIREBASE_ADMIN_KEY_STAGING,  deployment branch: main ONLY
+#
+# OWNER CONFIGURATION — MUST BE VERIFIED LIVE. The environments, their branch rules and the
+# secret migration are external settings. Nothing in this repository can create or prove
+# them, and no test here should be read as evidence that they exist. See
+# docs/security/p0-02-demo-auth-certification.md for the exact steps, including the one that
+# actually closes the hole: DELETING the repository-level copies of the Admin credentials.
+# An environment copy alongside a repository copy closes nothing, because branch code can
+# still read the repository copy.
+#
+# The `github.ref` check below is defence in depth and is deliberately NOT presented as the
+# boundary. It costs nothing and catches an environment that was created without its branch
+# rule; it does not survive an edit to this file.
+#
+# OTHER SAFETY
+#
+#   - the operator STATES the project; the tool verifies the credential's `project_id`
+#     against it and aborts before any read or write if they differ.
+#   - production and staging credentials are routed by input and are mutually exclusive,
+#     with no fallback in either direction — including for the Web API key, which this
+#     workflow no longer carries at all (the tool resolves it from the Firebase Management
+#     API using the Admin credential it has already verified).
+#   - `audit` performs no Admin write AND no sign-in. `remediate` rotates, revokes and
+#     DISABLES; it never deletes.
+#   - the credential is scoped to the one step that consumes it, so `npm ci` cannot see it.
+#   - no secret is echoed, and no artefact is uploaded.
+
+on:
+  workflow_dispatch:
+    inputs:
+      firebase_project_id:
+        description: 'Firebase project to certify (must match the chosen credential)'
+        required: true
+        type: choice
+        default: la-creativo-erp
+        options:
+          - la-creativo-erp
+          - bizosto-staging
+      credential:
+        description: 'Which environment to draw the Admin credential from. Must belong to the project above.'
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+          - staging
+      mode:
+        description: 'audit = read-only inventory, certifies nothing. remediate = rotate + revoke + prove, and the only mode that certifies.'
+        required: true
+        type: choice
+        default: audit
+        options:
+          - audit
+          - remediate
+
+permissions:
+  contents: read
+
+# One certification at a time. Two concurrent remediating runs would rotate the same ten
+# accounts against each other and could leave a password nobody holds.
+concurrency:
+  group: demo-auth-certification-${{ inputs.firebase_project_id }}
+  cancel-in-progress: false
+
+jobs:
+  # Runs WITHOUT any environment and therefore without any secret, so a dispatch at a
+  # feature ref fails here in seconds with an explanation rather than waiting on an
+  # environment it will never be granted.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Refuse a pairing or a ref that cannot be satisfied
+        shell: bash
+        env:
+          PROJECT: ${{ inputs.firebase_project_id }}
+          CREDENTIAL: ${{ inputs.credential }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+
+          # The project/credential pairing is fixed by the P0-01 isolation contract. The tool
+          # enforces it again from the credential itself; stating it here means a mis-dispatch
+          # costs seconds instead of a checkout.
+          case "$PROJECT:$CREDENTIAL" in
+            la-creativo-erp:production|bizosto-staging:staging) ;;
+            *)
+              echo "::error::Refusing to run: project '$PROJECT' must not be certified with the"
+              echo "::error::'$CREDENTIAL' credential. Production draws from the firebase-production"
+              echo "::error::environment; staging from firebase-staging. There is no fallback."
+              exit 1
+              ;;
+          esac
+
+          # DEFENCE IN DEPTH, NOT THE BOUNDARY. The authoritative control is the environment's
+          # deployment-branch rule, which lives in GitHub settings and cannot be edited by
+          # pushing a branch. This check ships on the branch, so a branch can remove it — it is
+          # here to catch an environment created without its branch rule, and to say plainly
+          # why a feature-ref dispatch is refused.
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::P0-02 certification runs from main only. This dispatch selected '$REF'."
+            echo "::error::Live certification uses the firebase-production / firebase-staging"
+            echo "::error::environments, whose deployment branches are restricted to main, so a"
+            echo "::error::feature ref cannot be granted the Admin credential. Merge first, then"
+            echo "::error::dispatch from main."
+            exit 1
+          fi
+          echo "Certifying $PROJECT with the $CREDENTIAL environment credential, from $REF."
+
+  certify-production:
+    needs: guard
+    if: inputs.credential == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # THE BOUNDARY. Restricted to `main` in GitHub settings; the secrets live here, not on
+    # the repository. OWNER CONFIGURATION — MUST BE VERIFIED LIVE.
+    environment: firebase-production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The published historical credential is recovered from this repository's own
+          # object database, so proving it is refused needs the full history.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The ONLY step that sees a credential. Everything above it — checkout, the toolchain,
+      # and `npm ci` with its several hundred install scripts — runs without one.
+      - name: Certify the demo Auth surface
+        shell: bash
+        env:
+          FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
+          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+          PROJECT: ${{ inputs.firebase_project_id }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_ADMIN_KEY" || {
+            echo "::error::FIREBASE_ADMIN_KEY is not present in the firebase-production"
+            echo "::error::environment. P0-02 fails closed: a run that cannot reach Firebase"
+            echo "::error::Auth proves nothing and must not report clean."
+            exit 1
+          }
+          test -n "$E2E_DEMO_PASSWORD" || {
+            echo "::error::E2E_DEMO_PASSWORD is not present in the firebase-production environment."
+            exit 1
+          }
+          npx --yes tsx@4.19.2 scripts/certify-demo-auth.ts \
+            --mode="$MODE" \
+            --project="$PROJECT" \
+            --credential-env=FIREBASE_ADMIN_KEY
+
+  certify-staging:
+    needs: guard
+    if: inputs.credential == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # THE BOUNDARY. Restricted to `main` in GitHub settings; the secrets live here, not on
+    # the repository. OWNER CONFIGURATION — MUST BE VERIFIED LIVE.
+    environment: firebase-staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Certify the demo Auth surface
+        shell: bash
+        env:
+          FIREBASE_ADMIN_KEY_STAGING: ${{ secrets.FIREBASE_ADMIN_KEY_STAGING }}
+          E2E_DEMO_PASSWORD: ${{ secrets.E2E_DEMO_PASSWORD }}
+          PROJECT: ${{ inputs.firebase_project_id }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_ADMIN_KEY_STAGING" || {
+            echo "::error::FIREBASE_ADMIN_KEY_STAGING is not present in the firebase-staging"
+            echo "::error::environment. Do NOT supply the production key: the tool rejects it."
+            exit 1
+          }
+          test -n "$E2E_DEMO_PASSWORD" || {
+            echo "::error::E2E_DEMO_PASSWORD is not present in the firebase-staging environment."
+            exit 1
+          }
+          npx --yes tsx@4.19.2 scripts/certify-demo-auth.ts \
+            --mode="$MODE" \
+            --project="$PROJECT" \
+            --credential-env=FIREBASE_ADMIN_KEY_STAGING
