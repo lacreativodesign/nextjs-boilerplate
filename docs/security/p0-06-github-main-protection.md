@@ -507,9 +507,9 @@ Files restored after the battery and verified by SHA-256:
 
 | File                                                    | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `scripts/verify-github-main-protection.mjs`             | `3faa21a04517c55b9dbbc33aac4c238754919a8e211faee60cf3c4bcf5a55a52` |
+| `scripts/verify-github-main-protection.mjs`             | `dcc1d1d0a8c22a0415853b34245538e1f8e78b9d25ea56c195e82bee20445515` |
 | `docs/security/p0-06-erp-main-ruleset.snapshot.json`    | `d5f7ba2e1d3d8ec2c4434f3b8af1506c298786bd041e5420e3e77a990b9ae182` |
-| `.github/workflows/github-protection-certification.yml` | `4879e79f822acbf2bdada3e329b6be40be9a201e0bacce08e27bf53c07afa768` |
+| `.github/workflows/github-protection-certification.yml` | `88288069b7594beb10363f7504e8465d4c1837b0efe0c44d56ed79c892bdbd99` |
 | `docs/security/p0-06-main-protection.certified.json`    | `3f3f231fd6456597de752669e0d64ae3a0af5695d32bf336624925f5b717b49a` |
 
 ## 5a. The pull request body is external evidence, audited manually
