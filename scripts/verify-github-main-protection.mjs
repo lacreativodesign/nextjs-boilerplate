@@ -38,12 +38,15 @@
  *
  * CREDENTIALS
  *
- * The workflow uses only the automatic, job-scoped GITHUB_TOKEN. No personal access token is
- * created, stored or required: a long-lived `administration: read` PAT would be a worse
- * posture than the drift it detects. Where the job token is not sufficient to observe the
- * bypass list — which is the case for any repository this workflow does not run inside — the
- * control is NOT silently passed. It is reported unobservable and carried as an explicit
- * owner attestation in the contract instead. See the evidence document.
+ * The workflow uses only the automatic, job-scoped GITHUB_TOKEN. That token authenticates the
+ * read, but GitHub does not guarantee it ruleset-write visibility, so `bypass_actors` may be
+ * omitted even when the workflow runs inside its own repository. The verifier itself remains
+ * fail-closed: an omitted bypass list is never treated as empty.
+ *
+ * The scheduled workflow consumes the verifier's JSON and treats ONLY
+ * `ruleset.bypass_actors_unobservable` as an explicit automation warning; every other drift
+ * still fails the job. Full bypass-actor certification therefore requires a privileged owner
+ * read. No long-lived PAT is stored merely to make a scheduled drift check green.
  *
  * The token is never printed, never interpolated into a URL, never included in an error
  * message, and never echoed back on failure. `redactUrl` below is the only place a request
@@ -506,11 +509,21 @@ async function fetchWithObservation(url, fetchImpl) {
   for (const { headers, privileged } of attempts) {
     const response = await fetchImpl(url, { headers });
     if (response.ok) {
+      const body = await response.json();
+      const bypassActorsObservable =
+        privileged &&
+        Object.prototype.hasOwnProperty.call(body, 'bypass_actors') &&
+        Array.isArray(body.bypass_actors);
+
       return {
-        body: await response.json(),
-        observation: privileged
-          ? observedPrivileged('an authenticated read')
-          : observedUnprivileged('an anonymous read'),
+        body,
+        observation: bypassActorsObservable
+          ? observedPrivileged('an authenticated read with bypass_actors visibility')
+          : observedUnprivileged(
+              privileged
+                ? 'an authenticated read without ruleset-write visibility'
+                : 'an anonymous read',
+            ),
       };
     }
     statuses.push(
