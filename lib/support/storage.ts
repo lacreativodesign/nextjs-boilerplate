@@ -18,6 +18,25 @@ const DATA_URL_RE = /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/
 /** Hard ceiling on the decoded image. The client downscales to ~1280px JPEG; this is the backstop. */
 const MAX_DECODED_BYTES = 3 * 1024 * 1024; // 3MB
 
+/**
+ * The same ceiling expressed in data-URL characters, so an oversized payload is rejected
+ * BEFORE it reaches the regex or the base64 allocator.
+ *
+ * Base64 encodes 3 bytes per 4 characters, so anything longer than this cannot decode under
+ * MAX_DECODED_BYTES. Checking length first means unbounded, caller-controlled input never
+ * drives a backtracking regex or a multi-megabyte Buffer allocation merely to be told it was
+ * too big — that work was always going to be thrown away.
+ *
+ * This began as a CI failure: on a memory-constrained runner the ~3.93MB allocation below
+ * failed with `RangeError` before the size check could report `ScreenshotTooLarge`, so the
+ * test asserting the rejection saw the wrong error. Raising the runner's V8 old-space did not
+ * help and could not have — Buffer allocations are external to it. Not allocating at all is
+ * the fix that does not depend on knowing which allocator ran out of room.
+ *
+ * The 64-character allowance covers the `data:image/…;base64,` prefix.
+ */
+const MAX_DATA_URL_CHARS = Math.ceil(MAX_DECODED_BYTES / 3) * 4 + 64;
+
 const EXT_BY_MIME: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
@@ -38,6 +57,16 @@ export type ParsedScreenshot = {
  */
 export function parseScreenshotDataUrl(input: unknown): ParsedScreenshot | null {
   if (typeof input !== 'string' || !input) return null;
+
+  // Length first: cheap, allocation-free, and true of any encoding of an oversized image.
+  // Note this changes the message for oversized NON-images from "must be a PNG, JPEG, or
+  // WebP" to "too large". Both are rejections, and for a multi-megabyte payload the size is
+  // the more useful complaint — but it is a deliberate behaviour change, not an accident.
+  if (input.length > MAX_DATA_URL_CHARS) {
+    const err = new Error('Screenshot is too large. Please attach a smaller image.');
+    err.name = 'ScreenshotTooLarge';
+    throw err;
+  }
 
   const match = DATA_URL_RE.exec(input);
   if (!match) {

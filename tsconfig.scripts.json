@@ -1,0 +1,18 @@
+{
+  // `scripts/` is excluded from tsconfig.json, so `npm run typecheck` cannot see it — the
+  // same reason tsconfig.e2e.json exists for the Playwright suite. Unchecked, a type error
+  // in the P0-02 certification tool would first appear part-way through a live production
+  // run against real Firebase Auth, which is the worst possible place to discover one.
+  //
+  // Scoped to the certification tool and the library it imports rather than all of
+  // `scripts/`: the older backfill/migration scripts predate this config and bringing them
+  // in would mean fixing them here, in a PR about demo Auth identities.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["scripts/certify-demo-auth.ts", "lib/demo/**/*.ts"],
+  "exclude": ["node_modules"]
+}
