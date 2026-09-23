@@ -1523,6 +1523,21 @@ describe('P0-06: the drift check cannot lock main, and cannot leak a token', () 
     expect(workflow).not.toContain('continue-on-error');
   });
 
+  /**
+   * DEFECT 7. The commit that made the drift job honest about token visibility also deleted
+   * this `env:` block. GitHub does not place GITHUB_TOKEN in a step's environment on its own,
+   * so the verifier read a PRIVATE repository anonymously and failed `repository.visibility_
+   * unobservable` and `ruleset.read` — both HARD failures — on every scheduled run.
+   *
+   * A drift detector that is always red is a drift detector nobody reads, so the token
+   * reaching the step is itself a certified property, not an implementation detail.
+   */
+  it('gives the verifier step the automatic job token, or it cannot read a private repo', () => {
+    const step = workflow.slice(workflow.indexOf('      - name: Verify observable live'));
+    const env = step.slice(step.indexOf('env:'), step.indexOf('run: |'));
+    expect(env).toMatch(/GITHUB_TOKEN:\s*\$\{\{\s*secrets\.GITHUB_TOKEN\s*\}\}/);
+  });
+
   it('needs no stored personal access token', () => {
     expect(workflow).not.toMatch(/secrets\.(?!GITHUB_TOKEN)[A-Z_]*(PAT|TOKEN)/);
     expect(script).toContain('process.env.GITHUB_TOKEN');
@@ -1669,6 +1684,57 @@ describe('P0-06: the live read handles credentials without leaking them', () => 
     expect(privileged.observation.source).toContain('bypass_actors visibility');
     expect(underScoped.observation.bypassActorsObservable).toBe(false);
     expect(underScoped.observation.source).toContain('without ruleset-write visibility');
+  });
+
+  /**
+   * The other half of defect 6, and the half that is easy to lose.
+   *
+   * Classifying by response content is the correct fix, but content ALONE is not sufficient:
+   * an anonymous read can also come back carrying `bypass_actors: []` — a public repository
+   * serves it to nobody in particular. If observability were decided by the field alone, an
+   * unauthenticated read would certify the one control everything else rests on. Both halves
+   * have to hold: a token was sent, AND the field came back.
+   */
+  it('keeps an anonymous read unobservable even when bypass_actors comes back present', async () => {
+    delete process.env.GITHUB_TOKEN;
+    delete process.env.GH_TOKEN;
+
+    const fetchImpl = jest.fn(async () => ok({ id: 22866162, bypass_actors: [] }));
+    const anonymous = await fetchLiveRulesetObserved(certified, { fetchImpl });
+
+    expect(anonymous.observation.bypassActorsObservable).toBe(false);
+    expect(anonymous.observation.source).toContain('anonymous');
+  });
+
+  /**
+   * And the property that actually matters, driven end to end rather than asserted on the
+   * observation object: an under-scoped authenticated read must FAIL the evaluator, not merely
+   * be labelled differently. A correct label attached to a passing verdict is still a false
+   * green — that is precisely what defect 6 looked like in production.
+   */
+  it('fails the evaluator closed when the authenticated read never saw the bypass list', async () => {
+    process.env.GITHUB_TOKEN = SECRET;
+    // A real live payload, minus the one field GitHub withholds from an under-scoped caller.
+    const withheld = { ...loadSnapshot() };
+    delete (withheld as Record<string, unknown>).bypass_actors;
+
+    const fetchImpl = jest.fn(async () => ok(withheld));
+    const { ruleset, observation } = await fetchLiveRulesetObserved(certified, { fetchImpl });
+    const result = evaluateRuleset(ruleset, certified, observation);
+
+    // The label has to be honest too. Defect 6 in production was a correct FAIL printed
+    // underneath a line claiming the bypass list had been observed, and a verdict whose
+    // stated provenance contradicts it is not evidence — it is two claims, one of them false.
+    expect(observation.bypassActorsObservable).toBe(false);
+    expect(observation.source).not.toMatch(/bypass_actors visibility/);
+
+    expect(result.ok).toBe(false);
+    expect(result.failures.map((f: Failure) => f.control)).toContain(
+      'ruleset.bypass_actors_unobservable',
+    );
+    // And not misreported as an actor having been found, which would send the owner looking
+    // for a bypass entry that does not exist.
+    expect(result.failures.map((f: Failure) => f.control)).not.toContain('ruleset.bypass_actors');
   });
 
   it('retries anonymously when the token is refused, because the data is public', async () => {

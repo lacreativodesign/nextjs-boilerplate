@@ -41,6 +41,12 @@ jobs:
 
       - name: Verify observable live protection and classify bypass visibility
         shell: bash
+        env:
+          # The automatic, job-scoped token. GitHub does not place it in the environment on
+          # its own, and without it the verifier reads this PRIVATE repository anonymously,
+          # fails ruleset.read on every run, and the drift job goes permanently red for a
+          # reason that has nothing to do with drift.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           node scripts/verify-github-main-protection.mjs --repo=erp --json > p0-06-result.json || true
