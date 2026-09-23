@@ -201,6 +201,12 @@ become a permanent false red over a limitation of its own token. Full bypass-act
 remains a **privileged owner read**, and no long-lived administration token is stored to make a
 monitor look privileged.
 
+**Demonstrated in production, not only in tests.** The website repository's drift workflow has
+three recorded runs against `main`: the post-merge run at `3007b970` and the one after it both
+concluded **failure**; the run after the correction landed concluded **success**. (The run logs
+themselves are served from a storage host this environment cannot reach, so the conclusions are
+quoted from the Actions API and the log text is deliberately not paraphrased here.)
+
 ### Defect 7 — the fix for defect 6 removed the drift job's token
 
 Found by **running the suite against the fix**. The commit that made the drift job honest about
@@ -217,6 +223,11 @@ a **private** repository anonymously, so it never reached the bypass question at
 scheduled drift check would have gone red on every single run, for a reason that has nothing to do
 with drift — and a detector that is always red is a detector nobody reads. Reproduced locally by
 running the verifier with both token variables unset.
+
+It never actually ran that way: this workflow does not exist on ERP `main` yet — this pull request
+is what introduces it — so the defect was caught in the pull request rather than in production. The
+website repository's copy of the workflow was checked for the same regression and **does not have
+it**; its `env:` block is intact.
 
 This is the mirror image of defect 2. That one made an unreadable control look green; this one
 made a readable control look broken. Both come from the same place: **the certification talking
