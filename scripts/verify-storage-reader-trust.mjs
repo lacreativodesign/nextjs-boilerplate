@@ -97,7 +97,10 @@ export function evaluatePool({ workflowProvider, providers, repositoryMetadata }
   const pool = poolResource(parsed);
   if (parsed.poolId !== WIF_POOL_ID || parsed.providerId !== WIF_PROVIDER_ID) {
     reasons.push(
-      'Storage certification must use the dedicated ' + WIF_POOL_ID + '/' + WIF_PROVIDER_ID +
+      'Storage certification must use the dedicated ' +
+        WIF_POOL_ID +
+        '/' +
+        WIF_PROVIDER_ID +
         ' provider, not a shared provider.',
     );
   }
