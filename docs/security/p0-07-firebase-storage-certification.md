@@ -331,89 +331,101 @@ arrives and never reach the report.
 
 **Status: UNVERIFIED.** The reader identity does not exist yet, so nothing has been observed.
 
-### The reader's trust boundary — repository AND `main`, enforced by Google
+### The reader's trust boundary — immutable repository identity + `main`, enforced by Google
 
-The reader can list production object metadata, so who may become it has to be proven at
-the Google IAM / Workload Identity boundary, not asserted by workflow source:
+The reader can list production object metadata, so who may become it is enforced at the
+Google IAM / Workload Identity boundary, not by branch-controlled workflow source.
 
-- A `principalSet://…/attribute.repository/lacreativodesign/nextjs-boilerplate` binding is
-  **repository scope only**. Any branch — including a feature branch whose copy of the
-  workflow drops the ref check — could federate as the reader. **It is not used.**
-- Two principalSet bindings (`attribute.repository/…` and `attribute.ref/refs/heads/main`)
-  do **not** combine: IAM ORs bindings, so that pair admits this repository on any branch
-  **or** `main` of any repository the provider admits.
-- The workflow's `github.ref == refs/heads/main` check is **defence in depth** only. It lives
-  in branch-controlled source.
+**Selected model — one dedicated pool, one provider, immutable GitHub IDs.** P0-07 does not
+reuse the shared deployment pool and does not depend on GitHub's legacy-vs-immutable default
+`sub` format. GitHub documents `repository_id` and `repository_owner_id` as immutable numeric
+claims; Google recommends numeric GitHub `*_id` claims and an attribute condition for GitHub's
+multi-tenant issuer.
 
-**Selected model — exact OIDC subject.** The reader's only `roles/iam.workloadIdentityUser`
-member is
+The dedicated provider is:
 
-```text
-principal://iam.googleapis.com/projects/<POOL_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main
-```
+- pool: `p007-storage-cert`
+- provider: `github-main`
+- issuer: `https://token.actions.githubusercontent.com/`
+- `google.subject = assertion.repository_id`
+- immutable repository ID: `1087507601`
+- immutable owner ID: `240409176`
+- provider condition: repository ID + owner ID + `refs/heads/main`
 
-`repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main` is GitHub's default OIDC `sub`
-for a push / schedule / `workflow_dispatch` job on `main` of this repository. A token from any
-other repository, any other ref, a `pull_request` event, or a job declaring an `environment:`
-carries a different `sub`, and IAM itself refuses the exchange. (That is why the certification
-job declares no `environment:`; a test pins it.)
+The reader's only `roles/iam.workloadIdentityUser` member is therefore the exact pool subject
+`principal://.../workloadIdentityPools/p007-storage-cert/subject/1087507601`. The repository
+identity is encoded in `google.subject`; the owner and branch are independently enforced by
+the provider condition before Google accepts the credential.
 
-That binding proves both properties **only if** three facts hold, so they are checked — from
-the owner's own read-only output — before anything is bound, by
-`scripts/verify-storage-reader-trust.mjs` (no network access, changes nothing):
+A repository-only `principalSet` is not used. The shared
+`GCP_WORKLOAD_IDENTITY_PROVIDER` is not used by this workflow. The local
+`github.ref == refs/heads/main` check remains defence in depth only.
 
-1. **Subjects are pool-scoped.** A `principal://…/subject/S` member matches `S` from _any_
-   provider in the pool, so every provider in the pool — disabled ones included, since
-   re-enabling one is a single call — must be GitHub-issued
-   (`https://token.actions.githubusercontent.com`) and map `google.subject` to exactly
-   `assertion.sub`. Anything else — another issuer, an AWS/SAML provider, a CEL mapping — is
-   STOP.
-2. **GitHub's subject template is the default** for this repository (`use_default: true`).
-3. **Nothing else can become the reader.** Its own IAM policy holds exactly one binding
-   (`workloadIdentityUser` → that one member, unconditional), and no project-level
-   `workloadIdentityUser` / `serviceAccountTokenCreator` / `serviceAccountOpenIdTokenCreator` /
-   `serviceAccountUser` binding grants a federated principal every service account.
+`scripts/verify-storage-reader-trust.mjs` fails closed unless:
 
-**The shared provider is not modified.** Other production workflows (rules deploy, index
-inventory and deploy) depend on it; nothing here adds a mapping or a condition to it.
+1. the configured provider is exactly `p007-storage-cert/github-main`;
+2. that pool contains exactly one provider;
+3. the issuer is GitHub Actions;
+4. the four attribute mappings exactly match the certified immutable-ID mapping;
+5. the provider condition exactly requires repository ID `1087507601`, owner ID `240409176`
+   and `refs/heads/main`;
+6. the live GitHub repository metadata still reports those immutable IDs;
+7. the reader service account has exactly one `workloadIdentityUser` member — the immutable
+   repository-ID subject — and no project-level federated impersonation role bypasses it.
 
-### OWNER ACTION REQUIRED — inspect, then create, then verify
+### OWNER ACTION REQUIRED — after merge, create and verify the dedicated reader identity
 
-**Sequencing.** Run these only after the corrected pull request has passed independent
-exact-head certification. They are owner actions on live Google Cloud / GitHub configuration,
-separate from this pull request's source code. Every step before "Step 3" is read-only.
+These commands are intentionally separate from the source-code merge. Merging a green PR
+does **not** close P0-07; live verification closes it only after the identity and bucket checks
+below succeed. Never create a JSON service-account key.
 
-**Step 1 — inspect (read-only).**
+**Step 1 — record immutable GitHub repository metadata (read-only).**
 
 ```bash
-# Which provider will the workflow use? GCP_STORAGE_CERT_WIF_PROVIDER if set, otherwise the
-# shared GCP_WORKLOAD_IDENTITY_PROVIDER. Copy its full resource name:
-gh variable list --repo lacreativodesign/nextjs-boilerplate
-PROVIDER="projects/<POOL_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>"
-POOL_PROJECT_NUMBER="<POOL_PROJECT_NUMBER>"; POOL_ID="<POOL_ID>"
-
-# Every provider in that pool — subjects are pool-scoped, so one provider is not enough.
-gcloud iam workload-identity-pools providers list \
-  --project="$POOL_PROJECT_NUMBER" --location=global \
-  --workload-identity-pool="$POOL_ID" --format=json > providers.json
-
-# GitHub's OIDC subject template for this repository. Expect {"use_default": true}.
-gh api repos/lacreativodesign/nextjs-boilerplate/actions/oidc/customization/sub > oidc-sub.json
-
-# Decide. Prints either the ONE binding to create, or STOP with the reasons.
-node scripts/verify-storage-reader-trust.mjs \
-  --workflow-provider="$PROVIDER" --providers=providers.json --oidc-sub=oidc-sub.json
+gh api -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  repos/lacreativodesign/nextjs-boilerplate > repo.json
 ```
 
-**Step 2 — only if Step 1 printed `POOL SAFE`: create the reader and its read-only roles.**
+`repo.json` must report repository ID `1087507601` and owner ID `240409176`. If either differs,
+STOP and investigate before creating Google trust.
+
+**Step 2 — create the dedicated pool/provider.**
+
+```bash
+PROJECT_ID="la-creativo-erp"
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+
+gcloud iam workload-identity-pools create p007-storage-cert \
+  --project="$PROJECT_ID" --location=global \
+  --display-name="P0-07 storage certification"
+
+gcloud iam workload-identity-pools providers create-oidc github-main \
+  --project="$PROJECT_ID" --location=global \
+  --workload-identity-pool=p007-storage-cert \
+  --issuer-uri="https://token.actions.githubusercontent.com/" \
+  --attribute-mapping="google.subject=assertion.repository_id,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository_id == '1087507601' && assertion.repository_owner_id == '240409176' && assertion.ref == 'refs/heads/main'"
+
+PROVIDER="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/p007-storage-cert/providers/github-main"
+gcloud iam workload-identity-pools providers list \
+  --project="$PROJECT_ID" --location=global \
+  --workload-identity-pool=p007-storage-cert --format=json > providers.json
+
+node scripts/verify-storage-reader-trust.mjs \
+  --workflow-provider="$PROVIDER" --providers=providers.json --repo=repo.json
+```
+
+The checker must print `POOL SAFE` and the one service-account binding to create. If it prints
+`STOP`, do not weaken the provider or substitute the shared provider.
+
+**Step 3 — create the reader and read-only roles.**
 
 ```bash
 gcloud iam service-accounts create storage-cert-reader \
   --project=la-creativo-erp \
   --display-name="Storage certification reader (GitHub Actions, read-only)"
 
-# Bucket-scoped: only this bucket, only reads. storage.objects.getIamPolicy makes object
-# ACLs positively observable when uniform bucket-level access is off (see above).
 gcloud iam roles create bizostoStorageCertReader --project=la-creativo-erp \
   --title="Bizosto storage certification reader" --stage=GA \
   --permissions=storage.buckets.get,storage.buckets.getIamPolicy,storage.objects.list,storage.objects.getIamPolicy
@@ -421,7 +433,6 @@ gcloud storage buckets add-iam-policy-binding gs://la-creativo-erp.firebasestora
   --member="serviceAccount:storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com" \
   --role="projects/la-creativo-erp/roles/bizostoStorageCertReader"
 
-# Project-scoped, one permission, for the project-binding check.
 gcloud iam roles create bizostoProjectNumberReader --project=la-creativo-erp \
   --title="Bizosto project number reader" --stage=GA \
   --permissions=resourcemanager.projects.get
@@ -430,66 +441,44 @@ gcloud projects add-iam-policy-binding la-creativo-erp \
   --role="projects/la-creativo-erp/roles/bizostoProjectNumberReader"
 ```
 
-**Step 3 — bind exactly the member Step 1 printed.** It has this shape; use the printed value:
+**Step 4 — bind only the immutable repository-ID subject.**
 
 ```bash
 gcloud iam service-accounts add-iam-policy-binding \
   storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com \
   --project=la-creativo-erp \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principal://iam.googleapis.com/projects/${POOL_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main"
+  --member="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/p007-storage-cert/subject/1087507601"
 ```
 
-**Step 4 — verify (read-only). Must print `VERIFIED`.**
+**Step 5 — verify policies (read-only). Must print `VERIFIED`.**
 
 ```bash
 gcloud iam service-accounts get-iam-policy \
   storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com \
   --project=la-creativo-erp --format=json > reader-policy.json
 gcloud projects get-iam-policy la-creativo-erp --format=json > project-policy.json
+
 node scripts/verify-storage-reader-trust.mjs \
-  --workflow-provider="$PROVIDER" --providers=providers.json --oidc-sub=oidc-sub.json \
+  --workflow-provider="$PROVIDER" --providers=providers.json --repo=repo.json \
   --sa-policy=reader-policy.json --project-policy=project-policy.json
 ```
 
-**Step 5 — only after `VERIFIED`:** add repository **variable** `GCP_STORAGE_CERT_READER_SA` =
-`storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com`. **Never create a JSON key**
-(`gcloud iam service-accounts keys create` must never be run for this account).
-
-The saved `providers.json`, `oidc-sub.json` and the Step 4 `VERIFIED` output are the
-**pre-merge evidence** for independent review. They contain resource names and roles, not
-secrets; the evaluator prints roles and counts, never member identities.
-
-**What the evidence does and does not cover.** It proves the pool, the GitHub subject template
-and the reader's policies _as inspected_. The reader cannot list providers, so the certification
-job cannot re-prove fact 1 on its own: anyone later adding or editing a provider in that pool, or
-changing the repository's OIDC subject template, must re-run Steps 1 and 4. If GitHub ever
-changes its default `sub` format, the exchange is refused: that failure is closed and cannot
-widen access.
-
-### If the evaluator says STOP
-
-Fail closed: **do not bind anything, and do not edit the shared provider.** In particular, never
-fall back to the repository-only `principalSet` member. The safe alternative isolates the reader
-in its **own pool**, so no other provider's subjects share its namespace:
+**Step 6 — only after `VERIFIED`, set the two repository variables.**
 
 ```bash
-gcloud iam workload-identity-pools create p007-storage-cert \
-  --project=la-creativo-erp --location=global \
-  --display-name="P0-07 storage certification reader"
-gcloud iam workload-identity-pools providers create-oidc github-main \
-  --project=la-creativo-erp --location=global --workload-identity-pool=p007-storage-cert \
-  --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
-  --attribute-condition="assertion.repository == 'lacreativodesign/nextjs-boilerplate' && assertion.ref == 'refs/heads/main'"
+gh variable set GCP_STORAGE_CERT_WIF_PROVIDER \
+  --repo lacreativodesign/nextjs-boilerplate \
+  --body "$PROVIDER"
+
+gh variable set GCP_STORAGE_CERT_READER_SA \
+  --repo lacreativodesign/nextjs-boilerplate \
+  --body "storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com"
 ```
 
-Then set repository variable `GCP_STORAGE_CERT_WIF_PROVIDER` to
-`projects/<LA_CREATIVO_ERP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/p007-storage-cert/providers/github-main`
-(the workflow prefers it over the shared provider), re-run Step 1 against the new pool, and
-continue from Step 2. The provider condition enforces repository + `main` at token exchange,
-and the exact-subject binding enforces it again at IAM. If the GitHub subject template is not
-the default (fact 2), stop and raise it: this runbook does not change repository OIDC settings.
+The saved `repo.json`, `providers.json`, policy JSON files and checker output are the live
+identity evidence. Any future provider change, repository transfer, or ID mismatch requires
+re-running the checker. A rename does not broaden access because the trust uses immutable IDs.
 
 ### Reader permission set
 
