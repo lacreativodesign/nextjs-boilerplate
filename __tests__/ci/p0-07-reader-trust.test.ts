@@ -267,7 +267,7 @@ describe('reader trust: evaluateReaderPolicies (fact 3)', () => {
       [
         {
           role: 'roles/iam.workloadIdentityUser',
-          members: [MEMBER.replace('github-pool', 'other-pool')],
+          members: [MEMBER.replace('p007-storage-cert', 'other-pool')],
         },
       ],
       /exactly one member, the exact subject/,
@@ -384,7 +384,7 @@ describe('reader trust: workflow boundary', () => {
     expect(wf).toContain('owner ID 240409176');
     expect(wf).toContain('refs/heads/main');
     expect(wf).toMatch(/defence in depth only/);
-    expect(wf).toMatch(/does not depend on GitHub.*sub/i);
+    expect(wf).toMatch(/does not depend on GitHub[\s\S]*sub/i);
   });
 });
 
@@ -401,11 +401,11 @@ describe('reader trust: owner runbook', () => {
     expect(commands).toContain("assertion.repository_id == '1087507601'");
     expect(commands).toContain("assertion.repository_owner_id == '240409176'");
     expect(commands).toContain("assertion.ref == 'refs/heads/main'");
-    expect(s9).toMatch(/does not depend on GitHub.*sub/i);
+    expect(s9).toMatch(/does not depend on GitHub[\s\S]*sub/i);
   });
 
   it('checks current GitHub repository metadata and the provider before binding', () => {
-    expect(commands).toMatch(/gh api .*repos\/lacreativodesign\/nextjs-boilerplate.*> repo\.json/);
+    expect(commands).toMatch(/gh api[\s\S]*repos\/lacreativodesign\/nextjs-boilerplate > repo\.json/);
     expect(commands).toMatch(/providers list[\s\S]*> providers\.json/);
     expect(commands).toMatch(/--providers=providers\.json --repo=repo\.json/);
   });
