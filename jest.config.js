@@ -226,6 +226,33 @@ const customJestConfig = {
     // role the OTHER one admits.
     'app/api/crm/deals/[id]/discount-request/route.ts',
     'app/api/crm/discount-requests/[id]/review/route.ts',
+    // P0-07: the protected-download, screenshot and public-logo routes, each driven end to
+    // end by __tests__/api/p0-07-protected-downloads or __tests__/lib/p0-07-support-branding
+    // (per-role ACL, cross-tenant 404, deleted, virus gate, path binding, super_admin gate,
+    // the public logo's path allow-list and headers). They replace permanent Firebase
+    // download tokens, so their coverage is evidence about the change's security boundary.
+    'app/api/project-files/[id]/download/route.ts',
+    'app/api/hr/documents/[id]/download/route.ts',
+    'app/api/super_admin/tickets/[ticketId]/screenshot/route.ts',
+    'app/api/public/branding/[tenantId]/logo/route.ts',
+    'app/api/super_admin/tenants/[tenantId]/branding/logo/route.ts',
+    'app/api/support/tickets/route.ts',
+    // P0-07: every list that used to return a stored bearer URL, driven with legacy records
+    // that still carry one by __tests__/api/p0-07-list-routes, which fails if any value of
+    // it reaches the response.
+    'app/api/hr/documents/list/route.ts',
+    'app/api/admin/hr/documents/list/route.ts',
+    'app/api/client/files/list/route.ts',
+    'app/api/client/projects/get/route.ts',
+    'app/api/am/files/list/route.ts',
+    'app/api/admin/files/list/route.ts',
+    'app/api/production/files/list/route.ts',
+    'app/api/admin/production/files/list/route.ts',
+    'app/api/files/route.ts',
+    'app/api/super_admin/tickets/route.ts',
+    // P0-07: the preview modal now fetches a short-lived URL per open instead of rendering a
+    // stored 2-day one; __tests__/components/file-preview-modal renders it through MSW.
+    'components/files/FilePreviewModal.tsx',
     // The users/[uid]/update adapter forwards to the ONE canonical implementation and
     // injects the path uid. The suite pins that the path uid wins over a body-supplied one,
     // otherwise the legacy URL could aim the canonical update at a different user.

@@ -75,6 +75,7 @@ import {
 } from '@/lib/white-label/public-logo';
 import { GET as publicLogo } from '@/app/api/public/branding/[tenantId]/logo/route';
 import { POST as superAdminLogo } from '@/app/api/super_admin/tenants/[tenantId]/branding/logo/route';
+import { POST as superAdminBranding } from '@/app/api/super_admin/tenants/[tenantId]/branding/route';
 
 const T = 'tenant_a';
 const PNG_1x1 =
@@ -478,5 +479,158 @@ describe('POST /api/super_admin/tenants/[tenantId]/branding/logo', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.logoUrl).toMatch(new RegExp(`^/api/public/branding/${T}/logo\\?v=\\d+$`));
+  });
+});
+
+describe('branding edge cases (P0-07)', () => {
+  it('public-logo helpers reject malformed input', () => {
+    expect(publicLogoHref(T, 'not-a-number')).toBe(`/api/public/branding/${T}/logo`);
+    expect(absoluteLogoUrl(null, 'https://app.bizosto.com')).toBeNull();
+    expect(absoluteLogoUrl('https://cdn.example/l.png', 'x')).toBe('https://cdn.example/l.png');
+    expect(absoluteLogoUrl(publicLogoHref(T), 'not a url')).toBeNull();
+    expect(isPublicLogoPath(`tenants/${T}/branding/logo.png`, '../x')).toBe(false);
+    expect(isFirebaseTokenUrl('not a url')).toBe(false);
+    expect(() => normalizeLogoUrl('https://' + 'a'.repeat(2100) + '.com/l.png', T)).toThrow(
+      UnsupportedLogoUrlError,
+    );
+    expect(() => normalizeLogoUrl('not a url at all', T)).toThrow(UnsupportedLogoUrlError);
+    // A tokenized URL whose path cannot be decoded is refused, not trusted.
+    expect(() =>
+      normalizeLogoUrl('https://firebasestorage.googleapis.com/v0/b/x/o/%E0%A4%A?token=a', T),
+    ).toThrow(UnsupportedLogoUrlError);
+  });
+
+  it('clearing a logo also clears its stored path', async () => {
+    db.seed('tenants', [
+      [
+        T,
+        {
+          whiteLabel: {
+            logoUrl: publicLogoHref(T),
+            logoStoragePath: `tenants/${T}/branding/logo.png`,
+          },
+        },
+      ],
+    ]);
+    const next = await updateTenantBranding(
+      T,
+      {
+        primaryColor: '#2563eb',
+        secondaryColor: '#1d4ed8',
+        accentColor: '#0f766e',
+        fontFamily: 'Inter',
+        themeMode: 'system',
+        logoUrl: null,
+      },
+      'u1',
+    );
+    expect(next.logoUrl).toBeNull();
+    expect(next.logoStoragePath).toBeNull();
+  });
+
+  it('public endpoint: a storage failure is a 502 that caches nothing', async () => {
+    db.seed('tenants', [
+      [T, { whiteLabel: { logoStoragePath: `tenants/${T}/branding/logo.png` } }],
+    ]);
+    getMetadata.mockRejectedValue(Object.assign(new Error('backend'), { code: 503 }));
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const res = await publicLogo(new Request('https://app.local/x'), {
+      params: Promise.resolve({ tenantId: T }),
+    });
+    expect(res.status).toBe(502);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    log.mockRestore();
+  });
+
+  it('public endpoint: a vanished object is a 404', async () => {
+    db.seed('tenants', [
+      [T, { whiteLabel: { logoStoragePath: `tenants/${T}/branding/logo.png` } }],
+    ]);
+    getMetadata.mockRejectedValue(Object.assign(new Error('gone'), { code: 404 }));
+    const res = await publicLogo(new Request('https://app.local/x'), {
+      params: Promise.resolve({ tenantId: T }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  describe('super_admin logo upload refusals', () => {
+    const call = (tenantId: string, body: unknown) =>
+      superAdminLogo(
+        new Request('https://app.local', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }) as never,
+        { params: Promise.resolve({ tenantId }) },
+      );
+
+    beforeEach(() => requireSuperAdmin.mockResolvedValue({ uid: 'op' }));
+
+    it('rejects an unsafe tenant id and a malformed body', async () => {
+      expect((await call('../x', { dataUrl: 'data:image/png;base64,AAAA' })).status).toBe(404);
+      db.seed('tenants', [[T, {}]]);
+      expect((await call(T, { nope: true })).status).toBe(400);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unsupported image with 400', async () => {
+      db.seed('tenants', [[T, {}]]);
+      const res = await call(T, { dataUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' });
+      expect(res.status).toBe(400);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('maps an unauthenticated caller to 401 and an internal failure to 500', async () => {
+      requireSuperAdmin.mockRejectedValue(new Error('Unauthorized'));
+      expect((await call(T, { dataUrl: 'data:image/png;base64,AAAA' })).status).toBe(401);
+      requireSuperAdmin.mockRejectedValue(new Error('boom'));
+      const res = await call(T, { dataUrl: 'data:image/png;base64,AAAA' });
+      expect(res.status).toBe(500);
+      await expect(res.json()).resolves.toMatchObject({ error: 'Server error' });
+    });
+  });
+});
+
+describe('POST /api/super_admin/tenants/[tenantId]/branding — logo URL normalisation', () => {
+  const call = (tenantId: string, body: unknown) =>
+    superAdminBranding(
+      new Request('https://app.local', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }) as never,
+      { params: Promise.resolve({ tenantId }) },
+    );
+
+  beforeEach(() => {
+    requireSuperAdmin.mockResolvedValue({ uid: 'op' });
+    db.seed('tenants', [[T, {}]]);
+  });
+
+  it('refuses another tenant’s tokenized URL', async () => {
+    const res = await call(T, {
+      name: 'Acme',
+      logoUrl: firebaseUrl('tenants/tenant_b/branding/logo.png'),
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(db.bucket('tenants').get(T))).not.toContain('token=');
+  });
+
+  it('migrates this tenant’s own legacy logo to the public endpoint and records its path', async () => {
+    const res = await call(T, {
+      name: 'Acme',
+      logoUrl: firebaseUrl(`tenants/${T}/brand/logo.webp`),
+    });
+    expect(res.status).toBe(200);
+    const tenant = db.bucket('tenants').get(T)!;
+    expect(tenant.brand).toMatchObject({ logoUrl: publicLogoHref(T) });
+    expect(tenant.whiteLabel).toMatchObject({ logoStoragePath: `tenants/${T}/brand/logo.webp` });
+    expect(JSON.stringify(tenant)).not.toContain('token=');
+  });
+
+  it('accepts the tenant’s own endpoint as re-submitted by the Super Admin screen', async () => {
+    const res = await call(T, { name: 'Acme', logoUrl: publicLogoHref(T, 17) });
+    expect(res.status).toBe(200);
+    expect(db.bucket('tenants').get(T)!.brand).toMatchObject({ logoUrl: publicLogoHref(T, 17) });
   });
 });

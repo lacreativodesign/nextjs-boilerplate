@@ -404,6 +404,8 @@ scripts/storage-token-remediation.mjs --mode=apply --confirm-project=la-creativo
 | `__tests__/lib/p0-07-storage-invariants.test.ts`       | repository scans: canonical bucket, single minter, no token code, no `getDownloadURL` |
 | `__tests__/ci/p0-07-storage-certification.test.ts`     | verifier and remediation behaviour, GET-only, no secret output, workflow read-only    |
 | `__tests__/lib/p0-07-signed-url-persistence.test.ts`   | document minting re-checks tenant/deleted; export jobs store no URL                   |
+| `__tests__/api/p0-07-list-routes.test.ts`              | every list that returned a stored URL, driven with legacy records: none leaks         |
+| `__tests__/components/file-preview-modal.test.tsx`     | previews fetch a short-lived URL per open and degrade on refusal                      |
 
 ### Mutation battery — 61 mutants, 0 survivors
 

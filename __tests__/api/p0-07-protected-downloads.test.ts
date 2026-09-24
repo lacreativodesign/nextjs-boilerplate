@@ -600,3 +600,172 @@ describe('mintProtectedDownloadUrl — the TTL and path invariants', () => {
     );
   });
 });
+
+describe('refusal and error paths (P0-07)', () => {
+  it('ACL: a caller with no tenant context is refused before any read', async () => {
+    await expect(
+      authorizeProjectFileDownload({ uid: 'u', role: 'admin', tenantId: '' }, 'file_1'),
+    ).resolves.toMatchObject({ status: 403 });
+  });
+
+  it('ACL: project-scoped roles are refused when the record has no project or the project is gone', async () => {
+    db.seed('files', [
+      [
+        'file_no_project',
+        { tenantId: T, projectId: '', fileName: 'x', storagePath: FILE_PATH, isDeleted: false },
+      ],
+      [
+        'file_missing_project',
+        {
+          tenantId: T,
+          projectId: 'ghost',
+          fileName: 'x',
+          storagePath: FILE_PATH,
+          isDeleted: false,
+        },
+      ],
+      [
+        'file_foreign_project',
+        {
+          tenantId: T,
+          projectId: 'project_b',
+          fileName: 'x',
+          storagePath: FILE_PATH,
+          isDeleted: false,
+        },
+      ],
+    ]);
+    db.seed('projects', [
+      ['project_b', { tenantId: OTHER, clientId: 'client_1', ownerAmUid: users.am.uid }],
+    ]);
+    for (const id of ['file_no_project', 'file_missing_project', 'file_foreign_project']) {
+      await expect(authorizeProjectFileDownload(users.am, id)).resolves.toMatchObject({
+        status: 403,
+      });
+    }
+    // Tenant-wide roles do not depend on the project.
+    await expect(
+      authorizeProjectFileDownload(users.admin, 'file_no_project'),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+  });
+
+  it('ACL: a client with no resolved clientId is refused', async () => {
+    await expect(
+      authorizeProjectFileDownload({ ...users.client, clientId: '' }, 'file_1'),
+    ).resolves.toMatchObject({ status: 403 });
+  });
+
+  it('ACL: an AM who created an unowned project may download; one who did not may not', async () => {
+    db.seed('projects', [
+      ['project_unowned', { tenantId: T, createdByUid: users.otherAm.uid, isDeleted: false }],
+    ]);
+    db.seed('files', [
+      [
+        'file_unowned',
+        {
+          tenantId: T,
+          projectId: 'project_unowned',
+          fileName: 'x',
+          storagePath: FILE_PATH,
+          isDeleted: false,
+        },
+      ],
+    ]);
+    await expect(
+      authorizeProjectFileDownload(users.otherAm, 'file_unowned'),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(authorizeProjectFileDownload(users.am, 'file_unowned')).resolves.toMatchObject({
+      status: 403,
+    });
+  });
+
+  it('ACL: the production plan entitlement applies to production_manager too', async () => {
+    checkModuleAccess.mockResolvedValue({ ok: false });
+    await expect(
+      authorizeProjectFileDownload(users.productionManager, 'file_1'),
+    ).resolves.toMatchObject({
+      status: 403,
+    });
+  });
+
+  it('project route: a client whose portal profile cannot be resolved is refused', async () => {
+    getCurrentUser.mockResolvedValue(users.client);
+    requireClient.mockResolvedValue({ ok: false, status: 404, error: 'Client profile not found' });
+    const res = await projectFileDownload(new Request('https://app.local/x'), {
+      params: Promise.resolve({ id: 'file_1' }),
+    });
+    expect(res.status).toBe(404);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('project route: a signing failure is a 500 with no internals, never a stale URL', async () => {
+    getCurrentUser.mockResolvedValue(users.admin);
+    getSignedUrl.mockRejectedValue(new Error('SigningError: key material xyz'));
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const res = await projectFileDownload(new Request('https://app.local/x'), {
+      params: Promise.resolve({ id: 'file_1' }),
+    });
+    expect(res.status).toBe(500);
+    const text = await res.text();
+    expect(text).not.toContain('key material');
+    expect(res.headers.get('cache-control')).toContain('no-store');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('key material');
+    log.mockRestore();
+  });
+
+  it('HR route: infected documents are refused, malformed ids are 404, a record with no object is 404', async () => {
+    requireHrAccess.mockResolvedValue({ ok: true, user: users.hr });
+    db.seed('employeeDocuments', [
+      [
+        'doc_infected',
+        {
+          tenantId: T,
+          userId: 'emp_1',
+          fileName: 'x',
+          storagePath: `tenants/${T}/employee-documents/emp_1/x`,
+          isDeleted: false,
+          virusScanStatus: 'infected',
+        },
+      ],
+      [
+        'doc_no_object',
+        { tenantId: T, userId: 'emp_1', fileName: 'x', storagePath: '', isDeleted: false },
+      ],
+    ]);
+    const call = (id: string) =>
+      hrDocumentDownload(new Request('https://app.local/x'), { params: Promise.resolve({ id }) });
+    const infected = await call('doc_infected');
+    expect(infected.status).toBe(403);
+    await expect(infected.json()).resolves.toMatchObject({ code: 'file_infected' });
+    expect((await call('a/b')).status).toBe(404);
+    expect((await call('doc_no_object')).status).toBe(404);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('screenshot route: malformed and unknown ticket ids are 404', async () => {
+    requireSuperAdmin.mockResolvedValue(users.superAdmin);
+    const call = (ticketId: string) =>
+      screenshotDownload(new Request('https://app.local/x') as never, {
+        params: Promise.resolve({ ticketId }),
+      });
+    expect((await call('a/b')).status).toBe(404);
+    expect((await call('nope')).status).toBe(404);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('minter: an inline preview can pin the response content type', async () => {
+    await mintProtectedDownloadUrl({
+      storagePath: FILE_PATH,
+      tenantId: T,
+      fileName: '',
+      disposition: 'inline',
+      contentType: 'application/pdf',
+    });
+    expect(getSignedUrl.mock.calls[0][1]).toMatchObject({
+      responseType: 'application/pdf',
+      responseDisposition: expect.stringMatching(/^inline; filename="download"/),
+    });
+  });
+});
