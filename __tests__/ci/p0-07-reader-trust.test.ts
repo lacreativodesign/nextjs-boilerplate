@@ -6,10 +6,10 @@ import path from 'path';
  * `refs/heads/main`, and that is enforced at the GOOGLE boundary, not by workflow source.
  *
  * `scripts/verify-storage-reader-trust.mjs` decides, from the owner's read-only inspection
- * output, whether the exact-subject binding is sound (subjects are pool-scoped, GitHub uses
- * the default `sub` template, nothing else can impersonate the reader). These tests pin its
- * truth table, and pin the workflow and runbook so neither can drift back to a
- * repository-only principal or to treating the ref check as the trust boundary.
+ * output, whether the dedicated immutable-ID provider and reader binding are sound. These
+ * tests pin the provider mapping/condition, live repository IDs, service-account policy,
+ * workflow and runbook so none can drift back to mutable names, default `sub` assumptions,
+ * a shared provider, or workflow-source-only branch checks.
  */
 
 import * as t from '@/scripts/verify-storage-reader-trust.mjs';
@@ -130,11 +130,17 @@ describe('reader trust: evaluatePool', () => {
       { attributeMapping: { 'google.subject': 'assertion.sub' } },
       /certified four mappings|google.subject/,
     ],
-    ['missing owner-id mapping', { attributeMapping: {
-      'google.subject': 'assertion.repository_id',
-      'attribute.repository_id': 'assertion.repository_id',
-      'attribute.ref': 'assertion.ref',
-    } }, /certified four mappings|attribute.repository_owner_id/],
+    [
+      'missing owner-id mapping',
+      {
+        attributeMapping: {
+          'google.subject': 'assertion.repository_id',
+          'attribute.repository_id': 'assertion.repository_id',
+          'attribute.ref': 'assertion.ref',
+        },
+      },
+      /certified four mappings|attribute.repository_owner_id/,
+    ],
     [
       'weakened branch condition',
       { attributeCondition: "assertion.repository_id == '1087507601'" },
@@ -381,6 +387,7 @@ describe('reader trust: workflow boundary', () => {
     expect(wf).toMatch(/does not depend on GitHub.*sub/i);
   });
 });
+
 describe('reader trust: owner runbook', () => {
   const doc = read('docs/security/p0-07-firebase-storage-certification.md');
   const s9 = doc.slice(doc.indexOf('## 9.'), doc.indexOf('## 10.'));
