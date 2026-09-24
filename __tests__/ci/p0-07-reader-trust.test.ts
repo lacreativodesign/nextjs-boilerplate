@@ -329,10 +329,7 @@ describe('reader trust: workflow boundary', () => {
     expect(wf).toMatch(/does not depend on GitHub.*sub/i);
   });
 });
-describe('reader trust: the owner runbook', () => {
-  const doc = read('docs/security/p0-07-firebase-storage-certification.md');
-  const s9 = doc.slice(doc.indexOf('## 9.'), doc.indexOf('## 10.'));
-  const commands = [...s9.matchAll(/```bash\n([\s\Sdescribe('reader trust: owner runbook', () => {
+describe('reader trust: owner runbook', () => {
   const doc = read('docs/security/p0-07-firebase-storage-certification.md');
   const s9 = doc.slice(doc.indexOf('## 9.'), doc.indexOf('## 10.'));
   const commands = [...s9.matchAll(/```bash\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
