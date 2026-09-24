@@ -89,12 +89,9 @@ describe('reader trust: the dedicated immutable-ID provider', () => {
 });
 
 describe('reader trust: evaluatePool', () => {
-  it(
-    'is safe only for the one dedicated provider with the certified immutable-ID mapping and condition',
-    () => {
-      expect(pool()).toEqual({ ok: true, reasons: [], member: MEMBER, pool: POOL });
-    },
-  );
+  it('is safe only for the one dedicated provider with the certified immutable-ID mapping and condition', () => {
+    expect(pool()).toEqual({ ok: true, reasons: [], member: MEMBER, pool: POOL });
+  });
 
   it.each([
     [
@@ -347,8 +344,7 @@ describe('reader trust: evaluateReaderPolicies (fact 3)', () => {
   });
 
   it('never echoes a member identity into its reasons', () => {
-    const secretish =
-      `principalSet://iam.googleapis.com/${POOL}/attribute.repository/someone-else/private-repo`;
+    const secretish = `principalSet://iam.googleapis.com/${POOL}/attribute.repository/someone-else/private-repo`;
     const result = t.evaluateReaderPolicies({
       member: MEMBER,
       serviceAccountPolicy: saPolicy([
@@ -395,9 +391,7 @@ describe('reader trust: workflow boundary', () => {
 describe('reader trust: owner runbook', () => {
   const doc = read('docs/security/p0-07-firebase-storage-certification.md');
   const s9 = doc.slice(doc.indexOf('## 9.'), doc.indexOf('## 10.'));
-  const commands = [...s9.matchAll(/```bash\n([\s\S]*?)```/g)]
-    .map((m) => m[1])
-    .join('\n');
+  const commands = [...s9.matchAll(/```bash\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
 
   it('creates one dedicated provider using immutable GitHub IDs plus main ref', () => {
     expect(commands).toMatch(/workload-identity-pools create p007-storage-cert/);
