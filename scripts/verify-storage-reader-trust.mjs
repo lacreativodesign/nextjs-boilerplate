@@ -14,15 +14,10 @@
  *
  * Two principalSet bindings (one per attribute) do not fix it: IAM ORs bindings, so
  * `attribute.repository/X` + `attribute.ref/refs/heads/main` admits X on any branch AND
- * main of any repository the provider admits. What proves BOTH facts at once is a single
- * principal that encodes both: the exact subject
- *
- *   principal://iam.googleapis.com/projects/<N>/locations/global/workloadIdentityPools/<POOL>
- *     /subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main
- *
- * which is GitHub's default OIDC `sub` for a push/schedule/dispatch job on main of this
- * repository (a job with an `environment:` or a pull_request event gets a different `sub`
- * and is refused by IAM itself).
+ * main of any repository the provider admits. P0-07 therefore uses a DEDICATED pool with
+ * exactly one GitHub provider. `google.subject` is the immutable numeric repository ID, while
+ * the provider condition independently requires the immutable owner ID and `refs/heads/main`.
+ * GitHub's legacy-vs-immutable default `sub` format is irrelevant to this trust boundary.
  *
  * That binding is only as sound as three facts, and this script checks each from the
  * owner's read-only inspection output instead of assuming it:
@@ -30,32 +25,36 @@
  *   1. SUBJECTS ARE POOL-SCOPED. A `principal://…/subject/S` member matches S from ANY
  *      provider in the pool. So every provider in the pool — disabled ones included, since
  *      re-enabling is one call — must be GitHub-issued
- *      (`https://token.actions.githubusercontent.com`) and map `google.subject` to exactly
- *      `assertion.sub` — otherwise another issuer, or a CEL mapping, could present the same
- *      string.
- *   2. GITHUB MUST USE THE DEFAULT SUBJECT TEMPLATE for this repository
- *      (`use_default: true`); a customised template changes what `sub` contains.
+ *      (`https://token.actions.githubusercontent.com`) and map `google.subject` to the immutable GitHub repository ID. The dedicated provider must also
+ *      enforce that repository ID, the immutable owner ID and `refs/heads/main` before token
+ *      exchange. This deliberately does not depend on GitHub's mutable/immutable `sub` format.
+ *   2. THE POOL IS DEDICATED: exactly one provider (`github-main`) exists in
+ *      `p007-storage-cert`; no shared-provider subject collision can appear later unnoticed.
  *   3. NOTHING ELSE MAY IMPERSONATE THE READER: its own IAM policy must hold exactly one
  *      binding, workloadIdentityUser → that one principal; and no project-level binding may
  *      grant a FEDERATED principal the right to act as every service account.
  *
  * Any failed check is STOP: do not bind, do not widen, and never "fix" it by editing the
- * shared provider other production workflows depend on. The safe alternative (a dedicated
- * pool for this reader) is in docs/security/p0-07-firebase-storage-certification.md §9.
+ * dedicated provider to weaken its repository/owner/ref boundary. The owner commands are in
+ * docs/security/p0-07-firebase-storage-certification.md §9.
  *
  * READ-ONLY: this script makes no network call and changes nothing. It reads JSON files the
- * owner produced with `gcloud … describe/list/get-iam-policy` and `gh api … oidc`.
+ * owner produced with `gcloud … list/get-iam-policy` and `gh api repos/...`.
  */
 
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export const REPOSITORY = 'lacreativodesign/nextjs-boilerplate';
+export const REPOSITORY_ID = '1087507601';
+export const REPOSITORY_OWNER_ID = '240409176';
 export const MAIN_REF = 'refs/heads/main';
 export const GITHUB_ISSUER = 'https://token.actions.githubusercontent.com';
+export const WIF_POOL_ID = 'p007-storage-cert';
+export const WIF_PROVIDER_ID = 'github-main';
 export const READER_SA = 'storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com';
-/** GitHub's default `sub` for a non-environment job on main of this repository. */
-export const EXPECTED_SUBJECT = `repo:${REPOSITORY}:ref:${MAIN_REF}`;
+export const EXPECTED_PROVIDER_CONDITION =
+  "assertion.repository_id == '1087507601' && assertion.repository_owner_id == '240409176' && assertion.ref == 'refs/heads/main'";
 
 const PROVIDER_RE =
   /^projects\/(\d+)\/locations\/global\/workloadIdentityPools\/([a-z0-9-]+)\/providers\/([a-z0-9-]+)$/;
@@ -71,15 +70,15 @@ export function poolResource({ projectNumber, poolId }) {
   return `projects/${projectNumber}/locations/global/workloadIdentityPools/${poolId}`;
 }
 
-/** The one member the reader may be bound to. */
+/** The one member the reader may be bound to. The main-ref restriction is provider-side. */
 export function exactSubjectMember(parsed) {
-  return `principal://iam.googleapis.com/${poolResource(parsed)}/subject/${EXPECTED_SUBJECT}`;
+  return 'principal://iam.googleapis.com/' + poolResource(parsed) + '/subject/' + REPOSITORY_ID;
 }
 
 /**
  * Checks facts 1 and 2. Returns `{ ok, reasons, member }`; `member` only when ok.
  */
-export function evaluatePool({ workflowProvider, providers, oidcSubjectCustomization }) {
+export function evaluatePool({ workflowProvider, providers, repositoryMetadata }) {
   const reasons = [];
   const parsed = parseProvider(workflowProvider);
   if (!parsed) {
@@ -91,51 +90,57 @@ export function evaluatePool({ workflowProvider, providers, oidcSubjectCustomiza
       ],
     };
   }
+
   const pool = poolResource(parsed);
-  const list = Array.isArray(providers) ? providers : [];
-  if (list.length === 0) reasons.push(`No providers were listed for pool ${pool}.`);
-
-  const names = list.map((p) => String(p?.name ?? ''));
-  if (!names.includes(String(workflowProvider).trim())) {
-    reasons.push('The workflow provider does not appear in the listed pool.');
-  }
-  for (const provider of list) {
-    const name = String(provider?.name ?? '(unnamed)');
-    if (!name.startsWith(`${pool}/providers/`)) {
-      reasons.push(`${name} is not in pool ${pool}; list exactly one pool.`);
-      continue;
-    }
-    // Disabled providers are judged too: re-enabling one is a single call, and the
-    // exact-subject binding would silently start trusting it again.
-    if (!provider?.oidc) {
-      reasons.push(`${name} is not an OIDC provider (AWS/SAML subjects share the pool namespace).`);
-      continue;
-    }
-    if (String(provider.oidc.issuerUri ?? '') !== GITHUB_ISSUER) {
-      reasons.push(`${name} trusts issuer ${provider.oidc.issuerUri}, not GitHub Actions.`);
-    }
-    const subjectMapping = provider?.attributeMapping?.['google.subject'];
-    if (subjectMapping !== 'assertion.sub') {
-      reasons.push(
-        `${name} maps google.subject to ${JSON.stringify(subjectMapping ?? null)}, not ` +
-          'exactly "assertion.sub", so a subject string would not prove repository + ref.',
-      );
-    }
-  }
-
-  const custom = oidcSubjectCustomization ?? null;
-  if (!custom || custom.use_default !== true) {
+  if (parsed.poolId !== WIF_POOL_ID || parsed.providerId !== WIF_PROVIDER_ID) {
     reasons.push(
-      "GitHub does not report use_default: true for this repository's OIDC subject template " +
-        `(saw ${JSON.stringify(custom)}); the job's sub would not be "${EXPECTED_SUBJECT}".`,
+      'Storage certification must use the dedicated ' + WIF_POOL_ID + '/' + WIF_PROVIDER_ID +
+        ' provider, not a shared provider.',
     );
   }
+
+  const list = Array.isArray(providers) ? providers : [];
+  if (list.length !== 1) {
+    reasons.push('The dedicated pool must contain exactly one provider; observed ' + list.length + '.');
+  }
+  const provider = list[0];
+  if (!provider || String(provider.name ?? '') !== String(workflowProvider).trim()) {
+    reasons.push('The one provider in the dedicated pool must be the workflow provider.');
+  } else {
+    if (!provider.oidc || String(provider.oidc.issuerUri ?? '').replace(/\/$/, '') !== GITHUB_ISSUER) {
+      reasons.push('The dedicated provider must trust only GitHub Actions OIDC.');
+    }
+    const mapping = provider.attributeMapping ?? {};
+    const expected = {
+      'google.subject': 'assertion.repository_id',
+      'attribute.repository_id': 'assertion.repository_id',
+      'attribute.repository_owner_id': 'assertion.repository_owner_id',
+      'attribute.ref': 'assertion.ref',
+    };
+    const keys = Object.keys(mapping).sort();
+    const expectedKeys = Object.keys(expected).sort();
+    if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) {
+      reasons.push('The dedicated provider attribute mapping must contain exactly the certified four mappings.');
+    }
+    for (const [key, value] of Object.entries(expected)) {
+      if (mapping[key] !== value) reasons.push(key + ' must map exactly to ' + value + '.');
+    }
+    const normalizedCondition = String(provider.attributeCondition ?? '').replace(/\s+/g, ' ').trim();
+    const expectedCondition = EXPECTED_PROVIDER_CONDITION.replace(/\s+/g, ' ').trim();
+    if (normalizedCondition !== expectedCondition) {
+      reasons.push('The provider condition must exactly require the immutable repository ID, owner ID and main ref.');
+    }
+  }
+
+  const repo = repositoryMetadata ?? {};
+  if (String(repo.full_name ?? '') !== REPOSITORY) reasons.push('GitHub repository full_name does not match the certified repository.');
+  if (String(repo.id ?? '') !== REPOSITORY_ID) reasons.push('GitHub repository ID does not match the certified immutable repository ID.');
+  if (String(repo.owner?.id ?? '') !== REPOSITORY_OWNER_ID) reasons.push('GitHub owner ID does not match the certified immutable owner ID.');
 
   return reasons.length
     ? { ok: false, reasons }
     : { ok: true, reasons: [], member: exactSubjectMember(parsed), pool };
 }
-
 const FEDERATED = /^principal(Set)?:\/\//;
 /** Project-level roles that let a principal act as EVERY service account in the project. */
 const IMPERSONATION_ROLES = new Set([
@@ -226,11 +231,11 @@ if (invokedDirectly) {
     };
     const workflowProvider = arg('workflow-provider');
     const providersFile = arg('providers');
-    const oidcFile = arg('oidc-sub');
-    if (!workflowProvider || !providersFile || !oidcFile) {
+    const repoFile = arg('repo');
+    if (!workflowProvider || !providersFile || !repoFile) {
       console.error(
         'Usage: node scripts/verify-storage-reader-trust.mjs --workflow-provider=<resource> ' +
-          '--providers=providers.json --oidc-sub=oidc-sub.json ' +
+          '--providers=providers.json --repo=repo.json ' +
           '[--sa-policy=reader-policy.json --project-policy=project-policy.json]',
       );
       process.exitCode = 2;
@@ -239,12 +244,12 @@ if (invokedDirectly) {
     const pool = evaluatePool({
       workflowProvider,
       providers: readJsonFile(providersFile),
-      oidcSubjectCustomization: readJsonFile(oidcFile),
+      repositoryMetadata: readJsonFile(repoFile),
     });
     if (!pool.ok) {
       console.log('STOP — do not bind the reader. Reasons:');
       for (const reason of pool.reasons) console.log(`  - ${reason}`);
-      console.log('Do not edit the shared provider. See §9 "If the evaluator says STOP".');
+      console.log('Do not weaken or reuse another provider. Reconcile the dedicated provider with §9.');
       process.exitCode = 1;
       return;
     }
@@ -273,7 +278,7 @@ if (invokedDirectly) {
       return;
     }
     console.log(
-      `VERIFIED — ${READER_SA} is assumable only as ${EXPECTED_SUBJECT} through pool ${pool.pool}.`,
+      `VERIFIED — ${READER_SA} is restricted to repository ${REPOSITORY_ID}, owner ${REPOSITORY_OWNER_ID}, refs/heads/main through ${pool.pool}.`,
     );
   };
   try {
