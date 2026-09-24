@@ -760,18 +760,20 @@ describe('the live certification workflow is read-only and fails closed', () => 
 
   it('uses keyless federation: no JSON key, no stored Google secret', () => {
     expect(commands).toContain(
-      'workload_identity_provider: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}',
+      'workload_identity_provider: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER }}',
     );
     expect(commands).not.toMatch(/credentials_json|GOOGLE_APPLICATION_CREDENTIALS|secrets\./);
   });
 
-  it('refuses any ref but main, and a missing reader variable, before minting a credential', () => {
+  it('refuses any ref but main, and missing dedicated provider/reader variables, before minting a credential', () => {
     const guard = commands.indexOf('Refuse anything but main');
     const auth = commands.indexOf('google-github-actions/auth');
     expect(guard).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(auth);
     expect(commands).toContain('if [ "$REF" != "refs/heads/main" ]; then');
+    expect(commands).toContain('if [ -z "$WIF_PROVIDER" ]; then');
     expect(commands).toContain('if [ -z "$READER_SA" ]; then');
+    expect(commands).not.toContain('GCP_WORKLOAD_IDENTITY_PROVIDER');
   });
 
   it('never mutates the bucket or runs the remediation tool', () => {
