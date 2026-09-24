@@ -82,29 +82,53 @@ export function hasToken(item) {
 const PUBLIC_ENTITIES = new Set(['allUsers', 'allAuthenticatedUsers']);
 const isPublicMember = (member) => PUBLIC_ENTITIES.has(String(member));
 
+/**
+ * P0-07: an ACL is only evidence when Cloud Storage actually RETURNED it.
+ *
+ * Objects.list with `projection=full` includes each object's `acl` only for a caller that
+ * holds `storage.objects.getIamPolicy`; without it the response is a partial projection
+ * with the field simply absent. An absent ACL is UNKNOWN, never an empty one — treating
+ * `item.acl ?? []` as "no public entry" would certify objects nobody looked at. This
+ * returns `null` for "not observed" so every caller has to handle that case explicitly.
+ */
+export function observedAcl(item) {
+  return Array.isArray(item?.acl) ? item.acl : null;
+}
+
 /** Counts per category. Receives listing pages; keeps booleans and counts, nothing else. */
 export function tallyObjects(pages, { checkObjectAcl = false } = {}) {
   const byCategory = {};
   let total = 0;
   let tokenized = 0;
   let publicAcl = 0;
+  let aclUnobserved = 0;
   for (const page of pages) {
     for (const item of page?.items ?? []) {
       const category = classifyObject(item?.name);
-      const row = (byCategory[category] ??= { objects: 0, tokenized: 0, publicAcl: 0 });
+      const row = (byCategory[category] ??= {
+        objects: 0,
+        tokenized: 0,
+        publicAcl: 0,
+        aclUnobserved: 0,
+      });
       row.objects += 1;
       total += 1;
       if (hasToken(item)) {
         row.tokenized += 1;
         tokenized += 1;
       }
-      if (checkObjectAcl && (item?.acl ?? []).some((entry) => isPublicMember(entry?.entity))) {
+      if (!checkObjectAcl) continue;
+      const acl = observedAcl(item);
+      if (acl === null) {
+        row.aclUnobserved += 1;
+        aclUnobserved += 1;
+      } else if (acl.some((entry) => isPublicMember(entry?.entity))) {
         row.publicAcl += 1;
         publicAcl += 1;
       }
     }
   }
-  return { total, tokenized, publicAcl, byCategory };
+  return { total, tokenized, publicAcl, aclUnobserved, byCategory };
 }
 
 const control = (id, status, detail, observed = undefined) => ({
@@ -234,29 +258,39 @@ export function evaluateBucket({ bucketRead, iamRead, projectRead }) {
           ),
     );
 
-    const bucketAcl = Array.isArray(b.acl) ? b.acl : [];
-    const defaultAcl = Array.isArray(b.defaultObjectAcl) ? b.defaultObjectAcl : [];
+    // Under uniform access ACLs cannot grant anything, so they are not evidence either way.
+    // Without it, the bucket ACL and default object ACL are only served with
+    // `projection=full` to a caller holding storage.buckets.getIamPolicy; an absent field
+    // is a partial projection — UNKNOWN — and fails, exactly like an absent object ACL.
+    const aclControl = (id, value, publicDetail, cleanDetail) => {
+      if (ubla) return control(id, 'PASS', 'Not applicable under uniform access.');
+      if (!Array.isArray(value)) {
+        return control(
+          id,
+          'FAIL',
+          'Unobservable: uniform access is off and the bucket metadata carried no ACL field ' +
+            '(partial projection). Grant the reader storage.buckets.getIamPolicy (read-only).',
+        );
+      }
+      return value.some((e) => isPublicMember(e?.entity))
+        ? control(id, 'FAIL', publicDetail)
+        : control(id, 'PASS', cleanDetail);
+    };
     results.push(
-      bucketAcl.some((e) => isPublicMember(e?.entity))
-        ? control('acl.no_public_bucket_acl', 'FAIL', 'The bucket ACL grants a public entity.')
-        : control(
-            'acl.no_public_bucket_acl',
-            'PASS',
-            ubla ? 'Not applicable under uniform access.' : 'No public entity in the bucket ACL.',
-          ),
+      aclControl(
+        'acl.no_public_bucket_acl',
+        b.acl,
+        'The bucket ACL grants a public entity.',
+        'No public entity in the bucket ACL.',
+      ),
     );
     results.push(
-      defaultAcl.some((e) => isPublicMember(e?.entity))
-        ? control(
-            'acl.no_public_default_object_acl',
-            'FAIL',
-            'The default object ACL makes NEW objects public.',
-          )
-        : control(
-            'acl.no_public_default_object_acl',
-            'PASS',
-            ubla ? 'Not applicable under uniform access.' : 'Default object ACL is not public.',
-          ),
+      aclControl(
+        'acl.no_public_default_object_acl',
+        b.defaultObjectAcl,
+        'The default object ACL makes NEW objects public.',
+        'Default object ACL is not public.',
+      ),
     );
 
     results.push(evaluateCors(b.cors));
@@ -449,6 +483,7 @@ export function evaluateInventory(listing, { objectAclChecked }) {
   const outsideTokens = count(['outside-tenants'], 'tokenized');
   const brandingTokens = count(PUBLIC_BRANDING_CATEGORIES, 'tokenized');
   const publicObjects = listing.tally.publicAcl;
+  const unobservedAcls = listing.tally.aclUnobserved ?? 0;
 
   return [
     protectedTokens
@@ -492,21 +527,47 @@ export function evaluateInventory(listing, { objectAclChecked }) {
           'No logo object carries a download token.',
           perCategory(PUBLIC_BRANDING_CATEGORIES),
         ),
-    !objectAclChecked
-      ? control(
-          'acl.no_public_object_acl',
-          'PASS',
-          'Uniform bucket-level access is on, so object ACLs cannot grant access.',
-        )
-      : publicObjects
-        ? control(
-            'acl.no_public_object_acl',
-            'FAIL',
-            `${publicObjects} object(s) have a public ACL entry.`,
-            publicObjects,
-          )
-        : control('acl.no_public_object_acl', 'PASS', 'No object ACL grants a public entity.', 0),
+    objectAclControl({ objectAclChecked, publicObjects, unobservedAcls }),
   ];
+}
+
+/**
+ * `acl.no_public_object_acl`. PASS requires either uniform access (ACLs grant nothing) or a
+ * POSITIVELY OBSERVED ACL on every listed object. A public entry fails; an object whose
+ * ACL was not returned fails as unobservable, even if every other object is clean.
+ */
+export function objectAclControl({ objectAclChecked, publicObjects, unobservedAcls }) {
+  if (!objectAclChecked) {
+    return control(
+      'acl.no_public_object_acl',
+      'PASS',
+      'Uniform bucket-level access is on, so object ACLs cannot grant access.',
+    );
+  }
+  if (publicObjects) {
+    return control(
+      'acl.no_public_object_acl',
+      'FAIL',
+      `${publicObjects} object(s) have a public ACL entry.`,
+      publicObjects,
+    );
+  }
+  if (unobservedAcls) {
+    return control(
+      'acl.no_public_object_acl',
+      'FAIL',
+      `Unobservable: ${unobservedAcls} listed object(s) came back without an ACL (partial ` +
+        'projection), so their exposure is unknown. Grant the reader ' +
+        'storage.objects.getIamPolicy (read-only).',
+      { unobservedAcls },
+    );
+  }
+  return control(
+    'acl.no_public_object_acl',
+    'PASS',
+    'Every listed object ACL was observed and none grants a public entity.',
+    0,
+  );
 }
 
 export function verdict(results) {
@@ -525,6 +586,8 @@ export function verdict(results) {
 
 const PERMISSION_HINTS = [
   [/\/b\/[^/]+\/iam$/, 'storage.buckets.getIamPolicy'],
+  // A full-projection listing (uniform access off) also needs the object ACL read.
+  [/\/b\/[^/]+\/o\?.*projection=full/, 'storage.objects.list + storage.objects.getIamPolicy'],
   [/\/b\/[^/]+\/o(\?|$)/, 'storage.objects.list'],
   [/\/b\/[^/]+(\?|$)/, 'storage.buckets.get'],
   [/cloudresourcemanager/, 'resourcemanager.projects.get'],
@@ -578,7 +641,14 @@ export async function listAllObjects(bucket, accessToken, { withAcl }, fetchImpl
       items: (read.data?.items ?? []).map((item) => ({
         name: item?.name,
         metadata: hasToken(item) ? { [TOKEN_KEY]: 'present' } : {},
-        acl: (item?.acl ?? []).map((entry) => ({ entity: entry?.entity })),
+        // Absent stays absent: `undefined` is "not observed", never an empty ACL. Only the
+        // public/non-public fact survives — entity names (which can be email addresses)
+        // are reduced to the two public sentinels or a placeholder.
+        acl: Array.isArray(item?.acl)
+          ? item.acl.map((entry) => ({
+              entity: isPublicMember(entry?.entity) ? entry.entity : 'non-public',
+            }))
+          : undefined,
       })),
     });
     pageToken = read.data?.nextPageToken ?? '';

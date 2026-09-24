@@ -127,18 +127,6 @@ describe('verifier: evaluateBucket', () => {
       'iam.uniform_bucket_level_access',
       'OWNER_ACTION',
     ],
-    [
-      'a public bucket ACL',
-      { acl: [{ entity: 'allUsers', role: 'READER' }] },
-      'acl.no_public_bucket_acl',
-      'FAIL',
-    ],
-    [
-      'a public default object ACL',
-      { defaultObjectAcl: [{ entity: 'allAuthenticatedUsers' }] },
-      'acl.no_public_default_object_acl',
-      'FAIL',
-    ],
     ['wildcard CORS', { cors: [{ origin: ['*'], method: ['GET'] }] }, 'cors.minimal', 'FAIL'],
     [
       'unneeded CORS',
@@ -341,6 +329,240 @@ describe('verifier: certify() against a fake Google', () => {
   });
 });
 
+/**
+ * P0-07 Blocker 2 — ACLs are evidence only when Cloud Storage RETURNED them.
+ *
+ * With uniform bucket-level access OFF, object ACLs can grant access, and Objects.list only
+ * includes them (projection=full) for a caller holding storage.objects.getIamPolicy. A
+ * listing without that permission is a partial projection: the `acl` field is simply
+ * absent. Absent is UNKNOWN. These cases pin that the verifier never turns "not shown"
+ * into "not public".
+ */
+describe('verifier: ACL observability (UBLA off must be positively observed)', () => {
+  const ublaOff = () => ({
+    ...goodBucket(),
+    iamConfiguration: {
+      uniformBucketLevelAccess: { enabled: false },
+      publicAccessPrevention: 'enforced',
+    },
+    acl: [{ entity: 'project-owners-123', role: 'OWNER' }],
+    defaultObjectAcl: [{ entity: 'project-owners-123', role: 'OWNER' }],
+  });
+  const EMAIL_ENTITY = 'user-jane.doe@customer.example';
+
+  async function run(
+    bucket: unknown,
+    items: unknown[],
+    calls: Array<{ url: string; method: string }> = [],
+  ) {
+    const report = await v.certify({
+      accessToken: 'tok',
+      fetchImpl: fakeFetch(
+        liveRoutes({
+          '/b/la-creativo-erp.firebasestorage.app?projection=full': bucket,
+          '/b/la-creativo-erp.firebasestorage.app/o?': { items },
+          '/b/la-creativo-erp.firebasestorage.app/iam': { bindings: [] },
+        }),
+        calls,
+      ) as never,
+    });
+    const status = (id: string) => report.results.find((c) => c.id === id);
+    return { report, status };
+  }
+
+  it('UBLA on: object ACL inspection is unnecessary — no ACL projection is requested', async () => {
+    const calls: Array<{ url: string; method: string }> = [];
+    const { status } = await run(
+      goodBucket(),
+      // Even a listing with no ACL field at all is fine: ACLs cannot grant access here.
+      [{ name: 'tenants/t/projects/p/x', metadata: {} }],
+      calls,
+    );
+    expect(status('acl.no_public_object_acl')?.status).toBe('PASS');
+    expect(status('acl.no_public_object_acl')?.detail).toMatch(/Uniform bucket-level access is on/);
+    const listing = calls.find((c) => c.url.includes('/o?'))!;
+    expect(listing.url).not.toContain('projection=full');
+  });
+
+  it('UBLA off: requests the full projection, and an observed non-public ACL passes', async () => {
+    const calls: Array<{ url: string; method: string }> = [];
+    const { status } = await run(
+      ublaOff(),
+      [
+        { name: 'tenants/t/projects/p/x', metadata: {}, acl: [{ entity: 'project-owners-123' }] },
+        { name: 'tenants/t/projects/p/y', metadata: {}, acl: [] },
+      ],
+      calls,
+    );
+    expect(status('acl.no_public_object_acl')?.status).toBe('PASS');
+    expect(status('acl.no_public_object_acl')?.detail).toMatch(
+      /Every listed object ACL was observed/,
+    );
+    const listing = calls.find((c) => c.url.includes('/o?'))!;
+    expect(listing.url).toContain('projection=full');
+    expect(decodeURIComponent(listing.url)).toContain('acl(entity)');
+  });
+
+  it.each(['allUsers', 'allAuthenticatedUsers'])(
+    'UBLA off: an observed %s ACL fails',
+    async (entity) => {
+      const { status } = await run(ublaOff(), [
+        { name: 'tenants/t/projects/p/x', metadata: {}, acl: [{ entity }] },
+      ]);
+      expect(status('acl.no_public_object_acl')?.status).toBe('FAIL');
+      expect(status('acl.no_public_object_acl')?.detail).toMatch(/public ACL entry/);
+    },
+  );
+
+  it('UBLA off: a partial projection (ACL omitted) is FAIL/UNOBSERVABLE, never PASS', async () => {
+    const { status, report } = await run(ublaOff(), [
+      { name: 'tenants/t/projects/p/x', metadata: {} },
+      { name: 'tenants/t/projects/p/y', metadata: {} },
+    ]);
+    const control = status('acl.no_public_object_acl')!;
+    expect(control.status).toBe('FAIL');
+    expect(control.detail).toMatch(/^Unobservable: 2 listed object\(s\)/);
+    expect(control.detail).toContain('storage.objects.getIamPolicy');
+    expect(report.verdict.certified).toBe(false);
+  });
+
+  it('UBLA off: ONE object without an ACL fails the control even if the rest are clean', async () => {
+    const { status } = await run(ublaOff(), [
+      { name: 'tenants/t/projects/p/x', metadata: {}, acl: [{ entity: 'project-owners-123' }] },
+      { name: 'tenants/t/projects/p/y', metadata: {} },
+    ]);
+    expect(status('acl.no_public_object_acl')?.status).toBe('FAIL');
+    expect(status('acl.no_public_object_acl')?.detail).toMatch(/^Unobservable: 1 listed/);
+  });
+
+  it('UBLA off: a public entry still wins over unobserved ones (the worse finding is reported)', async () => {
+    const { status } = await run(ublaOff(), [
+      { name: 'tenants/t/projects/p/x', metadata: {}, acl: [{ entity: 'allUsers' }] },
+      { name: 'tenants/t/projects/p/y', metadata: {} },
+    ]);
+    expect(status('acl.no_public_object_acl')?.detail).toMatch(/public ACL entry/);
+  });
+
+  it('UBLA off: bucket and default-object ACLs omitted from the bucket read are FAIL, not PASS', async () => {
+    const bucket = ublaOff() as Record<string, unknown>;
+    delete bucket.acl;
+    delete bucket.defaultObjectAcl;
+    const { status } = await run(bucket, [
+      { name: 'tenants/t/projects/p/x', metadata: {}, acl: [{ entity: 'project-owners-123' }] },
+    ]);
+    for (const id of ['acl.no_public_bucket_acl', 'acl.no_public_default_object_acl']) {
+      expect(status(id)?.status).toBe('FAIL');
+      expect(status(id)?.detail).toMatch(/^Unobservable/);
+      expect(status(id)?.detail).toContain('storage.buckets.getIamPolicy');
+    }
+  });
+
+  it('UBLA off: observed public bucket / default-object ACLs fail', async () => {
+    const { status } = await run(
+      {
+        ...ublaOff(),
+        acl: [{ entity: 'allUsers', role: 'READER' }],
+        defaultObjectAcl: [{ entity: 'allAuthenticatedUsers', role: 'READER' }],
+      },
+      [{ name: 'tenants/t/projects/p/x', metadata: {}, acl: [] }],
+    );
+    expect(status('acl.no_public_bucket_acl')?.status).toBe('FAIL');
+    expect(status('acl.no_public_default_object_acl')?.status).toBe('FAIL');
+  });
+
+  it('UBLA on: bucket ACL fields are not applicable (they cannot grant access)', async () => {
+    const { status } = await run(
+      {
+        ...goodBucket(),
+        acl: [{ entity: 'allUsers' }],
+        defaultObjectAcl: [{ entity: 'allUsers' }],
+      },
+      [{ name: 'tenants/t/projects/p/x', metadata: {} }],
+    );
+    expect(status('acl.no_public_bucket_acl')?.status).toBe('PASS');
+    expect(status('acl.no_public_bucket_acl')?.detail).toMatch(
+      /Not applicable under uniform access/,
+    );
+  });
+
+  it('UBLA off: a listing refused mid-pagination fails, naming both read permissions', async () => {
+    let page = 0;
+    const fetchImpl = async (url: string) => {
+      if (url.includes('/o?')) {
+        page += 1;
+        return page === 1
+          ? {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                items: [{ name: 'tenants/t/projects/p/x', metadata: {}, acl: [] }],
+                nextPageToken: 'p2',
+              }),
+            }
+          : { ok: false, status: 403, json: async () => ({}) };
+      }
+      return fakeFetch(
+        liveRoutes({ '/b/la-creativo-erp.firebasestorage.app?projection=full': ublaOff() }),
+        [],
+      )(url);
+    };
+    const report = await v.certify({ accessToken: 'tok', fetchImpl: fetchImpl as never });
+    const acl = report.results.find((c) => c.id === 'acl.no_public_object_acl')!;
+    expect(acl.status).toBe('FAIL');
+    expect(acl.detail).toContain('storage.objects.getIamPolicy');
+    expect(report.objectCount).toBeNull();
+  });
+
+  it('never leaks object names, ACL entities (emails) or token values into the report', async () => {
+    const accessToken = 'ya29.ACCESS-TOKEN-must-never-print';
+    const report = await v.certify({
+      accessToken,
+      fetchImpl: fakeFetch(
+        liveRoutes({
+          '/b/la-creativo-erp.firebasestorage.app?projection=full': ublaOff(),
+          '/b/la-creativo-erp.firebasestorage.app/o?': {
+            items: [
+              {
+                name: SECRET_NAME,
+                metadata: { firebaseStorageDownloadTokens: SECRET },
+                acl: [{ entity: EMAIL_ENTITY, email: 'jane.doe@customer.example' }],
+              },
+              { name: 'tenants/t1/projects/p/secret-merger-plan.pdf', metadata: {} },
+            ],
+          },
+        }),
+        [],
+      ) as never,
+    });
+    for (const out of [JSON.stringify(report), v.formatReport(report)]) {
+      expect(out).not.toContain(SECRET);
+      expect(out).not.toContain('jane');
+      expect(out).not.toContain('customer.example');
+      expect(out).not.toContain('secret-merger-plan');
+      expect(out).not.toContain(accessToken);
+    }
+  });
+});
+
+describe('verifier: objectAclControl truth table', () => {
+  it.each([
+    [{ objectAclChecked: false, publicObjects: 0, unobservedAcls: 5 }, 'PASS'],
+    [{ objectAclChecked: true, publicObjects: 0, unobservedAcls: 0 }, 'PASS'],
+    [{ objectAclChecked: true, publicObjects: 1, unobservedAcls: 0 }, 'FAIL'],
+    [{ objectAclChecked: true, publicObjects: 0, unobservedAcls: 1 }, 'FAIL'],
+    [{ objectAclChecked: true, publicObjects: 2, unobservedAcls: 3 }, 'FAIL'],
+  ])('%j -> %s', (input, status) => {
+    expect(v.objectAclControl(input).status).toBe(status);
+  });
+
+  it('observedAcl distinguishes "not returned" from "returned empty"', () => {
+    expect(v.observedAcl({})).toBeNull();
+    expect(v.observedAcl({ acl: undefined })).toBeNull();
+    expect(v.observedAcl({ acl: null })).toBeNull();
+    expect(v.observedAcl({ acl: [] })).toEqual([]);
+  });
+});
+
 describe('verifier: object classification', () => {
   it.each([
     ['tenants/t/projects/p/x', 'projects'],
@@ -538,7 +760,7 @@ describe('the live certification workflow is read-only and fails closed', () => 
 
   it('uses keyless federation: no JSON key, no stored Google secret', () => {
     expect(commands).toContain(
-      'workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}',
+      'workload_identity_provider: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}',
     );
     expect(commands).not.toMatch(/credentials_json|GOOGLE_APPLICATION_CREDENTIALS|secrets\./);
   });

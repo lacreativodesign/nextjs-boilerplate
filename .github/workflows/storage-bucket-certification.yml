@@ -10,10 +10,11 @@ name: Storage Bucket Certification
 # SAFETY PROPERTIES, enforced below rather than documented
 #
 #   - Read-only by identity. It impersonates a DEDICATED reader service account
-#     (vars.GCP_STORAGE_CERT_READER_SA) whose custom role holds only get/list/getIamPolicy
-#     permissions. It never names the rules deployer or the index identities, so no
-#     existing identity is broadened, and it could not mutate the bucket if this file
-#     were edited to try.
+#     (vars.GCP_STORAGE_CERT_READER_SA) whose custom roles hold only get/list/getIamPolicy
+#     read permissions (storage.objects.getIamPolicy included, so object ACLs are
+#     positively observable when uniform access is off). It never names the rules
+#     deployer or the index identities, so no existing identity is broadened, and it
+#     could not mutate the bucket if this file were edited to try.
 #   - Read-only by construction. The verifier issues HTTP GET only; nothing here runs
 #     `gcloud storage ... update`, a metadata PATCH, or the remediation tool.
 #     __tests__/ci/p0-07-storage-certification.test.ts pins all of this.
@@ -24,10 +25,21 @@ name: Storage Bucket Certification
 #     job-scoped, masked, and handed to the verifier through the environment only.
 #   - No secret output. The verifier prints per-category counts — never a token value,
 #     never an object name.
-#   - main only. The ref is checked before any credential is minted, matching the
-#     ref-restricted IAM binding the runbook asks the owner to create.
+#   - Repository AND main, enforced by GOOGLE — not by this file. The reader's only
+#     workloadIdentityUser member is the exact GitHub OIDC subject
+#       principal://iam.googleapis.com/<pool>/subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main
+#     so IAM itself refuses a token from any other repository, any other ref, a
+#     pull_request event, or a job running in an `environment:` (each has a different
+#     `sub`). That is why this job declares NO `environment:` — adding one changes the
+#     subject and the exchange is refused. The owner proves the binding is sound with
+#     scripts/verify-storage-reader-trust.mjs before it is created (see the doc, §9).
+#     A repository-only principalSet binding is NOT branch-restricted and must not be used.
+#   - The ref check in the first step is defence in depth only: it lives in
+#     branch-controlled workflow source, so it cannot be the trust boundary. It exists to
+#     fail fast with a clear message before a token exchange that IAM would refuse anyway.
 #
-# Owner setup (reader service account, custom role, WIF binding, repository variable):
+# Owner setup (inspect the pool, reader service account, custom roles, exact-subject WIF
+# binding, repository variable):
 # docs/security/p0-07-firebase-storage-certification.md.
 
 on:
@@ -63,16 +75,19 @@ jobs:
         shell: bash
         env:
           REF: ${{ github.ref }}
-          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          # A dedicated provider for this reader (the doc's fail-closed alternative when the
+          # shared pool cannot prove repository + ref) takes precedence when it is set.
+          WIF_PROVIDER: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           READER_SA: ${{ vars.GCP_STORAGE_CERT_READER_SA }}
         run: |
           set -euo pipefail
+          # Defence in depth only — IAM's exact-subject binding is the boundary (see header).
           if [ "$REF" != "refs/heads/main" ]; then
             echo "::error::Live storage certification runs from refs/heads/main only (ref is $REF)."
             exit 1
           fi
           if [ -z "$WIF_PROVIDER" ]; then
-            echo "::error::Repository variable GCP_WORKLOAD_IDENTITY_PROVIDER is not set."
+            echo "::error::Neither GCP_STORAGE_CERT_WIF_PROVIDER nor GCP_WORKLOAD_IDENTITY_PROVIDER is set."
             exit 1
           fi
           if [ -z "$READER_SA" ]; then
@@ -92,7 +107,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          workload_identity_provider: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_STORAGE_CERT_READER_SA }}
           token_format: access_token
           access_token_lifetime: 900s

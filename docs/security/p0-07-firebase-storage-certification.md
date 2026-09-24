@@ -18,22 +18,47 @@ stronger one than the evidence supports:
 
 ## 1. Current state at a glance
 
-| Control                                                                               | Status                                                                                   |
-| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Storage Security Rules published to the bucket                                        | **LIVE VERIFIED** (run 34862537234, §2) — for the ruleset _before_ this PR               |
-| This PR's ruleset (browser READ withdrawn)                                            | **CODE CERTIFIED**; **POST-MERGE**: publish via `Deploy Security Rules` (§8)             |
-| Protected downloads authorized + short-lived                                          | **CODE CERTIFIED** (§4)                                                                  |
-| No caller-supplied `downloadUrl` trusted                                              | **CODE CERTIFIED** (§4.2)                                                                |
-| Upload-time download token revoked at registration                                    | **CODE CERTIFIED** against a Cloud Storage double; **POST-MERGE** live confirmation (§3) |
-| Support screenshots super_admin-only, no token                                        | **CODE CERTIFIED** (§5)                                                                  |
-| Branding without tokens, canonical bucket                                             | **CODE CERTIFIED** (§6)                                                                  |
-| No persisted signed URL                                                               | **CODE CERTIFIED** (§7)                                                                  |
-| Canonical bucket everywhere                                                           | **CODE CERTIFIED** (§7.3)                                                                |
-| Bucket IAM / public access / UBLA / CORS / lifecycle / versioning / retention / holds | **UNVERIFIED** — nothing observed yet; **OWNER ACTION** (§9)                             |
-| Legacy tokenized objects in the live bucket                                           | **UNVERIFIED** — count unknown; **OWNER ACTION** then **POST-MERGE** (§10)               |
+| Control                                                                               | Status                                                                                     |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Storage Security Rules published to the bucket                                        | **LIVE VERIFIED** (run 34862537234, §2) — for the ruleset _before_ this PR                 |
+| This PR's ruleset (browser READ withdrawn)                                            | **CODE CERTIFIED**; **POST-MERGE**: publish via `Deploy Security Rules` (lifecycle step 6) |
+| Protected downloads authorized + short-lived                                          | **CODE CERTIFIED** (§4)                                                                    |
+| No caller-supplied `downloadUrl` trusted                                              | **CODE CERTIFIED** (§4.2)                                                                  |
+| Upload-time download token revoked at registration                                    | **CODE CERTIFIED** against a Cloud Storage double; **POST-MERGE** live confirmation (§3)   |
+| Support screenshots super_admin-only, no token                                        | **CODE CERTIFIED** (§5)                                                                    |
+| Branding without tokens, canonical bucket                                             | **CODE CERTIFIED** (§6)                                                                    |
+| No persisted signed URL                                                               | **CODE CERTIFIED** (§7)                                                                    |
+| Canonical bucket everywhere                                                           | **CODE CERTIFIED** (§7.3)                                                                  |
+| Object ACL evidence with uniform access off must be positively observed               | **CODE CERTIFIED** (§9) — a partial projection is FAIL / Unobservable, never PASS          |
+| Reader assumable only by this repository on `main`, enforced by Google IAM            | **CODE CERTIFIED** evaluator + runbook (§9); live binding **OWNER ACTION** (pre-merge)     |
+| Bucket IAM / public access / UBLA / CORS / lifecycle / versioning / retention / holds | **UNVERIFIED** — nothing observed yet; **POST-MERGE** (lifecycle step 7)                   |
+| Legacy tokenized objects in the live bucket                                           | **UNVERIFIED** — count unknown; **POST-MERGE** (§10, lifecycle steps 8–10)                 |
 
 No bucket setting was changed by this PR, and no live object or document was read or
-written in producing it.
+written in producing it. The Workload Identity pool and providers were **not** observed from
+here (no Google credential in this environment); §9's Step 1 is how the owner observes them.
+
+### Lifecycle — each gate needs the one before it, and none needs a later one
+
+| #   | Step                                                                                            | Who                | Status reached                     |
+| --- | ----------------------------------------------------------------------------------------------- | ------------------ | ---------------------------------- |
+| 1   | Corrected pull request, full local gate, exact-head CI green                                    | Claude Code        | —                                  |
+| 2   | Independent exact-head review of the code and this runbook                                      | ChatGPT            | **CODE CERTIFIED**                 |
+| 3   | §9 Steps 1–5: inspect the pool, create the reader, bind the exact subject, evaluator `VERIFIED` | Owner (read + IAM) | **PRE-MERGE OWNER SETUP COMPLETE** |
+| 4   | Independent review of the Step 1 / Step 4 evidence against the same head                        | ChatGPT            | **SAFE FOR MANUAL MERGE**          |
+| 5   | Manual merge                                                                                    | Mansoor Ahmed      | —                                  |
+| 6   | Approve `Deploy Security Rules` for this ruleset                                                | Owner              | —                                  |
+| 7   | `Storage Bucket Certification` runs on `main` (push trigger, or dispatch)                       | GitHub Actions     | —                                  |
+| 8   | §10 legacy-token audit (read-only)                                                              | Owner              | —                                  |
+| 9   | Separately approved §10 remediation apply — never from CI, never from a branch                  | Owner              | —                                  |
+| 10  | Re-run certification; register a fresh protected upload and confirm it is not tokenized         | Owner              | **POST-MERGE LIVE VERIFIED**       |
+| 11  | Independent review of the live evidence                                                         | ChatGPT            | **P0-07 CLOSED**                   |
+
+No step is circular. The reader needs no merged code: Step 3 uses only `gcloud`/`gh` read
+output and the evaluator, which runs from a checkout of this pull request's head. The
+certification workflow needs the reader (step 3) but runs only on `main`, so it is first
+exercised at step 7. The step-7 run is expected to be red on `tokens.*` until step 9, and it
+is not a merge gate.
 
 ---
 
@@ -295,21 +320,103 @@ prefix-scoped one for owner confirmation. **No lifecycle rule is deployed by thi
 | 16  | Legacy tokens on protected objects | `tokens.protected_prefixes`, `tokens.outside_tenants` | zero                                            |
 | 17  | Tokens on the public logo prefixes | `tokens.branding`                                     | zero (else owner action — hygiene)              |
 
+**ACL evidence must be positive.** With uniform bucket-level access **on**, ACLs cannot grant
+access and are not inspected. With it **off**, the bucket ACL, the default object ACL and every
+object ACL must actually be _returned_ (`projection=full`) before they count: an absent `acl`
+field is a partial projection — the caller lacked `storage.buckets.getIamPolicy` or
+`storage.objects.getIamPolicy` — and is reported **FAIL / Unobservable** naming that
+permission, never PASS. One object without an observed ACL fails the control. ACL entity
+names (which can be email addresses) are reduced to "public / non-public" as each page
+arrives and never reach the report.
+
 **Status: UNVERIFIED.** The reader identity does not exist yet, so nothing has been observed.
 
-### OWNER ACTION REQUIRED — create the read-only reader
+### The reader's trust boundary — repository AND `main`, enforced by Google
 
-No existing identity is broadened. Run as a project owner:
+The reader can list production object metadata, so who may become it has to be proven at
+the Google IAM / Workload Identity boundary, not asserted by workflow source:
+
+- A `principalSet://…/attribute.repository/lacreativodesign/nextjs-boilerplate` binding is
+  **repository scope only**. Any branch — including a feature branch whose copy of the
+  workflow drops the ref check — could federate as the reader. **It is not used.**
+- Two principalSet bindings (`attribute.repository/…` and `attribute.ref/refs/heads/main`)
+  do **not** combine: IAM ORs bindings, so that pair admits this repository on any branch
+  **or** `main` of any repository the provider admits.
+- The workflow's `github.ref == refs/heads/main` check is **defence in depth** only. It lives
+  in branch-controlled source.
+
+**Selected model — exact OIDC subject.** The reader's only `roles/iam.workloadIdentityUser`
+member is
+
+```text
+principal://iam.googleapis.com/projects/<POOL_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main
+```
+
+`repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main` is GitHub's default OIDC `sub`
+for a push / schedule / `workflow_dispatch` job on `main` of this repository. A token from any
+other repository, any other ref, a `pull_request` event, or a job declaring an `environment:`
+carries a different `sub`, and IAM itself refuses the exchange. (That is why the certification
+job declares no `environment:`; a test pins it.)
+
+That binding proves both properties **only if** three facts hold, so they are checked — from
+the owner's own read-only output — before anything is bound, by
+`scripts/verify-storage-reader-trust.mjs` (no network access, changes nothing):
+
+1. **Subjects are pool-scoped.** A `principal://…/subject/S` member matches `S` from _any_
+   provider in the pool, so every provider in the pool — disabled ones included, since
+   re-enabling one is a single call — must be GitHub-issued
+   (`https://token.actions.githubusercontent.com`) and map `google.subject` to exactly
+   `assertion.sub`. Anything else — another issuer, an AWS/SAML provider, a CEL mapping — is
+   STOP.
+2. **GitHub's subject template is the default** for this repository (`use_default: true`).
+3. **Nothing else can become the reader.** Its own IAM policy holds exactly one binding
+   (`workloadIdentityUser` → that one member, unconditional), and no project-level
+   `workloadIdentityUser` / `serviceAccountTokenCreator` / `serviceAccountOpenIdTokenCreator` /
+   `serviceAccountUser` binding grants a federated principal every service account.
+
+**The shared provider is not modified.** Other production workflows (rules deploy, index
+inventory and deploy) depend on it; nothing here adds a mapping or a condition to it.
+
+### OWNER ACTION REQUIRED — inspect, then create, then verify
+
+**Sequencing.** Run these only after the corrected pull request has passed independent
+exact-head certification. They are owner actions on live Google Cloud / GitHub configuration,
+separate from this pull request's source code. Every step before "Step 3" is read-only.
+
+**Step 1 — inspect (read-only).**
+
+```bash
+# Which provider will the workflow use? GCP_STORAGE_CERT_WIF_PROVIDER if set, otherwise the
+# shared GCP_WORKLOAD_IDENTITY_PROVIDER. Copy its full resource name:
+gh variable list --repo lacreativodesign/nextjs-boilerplate
+PROVIDER="projects/<POOL_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>"
+POOL_PROJECT_NUMBER="<POOL_PROJECT_NUMBER>"; POOL_ID="<POOL_ID>"
+
+# Every provider in that pool — subjects are pool-scoped, so one provider is not enough.
+gcloud iam workload-identity-pools providers list \
+  --project="$POOL_PROJECT_NUMBER" --location=global \
+  --workload-identity-pool="$POOL_ID" --format=json > providers.json
+
+# GitHub's OIDC subject template for this repository. Expect {"use_default": true}.
+gh api repos/lacreativodesign/nextjs-boilerplate/actions/oidc/customization/sub > oidc-sub.json
+
+# Decide. Prints either the ONE binding to create, or STOP with the reasons.
+node scripts/verify-storage-reader-trust.mjs \
+  --workflow-provider="$PROVIDER" --providers=providers.json --oidc-sub=oidc-sub.json
+```
+
+**Step 2 — only if Step 1 printed `POOL SAFE`: create the reader and its read-only roles.**
 
 ```bash
 gcloud iam service-accounts create storage-cert-reader \
   --project=la-creativo-erp \
   --display-name="Storage certification reader (GitHub Actions, read-only)"
 
-# Bucket-scoped: only this bucket, only reads.
+# Bucket-scoped: only this bucket, only reads. storage.objects.getIamPolicy makes object
+# ACLs positively observable when uniform bucket-level access is off (see above).
 gcloud iam roles create bizostoStorageCertReader --project=la-creativo-erp \
   --title="Bizosto storage certification reader" --stage=GA \
-  --permissions=storage.buckets.get,storage.buckets.getIamPolicy,storage.objects.list
+  --permissions=storage.buckets.get,storage.buckets.getIamPolicy,storage.objects.list,storage.objects.getIamPolicy
 gcloud storage buckets add-iam-policy-binding gs://la-creativo-erp.firebasestorage.app \
   --member="serviceAccount:storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com" \
   --role="projects/la-creativo-erp/roles/bizostoStorageCertReader"
@@ -321,22 +428,82 @@ gcloud iam roles create bizostoProjectNumberReader --project=la-creativo-erp \
 gcloud projects add-iam-policy-binding la-creativo-erp \
   --member="serviceAccount:storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com" \
   --role="projects/la-creativo-erp/roles/bizostoProjectNumberReader"
-
-# Federation: reuse the EXISTING provider exactly as docs/runbooks/firebase-rules-deploy.md §3.
-gcloud iam service-accounts add-iam-policy-binding \
-  storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com --project=la-creativo-erp \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/${POOL}/attribute.repository/lacreativodesign/nextjs-boilerplate"
 ```
 
-Then add repository **variable** `GCP_STORAGE_CERT_READER_SA` =
-`storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com`. **Never create a JSON key.**
+**Step 3 — bind exactly the member Step 1 printed.** It has this shape; use the printed value:
 
-- `storage.objects.getIamPolicy` is needed **only if** uniform bucket-level access turns out to
-  be disabled (the verifier then lists object ACLs); the run will fail naming it.
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com \
+  --project=la-creativo-erp \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principal://iam.googleapis.com/projects/${POOL_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main"
+```
+
+**Step 4 — verify (read-only). Must print `VERIFIED`.**
+
+```bash
+gcloud iam service-accounts get-iam-policy \
+  storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com \
+  --project=la-creativo-erp --format=json > reader-policy.json
+gcloud projects get-iam-policy la-creativo-erp --format=json > project-policy.json
+node scripts/verify-storage-reader-trust.mjs \
+  --workflow-provider="$PROVIDER" --providers=providers.json --oidc-sub=oidc-sub.json \
+  --sa-policy=reader-policy.json --project-policy=project-policy.json
+```
+
+**Step 5 — only after `VERIFIED`:** add repository **variable** `GCP_STORAGE_CERT_READER_SA` =
+`storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com`. **Never create a JSON key**
+(`gcloud iam service-accounts keys create` must never be run for this account).
+
+The saved `providers.json`, `oidc-sub.json` and the Step 4 `VERIFIED` output are the
+**pre-merge evidence** for independent review. They contain resource names and roles, not
+secrets; the evaluator prints roles and counts, never member identities.
+
+**What the evidence does and does not cover.** It proves the pool, the GitHub subject template
+and the reader's policies _as inspected_. The reader cannot list providers, so the certification
+job cannot re-prove fact 1 on its own: anyone later adding or editing a provider in that pool, or
+changing the repository's OIDC subject template, must re-run Steps 1 and 4. If GitHub ever
+changes its default `sub` format, the exchange is refused: that failure is closed and cannot
+widen access.
+
+### If the evaluator says STOP
+
+Fail closed: **do not bind anything, and do not edit the shared provider.** In particular, never
+fall back to the repository-only `principalSet` member. The safe alternative isolates the reader
+in its **own pool**, so no other provider's subjects share its namespace:
+
+```bash
+gcloud iam workload-identity-pools create p007-storage-cert \
+  --project=la-creativo-erp --location=global \
+  --display-name="P0-07 storage certification reader"
+gcloud iam workload-identity-pools providers create-oidc github-main \
+  --project=la-creativo-erp --location=global --workload-identity-pool=p007-storage-cert \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository == 'lacreativodesign/nextjs-boilerplate' && assertion.ref == 'refs/heads/main'"
+```
+
+Then set repository variable `GCP_STORAGE_CERT_WIF_PROVIDER` to
+`projects/<LA_CREATIVO_ERP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/p007-storage-cert/providers/github-main`
+(the workflow prefers it over the shared provider), re-run Step 1 against the new pool, and
+continue from Step 2. The provider condition enforces repository + `main` at token exchange,
+and the exact-subject binding enforces it again at IAM. If the GitHub subject template is not
+the default (fact 2), stop and raise it: this runbook does not change repository OIDC settings.
+
+### Reader permission set
+
+| Scope                                        | Permission                     | Why                                                            |
+| -------------------------------------------- | ------------------------------ | -------------------------------------------------------------- |
+| bucket `la-creativo-erp.firebasestorage.app` | `storage.buckets.get`          | bucket identity, location, UBLA/PAP, CORS, lifecycle, …        |
+| bucket                                       | `storage.buckets.getIamPolicy` | bucket IAM (public members); bucket/default ACLs when UBLA off |
+| bucket                                       | `storage.objects.list`         | token inventory (metadata only)                                |
+| bucket                                       | `storage.objects.getIamPolicy` | object ACLs positively observable when UBLA is off             |
+| project `la-creativo-erp`                    | `resourcemanager.projects.get` | project-number binding check                                   |
+
 - `storage.objects.list` returns object metadata, including token **values**, to this identity.
   The verifier discards them immediately; after §10 remediation there are none to see. That is
-  why the reader is dedicated and read-only, and why nothing else should share it.
+  why the reader is dedicated, read-only, and main-only at the Google boundary.
 - Not granted, deliberately: `storage.objects.get` (object bytes), any `*.update`, `*.create`,
   `*.delete`, `setIamPolicy`, and every predefined role.
 
@@ -394,20 +561,24 @@ scripts/storage-token-remediation.mjs --mode=apply --confirm-project=la-creativo
 
 ## 12. Tests and mutation battery
 
-| Suite                                                  | What it proves                                                                        |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `__tests__/rules/storage-download-token.rules.test.ts` | §3 facts 1–3 against the emulator                                                     |
-| `__tests__/lib/p0-07-download-tokens.test.ts`          | strip request, preconditions, verification, fail-closed, no secret logged             |
-| `__tests__/api/p0-07-upload-registration.test.ts`      | all six routes: no caller URL, strip before record, 502/409, path binding             |
-| `__tests__/api/p0-07-protected-downloads.test.ts`      | ACL matrix, 404/403 semantics, deleted, scan gate, TTL, path roots, screenshot route  |
-| `__tests__/lib/p0-07-support-branding.test.ts`         | screenshot storage/shape/views; branding bucket, token refusal, public endpoint       |
-| `__tests__/lib/p0-07-storage-invariants.test.ts`       | repository scans: canonical bucket, single minter, no token code, no `getDownloadURL` |
-| `__tests__/ci/p0-07-storage-certification.test.ts`     | verifier and remediation behaviour, GET-only, no secret output, workflow read-only    |
-| `__tests__/lib/p0-07-signed-url-persistence.test.ts`   | document minting re-checks tenant/deleted; export jobs store no URL                   |
-| `__tests__/api/p0-07-list-routes.test.ts`              | every list that returned a stored URL, driven with legacy records: none leaks         |
-| `__tests__/components/file-preview-modal.test.tsx`     | previews fetch a short-lived URL per open and degrade on refusal                      |
+| Suite                                                  | What it proves                                                                                                                                                  |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__tests__/rules/storage-download-token.rules.test.ts` | §3 facts 1–3 against the emulator                                                                                                                               |
+| `__tests__/lib/p0-07-download-tokens.test.ts`          | strip request, preconditions, verification, fail-closed, no secret logged                                                                                       |
+| `__tests__/api/p0-07-upload-registration.test.ts`      | all six routes: no caller URL, strip before record, 502/409, path binding                                                                                       |
+| `__tests__/api/p0-07-protected-downloads.test.ts`      | ACL matrix, 404/403 semantics, deleted, scan gate, TTL, path roots, screenshot route                                                                            |
+| `__tests__/lib/p0-07-support-branding.test.ts`         | screenshot storage/shape/views; branding bucket, token refusal, public endpoint                                                                                 |
+| `__tests__/lib/p0-07-storage-invariants.test.ts`       | repository scans: canonical bucket, single minter, no token code, no `getDownloadURL`                                                                           |
+| `__tests__/ci/p0-07-storage-certification.test.ts`     | verifier and remediation behaviour, GET-only, no secret output, workflow read-only                                                                              |
+| `__tests__/ci/p0-07-reader-trust.test.ts`              | reader trust evaluator truth table; workflow has no `environment:`; runbook binds the exact subject only, inspects first, grants `storage.objects.getIamPolicy` |
+| `__tests__/lib/p0-07-signed-url-persistence.test.ts`   | document minting re-checks tenant/deleted; export jobs store no URL                                                                                             |
+| `__tests__/api/p0-07-list-routes.test.ts`              | every list that returned a stored URL, driven with legacy records: none leaks                                                                                   |
+| `__tests__/components/file-preview-modal.test.tsx`     | previews fetch a short-lived URL per open and degrade on refusal                                                                                                |
 
-### Mutation battery — 61 mutants, 0 survivors
+### Mutation battery — 88 mutants, 0 survivors
+
+All 83 code mutants were re-run against the corrected head. The 5 rules mutants were run
+against the emulator at `46b9b2b`, and `storage.rules` has not changed since.
 
 Each mutant weakened one security invariant in the **real** source file, the targeted suites
 were run, and the file was restored (the working tree was verified clean against the commit
@@ -428,6 +599,19 @@ afterwards). A mutant counts as killed only when a test fails.
   unreadable metadata and failed listings, issuing a non-GET, leaking object names; remediation
   running in CI, dropping the metageneration precondition, not requiring an approver; workflow
   with `continue-on-error`, the deployer identity, no ref guard, or invoking remediation.
+- **18 WIF trust mutants** (added with the exact-subject model): the evaluator skipping the
+  issuer check, the `google.subject = assertion.sub` check, the `use_default` check, non-OIDC
+  providers, disabled providers, other-pool providers or the workflow-provider presence
+  check; the member reverting to the repository `principalSet`; extra reader members, a
+  conditional binding, other roles on the reader, or project-level federated impersonation
+  accepted; the workflow gaining an `environment:`, a `pull_request` trigger, or a comment
+  calling the ref check the boundary; the runbook binding a repository `principalSet`,
+  dropping `storage.objects.getIamPolicy`, or binding before inspecting.
+- **9 ACL-observability mutants**: `observedAcl` restoring `item.acl ?? []`; the listing
+  turning an absent ACL into `[]`; the bucket/default ACL defaulting to `[]`;
+  `objectAclControl` ignoring unobserved objects; the inventory dropping the unobserved count;
+  `projection=full` not requested; object ACLs never checked; the tally skipping unobserved
+  objects; the `storage.objects.getIamPolicy` permission hint removed.
 - **5 rules mutants against the emulator**: READ regranted on each of the four protected
   prefixes (each kills `storage-download-token.rules.test.ts` fact 3), and brand READ removed
   (kills the fact 2 control case — proving the READ denial, not something else, is what stops
