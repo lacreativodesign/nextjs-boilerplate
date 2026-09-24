@@ -25,21 +25,17 @@ name: Storage Bucket Certification
 #     job-scoped, masked, and handed to the verifier through the environment only.
 #   - No secret output. The verifier prints per-category counts — never a token value,
 #     never an object name.
-#   - Repository AND main, enforced by GOOGLE — not by this file. The reader's only
-#     workloadIdentityUser member is the exact GitHub OIDC subject
-#       principal://iam.googleapis.com/<pool>/subject/repo:lacreativodesign/nextjs-boilerplate:ref:refs/heads/main
-#     so IAM itself refuses a token from any other repository, any other ref, a
-#     pull_request event, or a job running in an `environment:` (each has a different
-#     `sub`). That is why this job declares NO `environment:` — adding one changes the
-#     subject and the exchange is refused. The owner proves the binding is sound with
-#     scripts/verify-storage-reader-trust.mjs before it is created (see the doc, §9).
-#     A repository-only principalSet binding is NOT branch-restricted and must not be used.
-#   - The ref check in the first step is defence in depth only: it lives in
-#     branch-controlled workflow source, so it cannot be the trust boundary. It exists to
-#     fail fast with a clear message before a token exchange that IAM would refuse anyway.
+#   - Repository AND main, enforced by GOOGLE — not by this file. P0-07 uses a dedicated
+#     Workload Identity pool/provider. google.subject is immutable GitHub repository ID 1087507601,
+#     while the provider condition requires repository ID 1087507601, owner ID 240409176 and
+#     refs/heads/main. The pool contains exactly one provider. This does not depend on GitHub's
+#     legacy-vs-immutable default `sub` format and does not reuse the shared deploy provider.
+#   - The ref check in the first step is defence in depth only: it lives in branch-controlled
+#     workflow source, so it cannot be the trust boundary. Google rejects a token that fails
+#     the dedicated provider condition before this service account can be impersonated.
 #
-# Owner setup (inspect the pool, reader service account, custom roles, exact-subject WIF
-# binding, repository variable):
+# Owner setup (dedicated pool/provider, reader service account, custom roles, immutable-ID
+# binding, repository variables):
 # docs/security/p0-07-firebase-storage-certification.md.
 
 on:
@@ -75,19 +71,17 @@ jobs:
         shell: bash
         env:
           REF: ${{ github.ref }}
-          # A dedicated provider for this reader (the doc's fail-closed alternative when the
-          # shared pool cannot prove repository + ref) takes precedence when it is set.
-          WIF_PROVIDER: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          WIF_PROVIDER: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER }}
           READER_SA: ${{ vars.GCP_STORAGE_CERT_READER_SA }}
         run: |
           set -euo pipefail
-          # Defence in depth only — IAM's exact-subject binding is the boundary (see header).
+          # Defence in depth only — the dedicated provider condition is the Google-side boundary.
           if [ "$REF" != "refs/heads/main" ]; then
             echo "::error::Live storage certification runs from refs/heads/main only (ref is $REF)."
             exit 1
           fi
           if [ -z "$WIF_PROVIDER" ]; then
-            echo "::error::Neither GCP_STORAGE_CERT_WIF_PROVIDER nor GCP_WORKLOAD_IDENTITY_PROVIDER is set."
+            echo "::error::Repository variable GCP_STORAGE_CERT_WIF_PROVIDER is not set."
             exit 1
           fi
           if [ -z "$READER_SA" ]; then
@@ -107,7 +101,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          workload_identity_provider: ${{ vars.GCP_STORAGE_CERT_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_STORAGE_CERT_READER_SA }}
           token_format: access_token
           access_token_lifetime: 900s
