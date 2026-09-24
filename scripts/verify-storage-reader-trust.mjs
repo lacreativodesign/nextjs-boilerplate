@@ -25,7 +25,8 @@
  *   1. SUBJECTS ARE POOL-SCOPED. A `principal://…/subject/S` member matches S from ANY
  *      provider in the pool. So every provider in the pool — disabled ones included, since
  *      re-enabling is one call — must be GitHub-issued
- *      (`https://token.actions.githubusercontent.com`) and map `google.subject` to the immutable GitHub repository ID. The dedicated provider must also
+ *      (`https://token.actions.githubusercontent.com`) and map `google.subject` to the immutable
+ *      GitHub repository ID. The dedicated provider must also
  *      enforce that repository ID, the immutable owner ID and `refs/heads/main` before token
  *      exchange. This deliberately does not depend on GitHub's mutable/immutable `sub` format.
  *   2. THE POOL IS DEDICATED: exactly one provider (`github-main`) exists in
@@ -54,7 +55,9 @@ export const WIF_POOL_ID = 'p007-storage-cert';
 export const WIF_PROVIDER_ID = 'github-main';
 export const READER_SA = 'storage-cert-reader@la-creativo-erp.iam.gserviceaccount.com';
 export const EXPECTED_PROVIDER_CONDITION =
-  "assertion.repository_id == '1087507601' && assertion.repository_owner_id == '240409176' && assertion.ref == 'refs/heads/main'";
+  "assertion.repository_id == '1087507601' && " +
+  "assertion.repository_owner_id == '240409176' && " +
+  "assertion.ref == 'refs/heads/main'";
 
 const PROVIDER_RE =
   /^projects\/(\d+)\/locations\/global\/workloadIdentityPools\/([a-z0-9-]+)\/providers\/([a-z0-9-]+)$/;
@@ -101,13 +104,18 @@ export function evaluatePool({ workflowProvider, providers, repositoryMetadata }
 
   const list = Array.isArray(providers) ? providers : [];
   if (list.length !== 1) {
-    reasons.push('The dedicated pool must contain exactly one provider; observed ' + list.length + '.');
+    reasons.push(
+      'The dedicated pool must contain exactly one provider; observed ' + list.length + '.',
+    );
   }
   const provider = list[0];
   if (!provider || String(provider.name ?? '') !== String(workflowProvider).trim()) {
     reasons.push('The one provider in the dedicated pool must be the workflow provider.');
   } else {
-    if (!provider.oidc || String(provider.oidc.issuerUri ?? '').replace(/\/$/, '') !== GITHUB_ISSUER) {
+    if (
+      !provider.oidc ||
+      String(provider.oidc.issuerUri ?? '').replace(/\/$/, '') !== GITHUB_ISSUER
+    ) {
       reasons.push('The dedicated provider must trust only GitHub Actions OIDC.');
     }
     const mapping = provider.attributeMapping ?? {};
@@ -120,22 +128,34 @@ export function evaluatePool({ workflowProvider, providers, repositoryMetadata }
     const keys = Object.keys(mapping).sort();
     const expectedKeys = Object.keys(expected).sort();
     if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) {
-      reasons.push('The dedicated provider attribute mapping must contain exactly the certified four mappings.');
+      reasons.push(
+        'The dedicated provider attribute mapping must contain exactly the certified four mappings.',
+      );
     }
     for (const [key, value] of Object.entries(expected)) {
       if (mapping[key] !== value) reasons.push(key + ' must map exactly to ' + value + '.');
     }
-    const normalizedCondition = String(provider.attributeCondition ?? '').replace(/\s+/g, ' ').trim();
+    const normalizedCondition = String(provider.attributeCondition ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const expectedCondition = EXPECTED_PROVIDER_CONDITION.replace(/\s+/g, ' ').trim();
     if (normalizedCondition !== expectedCondition) {
-      reasons.push('The provider condition must exactly require the immutable repository ID, owner ID and main ref.');
+      reasons.push(
+        'The provider condition must exactly require the immutable repository ID, owner ID and main ref.',
+      );
     }
   }
 
   const repo = repositoryMetadata ?? {};
-  if (String(repo.full_name ?? '') !== REPOSITORY) reasons.push('GitHub repository full_name does not match the certified repository.');
-  if (String(repo.id ?? '') !== REPOSITORY_ID) reasons.push('GitHub repository ID does not match the certified immutable repository ID.');
-  if (String(repo.owner?.id ?? '') !== REPOSITORY_OWNER_ID) reasons.push('GitHub owner ID does not match the certified immutable owner ID.');
+  if (String(repo.full_name ?? '') !== REPOSITORY) {
+    reasons.push('GitHub repository full_name does not match the certified repository.');
+  }
+  if (String(repo.id ?? '') !== REPOSITORY_ID) {
+    reasons.push('GitHub repository ID does not match the certified immutable repository ID.');
+  }
+  if (String(repo.owner?.id ?? '') !== REPOSITORY_OWNER_ID) {
+    reasons.push('GitHub owner ID does not match the certified immutable owner ID.');
+  }
 
   return reasons.length
     ? { ok: false, reasons }
@@ -249,7 +269,9 @@ if (invokedDirectly) {
     if (!pool.ok) {
       console.log('STOP — do not bind the reader. Reasons:');
       for (const reason of pool.reasons) console.log(`  - ${reason}`);
-      console.log('Do not weaken or reuse another provider. Reconcile the dedicated provider with §9.');
+      console.log(
+        'Do not weaken or reuse another provider. Reconcile the dedicated provider with §9.',
+      );
       process.exitCode = 1;
       return;
     }
