@@ -192,6 +192,117 @@ describe('reader trust: evaluatePool', () => {
     );
   });
 });
+
+// Each check must hold on its own. In the table above several failures can surface through the
+// same loosely matched reason, so here every other fact is kept valid and the exact reason is
+// asserted — a check that silently stopped running cannot hide behind a neighbouring one.
+describe('reader trust: evaluatePool — each check stands alone', () => {
+  const MAPPING = githubProvider().attributeMapping;
+  const only = (overrides: Record<string, unknown>) => {
+    const result = pool(overrides);
+    expect(result.ok).toBe(false);
+    expect(result.member).toBeUndefined();
+    return result.reasons.join('\n');
+  };
+
+  it('STOPs for the shared provider even when it is the only, matching provider listed', () => {
+    const shared =
+      'projects/111222333/locations/global/workloadIdentityPools/github-pool/providers/github';
+    expect(
+      only({ workflowProvider: shared, providers: [githubProvider({ name: shared })] }),
+    ).toMatch(/must use the dedicated p007-storage-cert\/github-main provider/);
+  });
+
+  it('STOPs when the only provider listed is not the workflow provider', () => {
+    expect(only({ providers: [githubProvider({ name: `${POOL}/providers/other` })] })).toMatch(
+      /must be the workflow provider/,
+    );
+  });
+
+  it('STOPs for a DISABLED second provider (re-enabling it is one call)', () => {
+    expect(
+      only({
+        providers: [
+          githubProvider(),
+          githubProvider({ name: `${POOL}/providers/old`, disabled: true }),
+        ],
+      }),
+    ).toMatch(/exactly one provider/);
+  });
+
+  it.each([
+    [
+      'an issuer with a path suffix',
+      { oidc: { issuerUri: 'https://token.actions.githubusercontent.com/evil' } },
+    ],
+    [
+      'an issuer on a look-alike host',
+      { oidc: { issuerUri: 'https://token.actions.githubusercontent.com.evil.example' } },
+    ],
+    ['an AWS provider', { oidc: undefined, aws: { accountId: '1' } }],
+    ['a SAML provider', { oidc: undefined, saml: {} }],
+  ])('STOPs for %s', (_label, extra) => {
+    expect(only({ providers: [githubProvider(extra)] })).toMatch(/only GitHub Actions OIDC/);
+  });
+
+  it('STOPs for an extra mapping even when the four certified ones are exact', () => {
+    expect(
+      only({
+        providers: [
+          githubProvider({
+            attributeMapping: { ...MAPPING, 'attribute.actor': 'assertion.actor' },
+          }),
+        ],
+      }),
+    ).toMatch(/exactly the certified four mappings/);
+  });
+
+  it.each([
+    ['google.subject from the mutable sub claim', 'google.subject', 'assertion.sub'],
+    ['google.subject from the repository name', 'google.subject', 'assertion.repository'],
+    ['attribute.ref from base_ref', 'attribute.ref', 'assertion.base_ref'],
+    [
+      'attribute.repository_owner_id from the owner login',
+      'attribute.repository_owner_id',
+      'assertion.repository_owner',
+    ],
+  ])('STOPs for %s, with the mapping keys otherwise exact', (_label, key, value) => {
+    const reasons = only({
+      providers: [githubProvider({ attributeMapping: { ...MAPPING, [key]: value } })],
+    });
+    expect(reasons).toContain(
+      `${key} must map exactly to ${MAPPING[key as keyof typeof MAPPING]}.`,
+    );
+    expect(reasons).not.toMatch(/certified four mappings/);
+  });
+
+  it.each([
+    ['repository only', "assertion.repository_id == '1087507601'"],
+    [
+      'no ref clause',
+      "assertion.repository_id == '1087507601' && assertion.repository_owner_id == '240409176'",
+    ],
+    [
+      'an OR before the ref',
+      t.EXPECTED_PROVIDER_CONDITION.replace(' && assertion.ref', ' || assertion.ref'),
+    ],
+    ['another branch', t.EXPECTED_PROVIDER_CONDITION.replace('refs/heads/main', 'refs/heads/dev')],
+    ['the certified condition plus an OR', `${t.EXPECTED_PROVIDER_CONDITION} || true`],
+  ])('STOPs for a provider condition with %s', (_label, attributeCondition) => {
+    expect(only({ providers: [githubProvider({ attributeCondition })] })).toMatch(
+      /condition must exactly require the immutable repository ID, owner ID and main ref/,
+    );
+  });
+
+  it('pins the certified condition clause by clause: repository ID AND owner ID AND main', () => {
+    expect(t.EXPECTED_PROVIDER_CONDITION.split('&&').map((c: string) => c.trim())).toEqual([
+      "assertion.repository_id == '1087507601'",
+      "assertion.repository_owner_id == '240409176'",
+      "assertion.ref == 'refs/heads/main'",
+    ]);
+  });
+});
+
 describe('reader trust: evaluateReaderPolicies (fact 3)', () => {
   const saPolicy = (bindings: unknown[]) => ({ bindings, etag: 'x' });
   const exact = () => ({ role: 'roles/iam.workloadIdentityUser', members: [MEMBER] });
@@ -410,6 +521,16 @@ describe('reader trust: owner runbook', () => {
     );
     expect(commands).toMatch(/providers list[\s\S]*> providers\.json/);
     expect(commands).toMatch(/--providers=providers\.json --repo=repo\.json/);
+  });
+
+  it('records the repository and evaluates the pool before creating or binding the reader', () => {
+    const repo = commands.indexOf('> repo.json');
+    const list = commands.indexOf('providers list');
+    const evaluate = commands.indexOf('node scripts/verify-storage-reader-trust.mjs');
+    const firstBind = commands.indexOf('add-iam-policy-binding');
+    const create = commands.indexOf('service-accounts create');
+    for (const i of [repo, list, evaluate, firstBind, create]) expect(i).toBeGreaterThan(-1);
+    expect(Math.max(repo, list, evaluate)).toBeLessThan(Math.min(firstBind, create));
   });
 
   it('binds only the immutable repository-id subject in the dedicated pool', () => {

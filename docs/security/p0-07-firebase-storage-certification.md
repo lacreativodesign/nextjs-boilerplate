@@ -40,19 +40,19 @@ here (no Google credential in this environment); §9's Step 1 is how the owner o
 
 ### Lifecycle — each gate needs the one before it, and none needs a later one
 
-| #   | Step                                                                                            | Who                | Status reached                     |
-| --- | ----------------------------------------------------------------------------------------------- | ------------------ | ---------------------------------- |
-| 1   | Corrected pull request, full local gate, exact-head CI green                                    | Claude Code        | —                                  |
-| 2   | Independent exact-head review of the code and this runbook                                      | ChatGPT            | **CODE CERTIFIED**                 |
-| 3   | §9 Steps 1–5: inspect the pool, create the reader, bind the exact subject, evaluator `VERIFIED` | Owner (read + IAM) | **PRE-MERGE OWNER SETUP COMPLETE** |
-| 4   | Independent review of the Step 1 / Step 4 evidence against the same head                        | ChatGPT            | **SAFE FOR MANUAL MERGE**          |
-| 5   | Manual merge                                                                                    | Mansoor Ahmed      | —                                  |
-| 6   | Approve `Deploy Security Rules` for this ruleset                                                | Owner              | —                                  |
-| 7   | `Storage Bucket Certification` runs on `main` (push trigger, or dispatch)                       | GitHub Actions     | —                                  |
-| 8   | §10 legacy-token audit (read-only)                                                              | Owner              | —                                  |
-| 9   | Separately approved §10 remediation apply — never from CI, never from a branch                  | Owner              | —                                  |
-| 10  | Re-run certification; register a fresh protected upload and confirm it is not tokenized         | Owner              | **POST-MERGE LIVE VERIFIED**       |
-| 11  | Independent review of the live evidence                                                         | ChatGPT            | **P0-07 CLOSED**                   |
+| #   | Step                                                                                                                                                                       | Who                | Status reached                     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------------------- |
+| 1   | Corrected pull request, full local gate, exact-head CI green                                                                                                               | Claude Code        | —                                  |
+| 2   | Independent exact-head review of the code and this runbook                                                                                                                 | ChatGPT            | **CODE CERTIFIED**                 |
+| 3   | §9 Steps 1–6: record repository IDs, create the dedicated pool/provider, `POOL SAFE`, create the reader, bind the repository-ID subject, `VERIFIED`, set the two variables | Owner (read + IAM) | **PRE-MERGE OWNER SETUP COMPLETE** |
+| 4   | Independent review of the Step 1 / Step 4 evidence against the same head                                                                                                   | ChatGPT            | **SAFE FOR MANUAL MERGE**          |
+| 5   | Manual merge                                                                                                                                                               | Mansoor Ahmed      | —                                  |
+| 6   | Approve `Deploy Security Rules` for this ruleset                                                                                                                           | Owner              | —                                  |
+| 7   | `Storage Bucket Certification` runs on `main` (push trigger, or dispatch)                                                                                                  | GitHub Actions     | —                                  |
+| 8   | §10 legacy-token audit (read-only)                                                                                                                                         | Owner              | —                                  |
+| 9   | Separately approved §10 remediation apply — never from CI, never from a branch                                                                                             | Owner              | —                                  |
+| 10  | Re-run certification; register a fresh protected upload and confirm it is not tokenized                                                                                    | Owner              | **POST-MERGE LIVE VERIFIED**       |
+| 11  | Independent review of the live evidence                                                                                                                                    | ChatGPT            | **P0-07 CLOSED**                   |
 
 No step is circular. The reader needs no merged code: Step 3 uses only `gcloud`/`gh` read
 output and the evaluator, which runs from a checkout of this pull request's head. The
@@ -550,24 +550,26 @@ scripts/storage-token-remediation.mjs --mode=apply --confirm-project=la-creativo
 
 ## 12. Tests and mutation battery
 
-| Suite                                                  | What it proves                                                                                                                                                  |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `__tests__/rules/storage-download-token.rules.test.ts` | §3 facts 1–3 against the emulator                                                                                                                               |
-| `__tests__/lib/p0-07-download-tokens.test.ts`          | strip request, preconditions, verification, fail-closed, no secret logged                                                                                       |
-| `__tests__/api/p0-07-upload-registration.test.ts`      | all six routes: no caller URL, strip before record, 502/409, path binding                                                                                       |
-| `__tests__/api/p0-07-protected-downloads.test.ts`      | ACL matrix, 404/403 semantics, deleted, scan gate, TTL, path roots, screenshot route                                                                            |
-| `__tests__/lib/p0-07-support-branding.test.ts`         | screenshot storage/shape/views; branding bucket, token refusal, public endpoint                                                                                 |
-| `__tests__/lib/p0-07-storage-invariants.test.ts`       | repository scans: canonical bucket, single minter, no token code, no `getDownloadURL`                                                                           |
-| `__tests__/ci/p0-07-storage-certification.test.ts`     | verifier and remediation behaviour, GET-only, no secret output, workflow read-only                                                                              |
-| `__tests__/ci/p0-07-reader-trust.test.ts`              | reader trust evaluator truth table; workflow has no `environment:`; runbook binds the exact subject only, inspects first, grants `storage.objects.getIamPolicy` |
-| `__tests__/lib/p0-07-signed-url-persistence.test.ts`   | document minting re-checks tenant/deleted; export jobs store no URL                                                                                             |
-| `__tests__/api/p0-07-list-routes.test.ts`              | every list that returned a stored URL, driven with legacy records: none leaks                                                                                   |
-| `__tests__/components/file-preview-modal.test.tsx`     | previews fetch a short-lived URL per open and degrade on refusal                                                                                                |
+| Suite                                                  | What it proves                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__tests__/rules/storage-download-token.rules.test.ts` | §3 facts 1–3 against the emulator                                                                                                                                                                                                                                                                                                                 |
+| `__tests__/lib/p0-07-download-tokens.test.ts`          | strip request, preconditions, verification, fail-closed, no secret logged                                                                                                                                                                                                                                                                         |
+| `__tests__/api/p0-07-upload-registration.test.ts`      | all six routes: no caller URL, strip before record, 502/409, path binding                                                                                                                                                                                                                                                                         |
+| `__tests__/api/p0-07-protected-downloads.test.ts`      | ACL matrix, 404/403 semantics, deleted, scan gate, TTL, path roots, screenshot route                                                                                                                                                                                                                                                              |
+| `__tests__/lib/p0-07-support-branding.test.ts`         | screenshot storage/shape/views; branding bucket, token refusal, public endpoint                                                                                                                                                                                                                                                                   |
+| `__tests__/lib/p0-07-storage-invariants.test.ts`       | repository scans: canonical bucket, single minter, no token code, no `getDownloadURL`                                                                                                                                                                                                                                                             |
+| `__tests__/ci/p0-07-storage-certification.test.ts`     | verifier and remediation behaviour, GET-only, no secret output, workflow read-only                                                                                                                                                                                                                                                                |
+| `__tests__/ci/p0-07-reader-trust.test.ts`              | reader trust evaluator truth table (dedicated pool, exact provider mapping and condition, immutable repository/owner IDs, reader policy), each check asserted on its own; workflow uses only the dedicated provider; runbook creates it exactly, evaluates before binding, binds the repository-ID subject, grants `storage.objects.getIamPolicy` |
+| `__tests__/lib/p0-07-signed-url-persistence.test.ts`   | document minting re-checks tenant/deleted; export jobs store no URL                                                                                                                                                                                                                                                                               |
+| `__tests__/api/p0-07-list-routes.test.ts`              | every list that returned a stored URL, driven with legacy records: none leaks                                                                                                                                                                                                                                                                     |
+| `__tests__/components/file-preview-modal.test.tsx`     | previews fetch a short-lived URL per open and degrade on refusal                                                                                                                                                                                                                                                                                  |
 
-### Mutation battery — 88 mutants, 0 survivors
+### Mutation battery — 98 mutants, 0 survivors
 
-All 83 code mutants were re-run against the corrected head. The 5 rules mutants were run
-against the emulator at `46b9b2b`, and `storage.rules` has not changed since.
+The 41 mutants covering the workflow, the ACL evidence and the dedicated-pool trust model were
+re-run at the final head. The other 52 code mutants target files unchanged since they were last
+run (`3725c2c`). The 5 rules mutants were run against the emulator at `46b9b2b`, and
+`storage.rules` has not changed since.
 
 Each mutant weakened one security invariant in the **real** source file, the targeted suites
 were run, and the file was restored (the working tree was verified clean against the commit
@@ -588,14 +590,17 @@ afterwards). A mutant counts as killed only when a test fails.
   unreadable metadata and failed listings, issuing a non-GET, leaking object names; remediation
   running in CI, dropping the metageneration precondition, not requiring an approver; workflow
   with `continue-on-error`, the deployer identity, no ref guard, or invoking remediation.
-- **18 WIF trust mutants** (added with the exact-subject model): the evaluator skipping the
-  issuer check, the `google.subject = assertion.sub` check, the `use_default` check, non-OIDC
-  providers, disabled providers, other-pool providers or the workflow-provider presence
-  check; the member reverting to the repository `principalSet`; extra reader members, a
-  conditional binding, other roles on the reader, or project-level federated impersonation
-  accepted; the workflow gaining an `environment:`, a `pull_request` trigger, or a comment
-  calling the ref check the boundary; the runbook binding a repository `principalSet`,
-  dropping `storage.objects.getIamPolicy`, or binding before inspecting.
+- **28 WIF trust mutants** (dedicated-pool model): the evaluator accepting the shared provider,
+  extra providers in the pool, a listed provider other than the workflow provider, any or a
+  prefixed issuer, a non-OIDC provider, `google.subject` from `assertion.sub`, extra or wrong
+  mappings, a missing or prefix-matched condition, a certified condition without the ref clause,
+  another repository or owner ID; the member reverting to the repository `principalSet`; extra
+  reader members, a conditional binding, other roles on the reader, or project-level federated
+  impersonation accepted; the workflow restoring the shared-provider fallback, gaining an
+  `environment:` or a `pull_request` trigger, or calling the ref check the boundary; the runbook
+  binding a repository `principalSet`, creating the provider without the `main` clause or with
+  `google.subject` from `sub`, dropping `storage.objects.getIamPolicy`, or binding before
+  evaluating.
 - **9 ACL-observability mutants**: `observedAcl` restoring `item.acl ?? []`; the listing
   turning an absent ACL into `[]`; the bucket/default ACL defaulting to `[]`;
   `objectAclControl` ignoring unobserved objects; the inventory dropping the unobserved count;
