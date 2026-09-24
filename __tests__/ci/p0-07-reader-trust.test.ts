@@ -37,7 +37,9 @@ const githubProvider = (extra: Record<string, unknown> = {}) => ({
     'attribute.ref': 'assertion.ref',
   },
   attributeCondition:
-    "assertion.repository_id == '1087507601' && assertion.repository_owner_id == '240409176' && assertion.ref == 'refs/heads/main'",
+    "assertion.repository_id == '1087507601' && " +
+    "assertion.repository_owner_id == '240409176' && " +
+    "assertion.ref == 'refs/heads/main'",
   ...extra,
 });
 
@@ -64,7 +66,11 @@ describe('reader trust: the dedicated immutable-ID provider', () => {
 
   it('binds one exact pool subject based on the immutable repository ID', () => {
     const parsed = t.parseProvider(PROVIDER);
-    expect(parsed).toEqual({ projectNumber: '111222333', poolId: 'p007-storage-cert', providerId: 'github-main' });
+    expect(parsed).toEqual({
+      projectNumber: '111222333',
+      poolId: 'p007-storage-cert',
+      providerId: 'github-main',
+    });
     expect(t.exactSubjectMember(parsed)).toBe(MEMBER);
     expect(t.bindCommand(MEMBER)).toContain(`--member="${MEMBER}"`);
     expect(t.bindCommand(MEMBER)).not.toMatch(/principalSet|keys create/);
@@ -88,10 +94,28 @@ describe('reader trust: evaluatePool', () => {
   });
 
   it.each([
-    ['shared/different pool', PROVIDER.replace('p007-storage-cert', 'github-pool'), [githubProvider()], REPO, /dedicated/],
-    ['different provider id', PROVIDER.replace('github-main', 'github'), [githubProvider()], REPO, /dedicated/],
+    [
+      'shared/different pool',
+      PROVIDER.replace('p007-storage-cert', 'github-pool'),
+      [githubProvider()],
+      REPO,
+      /dedicated/,
+    ],
+    [
+      'different provider id',
+      PROVIDER.replace('github-main', 'github'),
+      [githubProvider()],
+      REPO,
+      /dedicated/,
+    ],
     ['no provider', PROVIDER, [], REPO, /exactly one provider/],
-    ['two providers', PROVIDER, [githubProvider(), { ...githubProvider(), name: `${POOL}/providers/extra` }], REPO, /exactly one provider/],
+    [
+      'two providers',
+      PROVIDER,
+      [githubProvider(), { ...githubProvider(), name: `${POOL}/providers/extra` }],
+      REPO,
+      /exactly one provider/,
+    ],
   ])('STOPs for %s', (_label, workflowProvider, providers, repositoryMetadata, reason) => {
     const result = pool({ workflowProvider, providers, repositoryMetadata });
     expect(result.ok).toBe(false);
@@ -101,15 +125,41 @@ describe('reader trust: evaluatePool', () => {
 
   it.each([
     ['non-GitHub issuer', { oidc: { issuerUri: 'https://gitlab.com' } }, /GitHub Actions OIDC/],
-    ['subject uses mutable sub', { attributeMapping: { 'google.subject': 'assertion.sub' } }, /certified four mappings|google.subject/],
+    [
+      'subject uses mutable sub',
+      { attributeMapping: { 'google.subject': 'assertion.sub' } },
+      /certified four mappings|google.subject/,
+    ],
     ['missing owner-id mapping', { attributeMapping: {
       'google.subject': 'assertion.repository_id',
       'attribute.repository_id': 'assertion.repository_id',
       'attribute.ref': 'assertion.ref',
     } }, /certified four mappings|attribute.repository_owner_id/],
-    ['weakened branch condition', { attributeCondition: "assertion.repository_id == '1087507601'" }, /condition must exactly require/],
-    ['wrong repository id in condition', { attributeCondition: "assertion.repository_id == '999' && assertion.repository_owner_id == '240409176' && assertion.ref == 'refs/heads/main'" }, /condition must exactly require/],
-    ['wrong owner id in condition', { attributeCondition: "assertion.repository_id == '1087507601' && assertion.repository_owner_id == '999' && assertion.ref == 'refs/heads/main'" }, /condition must exactly require/],
+    [
+      'weakened branch condition',
+      { attributeCondition: "assertion.repository_id == '1087507601'" },
+      /condition must exactly require/,
+    ],
+    [
+      'wrong repository id in condition',
+      {
+        attributeCondition:
+          "assertion.repository_id == '999' && " +
+          "assertion.repository_owner_id == '240409176' && " +
+          "assertion.ref == 'refs/heads/main'",
+      },
+      /condition must exactly require/,
+    ],
+    [
+      'wrong owner id in condition',
+      {
+        attributeCondition:
+          "assertion.repository_id == '1087507601' && " +
+          "assertion.repository_owner_id == '999' && " +
+          "assertion.ref == 'refs/heads/main'",
+      },
+      /condition must exactly require/,
+    ],
   ])('STOPs for %s', (_label, extra, reason) => {
     const result = pool({ providers: [githubProvider(extra)] });
     expect(result.ok).toBe(false);
@@ -131,7 +181,9 @@ describe('reader trust: evaluatePool', () => {
   it('does not depend on GitHub legacy-vs-immutable default sub formatting', () => {
     const provider = githubProvider();
     expect(provider.attributeMapping['google.subject']).toBe('assertion.repository_id');
-    expect(JSON.stringify(provider)).not.toMatch(/use_immutable_subject|use_default|assertion\.sub/);
+    expect(JSON.stringify(provider)).not.toMatch(
+      /use_immutable_subject|use_default|assertion\.sub/,
+    );
   });
 });
 describe('reader trust: evaluateReaderPolicies (fact 3)', () => {
@@ -358,7 +410,9 @@ describe('reader trust: owner runbook', () => {
   });
 
   it('verifies the reader binding with both service-account and project policies', () => {
-    expect(commands).toMatch(/--sa-policy=reader-policy\.json --project-policy=project-policy\.json/);
+    expect(commands).toMatch(
+      /--sa-policy=reader-policy\.json --project-policy=project-policy\.json/,
+    );
     expect(s9).toMatch(/Must print `VERIFIED`/);
   });
 
