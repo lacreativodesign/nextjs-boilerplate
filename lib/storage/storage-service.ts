@@ -5,8 +5,9 @@ import { promises as fs } from 'fs';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as admin from 'firebase-admin';
-import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
+import { mintProtectedDownloadUrl } from '@/lib/storage/protected-download';
 import {
   releaseTenantStorage,
   reserveTenantStorageOrThrow,
@@ -89,9 +90,7 @@ export class StorageService {
       kind: params.reservationKind ?? 'document_upload',
     });
 
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-    const file = bucket.file(storagePath);
+    const file = productStorageBucket().file(storagePath);
 
     try {
       await file.save(params.file, {
@@ -105,10 +104,11 @@ export class StorageService {
         },
       });
 
-      const [url] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-      });
+      // P0-07: no signed URL is minted here any more. This used to sign a 7-day read URL
+      // and persist it as `storageUrl` AND `previewUrl`, so every later reader of the
+      // record — whatever their access — held a working credential for the bytes for a
+      // week. The record keeps the canonical storagePath; /api/documents/[id]/download
+      // authorizes and mints a short-lived URL per request.
 
       let folderPath: string | undefined;
       if (params.folderId) {
@@ -127,7 +127,7 @@ export class StorageService {
         fileExtension: fileExtension.replace('.', ''),
         storageProvider: 'firebase',
         storagePath,
-        storageUrl: url,
+        storageUrl: null,
         category: params.category,
         folderId: params.folderId,
         folderPath,
@@ -149,7 +149,7 @@ export class StorageService {
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
-        previewUrl: this.isPreviewable(params.mimeType) ? url : undefined,
+        previewUrl: null,
       };
 
       const docRef = await adminDb.collection('documents').add(document);
@@ -180,9 +180,14 @@ export class StorageService {
   }
 
   /**
-   * Generate download URL
+   * Generate a download URL for a document the caller has ALREADY been authorized for.
+   *
+   * P0-07: short-lived (PROTECTED_DOWNLOAD_TTL_MS, minutes) rather than the hour this
+   * used to sign, bound to the document's own tenant prefix, and never persisted. The
+   * authorization itself — tenant, visibility/sharing ACL, virus-scan gate — stays in
+   * /api/documents/[id]/download, which calls this only after it passes.
    */
-  static async getDownloadUrl(documentId: string): Promise<string> {
+  static async getDownloadUrl(documentId: string, tenantId: string): Promise<string> {
     const doc = await adminDb.collection('documents').doc(documentId).get();
 
     if (!doc.exists) {
@@ -190,14 +195,14 @@ export class StorageService {
     }
 
     const document = doc.data() as Document;
-    const bucketName = getStorageBucketName();
-    const file = (bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket()).file(
-      document.storagePath,
-    );
+    if (document.tenantId !== tenantId || document.deletedAt) {
+      throw new Error('Document not found');
+    }
 
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 60 * 60 * 1000,
+    const { url } = await mintProtectedDownloadUrl({
+      storagePath: document.storagePath,
+      tenantId,
+      fileName: document.originalFileName || document.fileName || 'document',
     });
 
     await adminDb
@@ -224,10 +229,7 @@ export class StorageService {
 
     const document = doc.data() as Document;
 
-    const bucketName = getStorageBucketName();
-    const file = (bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket()).file(
-      document.storagePath,
-    );
+    const file = productStorageBucket().file(document.storagePath);
     await file.delete({ ignoreNotFound: true });
 
     await adminDb.collection('documents').doc(documentId).update({

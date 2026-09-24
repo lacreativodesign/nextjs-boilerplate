@@ -24,7 +24,8 @@ jest.mock('firebase-admin/firestore', () => ({
   AggregateField: { sum: (field: string) => ({ __sum: field }) },
 }));
 
-jest.mock('@/lib/storage/bucket', () => ({ getStorageBucketName: () => undefined }));
+// P0-07: product storage fails closed without a configured bucket (lib/storage/product-bucket.ts).
+jest.mock('@/lib/storage/bucket', () => ({ getStorageBucketName: () => 'bizosto-test-bucket' }));
 
 jest.mock('@/lib/firebaseAdmin', () => ({
   get adminDb() {

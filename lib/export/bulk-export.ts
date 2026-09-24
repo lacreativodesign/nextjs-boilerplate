@@ -1,7 +1,8 @@
 import { PassThrough } from 'stream';
 import * as admin from 'firebase-admin';
-import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
+import { mintProtectedDownloadUrl } from '@/lib/storage/protected-download';
 import type { ExportConfiguration, ExportJob, ImportEntity } from '@/types/import-export';
 
 function toCsvValue(value: unknown) {
@@ -124,8 +125,7 @@ export class BulkExportService {
     const fileName = `${baseName}.${extension}`;
     const storagePath = `tenants/${params.tenantId}/exports/${job.entity}/${fileName}`;
 
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
+    const bucket = productStorageBucket();
 
     const outputStream = bucket.file(storagePath).createWriteStream({
       metadata: {
@@ -140,14 +140,21 @@ export class BulkExportService {
       source.pipe(outputStream).on('finish', resolve).on('error', reject);
     });
 
-    const [signedUrl] = await bucket
-      .file(storagePath)
-      .getSignedUrl({ action: 'read', expires: Date.now() + 60 * 60 * 1000 });
+    // P0-07: an export is a dump of tenant data. Its signed URL is minted for the caller
+    // that just ran the export (the route authorized them) and is NOT persisted: the job
+    // used to store a 1-hour URL and serve that stored URL to whoever read the job later.
+    // /api/export/jobs/[id]/download now re-authorizes and mints a fresh one.
+    const { url: signedUrl } = await mintProtectedDownloadUrl({
+      storagePath,
+      tenantId: params.tenantId,
+      allowedRoots: [`tenants/${params.tenantId}/exports/`],
+      fileName,
+    });
 
     await jobRef.update({
       status: 'completed',
       storagePath,
-      signedUrl,
+      signedUrl: null,
       fileName,
       // PR4: the generated export stays in the bucket and nothing purges it, so repeated
       // exports accumulate without bound. Persisting the byte count is what lets

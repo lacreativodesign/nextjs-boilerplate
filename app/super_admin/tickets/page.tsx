@@ -28,7 +28,9 @@ type Ticket = {
   triageStatus: string;
   triage: TicketTriage | null;
   pageUrl: string | null;
-  screenshotUrl: string | null;
+  // P0-07: a same-origin route that re-checks super_admin and mints a short-lived URL.
+  // The ticket's storage path and any legacy tokenized URL never reach the browser.
+  screenshotHref: string | null;
   hasScreenshot: boolean;
   reporter: { uid: string; name: string; email: string; role: string } | null;
   assignedTo: string | null;
@@ -289,9 +291,9 @@ export default function SuperAdminTicketsPage() {
                     Page: {selected.pageUrl}
                   </p>
                 )}
-                {selected.screenshotUrl && (
+                {selected.hasScreenshot && selected.screenshotHref && (
                   <a
-                    href={selected.screenshotUrl}
+                    href={selected.screenshotHref}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-2 inline-block text-xs underline"

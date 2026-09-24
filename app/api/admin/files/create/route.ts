@@ -9,7 +9,7 @@ import {
   isSalesManager,
 } from '../../_utils';
 import { validateFile } from '@/lib/files/validation';
-import { isTenantStoragePath } from '@/lib/storage/paths';
+import { isSurfaceStoragePath, isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
   commitUploadRegistration,
@@ -71,7 +71,6 @@ export async function POST(req: Request) {
     const category = cleanString(body?.category);
     const fileName = cleanString(body?.fileName);
     const storagePath = cleanString(body?.storagePath);
-    const downloadUrl = cleanString(body?.downloadUrl);
     const fileId = cleanString(body?.id) || null;
 
     if (!projectId) {
@@ -91,14 +90,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: fileValidation.error }, { status: 400 });
     }
 
-    if (!storagePath || !downloadUrl) {
+    if (!storagePath) {
       return NextResponse.json(
         { ok: false, error: 'Storage details are required.' },
         { status: 400 },
       );
     }
 
-    if (!isTenantStoragePath(storagePath, me.tenantId)) {
+    // P0-07: the record's storagePath is what its download route will sign, so it must
+    // name an object under THIS surface and THIS project, not merely this tenant.
+    if (
+      !isTenantStoragePath(storagePath, me.tenantId) ||
+      !isSurfaceStoragePath(storagePath, me.tenantId, 'project', projectId)
+    ) {
       return NextResponse.json({ ok: false, error: 'Invalid storage path.' }, { status: 400 });
     }
 
@@ -190,7 +194,10 @@ export async function POST(req: Request) {
       category,
       fileName,
       storagePath,
-      downloadUrl,
+      // P0-07: never a caller-supplied URL. Firebase download URLs are bearer credentials
+      // that bypass tenant and role checks; downloads are minted per request after
+      // authorization. null also clears a stale URL on an upserted legacy record.
+      downloadUrl: null,
       size: admission.bytes, // measured by Cloud Storage, never the declared value
       mimeType,
       uploadedByUid: me.uid,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { getCurrentTenantId, tenantClientFilePath } from '@/lib/storage/paths';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
@@ -10,6 +10,7 @@ import { smartMatch } from '@/lib/search/smartMatch';
 import EmptyState from '@/components/ui/EmptyState';
 import { normalizeRole } from '@/lib/erpAccess';
 import { useTenantContext } from '@/lib/tenant/useTenantContext';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 type FileRecord = {
   id: string;
@@ -17,7 +18,6 @@ type FileRecord = {
   projectName: string;
   category: string;
   fileName: string;
-  downloadUrl: string;
   uploadedAt?: string | null;
   size?: number;
 };
@@ -139,7 +139,6 @@ export default function ClientFilesPage() {
       });
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
 
       const res = await apiFetch('/api/client/files/upload', {
         method: 'POST',
@@ -148,7 +147,6 @@ export default function ClientFilesPage() {
           projectId: uploadProjectId,
           fileName: file.name,
           storagePath,
-          downloadUrl,
           size: file.size,
           mimeType: file.type,
         }),
@@ -238,7 +236,7 @@ export default function ClientFilesPage() {
                       <td style={{ ...cellStyle, textAlign: 'center' }}>
                         <a
                           className="btn ghost"
-                          href={file.downloadUrl || '#'}
+                          href={projectFileDownloadHref(file.id)}
                           target="_blank"
                           rel="noreferrer"
                         >

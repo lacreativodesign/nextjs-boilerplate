@@ -31,6 +31,7 @@ import {
  *
  * THE POLICY BEING CERTIFIED, per the ruleset itself:
  *
+ *   CREATE (READ is denied to EVERY browser principal on these four — P0-07):
  *   tenants/{t}/projects/**            admin, am, production, production_manager, +super_admin
  *   tenants/{t}/client-files/**        client ONLY — deliberately NOT super_admin
  *   tenants/{t}/employees/**           admin, +super_admin
@@ -107,6 +108,14 @@ const PRINCIPALS = {
 } satisfies Record<string, Principal | null>;
 
 type PrincipalName = keyof typeof PRINCIPALS;
+
+/**
+ * Every principal above. P0-07 denies browser READ on the four protected file prefixes
+ * to all of them — including each prefix's own uploaders and the platform operator —
+ * because a permitted READ is what lets the Firebase Storage API mint a permanent
+ * download token (see storage-download-token.rules.test.ts).
+ */
+const ALL_PRINCIPALS = Object.keys(PRINCIPALS) as PrincipalName[];
 
 /**
  * Principals whose TENANT claim is absent, blank or not a string. inCallerTenant() must
@@ -268,16 +277,9 @@ const PREFIXES: PrefixMatrix[] = [
     seeded: OBJ.projectsA,
     // canProjectFiles(): tenantRole(t, [admin, am, production, production_manager])
     //                    || isSuperAdmin()
-    allowedRead: [
-      'alphaAdmin',
-      'alphaAm',
-      'alphaProduction',
-      'alphaProductionManager',
-      'superAdmin',
-      'superAdminInAlpha',
-      'superAdminInBeta',
-    ],
-    deniedRead: ['anonymous', ...ALPHA_NON_DELIVERY, ...CROSS_TENANT, ...MALFORMED_CLAIMS],
+    // P0-07: READ is denied to everyone. CREATE below keeps the role grant.
+    allowedRead: [],
+    deniedRead: ALL_PRINCIPALS,
     allowedCreate: [
       'alphaAdmin',
       'alphaAm',
@@ -294,24 +296,9 @@ const PREFIXES: PrefixMatrix[] = [
     seeded: OBJ.clientFilesA,
     // canClientFiles(): tenantRole(t, ['client']) and NOTHING else. The absence of
     // isSuperAdmin() here is the policy, executed below rather than trusted.
-    allowedRead: ['alphaClient'],
-    deniedRead: [
-      'anonymous',
-      'alphaAdmin',
-      'alphaAm',
-      'alphaAmManager',
-      'alphaProduction',
-      'alphaProductionManager',
-      'alphaHr',
-      'alphaFinance',
-      'alphaSales',
-      'alphaSalesManager',
-      'superAdmin',
-      'superAdminInAlpha',
-      'superAdminInBeta',
-      ...CROSS_TENANT,
-      ...MALFORMED_CLAIMS,
-    ],
+    // P0-07: READ is denied to everyone. CREATE below keeps the role grant.
+    allowedRead: [],
+    deniedRead: ALL_PRINCIPALS,
     allowedCreate: ['alphaClient'],
     deniedCreate: [
       'anonymous',
@@ -335,21 +322,9 @@ const PREFIXES: PrefixMatrix[] = [
     prefix: 'employees',
     seeded: OBJ.employeesA,
     // canEmployeeFiles(): tenantRole(t, ['admin']) || isSuperAdmin()
-    allowedRead: ['alphaAdmin', 'superAdmin', 'superAdminInAlpha', 'superAdminInBeta'],
-    deniedRead: [
-      'anonymous',
-      'alphaAm',
-      'alphaAmManager',
-      'alphaProduction',
-      'alphaProductionManager',
-      'alphaHr',
-      'alphaFinance',
-      'alphaSales',
-      'alphaSalesManager',
-      'alphaClient',
-      ...CROSS_TENANT,
-      ...MALFORMED_CLAIMS,
-    ],
+    // P0-07: READ is denied to everyone. CREATE below keeps the role grant.
+    allowedRead: [],
+    deniedRead: ALL_PRINCIPALS,
     allowedCreate: ['alphaAdmin', 'superAdmin', 'superAdminInAlpha', 'superAdminInBeta'],
     deniedCreate: [
       'anonymous',
@@ -370,20 +345,9 @@ const PREFIXES: PrefixMatrix[] = [
     prefix: 'employee-documents',
     seeded: OBJ.employeeDocumentsA,
     // canEmployeeDocuments(): tenantRole(t, ['hr', 'admin']) || isSuperAdmin()
-    allowedRead: ['alphaHr', 'alphaAdmin', 'superAdmin', 'superAdminInAlpha', 'superAdminInBeta'],
-    deniedRead: [
-      'anonymous',
-      'alphaAm',
-      'alphaAmManager',
-      'alphaProduction',
-      'alphaProductionManager',
-      'alphaFinance',
-      'alphaSales',
-      'alphaSalesManager',
-      'alphaClient',
-      ...CROSS_TENANT,
-      ...MALFORMED_CLAIMS,
-    ],
+    // P0-07: READ is denied to everyone. CREATE below keeps the role grant.
+    allowedRead: [],
+    deniedRead: ALL_PRINCIPALS,
     allowedCreate: ['alphaHr', 'alphaAdmin', 'superAdmin', 'superAdminInAlpha', 'superAdminInBeta'],
     deniedCreate: [
       'anonymous',
@@ -444,9 +408,12 @@ const PREFIXES: PrefixMatrix[] = [
 ];
 
 describe.each(PREFIXES)('storage.rules — tenants/{tenantId}/$prefix/**', (matrix) => {
-  it.each(matrix.allowedRead)('READ succeeds for %s', async (name) => {
-    await assertSucceeds(READ(name, matrix.seeded));
-  });
+  // `it.each([])` is an error in Jest, and four of the five prefixes now grant no READ.
+  if (matrix.allowedRead.length > 0) {
+    it.each(matrix.allowedRead)('READ succeeds for %s', async (name) => {
+      await assertSucceeds(READ(name, matrix.seeded));
+    });
+  }
 
   it.each(matrix.deniedRead)('READ is denied for %s', async (name) => {
     await assertFails(READ(name, matrix.seeded));
@@ -460,8 +427,8 @@ describe.each(PREFIXES)('storage.rules — tenants/{tenantId}/$prefix/**', (matr
     await assertFails(CREATE(name, freshPath(matrix.prefix)));
   });
 
-  it('DELETE is denied even for a principal that may read and create', async () => {
-    for (const name of matrix.allowedRead) {
+  it('DELETE is denied even for a principal that may create', async () => {
+    for (const name of [...matrix.allowedRead, ...matrix.allowedCreate]) {
       await assertFails(DELETE(name, matrix.seeded));
     }
   });
@@ -552,8 +519,8 @@ describe('storage.rules — the UPDATE method is denied on the four paid file pr
    * addresses an existing object, and denying UPDATE is what makes the quota figure the
    * server measured stay true for the lifetime of the object.
    *
-   * These four cases use the principal that IS allowed to read and create on the prefix,
-   * so the only thing being tested is the operation.
+   * These four cases use the principal that IS allowed to create on the prefix, so the
+   * only thing being tested is the operation.
    */
   const CASES: Array<{ prefix: string; caller: PrincipalName; objectPath: string }> = [
     { prefix: 'projects', caller: 'alphaAdmin', objectPath: OBJ.projectsA },
@@ -566,7 +533,7 @@ describe('storage.rules — the UPDATE method is denied on the four paid file pr
     await assertFails(UPDATE(caller, objectPath));
   });
 
-  it('denies UPDATE to super_admin too, on the prefixes it may otherwise read', async () => {
+  it('denies UPDATE to super_admin too, on the prefixes it may otherwise create on', async () => {
     await assertFails(UPDATE('superAdmin', OBJ.projectsA));
     await assertFails(UPDATE('superAdmin', OBJ.employeesA));
     await assertFails(UPDATE('superAdmin', OBJ.employeeDocumentsA));

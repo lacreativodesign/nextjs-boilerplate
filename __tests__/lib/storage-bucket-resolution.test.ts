@@ -101,8 +101,18 @@ describe('P1-6a: backup and restore resolve the same bucket as everything else',
 });
 
 describe('P1-6a: no storage caller re-inlines the broken bucket chain', () => {
+  // P0-07: the per-call-site `bucketName ? bucket(bucketName) : bucket()` idiom is gone.
+  // Every product caller goes through productStorageBucket(), which is the one place the
+  // resolver is consulted and which refuses to fall back to the Admin SDK's unconfigured
+  // default. __tests__/lib/p0-07-canonical-bucket.test.ts scans for bypasses.
   it.each(STORAGE_CALLERS)('%s resolves the bucket through the shared helper', (rel) => {
     const src = read(rel);
+    expect(src).toContain("from '@/lib/storage/product-bucket'");
+    expect(src).not.toMatch(/adminStorage\.bucket\(/);
+  });
+
+  it('the product bucket helper is the resolver consumer', () => {
+    const src = read('lib/storage/product-bucket.ts');
     expect(src).toContain("import { getStorageBucketName } from '@/lib/storage/bucket'");
     expect(src).toContain('getStorageBucketName()');
   });

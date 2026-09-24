@@ -141,6 +141,10 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   'health/ready': 'Readiness probe; returns status only.',
   openapi: 'Public API specification document.',
   'public/firebase-config': 'Returns NEXT_PUBLIC Firebase config (already public values).',
+  'public/branding/[tenantId]/logo':
+    'P0-07 deliberate public exception: serves ONLY the tenant logo object recorded on the ' +
+    'tenant document (allow-listed image types under tenants/{t}/branding/, nosniff, ' +
+    'sandboxing CSP). Replaces tokenized Firebase logo URLs; returns no token or path.',
   'i18n/languages': 'Static list of supported languages.',
   'i18n/translations/[locale]': 'Static translation bundles.',
   'currency/rates': 'Cached public exchange rates.',
@@ -272,6 +276,9 @@ export const REQUEST_TENANT_ROUTES: Record<string, string> = {
     'Pre-login OAuth initiation; the tenant being signed into is named in the query.',
   'tenant/module-check':
     'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); middleware passes the tenant.',
+  'public/branding/[tenantId]/logo':
+    'P0-07 public tenant logo. The path tenantId only selects whose PUBLIC logo to serve; ' +
+    'the object read is fixed by that tenant document, and nothing else is reachable.',
   'internal/workflow-mutation':
     'Internal server-to-server (INTERNAL_REQUEST_SIGNING_SECRET); the automation workflow ' +
     'engine passes the tenant of the workflow it is executing.',

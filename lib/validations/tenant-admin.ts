@@ -36,14 +36,19 @@ export const updateTenantModulesSchema = z
 export const updateTenantBrandingSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
+    // P0-07: either an absolute http(s) URL or the tenant's own public branding endpoint
+    // (/api/public/branding/{tenantId}/logo). The route then normalises it against the
+    // tenant in the path, which is where a tokenized Firebase URL is refused.
     logoUrl: z
       .string()
       .trim()
       .max(2048)
-      .url()
-      .refine((value) => /^https?:\/\//i.test(value), {
-        message: 'logoUrl must be an absolute http(s) URL.',
-      })
+      .refine(
+        (value) =>
+          /^https?:\/\/[^\s]+$/i.test(value) ||
+          /^\/api\/public\/branding\/[A-Za-z0-9_-]{1,128}\/logo(\?v=\d{1,32})?$/.test(value),
+        { message: 'logoUrl must be an absolute http(s) URL or the tenant logo endpoint.' },
+      )
       .nullable()
       .optional(),
   })

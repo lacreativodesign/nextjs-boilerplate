@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { hrDocumentDownloadHref } from '@/lib/storage/download-hrefs';
 import { requireHrAccess, toIso } from '../../_utils';
 
 export const runtime = 'nodejs';
@@ -18,10 +19,13 @@ export async function GET() {
       .limit(500)
       .get();
     const documents = snap.docs.map((doc) => {
-      const data = doc.data();
+      // P0-07: the stored Firebase `downloadUrl` on legacy records is a permanent bearer
+      // URL; it is dropped here and replaced by a same-origin route that authorizes.
+      const { downloadUrl: _legacyBearerUrl, ...data } = doc.data() || {};
       return {
         id: doc.id,
         ...data,
+        downloadHref: hrDocumentDownloadHref(doc.id),
         createdAt: toIso(data?.createdAt),
         updatedAt: toIso(data?.updatedAt),
       };

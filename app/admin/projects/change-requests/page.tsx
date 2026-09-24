@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 type ChangeRequestType = 'Scope Change' | 'Revision' | 'New Feature' | 'Bug Fix' | 'Other';
 
@@ -66,7 +67,6 @@ type ProjectOption = {
 type FileOption = {
   id: string;
   fileName: string;
-  downloadUrl: string;
   projectId: string;
   projectName: string;
 };
@@ -437,7 +437,6 @@ export default function ChangeRequestsPage() {
           list.map((file: any) => ({
             id: file.id,
             fileName: file.fileName || '',
-            downloadUrl: file.downloadUrl || '',
             projectId: file.projectId || '',
             projectName: file.projectName || '',
           })),
@@ -480,7 +479,6 @@ export default function ChangeRequestsPage() {
             .map((file: any) => ({
               id: file.id,
               fileName: file.fileName || '',
-              downloadUrl: file.downloadUrl || '',
               projectId: file.projectId || '',
               projectName: file.projectName || '',
             })),
@@ -1092,7 +1090,7 @@ export default function ChangeRequestsPage() {
                   {attachedFiles.map((file) => (
                     <a
                       key={file.id}
-                      href={file.downloadUrl || '#'}
+                      href={projectFileDownloadHref(file.id)}
                       target="_blank"
                       rel="noreferrer"
                       style={{

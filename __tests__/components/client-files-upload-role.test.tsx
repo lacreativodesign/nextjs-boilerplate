@@ -143,9 +143,10 @@ describe('STOR-2: the client files upload control follows the published Storage 
     expect(table).not.toBeNull();
     // The row, not just the shell: the whole point is that read access is unaffected.
     expect(within(table as HTMLElement).getByText('Rebrand')).toBeInTheDocument();
+    // P0-07: the link is the authenticated download route, never a stored Firebase URL.
     expect(within(table as HTMLElement).getByRole('link', { name: 'Download' })).toHaveAttribute(
       'href',
-      FILE_ROW.downloadUrl,
+      `/api/project-files/${FILE_ROW.id}/download`,
     );
   });
 });

@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import dns from 'dns/promises';
-import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
+import { normalizeLogoUrl, publicLogoHref } from '@/lib/white-label/public-logo';
 import {
   generateThemeCssVariables,
   getAllowedBrandFonts,
@@ -16,7 +18,10 @@ export {
 } from '@/lib/white-label/theme';
 
 export type TenantBrandingSettings = {
+  /** P0-07: /api/public/branding/{tenantId}/logo, or an external https URL. Never a token. */
   logoUrl: string | null;
+  /** P0-07: canonical object of an uploaded logo, served by the public branding endpoint. */
+  logoStoragePath?: string | null;
   tagline: string | null;
   primaryColor: string;
   secondaryColor: string;
@@ -117,9 +122,23 @@ export async function updateTenantBranding(
       .trim()
       .toLowerCase();
 
+  // P0-07: a logo URL is normalised before it is stored. A tokenized Firebase URL is
+  // refused — or, when it is this tenant's own legacy logo, migrated to the public
+  // branding endpoint with its token dropped — so saving branding can never write a
+  // bearer URL, including by re-submitting the value a legacy document already holds.
+  const logo = input.logoUrl !== undefined ? normalizeLogoUrl(input.logoUrl, tenantId) : undefined;
+
   const next: TenantBrandingSettings = {
     ...current,
     ...input,
+    ...(logo
+      ? {
+          logoUrl: logo.logoUrl,
+          logoStoragePath: logo.logoUrl
+            ? (logo.logoStoragePath ?? current.logoStoragePath ?? null)
+            : null,
+        }
+      : {}),
     emailBranding: {
       ...current.emailBranding,
       ...(input.emailBranding || {}),
@@ -155,9 +174,19 @@ export async function updateTenantBranding(
   return next;
 }
 
+/**
+ * Stores a tenant logo and publishes it through the public branding endpoint.
+ *
+ * P0-07: this used to write a `firebaseStorageDownloadTokens` token onto the object,
+ * persist the resulting tokenized Firebase URL as `logoUrl`, and resolve the bucket with
+ * a bare `adminStorage.bucket()` — which, with no `storageBucket` on the Admin app, is not
+ * the canonical bucket at all. Now the bucket is the canonical one, the object carries no
+ * token, and the tenant stores the object's path plus a stable Bizosto URL for it. See
+ * lib/white-label/public-logo.ts for why logos are the one deliberately public object.
+ */
 export async function uploadTenantLogo(
   tenantId: string,
-  params: { dataUrl: string; contentType: string },
+  params: { dataUrl: string; contentType?: string },
 ) {
   const matches = params.dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!matches) throw new Error('Invalid logo payload.');
@@ -167,33 +196,39 @@ export async function uploadTenantLogo(
   }
 
   const buffer = Buffer.from(matches[2], 'base64');
+  if (buffer.byteLength === 0) throw new Error('Invalid logo payload.');
   if (buffer.byteLength > 2 * 1024 * 1024) {
     throw new Error('Logo exceeds 2MB limit.');
   }
 
-  const token = crypto.randomUUID();
   const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1].replace('+xml', '');
   const storagePath = `tenants/${tenantId}/branding/logo.${ext}`;
-  const bucket = adminStorage.bucket();
-  const file = bucket.file(storagePath);
+  const file = productStorageBucket().file(storagePath);
 
   await file.save(buffer, {
     contentType: mime,
     resumable: false,
     metadata: {
-      cacheControl: 'public,max-age=3600',
-      metadata: {
-        firebaseStorageDownloadTokens: token,
-      },
+      cacheControl: 'public, max-age=300',
+      // Deliberately no firebaseStorageDownloadTokens. The Admin SDK adds none.
+      metadata: { tenantId, purpose: 'tenant-logo' },
     },
   });
 
-  const encodedPath = encodeURIComponent(storagePath);
-  const logoUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media&token=${token}`;
+  // The generation versions the public URL, so a replaced logo is not served from cache.
+  const [metadata] = await file.getMetadata();
+  const logoUrl = publicLogoHref(tenantId, String(metadata?.generation ?? ''));
+
   await adminDb
     .collection('tenants')
     .doc(tenantId)
-    .set({ whiteLabel: { logoUrl }, brand: { logoUrl } }, { merge: true });
+    .set(
+      {
+        whiteLabel: { logoUrl, logoStoragePath: storagePath },
+        brand: { logoUrl },
+      },
+      { merge: true },
+    );
   return { logoUrl, storagePath };
 }
 

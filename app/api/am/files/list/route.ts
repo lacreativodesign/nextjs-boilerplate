@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 import { getAmUser, isOwnedByAm, toISO } from '../../_utils';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,6 @@ type FileDoc = {
   category?: string;
   fileName?: string;
   storagePath?: string;
-  downloadUrl?: string;
   size?: number;
   mimeType?: string;
   uploadedByUid?: string;
@@ -108,7 +108,8 @@ export async function GET(req: Request) {
         category: data.category || 'Other',
         fileName: data.fileName || '',
         storagePath: data.storagePath || '',
-        downloadUrl: data.downloadUrl || '',
+        // P0-07: a same-origin route that authorizes, never the stored Firebase URL.
+        downloadHref: projectFileDownloadHref(doc.id),
         size: Number(data.size || 0),
         mimeType: data.mimeType || '',
         uploadedByUid: data.uploadedByUid || '',

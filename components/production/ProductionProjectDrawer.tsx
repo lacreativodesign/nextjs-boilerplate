@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { getCurrentTenantId, tenantProjectFilePath } from '@/lib/storage/paths';
 import MasterSelect from '@/components/ui/MasterSelect';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 const FILE_CATEGORIES = ['Draft', 'Revision', 'Final'] as const;
 const STAGES = ['Kickoff', 'Draft', 'Review', 'Revisions', 'Final', 'Delivered'] as const;
@@ -50,7 +51,6 @@ type FileRecord = {
   id: string;
   category: string;
   fileName: string;
-  downloadUrl: string;
   uploadedByName?: string;
   uploadedAt?: string | null;
   isLatest?: boolean;
@@ -425,7 +425,6 @@ export default function ProductionProjectDrawer({
       });
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
 
       const createRes = await apiFetch(
         isProductionRole ? '/api/production/files/upload' : '/api/admin/files/create',
@@ -437,7 +436,6 @@ export default function ProductionProjectDrawer({
             category: uploadingCategory,
             fileName: file.name,
             storagePath,
-            downloadUrl,
             size: file.size,
             mimeType: file.type || null,
             version: null,
@@ -653,7 +651,7 @@ export default function ProductionProjectDrawer({
                         }}
                       >
                         <a
-                          href={file.downloadUrl}
+                          href={projectFileDownloadHref(file.id)}
                           target="_blank"
                           rel="noreferrer"
                           style={{ fontWeight: 600, fontSize: 13 }}

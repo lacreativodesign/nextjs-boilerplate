@@ -18,7 +18,6 @@ type FileRecord = {
   size: number;
   tags: string[];
   latestVersion: number;
-  previewUrl?: string;
 };
 
 export default function DocumentsPage() {
@@ -117,9 +116,9 @@ export default function DocumentsPage() {
         file={
           selectedFile
             ? {
+                id: selectedFile.id,
                 name: selectedFile.name,
                 mimeType: selectedFile.mimeType,
-                previewUrl: selectedFile.previewUrl,
               }
             : undefined
         }

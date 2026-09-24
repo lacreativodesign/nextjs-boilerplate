@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { requireSuperAdmin } from '../_utils';
 import { PLATFORM_TICKETS_COLLECTION, parseTicketStatus } from '@/lib/support/types';
+import { superAdminTicketView } from '@/lib/support/ticket-view';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,8 @@ export async function GET(req: NextRequest) {
         const data = doc.data();
         return {
           id: doc.id,
-          ...data,
+          // P0-07: no stored screenshot URL or path leaves the server; see ticket-view.ts.
+          ...superAdminTicketView(doc.id, data),
           createdAt: toIso(data.createdAt),
           updatedAt: toIso(data.updatedAt),
         };

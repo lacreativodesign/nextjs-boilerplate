@@ -15,7 +15,7 @@ rules_version = '2';
 // Admin SDK (exports/**, imports/**, support/**, documents/**, docusign/**, files/**,
 // branding/**) were reachable from the browser.
 //
-// Access is now granted per prefix to the roles that actually upload there, mirroring
+// CREATE is now granted per prefix to the roles that actually upload there, mirroring
 // the RequireAuth guards on the pages that call ref()/uploadBytes():
 //
 //   projects/**            admin, am, production, production_manager, super_admin
@@ -23,6 +23,8 @@ rules_version = '2';
 //   employees/**           admin, super_admin
 //   employee-documents/**  hr, admin, super_admin
 //   brand/**               super_admin (cross-tenant, tenant branding)
+//
+// READ on the first four is denied to every browser principal (P0-07, below).
 //
 // Anything else — inside a tenant prefix or outside it — is denied to the client SDK and
 // reachable only through the Admin SDK at an authenticated API route. Multiple matching
@@ -48,9 +50,28 @@ rules_version = '2';
 // replacing it IS an overwrite. It is super_admin-only, capped at 2MB, and outside paid
 // quota, so none of the above applies to it.
 //
-// Note: these rules govern direct object access. Files already shared through a
-// getDownloadURL() token remain reachable via that token; rotating those is tracked
-// separately.
+// P0-07: READ is now denied to the browser on the four protected file prefixes. The
+// browser still CREATEs there, and nothing else.
+//
+// A Firebase download token (`firebaseStorageDownloadTokens`) is a bearer credential that
+// bypasses these rules entirely, and the Firebase Storage API mints one in two places:
+// on every browser upload, and — for any caller these rules let READ — on a metadata
+// GET of an object that has none (which is exactly what getDownloadURL() performs).
+// Both behaviours are executed against the pinned emulator in
+// __tests__/rules/storage-download-token.rules.test.ts. So while READ was granted here,
+// any delivery role in the tenant could turn any protected object into a permanent,
+// forwardable URL, and the server stripping the upload-time token would be undone by
+// the next getDownloadURL() call.
+//
+// Nothing in the product reads these prefixes from the browser any more. Downloads go
+// through an authenticated Bizosto API route that re-checks tenant, role and resource
+// ACL and only then mints a signed URL that expires in minutes (lib/storage/
+// protected-download.ts). Registration strips the upload-time token
+// (lib/storage/download-tokens.ts).
+//
+// Tokens that ALREADY exist on legacy objects stay valid until they are removed; see
+// scripts/storage-token-remediation.mjs and docs/security/p0-07-firebase-storage-
+// certification.md. brand/** keeps its tenancy READ: a logo is public-facing by design.
 service firebase.storage {
   match /b/{bucket}/o {
 
@@ -100,9 +121,9 @@ service firebase.storage {
         || isSuperAdmin();
     }
 
-    // Files uploaded by the tenant's own external clients from /client/files. Internal
-    // staff read these through the stored download URL, never by addressing the object,
-    // so no internal role needs a grant.
+    // Files uploaded by the tenant's own external clients from /client/files. Nobody —
+    // the client included — reads these from the browser (P0-07): internal staff and the
+    // client download through the authenticated project-file download route.
     function canClientFiles(tenantId) {
       return tenantRole(tenantId, ['client']);
     }
@@ -118,28 +139,28 @@ service firebase.storage {
     }
 
     match /tenants/{tenantId}/projects/{allPaths=**} {
-      allow read: if canProjectFiles(tenantId);
+      allow read: if false;
       allow create: if canProjectFiles(tenantId) && withinSizeLimit();
       allow update: if false;
       allow delete: if false;
     }
 
     match /tenants/{tenantId}/client-files/{allPaths=**} {
-      allow read: if canClientFiles(tenantId);
+      allow read: if false;
       allow create: if canClientFiles(tenantId) && withinSizeLimit();
       allow update: if false;
       allow delete: if false;
     }
 
     match /tenants/{tenantId}/employees/{allPaths=**} {
-      allow read: if canEmployeeFiles(tenantId);
+      allow read: if false;
       allow create: if canEmployeeFiles(tenantId) && withinSizeLimit();
       allow update: if false;
       allow delete: if false;
     }
 
     match /tenants/{tenantId}/employee-documents/{allPaths=**} {
-      allow read: if canEmployeeDocuments(tenantId);
+      allow read: if false;
       allow create: if canEmployeeDocuments(tenantId) && withinSizeLimit();
       allow update: if false;
       allow delete: if false;

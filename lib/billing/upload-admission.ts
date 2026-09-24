@@ -14,6 +14,7 @@ import {
   tenantObjectKey,
 } from '@/lib/storage/tenant-object';
 import { MAX_FILE_SIZE } from '@/lib/files/validation';
+import { stripFirebaseDownloadTokens } from '@/lib/storage/download-tokens';
 
 /**
  * Admission control for the browser-direct upload surfaces.
@@ -31,6 +32,11 @@ import { MAX_FILE_SIZE } from '@/lib/files/validation';
  *
  *   3. Remove the object when it is refused. Otherwise a rejected upload leaves an orphan
  *      in the bucket: billable, unreferenced, and invisible to the tenant.
+ *
+ *   4. (P0-07) Revoke the Firebase download token the browser SDK attached to the object
+ *      at upload. It is a permanent bearer URL that bypasses Security Rules, tenancy and
+ *      role; a protected object must not carry one once it is registered. See
+ *      lib/storage/download-tokens.ts.
  *
  * The route keeps the reservation until its metadata write lands, then releases it — at
  * which point the record itself is what counts. Callers MUST release in a `finally`.
@@ -149,6 +155,33 @@ export async function admitTenantUpload(params: {
       check: null,
       error: 'File exceeds the maximum upload size.',
       status: 400,
+      alreadyRegistered: false,
+    };
+  }
+
+  // P0-07: strip the upload-time download token from EXACTLY the generation just measured,
+  // before anything else can make this object visible. Runs on every attempt, including a
+  // retry of an already-registered object, so a registration can never succeed while its
+  // object still carries a bearer token. Fails closed and deletes nothing: a refusal here
+  // leaves the object as the uploader wrote it, and a retry re-attempts the strip.
+  const strip = await stripFirebaseDownloadTokens({
+    storagePath: params.storagePath,
+    tenantId,
+    generation: measured.generation,
+  });
+  if (!strip.ok) {
+    const moved = strip.reason === 'generation_changed' || strip.reason === 'not_found';
+    return {
+      ok: false,
+      bytes: measured.size,
+      generation: measured.generation,
+      registrationId: '',
+      reservation: null,
+      check: null,
+      error: moved
+        ? 'The uploaded file changed while it was being registered. Please upload it again.'
+        : 'The uploaded file could not be secured. Nothing was registered; please retry.',
+      status: moved ? 409 : 502,
       alreadyRegistered: false,
     };
   }

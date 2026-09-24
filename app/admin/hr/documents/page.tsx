@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { getCurrentTenantId, tenantEmployeeFilePath } from '@/lib/storage/paths';
 import { toastError } from '@/lib/toast';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
@@ -10,6 +10,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { formatDate } from '@/components/finance/financeUtils';
 import { apiFetch } from '@/lib/api/client';
 import EmptyState from '@/components/ui/EmptyState';
+import { hrDocumentDownloadHref } from '@/lib/storage/download-hrefs';
 
 const DOC_TYPES = [
   { label: 'Contract', value: 'Contract' },
@@ -30,7 +31,6 @@ type DocumentRecord = {
   userId: string;
   docType: string;
   fileName: string;
-  downloadUrl: string;
   createdAt?: string | null;
   isDeleted?: boolean;
 };
@@ -131,7 +131,6 @@ export default function HrDocumentsPage() {
       const fileRef = ref(storage, storagePath);
 
       await uploadBytes(fileRef, selectedFile);
-      const downloadUrl = await getDownloadURL(fileRef);
 
       const res = await apiFetch('/api/admin/hr/documents/upload', {
         method: 'POST',
@@ -141,7 +140,6 @@ export default function HrDocumentsPage() {
           docType: selectedDocType,
           fileName: selectedFile.name,
           storagePath,
-          downloadUrl,
         }),
       });
       const data = await res.json();
@@ -294,7 +292,7 @@ export default function HrDocumentsPage() {
                         <div className="flex items-center justify-center gap-2">
                           <a
                             className="btn ghost"
-                            href={doc.downloadUrl}
+                            href={hrDocumentDownloadHref(doc.id)}
                             target="_blank"
                             rel="noreferrer"
                           >

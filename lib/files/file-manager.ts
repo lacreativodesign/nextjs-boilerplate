@@ -3,8 +3,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import * as admin from 'firebase-admin';
-import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
 import { isTenantOwned } from '@/lib/tenant/ownership';
 import { validateAssembledFile, MAX_FILE_SIZE } from '@/lib/files/validation';
 import { storageLimitResponseBody } from '@/lib/billing/storage-limit';
@@ -78,12 +78,6 @@ function safeName(name: string) {
 function extensionFromName(name: string) {
   const ext = path.extname(name).replace('.', '').toLowerCase();
   return ext || 'bin';
-}
-
-function previewableType(mimeType: string) {
-  return (
-    mimeType.startsWith('image/') || mimeType === 'application/pdf' || mimeType.startsWith('video/')
-  );
 }
 
 function buildPermissions(input?: Partial<FilePermissions>): FilePermissions {
@@ -175,12 +169,26 @@ export class FileManager {
     return file;
   }
 
-  static async generateDownloadUrl(storagePath: string) {
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-    const file = bucket.file(storagePath);
-    const [url] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 1000 * 60 * 10 });
-    return url;
+  /**
+   * P0-07: whether a caller may open this managed file, per the ACL stored on it.
+   *
+   * `permissions` has been written on every managed file since the module existed —
+   * visibility, allowedRoles, allowedUsers, defaulting to `private` — but nothing ever
+   * read it: /api/files/[id]/download signed a URL for any member of the tenant. The
+   * semantics mirror /api/documents/[id]/download, the sibling document module:
+   * public/team visibility is tenant-wide; otherwise the uploader, a listed user, a
+   * listed role, or a tenant admin.
+   */
+  static canAccessFile(file: ManagedFile, caller: { uid: string; role: string }) {
+    const role = String(caller.role || '')
+      .toLowerCase()
+      .replace(/-/g, '_');
+    if (role === 'admin' || role === 'super_admin') return true;
+    const permissions = buildPermissions(file.permissions);
+    if (permissions.visibility === 'public' || permissions.visibility === 'team') return true;
+    if (file.uploadedBy && file.uploadedBy === caller.uid) return true;
+    if (permissions.allowedUsers.includes(caller.uid)) return true;
+    return permissions.allowedRoles.map((r) => String(r).toLowerCase()).includes(role);
   }
 
   static async initOrAppendChunk(params: {
@@ -478,9 +486,7 @@ export class FileManager {
     const versionId = adminDb.collection(FILE_VERSIONS_COLLECTION).doc().id;
 
     const storagePath = `tenants/${params.tenantId}/files/${fileRoot}/v${nextVersion}-${Date.now()}-${cleanName}`;
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-    const storageFile = bucket.file(storagePath);
+    const storageFile = productStorageBucket().file(storagePath);
 
     await storageFile.save(params.fileBuffer, {
       metadata: {
@@ -494,12 +500,10 @@ export class FileManager {
       },
     });
 
-    const [signedPreview] = previewableType(params.mimeType)
-      ? await storageFile.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 1000 * 60 * 60 * 24 * 2,
-        })
-      : [undefined];
+    // P0-07: no preview URL is signed here any more. This used to persist a 2-DAY signed
+    // read URL on the file and its version, handed to every tenant member who listed the
+    // folder, for as long as it lasted. Previews are minted per request, after the ACL
+    // check, by /api/files/[id]/download?disposition=inline.
 
     const versionData: Omit<FileVersion, 'id'> = {
       tenantId: params.tenantId,
@@ -512,7 +516,7 @@ export class FileManager {
       uploadedBy: params.userId,
       uploadedByEmail: params.userEmail,
       changes: params.changes,
-      previewUrl: signedPreview,
+      previewUrl: null,
       isCurrent: true,
       createdAt: now,
     };
@@ -545,7 +549,7 @@ export class FileManager {
         latestVersionId: versionId,
         uploadedBy: params.userId,
         uploadedByEmail: params.userEmail,
-        previewUrl: signedPreview,
+        previewUrl: null,
         checksum,
         storagePath,
         updatedAt: now,
@@ -565,7 +569,7 @@ export class FileManager {
         uploadedBy: params.userId,
         uploadedByEmail: params.userEmail,
         tags: [],
-        previewUrl: signedPreview,
+        previewUrl: null,
         checksum,
         storagePath,
         permissions: buildPermissions(params.permissions),
@@ -622,7 +626,8 @@ export class FileManager {
       size: version.size,
       mimeType: version.mimeType,
       checksum: version.checksum,
-      previewUrl: version.previewUrl,
+      // P0-07: never carry a stored signed URL forward; previews are minted per request.
+      previewUrl: null,
       updatedAt: admin.firestore.Timestamp.now(),
     });
 

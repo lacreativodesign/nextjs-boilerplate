@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileText, Upload } from 'lucide-react';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { getCurrentTenantId, tenantProjectFilePath } from '@/lib/storage/paths';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 /**
  * S21: real project files.
@@ -29,7 +30,6 @@ type ProjectFile = {
   id: string;
   category: string;
   fileName: string;
-  downloadUrl: string;
   uploadedByName: string;
   uploadedAt: string | null;
   isLatest: boolean;
@@ -139,7 +139,6 @@ export default function ProductionFilesPage() {
 
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
 
       const res = await apiFetch('/api/production/files/upload', {
         method: 'POST',
@@ -150,7 +149,6 @@ export default function ProductionFilesPage() {
           category,
           fileName: file.name,
           storagePath,
-          downloadUrl,
           size: file.size,
           mimeType: file.type,
         }),
@@ -274,7 +272,7 @@ export default function ProductionFilesPage() {
                 className="grid grid-cols-4 items-center border-t border-[var(--border-subtle)] px-4 py-4 text-sm transition hover:bg-[var(--table-row-hover)]"
               >
                 <a
-                  href={file.downloadUrl || '#'}
+                  href={projectFileDownloadHref(file.id)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-2 text-[var(--erp-blue)]"

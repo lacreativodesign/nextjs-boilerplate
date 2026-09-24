@@ -135,6 +135,16 @@ export type PlatformTicket = {
   triageStatus: TriageStatus;
   triage: TicketTriage | null;
   pageUrl: string | null;
+  /**
+   * P0-07: canonical storage path of the screenshot object. Served only through
+   * /api/super_admin/tickets/[ticketId]/screenshot; never sent to a browser.
+   */
+  screenshotPath?: string | null;
+  /**
+   * LEGACY. Tickets filed before P0-07 stored a Firebase URL with a permanent download
+   * token here. New tickets write null. Never sent to a browser (lib/support/ticket-view.ts)
+   * and never followed; the screenshot route recovers the object path from it instead.
+   */
   screenshotUrl: string | null;
   hasScreenshot: boolean;
   reporter: TicketReporter;
