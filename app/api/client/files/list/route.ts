@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 import { requireClient, toISO } from '../../_utils';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,6 @@ type FileDoc = {
   clientId?: string;
   category?: string;
   fileName?: string;
-  downloadUrl?: string;
   uploadedAt?: any;
   size?: number;
   isDeleted?: boolean;
@@ -41,7 +41,8 @@ export async function GET() {
         projectName: data.projectName || '',
         category: data.category || 'Other',
         fileName: data.fileName || '',
-        downloadUrl: data.downloadUrl || '',
+        // P0-07: a same-origin route that authorizes, never the stored Firebase URL.
+        downloadHref: projectFileDownloadHref(doc.id),
         uploadedAt: toISO(data.uploadedAt),
         size: Number(data.size || 0),
       };

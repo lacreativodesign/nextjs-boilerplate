@@ -3,10 +3,11 @@
 import MasterSelect from '@/components/ui/MasterSelect';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { getCurrentTenantId, tenantProjectFilePath } from '@/lib/storage/paths';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 type FileCategory = 'Draft' | 'Revision' | 'Final' | 'Asset' | 'Other';
 
@@ -19,7 +20,6 @@ type FileRecord = {
   category: FileCategory | string;
   fileName: string;
   storagePath: string;
-  downloadUrl: string;
   size: number;
   mimeType: string;
   uploadedByUid: string;
@@ -364,7 +364,6 @@ export default function GlobalFilesPage() {
       const storageRef = ref(storage, path);
 
       await uploadBytes(storageRef, selectedFile);
-      const downloadUrl = await getDownloadURL(storageRef);
 
       const res = await apiFetch('/api/admin/files/create', {
         method: 'POST',
@@ -375,7 +374,6 @@ export default function GlobalFilesPage() {
           category: uploadCategory,
           fileName: selectedFile.name,
           storagePath: path,
-          downloadUrl,
           size: selectedFile.size,
           mimeType: selectedFile.type,
           version: uploadVersion || null,
@@ -647,7 +645,7 @@ export default function GlobalFilesPage() {
                         >
                           <a
                             className="btn"
-                            href={file.downloadUrl}
+                            href={projectFileDownloadHref(file.id)}
                             target="_blank"
                             rel="noreferrer"
                             style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12 }}

@@ -8,6 +8,7 @@ import {
   parseTicketPriority,
   parseTicketStatus,
 } from '@/lib/support/types';
+import { superAdminTicketView } from '@/lib/support/ticket-view';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
       ok: true,
       ticket: {
         id: snap.id,
-        ...data,
+        // P0-07: no stored screenshot URL or path leaves the server; see ticket-view.ts.
+        ...superAdminTicketView(snap.id, data),
         createdAt: toIso(data.createdAt),
         updatedAt: toIso(data.updatedAt),
       },

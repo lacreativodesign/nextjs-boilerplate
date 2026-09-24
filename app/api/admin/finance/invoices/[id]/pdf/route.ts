@@ -5,6 +5,7 @@ import { requireAdmin, toISO } from '../../../_utils';
 import { normalizeTenantId } from '@/lib/tenant';
 import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { InvoicePDF } from '@/lib/pdf/InvoiceTemplate';
+import { absoluteLogoUrl } from '@/lib/white-label/public-logo';
 
 type InvoiceDoc = {
   tenantId?: string | null;
@@ -56,7 +57,7 @@ type TenantDoc = {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
     const auth = await requireAdmin();
@@ -137,7 +138,12 @@ export async function GET(_: Request, props: { params: Promise<{ id: string }> }
         },
         tenant: {
           name: String(tenant.name || tenant.companyName || 'Bizosto'),
-          logoUrl: tenant.whiteLabel?.logoUrl || tenant.brand?.logoUrl || tenant.logoUrl || null,
+          // P0-07: the logo URL is the relative public branding endpoint; react-pdf fetches
+          // it with no page origin, so it is made absolute against this request's origin.
+          logoUrl: absoluteLogoUrl(
+            tenant.whiteLabel?.logoUrl || tenant.brand?.logoUrl || tenant.logoUrl || null,
+            new URL(request.url).origin,
+          ),
           primaryColor: tenant.whiteLabel?.primaryColor || '#2563eb',
           secondaryColor: tenant.whiteLabel?.secondaryColor || '#1d4ed8',
           address: tenant.address || null,

@@ -82,7 +82,8 @@ describe('documents/[id]/download — GET', () => {
 
     expect(res.status).toBe(200);
     expect(docRef).toHaveBeenCalledWith('doc_1');
-    expect(StorageService.getDownloadUrl).toHaveBeenCalledWith('doc_1');
+    // P0-07: the minter is also told the caller's tenant, so it can refuse a foreign path.
+    expect(StorageService.getDownloadUrl).toHaveBeenCalledWith('doc_1', 'tenant_a');
     await expect(res.json()).resolves.toEqual({ downloadUrl: 'https://signed.example/doc' });
   });
 

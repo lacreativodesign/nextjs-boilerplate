@@ -42,6 +42,9 @@ jest.mock('@/lib/firebaseAdmin', () => ({
   },
 }));
 
+// P0-07: product storage fails closed without a configured bucket (lib/storage/product-bucket.ts).
+process.env.FIREBASE_STORAGE_BUCKET = 'bizosto-test-bucket';
+
 import {
   getTenantStorageUsage,
   normalizeBytes,

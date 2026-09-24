@@ -1,12 +1,11 @@
 import crypto from 'crypto';
-import { adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
 
 /**
  * Screenshot handling for platform tickets.
  *
- * Screenshots are uploaded to Cloud Storage and referenced by URL on the ticket
- * document — never stored inline as base64. Inline base64 was guaranteed to blow
+ * Screenshots are uploaded to Cloud Storage and referenced by storage PATH on the ticket
+ * document — never stored inline as base64, and never as a URL (P0-07). Inline base64 was guaranteed to blow
  * Firestore's 1 MiB document limit on real captures and bloated every ticket read.
  *
  * The bucket path is namespaced by tenant so a screenshot inherits the same
@@ -92,44 +91,95 @@ export function parseScreenshotDataUrl(input: unknown): ParsedScreenshot | null 
   };
 }
 
+const SCREENSHOT_EXTENSIONS = ['png', 'jpg', 'webp'] as const;
+
+/** The one object a ticket's screenshot may be: tenants/{tenantId}/support/{ticketId}.{ext} */
+export function ticketScreenshotPath(tenantId: string, ticketId: string, ext: string): string {
+  return `tenants/${tenantId}/support/${ticketId}.${ext}`;
+}
+
+function isOwnScreenshotPath(storagePath: string, tenantId: string, ticketId: string): boolean {
+  if (!tenantId || !ticketId || /[/\\]|\.\./.test(tenantId + ticketId)) return false;
+  return SCREENSHOT_EXTENSIONS.some(
+    (ext) => storagePath === ticketScreenshotPath(tenantId, ticketId, ext),
+  );
+}
+
 /**
- * Upload a decoded screenshot to Cloud Storage and return a stable, tokenized
- * public URL. Mirrors the lightweight branding-logo upload pattern (direct
- * file.save with a firebaseStorageDownloadTokens token) rather than the heavy
- * StorageService path, which would create a managed Document record and run a
- * virus scan the ticket flow does not need.
+ * Upload a decoded screenshot to Cloud Storage and return its canonical storage path.
+ *
+ * P0-07: this used to write a `firebaseStorageDownloadTokens` token onto the object and
+ * return `https://firebasestorage.googleapis.com/...&token=<token>`, which the ticket
+ * persisted as `screenshotUrl` and the super-admin queue linked to directly. That URL was
+ * a permanent bearer credential for a capture of a customer's screen — it bypassed every
+ * role check, survived the operator losing access, and worked for anyone it was pasted to.
+ *
+ * Now the object carries no token and the ticket persists only `screenshotPath`. The
+ * image is served by /api/super_admin/tickets/[ticketId]/screenshot, which requires
+ * super_admin and mints a signed URL that expires in minutes.
+ *
+ * Still the lightweight path (direct file.save) rather than StorageService, which would
+ * create a managed Document record and run a virus scan the ticket flow does not need.
  */
 export async function uploadTicketScreenshot(params: {
   tenantId: string;
   ticketId: string;
   screenshot: ParsedScreenshot;
-}): Promise<{ url: string; storagePath: string }> {
+}): Promise<{ storagePath: string }> {
   const { tenantId, ticketId, screenshot } = params;
+  const storagePath = ticketScreenshotPath(tenantId, ticketId, screenshot.ext);
 
-  const token = crypto.randomUUID();
-  const storagePath = `tenants/${tenantId}/support/${ticketId}.${screenshot.ext}`;
-
-  const bucketName = getStorageBucketName();
-  const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-  const file = bucket.file(storagePath);
-
-  await file.save(screenshot.buffer, {
-    contentType: screenshot.contentType,
-    resumable: false,
-    metadata: {
-      cacheControl: 'private,max-age=3600',
+  await productStorageBucket()
+    .file(storagePath)
+    .save(screenshot.buffer, {
+      contentType: screenshot.contentType,
+      resumable: false,
       metadata: {
-        tenantId,
-        ticketId,
-        firebaseStorageDownloadTokens: token,
+        cacheControl: 'private, max-age=0, no-store',
+        // No firebaseStorageDownloadTokens: the Admin SDK does not add one, and nothing
+        // here asks for one. __tests__/lib/support/p0-07-support-screenshot.test.ts pins it.
+        metadata: { tenantId, ticketId },
       },
-    },
-  });
+    });
 
-  const encodedPath = encodeURIComponent(storagePath);
-  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media&token=${token}`;
+  return { storagePath };
+}
 
-  return { url, storagePath };
+/**
+ * The storage object a ticket's screenshot lives in, or null when it has none.
+ *
+ * New tickets carry `screenshotPath`. Tickets filed before P0-07 carry only the legacy
+ * tokenized `screenshotUrl`; for those the path is recovered from the URL itself and the
+ * token is discarded — it is never returned, logged or redirected to. Either way the
+ * path must be exactly this ticket's object in this ticket's tenant, so a doctored ticket
+ * document cannot turn the screenshot route into a way of signing any object.
+ */
+export function resolveTicketScreenshotPath(ticket: {
+  id: string;
+  tenantId?: unknown;
+  screenshotPath?: unknown;
+  screenshotUrl?: unknown;
+}): string | null {
+  const tenantId = String(ticket.tenantId ?? '').trim();
+  const ticketId = String(ticket.id ?? '').trim();
+
+  const stored = typeof ticket.screenshotPath === 'string' ? ticket.screenshotPath.trim() : '';
+  if (stored) return isOwnScreenshotPath(stored, tenantId, ticketId) ? stored : null;
+
+  const legacy = typeof ticket.screenshotUrl === 'string' ? ticket.screenshotUrl.trim() : '';
+  if (!legacy) return null;
+  try {
+    const url = new URL(legacy);
+    if (url.protocol !== 'https:' || url.hostname !== 'firebasestorage.googleapis.com') {
+      return null;
+    }
+    const match = /^\/v0\/b\/[^/]+\/o\/([^/]+)$/.exec(url.pathname);
+    if (!match) return null;
+    const recovered = decodeURIComponent(match[1]);
+    return isOwnScreenshotPath(recovered, tenantId, ticketId) ? recovered : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

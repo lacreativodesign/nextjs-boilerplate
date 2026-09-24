@@ -1,7 +1,11 @@
 import crypto from 'crypto';
 import admin from 'firebase-admin';
-import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
+import {
+  MAX_PROTECTED_DOWNLOAD_TTL_MS,
+  mintProtectedDownloadUrl,
+} from '@/lib/storage/protected-download';
 
 const DOCUSIGN_DOC_ID = 'docusign';
 const DOCUSIGN_STATE_COLLECTION = 'docusignOAuthStates';
@@ -503,16 +507,21 @@ export async function getEnvelopeStatus(tenantId: string, envelopeId: string) {
   const snap = await ref.get();
   const record = (snap.data() || {}) as Partial<DocusignEnvelopeRecord>;
 
+  // P0-07: minted on demand for the admin who asked for this status (the route checks
+  // requireAdmin and passes their tenant), bound to the tenant's docusign/ prefix, and
+  // never stored. RETAINED LONGER than an interactive download on purpose — 15 minutes,
+  // the ceiling, down from an hour — because the settings page renders it as a link next
+  // to the envelope status and the admin may read the status before clicking.
   let downloadUrl: string | null = null;
   if (record.signedStoragePath) {
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-    const file = bucket.file(record.signedStoragePath);
-    const [signedUrl] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 60 * 60 * 1000,
+    const minted = await mintProtectedDownloadUrl({
+      storagePath: record.signedStoragePath,
+      tenantId,
+      allowedRoots: [`tenants/${tenantId}/docusign/`],
+      fileName: record.signedDocumentFileName || `${envelopeId}-signed.pdf`,
+      ttlMs: MAX_PROTECTED_DOWNLOAD_TTL_MS,
     });
-    downloadUrl = signedUrl;
+    downloadUrl = minted.url;
   }
 
   return {
@@ -548,17 +557,17 @@ export async function downloadCompletedDocument(params: { tenantId: string; enve
   const fileName = `${params.envelopeId}-signed.pdf`;
   const storagePath = `tenants/${params.tenantId}/docusign/${fileName}`;
 
-  const bucketName = getStorageBucketName();
-  const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
-  await bucket.file(storagePath).save(bytes, {
-    metadata: {
-      contentType: 'application/pdf',
+  await productStorageBucket()
+    .file(storagePath)
+    .save(bytes, {
       metadata: {
-        envelopeId: params.envelopeId,
-        tenantId: params.tenantId,
+        contentType: 'application/pdf',
+        metadata: {
+          envelopeId: params.envelopeId,
+          tenantId: params.tenantId,
+        },
       },
-    },
-  });
+    });
 
   const now = new Date().toISOString();
   await ref.set(

@@ -8,7 +8,10 @@ import {
 } from '@/lib/white-label/branding';
 
 const brandingSchema = z.object({
-  logoUrl: z.string().url().nullable().optional(),
+  // P0-07: a relative /api/public/branding/... URL is valid now, so this is no longer
+  // `.url()`. The value is normalised — and tokenized Firebase URLs refused — by
+  // updateTenantBranding() via normalizeLogoUrl().
+  logoUrl: z.string().trim().max(2048).nullable().optional(),
   tagline: z.string().trim().max(80).nullable().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),

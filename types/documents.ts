@@ -31,7 +31,11 @@ export interface Document {
   // Storage
   storageProvider: 'firebase' | 'aws_s3' | 'gcp';
   storagePath: string;
-  storageUrl: string;
+  /**
+   * LEGACY (P0-07). Used to hold a 7-day signed URL written at upload. New documents
+   * store null; readers strip it (lib/storage/stored-urls.ts). Never authorization.
+   */
+  storageUrl?: string | null;
   publicUrl?: string;
 
   // Metadata
@@ -64,7 +68,8 @@ export interface Document {
   status: DocumentStatus;
   processingError?: string;
   thumbnailUrl?: string;
-  previewUrl?: string;
+  /** LEGACY (P0-07): see storageUrl. New documents store null. */
+  previewUrl?: string | null;
 
   // Security
   isEncrypted: boolean;

@@ -37,7 +37,8 @@ jest.mock('firebase-admin', () => ({
   },
 }));
 
-jest.mock('@/lib/storage/bucket', () => ({ getStorageBucketName: () => undefined }));
+// P0-07: product storage fails closed without a configured bucket (lib/storage/product-bucket.ts).
+jest.mock('@/lib/storage/bucket', () => ({ getStorageBucketName: () => 'bizosto-test-bucket' }));
 
 jest.mock('@/lib/firebaseAdmin', () => ({
   get adminDb() {
@@ -152,5 +153,24 @@ describe('PR4-E: the reservation is released even when storing fails', () => {
 
     await expect(uploadOnce('upload-session-ccc1')).rejects.toThrow(/bucket unavailable/);
     expect(db.bucket(reservationsPath).size).toBe(0);
+  });
+});
+
+describe('P0-07: an upload persists no signed URL', () => {
+  it('signs nothing at upload and stores previewUrl as null on the file and its version', async () => {
+    const result = await uploadOnce('upload-session-p007');
+    expect(result.completed).toBe(true);
+
+    // The 2-day preview URL this used to sign and store is gone; previews are minted per
+    // request by /api/files/[id]/download?disposition=inline, after the ACL check.
+    expect(getSignedUrl).not.toHaveBeenCalled();
+    const versions = Array.from(db.bucket('erp_file_versions').values());
+    const files = Array.from(db.bucket('erp_files').values());
+    expect(versions.length).toBeGreaterThan(0);
+    expect(files.length).toBeGreaterThan(0);
+    for (const row of [...versions, ...files]) {
+      expect(row.previewUrl).toBeNull();
+      expect(String(row.storagePath)).toMatch(new RegExp(`^tenants/${TENANT}/files/`));
+    }
   });
 });

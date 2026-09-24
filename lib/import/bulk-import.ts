@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
-import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
+import { adminDb } from '@/lib/firebaseAdmin';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
 import {
   releaseTenantStorage,
   reserveTenantStorageOrThrow,
@@ -248,8 +248,7 @@ export class BulkImportService {
       kind: 'bulk_import_upload',
     });
 
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
+    const bucket = productStorageBucket();
     const object = bucket.file(storagePath);
 
     try {
@@ -294,8 +293,7 @@ export class BulkImportService {
   }
 
   static async parseJobFile(job: ImportJob): Promise<Record<string, string>[]> {
-    const bucketName = getStorageBucketName();
-    const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
+    const bucket = productStorageBucket();
     const [buffer] = await bucket.file(job.storagePath).download();
     const content = buffer.toString('utf8');
 

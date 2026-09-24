@@ -6,6 +6,7 @@ import { requireSuperAdmin } from '../../../_utils';
 import { writeAuditLog } from '@/lib/tenant/audit';
 import { validateRequest } from '@/lib/validations/validate';
 import { updateTenantBrandingSchema } from '@/lib/validations/tenant-admin';
+import { normalizeLogoUrl, UnsupportedLogoUrlError } from '@/lib/white-label/public-logo';
 
 export async function POST(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
   const params = await props.params;
@@ -16,10 +17,23 @@ export async function POST(req: NextRequest, props: { params: Promise<{ tenantId
     // the tenant branding page. Constraining it to an absolute http(s) URL keeps
     // `javascript:` and `data:` payloads out of a field shown to every user in the
     // workspace.
-    const { name, logoUrl = null } = validateRequest(
+    const { name, logoUrl: requestedLogoUrl = null } = validateRequest(
       updateTenantBrandingSchema,
       await req.json().catch(() => ({})),
     );
+
+    // P0-07: never persist a tokenized Firebase URL. This tenant's own legacy logo URL is
+    // migrated to the public branding endpoint (token dropped); any other is refused.
+    let logo: ReturnType<typeof normalizeLogoUrl>;
+    try {
+      logo = normalizeLogoUrl(requestedLogoUrl, tenantId);
+    } catch (error) {
+      if (error instanceof UnsupportedLogoUrlError) {
+        return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
+    const logoUrl = logo.logoUrl;
 
     // The tenant must already exist. `set(..., { merge: true })` CREATES a document
     // when none is present, so without this check any tenantId in the URL minted a
@@ -37,6 +51,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ tenantId
           logoUrl,
           locked: true,
         },
+        ...(logo.logoStoragePath ? { whiteLabel: { logoStoragePath: logo.logoStoragePath } } : {}),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: user.uid,
       },

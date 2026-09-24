@@ -22,7 +22,8 @@ export interface ManagedFile {
   uploadedBy: string;
   uploadedByEmail: string;
   tags: string[];
-  previewUrl?: string;
+  /** LEGACY (P0-07): once a 2-day signed URL. New writes store null; readers strip it. */
+  previewUrl?: string | null;
   checksum: string;
   storagePath: string;
   permissions: FilePermissions;
@@ -43,7 +44,8 @@ export interface FileVersion {
   uploadedBy: string;
   uploadedByEmail: string;
   changes?: string;
-  previewUrl?: string;
+  /** LEGACY (P0-07): once a 2-day signed URL. New writes store null; readers strip it. */
+  previewUrl?: string | null;
   isCurrent: boolean;
   createdAt: FirebaseFirestore.Timestamp;
 }

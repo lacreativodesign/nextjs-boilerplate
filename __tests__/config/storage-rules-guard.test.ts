@@ -136,10 +136,20 @@ describe('storage.rules — dangerous patterns', () => {
 });
 
 describe('storage.rules — per-prefix authorization', () => {
-  it.each(PREFIX_GRANTS)('$prefix/** is gated by $guard', ({ prefix, guard }) => {
-    expect(activeRules).toContain(`match /tenants/{tenantId}/${prefix}/{allPaths=**}`);
-    expect(activeRules).toContain(`allow read: if ${guard}(tenantId);`);
-    expect(activeRules).toContain(`allow create: if ${guard}(tenantId) && withinSizeLimit();`);
+  it.each(PREFIX_GRANTS)('$prefix/** CREATE is gated by $guard', ({ prefix, guard }) => {
+    const block = matchBlock(`match /tenants/{tenantId}/${prefix}/{allPaths=**}`);
+    expect(block).toContain(`allow create: if ${guard}(tenantId) && withinSizeLimit();`);
+  });
+
+  it.each(PREFIX_GRANTS)('$prefix/** denies browser READ to everyone (P0-07)', ({ prefix }) => {
+    // A permitted READ is what lets the Firebase Storage API mint a permanent download
+    // token on a protected object (getDownloadURL() on a token-free object creates one).
+    // Protected downloads go through an authenticated API route instead. Behavioural proof:
+    // __tests__/rules/storage-download-token.rules.test.ts.
+    const block = matchBlock(`match /tenants/{tenantId}/${prefix}/{allPaths=**}`);
+    expect(block).toContain('allow read: if false;');
+    expect(block).not.toMatch(/allow (?:read|get|list)[^:]*:\s*if\s+(?!false)/);
+    expect(block).not.toMatch(/allow write/);
   });
 
   it('restricts HR prefixes to HR and admin roles, never the external client', () => {

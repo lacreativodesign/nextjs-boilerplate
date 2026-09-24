@@ -10,7 +10,6 @@ type FileRecord = {
   size: number;
   tags: string[];
   latestVersion: number;
-  previewUrl?: string;
 };
 
 export function FileBrowser({

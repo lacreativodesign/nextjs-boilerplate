@@ -1,0 +1,150 @@
+name: Storage Bucket Certification
+
+# P0-07 — READ-ONLY live certification of the production Cloud Storage bucket.
+#
+# Security Rules are certified by the P0-04 emulator suite and were published by GitHub
+# Actions run 34862537234. That proves nothing about the bucket's own controls — IAM,
+# public-access prevention, uniform access, CORS, lifecycle, retention, holds — or about
+# how many objects still carry a permanent Firebase download token. This job reads them.
+#
+# SAFETY PROPERTIES, enforced below rather than documented
+#
+#   - Read-only by identity. It impersonates a DEDICATED reader service account
+#     (vars.GCP_STORAGE_CERT_READER_SA) whose custom role holds only get/list/getIamPolicy
+#     permissions. It never names the rules deployer or the index identities, so no
+#     existing identity is broadened, and it could not mutate the bucket if this file
+#     were edited to try.
+#   - Read-only by construction. The verifier issues HTTP GET only; nothing here runs
+#     `gcloud storage ... update`, a metadata PATCH, or the remediation tool.
+#     __tests__/ci/p0-07-storage-certification.test.ts pins all of this.
+#   - The project and bucket are constants in the verifier. No input can retarget them.
+#   - Fails closed. A missing variable, a refused read or an unfinished object listing is a
+#     failure, never a pass. The job goes red until the bucket is actually certified.
+#   - No stored credential. Keyless Workload Identity Federation; the access token is
+#     job-scoped, masked, and handed to the verifier through the environment only.
+#   - No secret output. The verifier prints per-category counts — never a token value,
+#     never an object name.
+#   - main only. The ref is checked before any credential is minted, matching the
+#     ref-restricted IAM binding the runbook asks the owner to create.
+#
+# Owner setup (reader service account, custom role, WIF binding, repository variable):
+# docs/security/p0-07-firebase-storage-certification.md.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/verify-storage-bucket.mjs'
+      - '.github/workflows/storage-bucket-certification.yml'
+
+permissions:
+  contents: read
+  # Mints the OIDC token Google exchanges for a short-lived reader credential. Grants
+  # nothing inside this repository.
+  id-token: write
+
+concurrency:
+  group: storage-bucket-certification
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: la-creativo-erp
+  BUCKET: la-creativo-erp.firebasestorage.app
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Refuse anything but main, and require the reader configuration
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          READER_SA: ${{ vars.GCP_STORAGE_CERT_READER_SA }}
+        run: |
+          set -euo pipefail
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Live storage certification runs from refs/heads/main only (ref is $REF)."
+            exit 1
+          fi
+          if [ -z "$WIF_PROVIDER" ]; then
+            echo "::error::Repository variable GCP_WORKLOAD_IDENTITY_PROVIDER is not set."
+            exit 1
+          fi
+          if [ -z "$READER_SA" ]; then
+            echo "::error::Repository variable GCP_STORAGE_CERT_READER_SA is not set. Nothing was observed."
+            echo "Owner action: create the read-only reader described in docs/security/p0-07-firebase-storage-certification.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Authenticate as the READ-ONLY storage certification identity
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_STORAGE_CERT_READER_SA }}
+          token_format: access_token
+          access_token_lifetime: 900s
+
+      - name: Certify the live bucket (read-only)
+        shell: bash
+        env:
+          GCS_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GCS_ACCESS_TOKEN"
+          set +e
+          node scripts/verify-storage-bucket.mjs --json > p0-07-storage-report.json
+          status=$?
+          set -e
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("p0-07-storage-report.json","utf8"));
+            for (const c of r.results) console.log(`${c.status.padEnd(12)} ${c.id}: ${c.detail}`);
+            console.log(r.verdict.certified ? "VERDICT: CERTIFIED" : "VERDICT: NOT CERTIFIED");
+          '
+          exit $status
+
+      - name: Publish the report
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## P0-07 live storage certification"
+            echo
+            echo "- project: \`$PROJECT_ID\`"
+            echo "- bucket: \`$BUCKET\`"
+            echo "- commit: \`$GITHUB_SHA\`"
+            echo
+            echo '```json'
+            cat p0-07-storage-report.json 2>/dev/null || echo '{"error":"no report: nothing was observed"}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-07-storage-certification
+          path: p0-07-storage-report.json
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Explain a permission failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "A FAIL naming a permission means the reader could not observe that control."
+          echo "Add exactly that READ permission to the reader's custom role; never a"
+          echo "predefined admin role, and never a write permission. The minimum set is in"
+          echo "docs/security/p0-07-firebase-storage-certification.md."

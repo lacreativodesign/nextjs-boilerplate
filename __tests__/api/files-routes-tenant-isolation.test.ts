@@ -22,7 +22,8 @@ const getCurrentUser = jest.fn();
 
 const FileManager = {
   getFileById: jest.fn(),
-  generateDownloadUrl: jest.fn(),
+  // P0-07: the stored per-file ACL is now enforced; allowed unless a test says otherwise.
+  canAccessFile: jest.fn(() => true),
   listVersions: jest.fn(),
   restoreVersion: jest.fn(),
   addTags: jest.fn(),
@@ -35,6 +36,13 @@ jest.mock('@/lib/files/file-manager', () => ({
   get FileManager() {
     return FileManager;
   },
+}));
+
+// P0-07: downloads are minted by the shared short-lived minter, after authorization.
+const mintProtectedDownloadUrl = jest.fn();
+jest.mock('@/lib/storage/protected-download', () => ({
+  ...jest.requireActual('@/lib/storage/protected-download'),
+  mintProtectedDownloadUrl: (...args: unknown[]) => mintProtectedDownloadUrl(...args),
 }));
 
 const TENANT_A = 'tenant_a';
@@ -53,6 +61,7 @@ const jsonBody = (url: string, body: unknown) =>
 beforeEach(() => {
   jest.clearAllMocks();
   getCurrentUser.mockResolvedValue(CALLER_A);
+  FileManager.canAccessFile.mockReturnValue(true);
 });
 
 describe('files/[id] — GET', () => {
@@ -96,34 +105,66 @@ describe('files/[id] — GET', () => {
 
 describe('files/[id]/download — GET', () => {
   const load = () => import('@/app/api/files/[id]/download/route');
+  const FILE = {
+    id: 'file_1',
+    name: 'brief.pdf',
+    mimeType: 'application/pdf',
+    storagePath: 'tenants/tenant_a/files/file_1/v1-1-brief.pdf',
+  };
 
   it('refuses a caller with no tenant context', async () => {
     getCurrentUser.mockResolvedValue(null);
     const { GET } = await load();
     const res = await GET(new Request('https://app.local'), ctx('file_1'));
     expect(res.status).toBe(401);
-    expect(FileManager.generateDownloadUrl).not.toHaveBeenCalled();
+    expect(mintProtectedDownloadUrl).not.toHaveBeenCalled();
   });
 
-  it('issues a download URL only after the tenant-scoped lookup succeeds', async () => {
-    FileManager.getFileById.mockResolvedValue({ id: 'file_1', storagePath: 'tenant_a/file_1' });
-    FileManager.generateDownloadUrl.mockResolvedValue('https://signed.example/u');
+  it('mints a short-lived URL only after the tenant-scoped lookup AND the ACL pass', async () => {
+    FileManager.getFileById.mockResolvedValue(FILE);
+    mintProtectedDownloadUrl.mockResolvedValue({
+      url: 'https://signed.example/u',
+      expiresAt: '2026-01-01T00:05:00.000Z',
+    });
+    const { GET } = await load();
+    const res = await GET(
+      new Request('https://app.local/api/files/file_1/download'),
+      ctx('file_1'),
+    );
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://signed.example/u');
+    expect(res.headers.get('cache-control')).toContain('no-store');
+    expect(FileManager.getFileById).toHaveBeenCalledWith('file_1', TENANT_A);
+    expect(FileManager.canAccessFile).toHaveBeenCalledWith(FILE, CALLER_A);
+    expect(mintProtectedDownloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        storagePath: FILE.storagePath,
+        tenantId: TENANT_A,
+        allowedRoots: ['tenants/tenant_a/files/file_1/'],
+        disposition: 'attachment',
+      }),
+    );
+  });
+
+  it('refuses a same-tenant caller the stored ACL does not admit, and mints nothing', async () => {
+    FileManager.getFileById.mockResolvedValue(FILE);
+    FileManager.canAccessFile.mockReturnValue(false);
     const { GET } = await load();
     const res = await GET(new Request('https://app.local'), ctx('file_1'));
 
-    expect(res.status).toBe(200);
-    expect(FileManager.getFileById).toHaveBeenCalledWith('file_1', TENANT_A);
-    expect(FileManager.generateDownloadUrl).toHaveBeenCalledWith('tenant_a/file_1');
+    expect(res.status).toBe(403);
+    expect(mintProtectedDownloadUrl).not.toHaveBeenCalled();
   });
 
-  it("never signs a URL for another tenant's file", async () => {
+  it("never signs a URL for another tenant's (or a deleted) file", async () => {
     FileManager.getFileById.mockResolvedValue(null);
     const { GET } = await load();
     const res = await GET(new Request('https://app.local'), ctx('file_owned_by_tenant_b'));
 
     expect(res.status).toBe(404);
     // The important half: no signed URL is minted on the refusal path.
-    expect(FileManager.generateDownloadUrl).not.toHaveBeenCalled();
+    expect(mintProtectedDownloadUrl).not.toHaveBeenCalled();
   });
 });
 

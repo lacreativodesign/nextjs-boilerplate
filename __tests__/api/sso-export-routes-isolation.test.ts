@@ -37,6 +37,13 @@ jest.mock('@/lib/firebaseAdmin', () => ({
   },
 }));
 jest.mock('@/app/api/admin/_utils', () => ({ getCurrentUser: () => getCurrentUser() }));
+
+// P0-07: export downloads are minted per request by the shared short-lived minter.
+const mintProtectedDownloadUrl = jest.fn();
+jest.mock('@/lib/storage/protected-download', () => ({
+  ...jest.requireActual('@/lib/storage/protected-download'),
+  mintProtectedDownloadUrl: (...args: unknown[]) => mintProtectedDownloadUrl(...args),
+}));
 jest.mock('@/lib/api/bulk-data-guard', () => ({
   requireBulkDataAccess: () => requireBulkDataAccess(),
 }));
@@ -198,23 +205,39 @@ describe('export/jobs/[id]/download — GET', () => {
     await expect(res.text()).resolves.not.toContain('signedUrl');
   });
 
-  it('returns the caller’s completed export under the awaited id', async () => {
+  it('mints a fresh short-lived URL for the caller’s completed export under the awaited id', async () => {
     docGet.mockResolvedValue(
       snapshot({
         tenantId: TENANT_A,
         status: 'completed',
         fileName: 'export.csv',
-        signedUrl: 'https://files.example/ours',
+        storagePath: `tenants/${TENANT_A}/exports/clients/export.csv`,
+        // A legacy job still carrying the 1-hour URL written when it ran.
+        signedUrl: 'https://files.example/stale-stored-url',
       }),
     );
+    mintProtectedDownloadUrl.mockResolvedValue({
+      url: 'https://files.example/fresh',
+      expiresAt: '2026-01-01T00:05:00.000Z',
+    });
     const { GET } = await load();
     const res = await GET(new Request('https://app.local'), ctxId('j1'));
 
     expect(res.status).toBe(200);
     expect(docRef).toHaveBeenCalledWith('j1');
-    await expect(res.json()).resolves.toMatchObject({
+    expect(mintProtectedDownloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        storagePath: `tenants/${TENANT_A}/exports/clients/export.csv`,
+        tenantId: TENANT_A,
+        allowedRoots: [`tenants/${TENANT_A}/exports/`],
+      }),
+    );
+    const body = await res.json();
+    expect(body).toMatchObject({
       fileName: 'export.csv',
-      downloadUrl: 'https://files.example/ours',
+      downloadUrl: 'https://files.example/fresh',
     });
+    // P0-07: the stored URL is never handed back.
+    expect(JSON.stringify(body)).not.toContain('stale-stored-url');
   });
 });

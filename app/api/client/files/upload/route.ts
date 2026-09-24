@@ -8,7 +8,7 @@ import {
   getUserIdsByRoles,
 } from '@/lib/notifications';
 import { validateFile } from '@/lib/files/validation';
-import { isTenantStoragePath } from '@/lib/storage/paths';
+import { isSurfaceStoragePath, isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
   commitUploadRegistration,
@@ -37,18 +37,22 @@ export async function POST(req: Request) {
     const projectId = cleanString(body?.projectId);
     const fileName = cleanString(body?.fileName);
     const storagePath = cleanString(body?.storagePath);
-    const downloadUrl = cleanString(body?.downloadUrl);
     const size = Number(body?.size || 0);
 
     const mimeType = cleanString(body?.mimeType);
 
     if (!projectId)
       return NextResponse.json({ ok: false, error: 'Project is required.' }, { status: 400 });
-    if (!fileName || !storagePath || !downloadUrl) {
+    if (!fileName || !storagePath) {
       return NextResponse.json({ ok: false, error: 'File details are required.' }, { status: 400 });
     }
 
-    if (!isTenantStoragePath(storagePath, auth.user.tenantId ?? '')) {
+    // P0-07: the record's storagePath is what its download route will sign, so it must
+    // name an object under THIS surface and THIS project, not merely this tenant.
+    if (
+      !isTenantStoragePath(storagePath, auth.user.tenantId ?? '') ||
+      !isSurfaceStoragePath(storagePath, auth.user.tenantId ?? '', 'client', projectId)
+    ) {
       return NextResponse.json({ ok: false, error: 'Invalid storage path.' }, { status: 400 });
     }
 
@@ -97,7 +101,10 @@ export async function POST(req: Request) {
       category: 'Client',
       fileName,
       storagePath,
-      downloadUrl,
+      // P0-07: never a caller-supplied URL. Firebase download URLs are bearer credentials
+      // that bypass tenant and role checks; downloads are minted per request after
+      // authorization. null also clears a stale URL on an upserted legacy record.
+      downloadUrl: null,
       size: admission.bytes, // measured by Cloud Storage, never the declared value
       mimeType,
       uploadedByUid: auth.user.uid,

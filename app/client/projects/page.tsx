@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
 import { smartMatch } from '@/lib/search/smartMatch';
 import EmptyState from '@/components/ui/EmptyState';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 const PIPELINE_STAGES = [
   'Inquiry',
@@ -51,7 +52,6 @@ type ProjectDetailPayload = {
     id: string;
     fileName: string;
     category: string;
-    downloadUrl: string;
     uploadedAt: string | null;
   }>;
   messages: Array<{
@@ -384,7 +384,7 @@ export default function ClientProjectsPage() {
                         </div>
                         <a
                           className="btn ghost"
-                          href={file.downloadUrl || '#'}
+                          href={projectFileDownloadHref(file.id)}
                           target="_blank"
                           rel="noreferrer"
                         >

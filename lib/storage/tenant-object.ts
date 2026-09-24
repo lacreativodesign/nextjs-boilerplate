@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { adminStorage } from '@/lib/firebaseAdmin';
-import { getStorageBucketName } from '@/lib/storage/bucket';
 import { isTenantStoragePath } from '@/lib/storage/paths';
+import { productStorageBucket } from '@/lib/storage/product-bucket';
 
 /**
  * Server-authoritative facts about an object a browser uploaded directly.
@@ -28,8 +27,8 @@ import { isTenantStoragePath } from '@/lib/storage/paths';
  */
 
 function tenantBucket() {
-  const bucketName = getStorageBucketName();
-  return bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
+  // P0-07: the canonical product bucket, never the Admin SDK's unconfigured default.
+  return productStorageBucket();
 }
 
 export interface VerifiedTenantObject {

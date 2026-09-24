@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { getCurrentTenantId, tenantProjectFilePath } from '@/lib/storage/paths';
 import MasterSelect from '@/components/ui/MasterSelect';
 import { getFirebaseStorage } from '@/lib/firebaseClient';
 import { apiFetch } from '@/lib/api/client';
 import { SmartSearchBar } from '@/components/search/SmartSearchBar';
+import { projectFileDownloadHref } from '@/lib/storage/download-hrefs';
 
 const FILE_CATEGORIES = ['Draft', 'Revision', 'Final', 'Asset', 'Other'] as const;
 
@@ -17,7 +18,6 @@ type FileRecord = {
   clientName: string;
   category: string;
   fileName: string;
-  downloadUrl: string;
   uploadedByName?: string;
   uploadedAt?: string | null;
   size?: number;
@@ -191,7 +191,6 @@ export default function AMFilesPage() {
       });
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
 
       const res = await apiFetch('/api/am/files/upload', {
         method: 'POST',
@@ -202,7 +201,6 @@ export default function AMFilesPage() {
           category: uploadCategory,
           fileName: file.name,
           storagePath,
-          downloadUrl,
           size: file.size,
           mimeType: file.type,
         }),
@@ -314,7 +312,7 @@ export default function AMFilesPage() {
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
                     <a
                       className="btn ghost"
-                      href={file.downloadUrl}
+                      href={projectFileDownloadHref(file.id)}
                       target="_blank"
                       rel="noreferrer"
                     >

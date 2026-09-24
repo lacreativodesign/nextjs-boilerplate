@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import type { Document } from '@/types/documents';
+import { withoutStoredUrls } from '@/lib/storage/stored-urls';
 
 export const runtime = 'nodejs';
 
@@ -61,7 +62,8 @@ export async function GET(request: Request) {
 
     const snapshot = await query.get();
     const documents = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }) as Document)
+      // P0-07: legacy records may still hold a 7-day signed URL; it never leaves the server.
+      .map((doc) => withoutStoredUrls({ id: doc.id, ...doc.data() }) as Document)
       .filter((doc) => hasDocumentAccess(doc, session))
       .filter((doc) => !doc.deletedAt);
 

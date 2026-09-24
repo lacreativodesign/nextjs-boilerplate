@@ -5,6 +5,7 @@ import { SearchService } from '@/lib/search/search-service';
 import { searchSchema, validateFilters, validateSortField } from '@/lib/search/search-api';
 import type { Document } from '@/types/documents';
 import type { SearchFilter } from '@/types/search';
+import { withoutStoredUrls } from '@/lib/storage/stored-urls';
 
 export const runtime = 'nodejs';
 
@@ -96,7 +97,9 @@ export async function POST(request: NextRequest) {
   const paged = filtered.slice(offset, offset + params.limit);
 
   return NextResponse.json({
-    results: paged,
+    // P0-07: whichever backend produced them, legacy records may still hold a 7-day signed
+    // URL; it never leaves the server.
+    results: paged.map((doc) => withoutStoredUrls(doc)),
     pagination: {
       total,
       page: params.page,

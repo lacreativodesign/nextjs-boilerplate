@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { createHrEvent, requireHrAccess, serverTimestamp } from '../../_utils';
 import { logActivity } from '@/lib/activity/tracker';
 import { validateFile } from '@/lib/files/validation';
-import { isTenantStoragePath } from '@/lib/storage/paths';
+import { isSurfaceStoragePath, isTenantStoragePath } from '@/lib/storage/paths';
 import {
   admitTenantUpload,
   commitUploadRegistration,
@@ -29,13 +29,17 @@ export async function POST(req: Request) {
     const docType = String(body?.docType || '').trim();
     const fileName = String(body?.fileName || '').trim();
     const storagePath = String(body?.storagePath || '').trim();
-    const downloadUrl = String(body?.downloadUrl || '').trim();
 
-    if (!userId || !docType || !fileName || !storagePath || !downloadUrl) {
+    if (!userId || !docType || !fileName || !storagePath) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!isTenantStoragePath(storagePath, access.user.tenantId)) {
+    // P0-07: the record's storagePath is what its download route will sign, so it must
+    // name an object under THIS surface and THIS employee, not merely this tenant.
+    if (
+      !isTenantStoragePath(storagePath, access.user.tenantId) ||
+      !isSurfaceStoragePath(storagePath, access.user.tenantId, 'employee', userId)
+    ) {
       return NextResponse.json({ ok: false, error: 'Invalid storage path.' }, { status: 400 });
     }
 
@@ -62,7 +66,10 @@ export async function POST(req: Request) {
       docType,
       fileName,
       storagePath,
-      downloadUrl,
+      // P0-07: never a caller-supplied URL. Firebase download URLs are bearer credentials
+      // that bypass tenant and role checks; downloads are minted per request after
+      // authorization. null also clears a stale URL on an upserted legacy record.
+      downloadUrl: null,
       // S11: this record was written with NO tenantId, so it was invisible to the
       // tenant-scoped HR document list AND to storage accounting. Same defect class as
       // the file records fixed earlier; this admin route was the missed sibling.

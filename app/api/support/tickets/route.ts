@@ -17,6 +17,7 @@ import {
   ticketContentHash,
   uploadTicketScreenshot,
 } from '@/lib/support/storage';
+import { withoutScreenshotLocators } from '@/lib/support/ticket-view';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -151,7 +152,9 @@ export async function GET() {
 
     return NextResponse.json({
       tickets: tickets.docs.map((doc) => {
-        const data = doc.data();
+        // P0-07: screenshots are super_admin-only. A tenant admin sees that one exists
+        // (hasScreenshot) but never its storage path or a legacy tokenized URL.
+        const data = withoutScreenshotLocators(doc.data());
         return {
           id: doc.id,
           ...data,
@@ -255,8 +258,10 @@ export async function POST(req: Request) {
       .doc('ticket_counter');
 
     // Upload the screenshot BEFORE the transaction — Storage writes cannot run
-    // inside a Firestore transaction, and the URL must be part of the committed doc.
-    let screenshotUrl: string | null = null;
+    // inside a Firestore transaction, and the path must be part of the committed doc.
+    // P0-07: the ticket stores the storage PATH, never a URL. The image is served only
+    // through /api/super_admin/tickets/[ticketId]/screenshot, after a super_admin check.
+    let screenshotPath: string | null = null;
     if (screenshot) {
       try {
         const uploaded = await uploadTicketScreenshot({
@@ -264,11 +269,11 @@ export async function POST(req: Request) {
           ticketId: ticketRef.id,
           screenshot,
         });
-        screenshotUrl = uploaded.url;
+        screenshotPath = uploaded.storagePath;
       } catch (err) {
         // A screenshot failure must not lose the whole report. Proceed without it.
         console.error('SUPPORT_SCREENSHOT_UPLOAD_ERROR', err);
-        screenshotUrl = null;
+        screenshotPath = null;
       }
     }
 
@@ -286,8 +291,11 @@ export async function POST(req: Request) {
         pageUrl: pageUrl || null,
         reporterName: reporterName || null,
         reporterEmail: reporterEmail || null,
-        screenshotUrl,
-        hasScreenshot: Boolean(screenshotUrl),
+        screenshotPath,
+        // Kept as an explicit null so the persisted shape says "no bearer URL" rather than
+        // leaving readers to wonder whether the field was forgotten.
+        screenshotUrl: null,
+        hasScreenshot: Boolean(screenshotPath),
         status: 'open' as TicketStatus,
         priority,
         category,
@@ -333,7 +341,7 @@ export async function POST(req: Request) {
       priority,
       reporterName,
       reporterEmail,
-      hasScreenshot: Boolean(screenshotUrl),
+      hasScreenshot: Boolean(screenshotPath),
     }).catch((err) => console.error('SUPPORT_NOTIFY_SUPER_ADMIN_ERROR', err));
 
     // Real-time in-app bell for the super admin. The notification is tagged with
@@ -357,7 +365,8 @@ export async function POST(req: Request) {
     }).catch((err) => console.error('SUPPORT_NOTIFY_BELL_ERROR', err));
 
     return NextResponse.json({
-      ...result,
+      // P0-07: the reporter learns hasScreenshot, never where the object lives.
+      ...withoutScreenshotLocators(result),
       createdAt: result.createdAt.toISOString(),
       updatedAt: result.updatedAt.toISOString(),
     });

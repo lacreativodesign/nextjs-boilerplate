@@ -35,7 +35,8 @@ jest.mock('firebase-admin', () => ({
   },
 }));
 
-jest.mock('@/lib/storage/bucket', () => ({ getStorageBucketName: () => undefined }));
+// P0-07: product storage fails closed without a configured bucket (lib/storage/product-bucket.ts).
+jest.mock('@/lib/storage/bucket', () => ({ getStorageBucketName: () => 'bizosto-test-bucket' }));
 
 jest.mock('@/lib/firebaseAdmin', () => ({
   get adminDb() {
@@ -154,10 +155,12 @@ describe('PR4-A: an upload over the plan is refused before any byte is stored', 
 });
 
 describe('PR4-A: a failed upload leaves no orphan and no held quota', () => {
+  // P0-07: upload no longer signs a URL after saving (it used to persist a 7-day one), so
+  // the post-save failure is modelled by the documents record write itself failing.
   it('removes the object and releases the reservation when the record cannot be written', async () => {
-    getSignedUrl.mockRejectedValue(new Error('signing failed'));
+    db.failingWrites.add('documents');
 
-    await expect(upload(2048)).rejects.toThrow(/signing failed/);
+    await expect(upload(2048)).rejects.toThrow(/write to documents failed/);
 
     // Releasing the reservation without removing the object would hand back quota for
     // bytes still in the bucket.
@@ -169,10 +172,10 @@ describe('PR4-A: a failed upload leaves no orphan and no held quota', () => {
   });
 
   it('releases the reservation even when the cleanup delete also fails', async () => {
-    getSignedUrl.mockRejectedValue(new Error('signing failed'));
+    db.failingWrites.add('documents');
     deleteObject.mockRejectedValue(new Error('delete failed'));
 
-    await expect(upload(2048)).rejects.toThrow(/signing failed/);
+    await expect(upload(2048)).rejects.toThrow(/write to documents failed/);
     expect(db.bucket(reservationsPath).size).toBe(0);
   });
 
@@ -250,5 +253,18 @@ describe('PR4-A: a new version is charged and ordered correctly', () => {
         mimeType: 'application/pdf',
       }),
     ).rejects.toThrow(/Original document not found/);
+  });
+});
+
+describe('P0-07: a document upload persists no signed URL', () => {
+  it('signs nothing at upload and stores storageUrl and previewUrl as null', async () => {
+    const documentId = await upload(2048);
+
+    // Both fields used to hold the same 7-day signed URL, handed to every later reader.
+    expect(getSignedUrl).not.toHaveBeenCalled();
+    const stored = storedDocument(documentId);
+    expect(stored.storageUrl).toBeNull();
+    expect(stored.previewUrl).toBeNull();
+    expect(String(stored.storagePath)).toContain(`tenants/${TENANT}/documents/`);
   });
 });

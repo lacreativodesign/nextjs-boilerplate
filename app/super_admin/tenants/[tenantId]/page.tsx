@@ -3,8 +3,6 @@
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { getFirebaseStorage } from '@/lib/firebaseClient';
 import {
   MAX_IMAGE_UPLOAD_SIZE_BYTES,
   optimizeImageForUpload,
@@ -186,10 +184,24 @@ export default function TenantDetailPage() {
           height: optimized.metadata.height,
           format: optimized.metadata.format,
         });
-        const storage = await getFirebaseStorage();
-        const storageRef = ref(storage, `tenants/${tenant.id}/brand/logo.webp`);
-        await uploadBytes(storageRef, optimized.file, { contentType: optimized.file.type });
-        logoUrl = await getDownloadURL(storageRef);
+        // P0-07: uploaded through the server, which stores the logo with no Firebase
+        // download token and returns the stable public branding URL for it.
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('Unable to read logo.'));
+          reader.readAsDataURL(optimized.file);
+        });
+        const uploadRes = await apiFetch(`/api/super_admin/tenants/${tenant.id}/branding/logo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl, contentType: optimized.file.type }),
+        });
+        const uploadPayload = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok || !uploadPayload?.ok || !uploadPayload?.logoUrl) {
+          throw new Error(uploadPayload?.error || 'Unable to upload logo.');
+        }
+        logoUrl = String(uploadPayload.logoUrl);
       }
 
       await apiFetch(`/api/super_admin/tenants/${tenant.id}/branding`, {

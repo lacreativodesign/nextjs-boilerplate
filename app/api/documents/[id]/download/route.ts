@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getCurrentUser, isAdminOrSuper } from '@/app/api/admin/_utils';
 import { StorageService } from '@/lib/storage/storage-service';
+import { ProtectedDownloadRefused, protectedDownloadError } from '@/lib/storage/protected-download';
 import type { Document } from '@/types/documents';
 
 export const runtime = 'nodejs';
@@ -58,11 +59,18 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
       );
     }
 
-    const downloadUrl = await StorageService.getDownloadUrl(params.id);
+    // P0-07: minted only now, after the tenant, ACL and scan checks above; expires in
+    // minutes and is never stored. The JSON shape is unchanged for existing callers.
+    const downloadUrl = await StorageService.getDownloadUrl(params.id, session.tenantId);
 
-    return NextResponse.json({ downloadUrl });
+    return NextResponse.json(
+      { downloadUrl },
+      { headers: { 'Cache-Control': 'no-store, max-age=0', 'Referrer-Policy': 'no-referrer' } },
+    );
   } catch (error) {
-    console.error('Error generating download URL:', error);
+    if (error instanceof ProtectedDownloadRefused)
+      return protectedDownloadError(error, 'documents');
+    console.error('Error generating download URL:', { name: (error as Error | null)?.name });
     return NextResponse.json({ error: 'Failed to generate download URL' }, { status: 500 });
   }
 }

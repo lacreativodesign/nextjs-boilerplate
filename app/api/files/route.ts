@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/api/admin/_utils';
 import { FileManager } from '@/lib/files/file-manager';
+import { withoutStoredUrls } from '@/lib/storage/stored-urls';
 
 export const runtime = 'nodejs';
 
@@ -18,7 +19,13 @@ export async function GET(request: Request) {
       limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined,
     });
 
-    return NextResponse.json({ files });
+    // P0-07: only files this caller may open (the stored ACL), and without the legacy
+    // 2-day signed preview URL older records still carry.
+    return NextResponse.json({
+      files: files
+        .filter((file) => FileManager.canAccessFile(file, session))
+        .map((file) => withoutStoredUrls(file)),
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed to list files' }, { status: 500 });
   }

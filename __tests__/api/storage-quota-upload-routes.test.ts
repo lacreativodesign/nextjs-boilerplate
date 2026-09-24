@@ -100,6 +100,9 @@ jest.mock('@/app/api/admin/hr/_utils', () => ({
   serverTimestamp: jest.fn(() => 'ts'),
 }));
 
+// P0-07: product storage fails closed without a configured bucket (lib/storage/product-bucket.ts).
+process.env.FIREBASE_STORAGE_BUCKET = 'bizosto-test-bucket';
+
 import { POST as clientUpload } from '@/app/api/client/files/upload/route';
 import { POST as amUpload } from '@/app/api/am/files/upload/route';
 import { POST as productionUpload } from '@/app/api/production/files/upload/route';
